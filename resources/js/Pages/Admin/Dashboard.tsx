@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Search, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/Components/ui/card';
-import { Button } from '@/Components/Button';
+import { ButtonLogin as Button } from '@/Components/ButtonLogin';
 import { Input } from '@/Components/Input';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import AppTable from '@/Components/AppTable';
@@ -34,12 +34,12 @@ export default function AdminDashboard() {
   return (
     <AuthenticatedLayout>
       <Head title="Inicio Administrador" />
-      
+
       <div className="flex flex-col lg:flex-row bg-[#f9fafb] min-h-screen font-body -m-6 md:-m-8">
         {/* Columna Principal */}
         <div className="flex-1 p-6 space-y-6">
           {/* Banner de Bienvenida */}
-          <DashboardWelcomeBanner 
+          <DashboardWelcomeBanner
             greeting={`Hola `}
             subtitle="Sistema de Control Escolar"
             wrapperClassName="pt-0 md:pt-10 pb-6 md:pb-10"
@@ -62,9 +62,9 @@ export default function AdminDashboard() {
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  placeholder="Buscar actividad" 
-                  className="pl-10 h-11 bg-slate-50 border-none rounded-xl text-sm shadow-none focus-visible:ring-1 focus-visible:ring-[#1e88e5]/20 transition-all" 
+                <Input
+                  placeholder="Buscar actividad"
+                  className="pl-10 h-11 bg-slate-50 border-none rounded-xl text-sm shadow-none focus-visible:ring-1 focus-visible:ring-[#1e88e5]/20 transition-all"
                 />
               </div>
               <Button variant="outline" size="sm" className="gap-2 h-11 border-slate-100 text-slate-500 font-medium shadow-none hover:bg-blue-50 hover:text-[#1e88e5] hover:border-blue-100 rounded-xl w-full sm:w-auto transition-all">
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
             <h4 className="font-bold text-slate-800 text-sm leading-tight tracking-tight">
               Herramientas de configuración del ciclo
             </h4>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
               {/* Tarjeta 1 */}
               <div className="bg-[#f0f2ff] hover:bg-[#e6e9ff] transition-colors p-5 md:p-6 rounded-2xl border-none space-y-4 flex flex-col justify-between group">

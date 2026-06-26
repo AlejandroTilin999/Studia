@@ -1,59 +1,75 @@
 import { Link } from '@inertiajs/react';
-import Button from '@/Components/ui/Button'; // Asegúrate de que esta ruta sea la correcta en tu proyecto
-import { Circle } from 'lucide-react';
+import Button from '@/Components/ui/button';
 
 const COLORS = {
     primary: "#0066CC",
     secondary: "#483D8B",
-    accent: "#3CB371",
-    circle:"#628bc4ff"
-}
+    accent: "#3CB371"
+};
 
 export default function Hero() {
     return (
-        <header className="flex items-center justify-between px-16 py-12 h-[510px]" style={{ padding:"100px"}}>
-            {/* Lado izquierdo */}
-            <div className="w-1/2">
-                <p className="text-slate-500 font-medium mb-4" style={{ fontSize: "20px" }}>Gestión Académica</p>
-                <h1 className="text-6xl md:text-3xl lg:text-4xl xl:text-5xl font-extrabold text-slate-900 leading-tight" style={{ fontSize: "65px" }}>
-                    Todo lo que necesitas <br />
-                    para <span style={{ color: COLORS.primary }}>vida académica</span>
-                </h1>
-                <p className="mt-6 text-slate-500 max-w-sm text-xs md:text-xs lg:text-sm xl:text-xl" style={{ fontSize: "25px" }}>
-                    La plataforma educativa diseñada para que tus materias y tareas sean tan únicas como tú.
+        <div className="w-full max-w-7xl mx-auto px-6 md:px-12 flex flex-col lg:flex-row justify-between gap-12 select-none h-full items-stretch">
+            {/* Lado izquierdo - Texto original y botón */}
+            <div className="w-full lg:w-[50%] text-center lg:text-left space-y-6 self-center py-8 lg:py-12 relative z-30">
+                <p className="text-slate-500 font-semibold text-base sm:text-lg lg:text-xl uppercase tracking-wider">
+                    Control Escolar PREPAHID
                 </p>
-                {/* Usamos el componente Button reutilizable */}
-                <Link href={route('login')}>
-                    <Button className="mt-8 px-12 py-4 shadow-lg">
-                        Inicia sesión en PREPAHID
-                    </Button>
-                </Link>
-            </div>
-
-            {/* Lado derecho */}
-            <div className="w-1/2 flex justify-end relative">
-                {/* Círculos decorativos */}
-                <div 
-                    className="absolute top-10 right-20 w-32 h-32 rounded-full blur-3xl opacity-40"
-                    style={{ backgroundColor: COLORS.primary }}
-                ></div>
-                <div 
-                    className="absolute bottom-10 right-10 w-40 h-60 rounded-full blur-3xl opacity-40"
-                    style={{ backgroundColor: COLORS.secondary }}
-                ></div>
-                <div 
-                    className="absolute top-20 right-80 w-80 h-60 rounded-full blur-3xl opacity-40"
-                    style={{ backgroundColor: COLORS.circle }}
-                ></div>
-
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4.15rem] font-extrabold text-slate-900 leading-tight tracking-tight lg:w-[125%] relative z-20">
+                    Todo lo que necesitas para gestionar tu <span className="whitespace-nowrap" style={{ color: COLORS.primary }}>vida académica</span>
+                </h1>
+                <p className="text-slate-500 text-sm sm:text-base md:text-lg lg:text-xl max-w-lg leading-relaxed mx-auto lg:mx-0">
+                    La plataforma educativa diseñada para que tus materias, calificaciones y tareas sean tan únicas como tú. Controla tu avance escolar al instante y mantén al día tus entregables.
+                </p>
                 
-                <img 
-                 
-                    src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/appDownload/excitedWomenImage.png" 
-                    alt="Estudiante" 
-                    className="relative z-10 w-[800px] max-w-none" 
-                />
+                <div className="pt-2 flex justify-center lg:justify-start">
+                    <Link href={route('login')} className="w-full sm:w-auto block text-center">
+                        <span className="inline-block text-white px-10 py-3.5 rounded-t-full rounded-bl-full rounded-br-none font-medium transition-all hover:opacity-90 hover:scale-105 bg-[#0066CC] shadow-lg shadow-blue-500/20 w-full sm:w-auto">
+                            Inicia sesión en PREPAHID
+                        </span>
+                    </Link>
+                </div>
             </div>
-        </header>
+
+            {/* Lado derecho - Estudiante con widgets de información estáticos */}
+            <div className="w-full lg:w-[50%] flex items-end justify-center lg:justify-end self-end h-full relative">
+                {/* Contenedor con escala e idéntica proporción a la imagen para anclar widgets */}
+                <div className="relative inline-flex items-end justify-center w-full max-w-xs sm:max-w-md lg:max-w-xl xl:max-w-[48rem]">
+                    {/* Widget A: Información del Alumno */}
+                    <div className="absolute top-[18%] -right-2 z-20 bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200/50 select-none hidden sm:block">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Portal Activo</span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 mt-1">Sesión: Alumno PREPAHID</p>
+                    </div>
+
+                    {/* Widget B: Materias */}
+                    <div className="absolute bottom-[20%] -right-12 z-20 bg-white/95 backdrop-blur-md p-4 rounded-xl border border-slate-200/50 select-none w-48 hidden lg:block">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Gestiona tus materias</p>
+                        <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-1.5 text-slate-400 line-through">
+                                <span>✓ Álgebra</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                <span>Química</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Widget C: Promedio (justo al lado donde apunta el dedo, sin encimarse) */}
+                    <div className="absolute top-[38%] -left-12 z-20 bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200/50 select-none hidden sm:block">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Promedio General</p>
+                        <h4 className="text-sm font-bold text-slate-800 mt-0.5">Calificación: 10.0</h4>
+                    </div>
+
+                    <img 
+                        src="/assets/hero-img.png" 
+                        alt="Estudiante" 
+                        className="w-full max-h-[350px] sm:max-h-[460px] lg:max-h-[600px] xl:max-h-[760px] object-contain pointer-events-none block translate-y-1 lg:translate-y-2 relative z-10" 
+                    />
+                </div>
+            </div>
+        </div>
     );
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Head, useForm } from "@inertiajs/react";
-import { Button } from "@/Components/Button";
+import { Head, useForm, Link } from "@inertiajs/react";
+import { ButtonLogin } from "@/Components/ButtonLogin";
 import { Input } from "@/Components/Input";
 import { Label } from "@/Components/Label";
 import { cn } from "@/lib/utils";
+import Button from "@/Components/ui/button";
 
 
 export default function LoginPage() {
@@ -21,17 +22,24 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    post('/login'); // Asegúrate de tener esta ruta definida en web.php
+    post('/login');
   };
 
   return (
     <div className="h-screen w-full bg-white flex flex-col md:flex-row overflow-hidden font-body">
       <Head title="Inicio de Sesión" />
       
-      {/* Columna Izquierda: Formulario */}
       <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-16 xl:p-2  bg-white relative">
         <div className="max-w-md w-full relative flex flex-col items-center md:items-start">
-          {/* Logo */}
+          <div className="w-full flex md:hidden justify-end mb-4">
+            <Button >
+              <Link href="/">
+               
+                Regresar
+              </Link>
+            </Button>
+          </div>
+          
           <div className="mb-10 lg:mb-14 flex justify-start ml-0 w-full max-w-[420px]">
             <img 
               src="/assets/logo-ph.webp" 
@@ -102,13 +110,13 @@ export default function LoginPage() {
 
             {/* Botón Ingresar */}
             <div className="space-y-2 lg:space-y-2.5 w-full max-w-[420px]">
-              <Button 
+              <ButtonLogin 
                 type="submit"
                 disabled={processing}
                 className="w-full h-12 lg:h-[54px] bg-[#1a2b4b] hover:bg-[#0f1a2e] text-white font-bold rounded-full text-base lg:text-lg shadow-none transition-transform active:scale-[0.98]"
               >
                 {processing ? "Ingresando..." : "Ingresar"}
-              </Button>
+              </ButtonLogin>
               <div className="w-full text-left">
                 <button 
                   type="button"
@@ -131,19 +139,30 @@ export default function LoginPage() {
    
       
       {/* Columna Derecha */}
-      <div className="hidden md:flex flex-1 relative bg-white items-center justify-center overflow-hidden h-full">
-        <div className="absolute right-[-20%] w-[140%] aspect-square bg-[#e3f2fd] rounded-full translate-x-[15%]"></div>
-        <div className="absolute right-[-20%] w-[130%] aspect-square bg-[#cfe8ff] rounded-full translate-x-[25%]"></div>
-        <div className="absolute right-[-30%] w-[120%] aspect-square bg-[#1e88e5] rounded-full translate-x-[35%] opacity-60"></div>
+      {/* Columna Derecha */}
+<div className="hidden md:flex flex-1 relative bg-white items-center justify-center overflow-hidden h-full">
 
-        <div className="relative z-10 w-full h-full flex items-center justify-center">
-          <img 
-            src="/assets/persona-login.png" 
-            alt="Estudiante 3D" 
-            className="h-[70%] lg:h-[90%] w-auto object-contain drop-shadow-[0_25px_25px_rgba(0,0,0,0.1)] translate-x-[0%]"
-          />
-        </div>
-      </div>
+  <div className="absolute top-6 right-6 z-20">
+    <Button>
+      <Link href="/">
+        
+        Regresar
+      </Link>
+    </Button>
+  </div>
+
+  <div className="absolute right-[-20%] w-[140%] aspect-square bg-[#e3f2fd] rounded-full translate-x-[15%]"></div>
+  <div className="absolute right-[-20%] w-[130%] aspect-square bg-[#cfe8ff] rounded-full translate-x-[25%]"></div>
+  <div className="absolute right-[-30%] w-[120%] aspect-square bg-[#1e88e5] rounded-full translate-x-[35%] opacity-60"></div>
+
+  <div className="relative z-10 w-full h-full flex items-center justify-center">
+    <img
+      src="/assets/persona-login.png"
+      alt="Estudiante 3D"
+      className="h-[70%] lg:h-[90%] w-auto object-contain"
+    />
+  </div>
+</div>
     </div>
   );
 }
