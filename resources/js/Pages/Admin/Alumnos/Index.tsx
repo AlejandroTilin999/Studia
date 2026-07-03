@@ -28,15 +28,13 @@ interface BackendGrade {
     };
 }
 
-interface BackendEnrollment {
+// ✅ Modificado para coincidir con el nuevo modelo unificado de Students
+interface BackendStudent {
     id: number;
-    student_code: string;
+    matricula: string;
+    name: string;
+    email: string;
     status: 'active' | 'suspended';
-    user?: {
-        id: number;
-        name: string;
-        email: string;
-    };
     academic_group?: {
         id: number;
         name: string;
@@ -51,22 +49,22 @@ interface AcademicGroupProp {
 }
 
 interface AlumnosIndexProps {
-    alumnos?: BackendEnrollment[];
+    alumnos?: BackendStudent[]; // ✅ Ahora recibe directamente el arreglo de estudiantes
     groups?: AcademicGroupProp[];
 }
 
 export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndexProps) {
     
-    // Mapeamos los datos unificando la inscripción del alumno (enrollment) y la cuenta global (user)
-    const formattedStudents = alumnos.map(enrollment => ({
-        id: enrollment.id,
-        matricula: enrollment.student_code || 'S/M',
-        name: enrollment.user?.name || 'Sin nombre asignado',
-        email: enrollment.user?.email || 'sin-correo@studia.edu.mx',
-        groupId: enrollment.academic_group?.id || 0,
-        groupName: enrollment.academic_group?.name || 'Sin grupo',
-        status: enrollment.status || 'active',
-        grades: enrollment.grades?.map(g => ({
+    // ✅ Mapeo simplificado directo desde la tabla única de alumnos
+    const formattedStudents = alumnos.map(student => ({
+        id: student.id,
+        matricula: student.matricula || 'S/M',
+        name: student.name || 'Sin nombre asignado',
+        email: student.email || 'sin-correo@studia.edu.mx',
+        groupId: student.academic_group?.id || 0,
+        groupName: student.academic_group?.name || 'Sin grupo',
+        status: student.status || 'active',
+        grades: student.grades?.map(g => ({
             subject: g.course?.name || 'Materia Desconocida',
             score: g.score,
             period: g.period || '2026-A'
@@ -83,7 +81,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    // FORMULARIO INTEGRADO A LAS TABLAS USERS Y ENROLLMENTS
+    // ✅ Formulario sincronizado con las propiedades nativas de la tabla única
     const { data, setData, post, put, reset, processing, errors } = useForm({
         nombre: '',
         email: '',

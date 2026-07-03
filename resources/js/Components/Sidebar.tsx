@@ -115,52 +115,6 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="p-0 border-none shrink-0 mb-4">
-        {/* Simulador de Rol (Solo para desarrollo local) */}
-        {(expanded || isSheet) && (
-          <div className="p-4 mx-4 mb-2 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-widest text-center">Simulador de Rol</span>
-            <div className="grid grid-cols-3 gap-1">
-              <Link 
-                href="/admin/dashboard" 
-                className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'ADMIN' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
-              >
-                Admin
-              </Link>
-              <Link 
-                href="/docente/dashboard" 
-                className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'DOCENTE' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
-              >
-                Docente
-              </Link>
-              <Link 
-                href="/alumno/dashboard" 
-                className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'ALUMNO' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
-              >
-                Alumno
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Botón Cerrar Sesión */}
-        <SidebarMenu className="px-0">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              expanded={expanded || isSheet}
-              onClick={() => router.post('/logout')}
-              className="text-slate-600 hover:bg-red-50 hover:text-red-600 font-medium h-14 rounded-none border-none transition-colors"
-            >
-              <LogOut className="w-5 h-5 shrink-0" />
-              {(expanded || isSheet) && (
-                <span className="text-[15px] font-medium ml-1">
-                  Cerrar sesión
-                </span>
-              )}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </div>
   );
 
