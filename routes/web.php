@@ -1,11 +1,10 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\AlumnoController;
-use App\Http\Controllers\AcademicController;
-use App\Http\Controllers\EnrollmentController;
-use App\Http\Controllers\GradingController;
-use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\ProfileController; // Asegúrate de tener esta importación
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -20,18 +19,20 @@ Route::get('/', function () {
     ]);
 });
 
-// 2. Ruta de pruebas (Liberada)
-Route::get('/student', function () {
-    return view('student');
-});
-
 // 3. RUTAS LIBERADAS (Sin middleware 'auth')
-Route::post('/academic/periods', [AcademicController::class, 'storePeriod'])->name('academic.periods.store');
-Route::post('/academic/courses', [AcademicController::class, 'storeCourse'])->name('academic.courses.store');
-Route::post('/enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
-Route::post('/grades/assign', [GradingController::class, 'updateOrCreate'])->name('grades.assign');
-Route::get('/finance/student/{userId}', [FinanceController::class, 'studentInvoices'])->name('finance.student');
-Route::patch('/finance/invoice/{id}/pay', [FinanceController::class, 'pay'])->name('finance.pay');
+Route::get('/student', [StudentController::class, 'index'])->name('students.index');
+Route::post('/student', [StudentController::class, 'store'])->name('students.store');
+
+Route::get('/teacher', [TeacherController::class, 'index'])->name('teachers.index');
+Route::post('/teacher', [TeacherController::class, 'store'])->name('teachers.store');
+
+// 🛠️ MATERIAS CORREGIDO: Nombres de ruta unificados para coincidir con React y Ziggy
+Route::get('/materias', [CourseController::class, 'index'])->name('materias.index');
+Route::post('/materias', [CourseController::class, 'store'])->name('materias.store');
+Route::put('/materias/{id}', [CourseController::class, 'update'])->name('materias.update');
+Route::delete('/materias/{id}', [CourseController::class, 'destroy'])->name('materias.destroy');
+
+Route::get('/group', [GroupController::class, 'index'])->name('groups.index');
 
 // 4. RUTAS PROTEGIDAS (Requieren autenticación)
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -56,23 +57,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return Inertia::render('Admin/Dashboard');
         })->name('admin.dashboard');
 
+        Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
+        Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
+        Route::put('/alumnos/{id}', [StudentController::class, 'update'])->name('admin.alumnos.update');
+        Route::post('/alumnos/{id}/toggle', [StudentController::class, 'toggleStatus'])->name('admin.alumnos.toggle');
+
         Route::get('/users', function () {
             return Inertia::render('Admin/Users/Index');
         })->name('admin.users.index');
 
-        Route::get('/alumnos', [AlumnoController::class, 'index'])->name('admin.alumnos.index');
+        // Alumnos (Usa su controlador)
+        Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
 
-        Route::get('/docentes', function () {
-            return Inertia::render('Admin/Docentes/Index');
-        })->name('admin.docentes.index');
+        // PROFESORES: Control otorgado al TeacherController en la ruta de administración
+        Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
+        Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
 
         Route::get('/grupos', function () {
             return Inertia::render('Admin/Grupos/Index');
         })->name('admin.grupos.index');
 
-        Route::get('/materias', function () {
-            return Inertia::render('Admin/Materias/Index');
-        })->name('admin.materias.index');
+        // Redirección opcional o puedes dejar esta ruta apuntando también al index si lo usas dentro de /admin/materias
+        Route::get('/materias', [CourseController::class, 'index'])->name('admin.materias.index');
+        Route::get('/grupos', [GroupController::class, 'index'])->name('groups.index');
+Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
+Route::put('/grupos/{id}', [GroupController::class, 'update'])->name('groups.update');
 
         Route::get('/reportes', function () {
             return Inertia::render('Admin/Reportes/Index');
@@ -107,6 +116,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Perfil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    // Se corrigieron los nombres de clase faltantes usando la variable directa o el controlador importado arriba
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });

@@ -1,189 +1,148 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import AppTable from '@/Components/AppTable';
 import { 
     Search, 
     Filter, 
     Plus, 
-    Calendar, 
-    Phone, 
     Mail, 
-    Hash, 
-    GraduationCap, 
+    Phone,
     X, 
     Check,
     BookOpen,
-    Eye,
-    Trash2
+    GraduationCap
 } from "lucide-react";
 
-// Reusable components
 import PageHeaderBanner from '@/Components/PageHeaderBanner';
 import QuickSummaryWidget from '@/Components/QuickSummaryWidget';
 import QuickActionsWidget from '@/Components/QuickActionsWidget';
 import DonutChartWidget from '@/Components/DonutChartWidget';
 
-interface MockTeacher {
+interface TeacherFromBackend {
     id: number;
-    matricula: string;
-    name: string;
-    email: string;
-    phone: string;
+    employee_code: string;
+    nombre: string;
+    apellido_paterno: string;
+    apellido_materno: string | null;
     specialty: string;
-    assignments: { subject: string; groupName: string }[];
+    phone: string | null;
+    email?: string;
+    courses?: {
+        id: number;
+        name: string;
+        code: string;
+    }[];
 }
 
-export default function DocentesIndex() {
-    // 1. Initial teachers mock database keeping the original records
-    const [teachers, setTeachers] = useState<MockTeacher[]>([
-        { 
-            id: 1, 
-            matricula: 'P001',
-            name: 'Francisco Javier Martínez', 
-            email: 'f.martinez@prepahidalgo.edu.mx', 
-            phone: '7711234567', 
-            specialty: 'Ciencias Exactas e Ingeniería',
-            assignments: [
-                { subject: 'Matemáticas I', groupName: '1-A' },
-                { subject: 'Física I', groupName: '2-B' },
-            ]
-        },
-        { 
-            id: 2, 
-            matricula: 'P002',
-            name: 'María Elena Rodríguez', 
-            email: 'm.rodriguez@prepahidalgo.edu.mx', 
-            phone: '7712223344', 
-            specialty: 'Lenguaje y Comunicación',
-            assignments: [
-                { subject: 'Español I', groupName: '1-A' },
-            ]
-        },
-        { 
-            id: 3, 
-            matricula: 'P003',
-            name: 'Humberto Soler Castro', 
-            email: 'h.soler@prepahidalgo.edu.mx', 
-            phone: '7715556677', 
-            specialty: 'Historia y Ciencias Sociales',
-            assignments: [
-                { subject: 'Historia I', groupName: '1-A' },
-            ]
-        },
-        { 
-            id: 4, 
-            matricula: 'P004',
-            name: 'Luisa Fernanda Vega', 
-            email: 'l.vega@prepahidalgo.edu.mx', 
-            phone: '7719998877', 
-            specialty: 'Química y Biología',
-            assignments: [
-                { subject: 'Química I', groupName: '2-B' },
-            ]
-        }
-    ]);
+export default function DocentesIndex({ teachers: backendTeachers = [] }: { teachers: TeacherFromBackend[] }) {
+    
+    const formattedTeachers = backendTeachers.map((t) => {
+        const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
+        const correoDocente = t.email || (t.employee_code ? `${t.employee_code.toLowerCase()}@studia.edu.mx` : 'docente@studia.edu.mx');
 
-    // 2. React state for search & filtering
+        return {
+            id: t.id,
+            matricula: t.employee_code || 'S/M',
+            name: nombreCompleto,
+            // Guardamos los apellidos desglosados para rellenar el formulario al editar
+            rawNombre: t.nombre,
+            rawPaterno: t.apellido_paterno,
+            rawMaterno: t.apellido_materno || '',
+            email: correoDocente,
+            phone: t.phone || 'Sin teléfono',
+            specialty: t.specialty || 'General',
+            assignments: t.courses?.map(c => ({
+                subject: c.name,
+                groupName: 'Asignado'
+            })) || []
+        };
+    });
+
     const [searchQuery, setSearchQuery] = useState('');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
-
-    // 3. Form & Assignments Modals State
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-    const [selectedTeacher, setSelectedTeacher] = useState<MockTeacher | null>(null);
+    const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
+    // 🌟 FORMULARIO DE INERTIA CONECTADO AL BACKEND
+    const { data, setData, post, put, reset, processing, errors } = useForm({
+        nombre: '',
+        apellido_paterno: '',
+        apellido_materno: '',
         phone: '',
         specialty: ''
     });
-
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    // Filter Logic
-    const filteredTeachers = teachers.filter(teacher => 
+    const filteredTeachers = formattedTeachers.filter(teacher => 
         teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         teacher.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchQuery.toLowerCase())
+        teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        teacher.matricula.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Dynamic stats
-    const totalTeachersCount = teachers.length;
+    const totalTeachersCount = filteredTeachers.length;
 
-    // Handlers
     const openCreateModal = () => {
         setModalMode('create');
-        setFormData({ name: '', email: '', phone: '', specialty: '' });
+        reset(); // Limpia los campos usando Inertia
         setIsFormModalOpen(true);
     };
 
-    const openEditModal = (teacher: MockTeacher) => {
+    const openEditModal = (teacher: any) => {
         setModalMode('edit');
         setSelectedTeacher(teacher);
-        setFormData({
-            name: teacher.name,
-            email: teacher.email,
-            phone: teacher.phone,
+        
+        // Rellenamos el formulario con los datos crudos del profesor seleccionado
+        setData({
+            nombre: teacher.rawNombre,
+            apellido_paterno: teacher.rawPaterno,
+            apellido_materno: teacher.rawMaterno,
+            phone: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
             specialty: teacher.specialty
         });
         setIsFormModalOpen(true);
     };
 
+    // Enviar datos dinámicos a Laravel
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         if (modalMode === 'create') {
-            const nextId = teachers.length + 1;
-            const newTeacher: MockTeacher = {
-                id: Date.now(),
-                matricula: `P${nextId < 10 ? '00' + nextId : nextId < 100 ? '0' + nextId : nextId}`,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                specialty: formData.specialty,
-                assignments: []
-            };
-            setTeachers([...teachers, newTeacher]);
-            triggerToast(`Docente "${formData.name}" registrado correctamente.`);
-        } else if (modalMode === 'edit' && selectedTeacher) {
-            setTeachers(teachers.map(t => t.id === selectedTeacher.id ? {
-                ...t,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                specialty: formData.specialty
-            } : t));
-            triggerToast(`Datos de "${formData.name}" actualizados.`);
-        }
-        setIsFormModalOpen(false);
-    };
-
-    const handleDelete = (teacherId: number, name: string) => {
-        if (confirm(`¿Estás seguro de eliminar al docente "${name}"? Se perderán todas sus asignaciones académicas.`)) {
-            setTeachers(teachers.filter(t => t.id !== teacherId));
-            triggerToast(`Docente "${name}" eliminado del sistema.`);
+            post(route('admin.docentes.store'), {
+                onSuccess: () => {
+                    setIsFormModalOpen(false);
+                    triggerToast("¡Profesor registrado con éxito en Neon!");
+                }
+            });
+        } else {
+            put(route('admin.docentes.update', selectedTeacher.id), {
+                onSuccess: () => {
+                    setIsFormModalOpen(false);
+                    triggerToast("¡Expediente actualizado con éxito!");
+                }
+            });
         }
     };
 
-    const openAssignmentsModal = (teacher: MockTeacher) => {
+    const openAssignmentsModal = (teacher: any) => {
         setSelectedTeacher(teacher);
         setIsAssignmentsModalOpen(true);
     };
 
     return (
         <AuthenticatedLayout>
-            <Head title="Gestión de Profesores" />
+            <Head title="Gestión de Profesores - Studia" />
 
-            {/* Toast Alert */}
             {toastMessage && (
-                <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-sm select-none">
+                <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-sm">
                     <div className="bg-[#1e88e5] p-1 rounded-full text-white">
                         <Check size={12} />
                     </div>
@@ -191,75 +150,39 @@ export default function DocentesIndex() {
                 </div>
             )}
 
-            {/* Layout Wrapper split into Main Content and Right Sidebar */}
             <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] font-body overflow-x-hidden -m-6 md:-m-8">
-                
-                {/* Main Content Column */}
                 <div className="flex-1 flex flex-col min-w-0">
-                    
-                    {/* Header Banner */}
                     <PageHeaderBanner 
                         title={`Gestión de profesores (${totalTeachersCount})`}
-                        subtitle="Consulta, edita y registra"
+                        subtitle="Consulta, edita y registra expedientes de personal docente"
                         breadcrumb="Profesores"
                     />
 
-                    {/* Table Filters & Content Area */}
                     <div className="p-0 md:p-6 flex-1 overflow-hidden flex flex-col">
                         <div className="bg-white rounded-none md:rounded-xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100 flex-1 flex flex-col min-h-0">
                             
-                            {/* Controls: Search and Actions */}
                             <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
                                 <div className="relative flex-1 w-full">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                     <input
                                         type="text"
-                                        placeholder="Buscar profesor"
+                                        placeholder="Buscar profesor por nombre, matrícula o especialidad..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none focus:ring-0 shadow-none text-slate-700 placeholder-slate-400"
+                                        className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none focus:ring-0 shadow-none text-slate-700 text-left"
                                     />
                                 </div>
-                                <div className="flex items-center gap-3 w-full md:w-auto relative">
+                                <div className="flex items-center gap-3 w-full md:w-auto">
                                     <button 
                                         onClick={openCreateModal}
-                                        className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
+                                        className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm flex items-center justify-center gap-2"
                                     >
                                         <Plus className="w-4 h-4" />
                                         Registrar profesor
                                     </button>
-                                    
-                                    <button 
-                                        onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-                                        className="h-12 border border-slate-200 text-slate-500 font-bold rounded-lg flex-1 md:flex-initial gap-2 px-8 text-sm hover:bg-slate-50 transition-all flex items-center justify-center"
-                                    >
-                                        <Filter className="w-4 h-4" />
-                                        Filtros
-                                    </button>
-
-                                    {/* Dropdown Filters Selector */}
-                                    {showFiltersDropdown && (
-                                        <div className="absolute right-0 top-14 w-52 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-3.5 space-y-2">
-                                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Especialidad</span>
-                                            <select
-                                                value={searchQuery}
-                                                onChange={e => {
-                                                    setSearchQuery(e.target.value === 'all' ? '' : e.target.value);
-                                                    setShowFiltersDropdown(false);
-                                                }}
-                                                className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
-                                            >
-                                                <option value="all">Todas las especialidades</option>
-                                                <option value="Ciencias">Ciencias</option>
-                                                <option value="Lenguaje">Lenguaje</option>
-                                                <option value="Historia">Historia</option>
-                                            </select>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
-                            {/* Table */}
                             <AppTable
                                 data={filteredTeachers}
                                 keyExtractor={(item) => item.id}
@@ -280,18 +203,20 @@ export default function DocentesIndex() {
                                         ),
                                     },
                                     {
-                                        header: "Materia asignada",
+                                        header: "Materias asignadas",
                                         accessor: (row) => (
                                             <div className="flex flex-col text-left">
                                                 <span className="text-[13px] text-slate-700 font-bold">
-                                                    {row.assignments.map(a => a.subject).join(', ') || 'Sin materias'}
+                                                    {row.assignments.length > 0 
+                                                        ? row.assignments.map(a => a.subject).join(', ') 
+                                                        : 'Sin materias asignadas'}
                                                 </span>
                                                 {row.assignments.length > 0 && (
                                                     <button 
                                                         onClick={() => openAssignmentsModal(row)}
                                                         className="text-[10.5px] text-[#1e88e5] font-extrabold hover:underline text-left mt-0.5"
                                                     >
-                                                        Ver asignaciones ({row.assignments.length})
+                                                        Ver todas ({row.assignments.length})
                                                     </button>
                                                 )}
                                             </div>
@@ -313,16 +238,9 @@ export default function DocentesIndex() {
                                             <div className="flex items-center justify-end gap-2">
                                                 <button 
                                                     onClick={() => openEditModal(row)}
-                                                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] shadow-none transition-all"
+                                                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] shadow-none"
                                                 >
                                                     Editar
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDelete(row.id, row.name)}
-                                                    className="font-bold h-8 px-5 rounded-lg text-[12px] transition-all bg-rose-50 hover:bg-rose-100 text-rose-600"
-                                                    title="Eliminar Registro"
-                                                >
-                                                    Eliminar
                                                 </button>
                                             </div>
                                         ),
@@ -333,112 +251,94 @@ export default function DocentesIndex() {
                     </div>
                 </div>
 
-                {/* Right Sidebar Column */}
                 <div className="w-full lg:w-[320px] bg-white border-l border-slate-100 p-6 space-y-8 shrink-0">
-
-                    {/* Quick Summary Widget */}
                     <QuickSummaryWidget 
                         metrics={[
-                            { code: "T1", label: "Profesores", value: 20 },
-                            { code: "T2", label: "Por Horas", value: 5 },
-                            { code: "T4", label: "Tiempo Completo", value: 15 }
+                            { code: "T1", label: "Profesores Totales", value: totalTeachersCount },
+                            { code: "T2", label: "Por Horas / Adjuntos", value: 0 },
+                            { code: "T4", label: "Tiempo Completo", value: totalTeachersCount }
                         ]}
                     />
-
-                    {/* Quick Actions Widget */}
-                    <QuickActionsWidget 
-                        actions={[
-                            { label: "Registrar profesor", onClick: openCreateModal },
-                            { 
-                                label: "Configuración de Ciclo", 
-                                onClick: () => alert("Módulo de configuración de Ciclo Escolar disponible en Inicio.") 
-                            }
-                        ]}
-                    />
-
-                    {/* Donut Chart Widget */}
                     <DonutChartWidget 
                         title="Entrega de Calificaciones"
-                        centerLabel="Totales"
+                        centerLabel="Cierres"
                         segments={[
-                            { name: "Profesores Al Corriente", count: 16, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
-                            { name: "Profesores Pendientes", count: 4, color: "#e2e8f0", bulletClass: "bg-slate-200" }
+                            { name: "Al Corriente", count: totalTeachersCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                            { name: "Pendientes", count: 0, color: "#e2e8f0", bulletClass: "bg-slate-200" }
                         ]}
                     />
                 </div>
             </div>
 
-            {/* Modal: Create/Edit Teacher */}
+            {/* MODAL DEL FORMULARIO CONECTADO */}
             {isFormModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-lg rounded-xl border border-slate-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-white w-full max-w-lg rounded-xl border border-slate-100 shadow-2xl overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="font-extrabold text-slate-800 text-base">
                                 {modalMode === 'create' ? 'Registrar Nuevo Docente' : 'Editar Expediente de Docente'}
                             </h3>
-                            <button onClick={() => setIsFormModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl">
+                            <button onClick={() => setIsFormModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl">
                                 <X size={18} />
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit}>
-                            <div className="p-6 space-y-4">
+                            <div className="p-6 space-y-4 text-left">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nombre Completo</label>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Nombre(s)</label>
                                     <input
                                         type="text"
                                         required
-                                        value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Ej: Francisco Javier Martínez"
-                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-xs transition-all text-slate-700"
+                                        value={data.nombre}
+                                        onChange={e => setData('nombre', e.target.value)}
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
                                     />
+                                    {errors.nombre && <span className="text-red-500 text-[10px]">{errors.nombre}</span>}
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Correo Electrónico</label>
-                                    <div className="relative">
-                                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                                            <Mail size={14} />
-                                        </span>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Apellido Merlo (Paterno)</label>
                                         <input
-                                            type="email"
+                                            type="text"
                                             required
-                                            value={formData.email}
-                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            placeholder="correo.docente@prepahidalgo.edu.mx"
-                                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-xs transition-all text-slate-700"
+                                            value={data.apellido_paterno}
+                                            onChange={e => setData('apellido_paterno', e.target.value)}
+                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Apellido Materno</label>
+                                        <input
+                                            type="text"
+                                            value={data.apellido_materno}
+                                            onChange={e => setData('apellido_materno', e.target.value)}
+                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Teléfono</label>
-                                        <div className="relative">
-                                            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                                                <Phone size={14} />
-                                            </span>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={formData.phone}
-                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                                placeholder="Ej: 7711234567"
-                                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-xs transition-all text-slate-700"
-                                            />
-                                        </div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Teléfono</label>
+                                        <input
+                                            type="text"
+                                            value={data.phone}
+                                            onChange={e => setData('phone', e.target.value)}
+                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
+                                        />
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Área de Especialidad</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Especialidad / Área</label>
                                         <input
                                             type="text"
                                             required
-                                            value={formData.specialty}
-                                            onChange={e => setFormData({ ...formData, specialty: e.target.value })}
-                                            placeholder="Ciencias, Humanidades..."
-                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-xs transition-all text-slate-700"
+                                            value={data.specialty}
+                                            onChange={e => setData('specialty', e.target.value)}
+                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
                                         />
                                     </div>
                                 </div>
@@ -448,8 +348,8 @@ export default function DocentesIndex() {
                                 <button type="button" onClick={() => setIsFormModalOpen(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg">
                                     Cancelar
                                 </button>
-                                <button type="submit" className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm">
-                                    {modalMode === 'create' ? 'Registrar' : 'Guardar Cambios'}
+                                <button type="submit" disabled={processing} className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 text-white rounded-lg text-xs font-bold">
+                                    {processing ? 'Procesando...' : modalMode === 'create' ? 'Registrar Profesor' : 'Guardar Cambios'}
                                 </button>
                             </div>
                         </form>
@@ -457,63 +357,49 @@ export default function DocentesIndex() {
                 </div>
             )}
 
-            {/* Modal: Asignaciones Académicas */}
+            {/* Modal de Asignaciones */}
             {isAssignmentsModalOpen && selectedTeacher && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-lg rounded-xl border border-slate-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-white w-full max-w-lg rounded-xl border border-slate-100 shadow-2xl overflow-hidden">
                         <div className="px-6 py-5 bg-[#1e88e5] text-white flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-white/10 rounded-lg text-white">
-                                    <BookOpen size={20} />
-                                </div>
-                                <div>
-                                    <h3 className="font-extrabold text-white text-base">Asignación Académica</h3>
-                                    <p className="text-[10px] text-blue-100 font-medium">Materias e integrantes asignados.</p>
+                                <BookOpen size={20} />
+                                <div className="text-left">
+                                    <h3 className="font-extrabold text-white text-base">Materias a Cargo</h3>
+                                    <p className="text-[10px] text-blue-100 font-medium">Asignaciones académicas activas del docente</p>
                                 </div>
                             </div>
-                            <button onClick={() => setIsAssignmentsModalOpen(false)} className="p-2 text-blue-100 hover:text-white hover:bg-white/10 rounded-lg">
+                            <button onClick={() => setIsAssignmentsModalOpen(false)} className="text-blue-100 hover:text-white">
                                 <X size={18} />
                             </button>
                         </div>
 
-                        <div className="p-6 bg-slate-50 border-b border-slate-100 text-[11px]">
-                            <span className="text-slate-400 font-bold uppercase tracking-wider block">Profesor</span>
-                            <span className="font-extrabold text-slate-800 text-sm mt-0.5 block">{selectedTeacher.name}</span>
-                            <span className="text-[10.5px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-bold border border-blue-100 inline-block mt-2">{selectedTeacher.specialty}</span>
+                        <div className="p-6 bg-slate-50 border-b border-slate-100 text-left">
+                            <span className="text-slate-400 text-[10px] font-bold uppercase block">Profesor</span>
+                            <span className="font-extrabold text-slate-800 text-sm block mt-0.5">{selectedTeacher.name}</span>
                         </div>
 
-                        <div className="p-6 space-y-4">
-                            <h4 className="font-bold text-slate-800 text-xs">Materias y Grupos a Cargo</h4>
-                            
-                            {selectedTeacher.assignments.length > 0 ? (
-                                <div className="space-y-2">
-                                    {selectedTeacher.assignments.map((asg, idx) => (
-                                        <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100/50 transition-all">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-white p-2 rounded-lg text-slate-600 border border-slate-100">
-                                                    <GraduationCap size={16} />
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold text-slate-800 block text-xs">{asg.subject}</span>
-                                                    <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Ciclo Escolar 2026-A</span>
-                                                </div>
-                                            </div>
-                                            <span className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold rounded-lg">
-                                                Grupo {asg.groupName}
-                                            </span>
+                        <div className="p-6 space-y-3 max-h-60 overflow-y-auto">
+                            {selectedTeacher.assignments && selectedTeacher.assignments.length > 0 ? (
+                                selectedTeacher.assignments.map((assignment: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="flex items-center gap-3">
+                                            <GraduationCap className="text-slate-500" size={18} />
+                                            <span className="font-bold text-slate-800 text-xs">{assignment.subject}</span>
                                         </div>
-                                    ))}
-                                </div>
+                                        <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-extrabold rounded">Ciclo Escolar</span>
+                                    </div>
+                                ))
                             ) : (
-                                <div className="text-center py-8 text-slate-400 text-xs">
-                                    Este profesor aún no cuenta con materias asignadas para el ciclo actual.
+                                <div className="text-center py-6 text-slate-400 text-xs">
+                                    Este profesor aún no cuenta con asignaciones académicas.
                                 </div>
                             )}
                         </div>
 
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
                             <button onClick={() => setIsAssignmentsModalOpen(false)} className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold">
-                                Cerrar Ventana
+                                Cerrar
                             </button>
                         </div>
                     </div>

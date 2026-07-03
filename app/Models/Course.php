@@ -4,17 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class AcademicPeriod extends Model
+class Course extends Model
 {
-    protected $fillable = ['name', 'start_date', 'end_date', 'is_active'];
+    protected $fillable = ['code', 'name', 'description', 'teacher_id'];
 
-    protected $casts = [
-        'is_active' => 'boolean',
-    ];
-
-    // Un ciclo escolar alberga muchas inscripciones de alumnos
-    public function enrollments()
+    public function teacher()
     {
-        return $this->hasMany(Enrollment::class);
+        return $this->belongsTo(Teacher::class);
+    }
+
+    public function academicGroups()
+    {
+        return $this->belongsToMany(AcademicGroup::class, 'course_group');
     }
 }
