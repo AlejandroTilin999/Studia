@@ -7,7 +7,8 @@ import {
   Home, 
   FileText, 
   LogOut,
-  Layers
+  Layers,
+  User
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       icon: FileText, 
       path: role === "ADMIN" ? "/admin/reportes" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/documentos", 
       roles: ["ADMIN", "ALUMNO"] 
+    },
+    { 
+      name: "Usuarios", 
+      icon: User, 
+      path: "/admin/users", 
+      roles: ["ADMIN"] 
     },
   ];
 

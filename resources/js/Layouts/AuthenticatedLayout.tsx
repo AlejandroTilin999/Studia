@@ -9,17 +9,23 @@ function LayoutContent({
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const user = usePage().props.auth.user as any;
-    const { expanded, setExpanded } = useSidebar();
+    const { expanded, setExpanded, openMobile, setOpenMobile, isMobile } = useSidebar();
 
     return (
         <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
             {/* Navbar superior */}
-            <nav className="border-b border-slate-100 bg-white h-16 shrink-0 flex items-center pl-4 pr-4 sm:pl-5 sm:pr-6 lg:pl-6 lg:pr-8">
+            <nav className="sticky top-0 z-50 border-b border-slate-100 bg-white h-16 shrink-0 flex items-center pl-4 pr-4 sm:pl-5 sm:pr-6 lg:pl-6 lg:pr-8">
                 <div className="flex items-center w-full justify-between">
                     <div className="flex items-center gap-3">
                         {/* Botón de Hamburguesa para Colapsar Sidebar */}
                         <button
-                            onClick={() => setExpanded(!expanded)}
+                            onClick={() => {
+                                if (isMobile) {
+                                    setOpenMobile(!openMobile);
+                                } else {
+                                    setExpanded(!expanded);
+                                }
+                            }}
                             className="p-2 hover:bg-slate-50 rounded-xl text-slate-500 hover:text-slate-800 transition-all"
                             title="Alternar barra lateral"
                         >

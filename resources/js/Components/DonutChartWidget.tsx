@@ -33,23 +33,9 @@ export default function DonutChartWidget({
   let accumulatedPercent = 0;
 
   const chartAndLegend = (
-    <>
-      {/* Legend container */}
-      {!hideLegend && (
-        <div className="flex flex-col gap-2 w-full mb-5">
-          {segments.map((segment, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${segment.bulletClass}`}></div>
-              <span className="text-xs font-bold text-slate-500">
-                {segment.name} ({segment.count})
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
+    <div className="flex flex-col items-center w-full">
       {/* Donut chart SVG with text in center */}
-      <div className="relative w-36 h-36 flex items-center justify-center">
+      <div className="relative w-28 h-28 flex items-center justify-center mb-3">
         <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 select-none">
           {/* Base grey track circle */}
           <circle
@@ -97,7 +83,7 @@ export default function DonutChartWidget({
 
         {/* Inner label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-black text-[#1e88e5] leading-none">
+          <span className="text-2xl font-black text-[#1e88e5] leading-none">
             {displayValue}
           </span>
           {centerLabel && (
@@ -107,14 +93,28 @@ export default function DonutChartWidget({
           )}
         </div>
       </div>
-    </>
+
+      {/* Legend container - horizontal row wrap to save space */}
+      {!hideLegend && (
+        <div className="flex flex-row justify-center gap-x-4 gap-y-1.5 w-full flex-wrap">
+          {segments.map((segment, idx) => (
+            <div key={idx} className="flex items-center gap-1.5 select-none shrink-0">
+              <div className={`w-2.5 h-2.5 rounded-full ${segment.bulletClass}`}></div>
+              <span className="text-[10px] font-extrabold text-slate-550">
+                {segment.name} ({segment.count})
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 
   return (
-    <div className="space-y-4 text-left w-full">
-      {title && <h4 className="font-bold text-slate-800 text-base">{title}</h4>}
+    <div className="space-y-3 text-left w-full font-body">
+      {title && <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider select-none">{title}</h4>}
       {variant === 'card' ? (
-        <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 flex flex-col items-center">
+        <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center">
           {chartAndLegend}
         </div>
       ) : (

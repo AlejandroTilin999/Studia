@@ -60,7 +60,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return Inertia::render('Admin/Users/Index');
         })->name('admin.users.index');
 
-        Route::get('/alumnos', [AlumnoController::class, 'index'])->name('admin.alumnos.index');
+        Route::get('/alumnos', function () {
+            return Inertia::render('Admin/Alumnos/Index');
+        })->name('admin.alumnos.index');
 
         Route::get('/docentes', function () {
             return Inertia::render('Admin/Docentes/Index');

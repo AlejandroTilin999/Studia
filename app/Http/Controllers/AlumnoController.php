@@ -10,7 +10,7 @@ class AlumnoController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Alumnos/Index', [
-            'alumnos' => Student::all()
+            'alumnos' => []
         ]);
     }
 }
