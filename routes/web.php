@@ -6,6 +6,10 @@ use App\Http\Controllers\AcademicController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\GradingController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\GroupController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -60,21 +64,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return Inertia::render('Admin/Users/Index');
         })->name('admin.users.index');
 
-        Route::get('/alumnos', function () {
-            return Inertia::render('Admin/Alumnos/Index');
-        })->name('admin.alumnos.index');
+        // Alumnos (Usa su controlador)
+        Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
+        Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
+        Route::put('/alumnos/{id}', [StudentController::class, 'update'])->name('admin.alumnos.update');
+        Route::post('/alumnos/{id}/toggle', [StudentController::class, 'toggleStatus'])->name('admin.alumnos.toggle');
 
-        Route::get('/docentes', function () {
-            return Inertia::render('Admin/Docentes/Index');
-        })->name('admin.docentes.index');
+        // Docentes (Usa su controlador)
+        Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
+        Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
 
-        Route::get('/grupos', function () {
-            return Inertia::render('Admin/Grupos/Index');
-        })->name('admin.grupos.index');
+        // Grupos (Usa su controlador)
+        Route::get('/grupos', [GroupController::class, 'index'])->name('admin.grupos.index');
+        Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
+        Route::put('/grupos/{id}', [GroupController::class, 'update'])->name('groups.update');
 
-        Route::get('/materias', function () {
-            return Inertia::render('Admin/Materias/Index');
-        })->name('admin.materias.index');
+        // Materias (Usa su controlador)
+        Route::get('/materias', [CourseController::class, 'index'])->name('admin.materias.index');
+        Route::post('/materias', [CourseController::class, 'store'])->name('materias.store');
+        Route::put('/materias/{id}', [CourseController::class, 'update'])->name('materias.update');
+        Route::delete('/materias/{id}', [CourseController::class, 'destroy'])->name('materias.destroy');
 
         Route::get('/reportes', function () {
             return Inertia::render('Admin/Reportes/Index');

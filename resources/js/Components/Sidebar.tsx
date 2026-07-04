@@ -1,11 +1,11 @@
 import * as React from "react";
 import { usePage, Link, router } from '@inertiajs/react';
-import { 
-  Users, 
-  GraduationCap, 
-  BookOpen, 
-  Home, 
-  FileText, 
+import {
+  Users,
+  GraduationCap,
+  BookOpen,
+  Home,
+  FileText,
   LogOut,
   Layers,
   User
@@ -36,47 +36,47 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
   // Mapeamos los items de menú de tu diseño a las rutas correspondientes en Laravel
   const menuItems = [
-    { 
-      name: "Inicio", 
-      icon: Home, 
-      path: role === "ADMIN" ? "/admin/dashboard" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/dashboard", 
-      roles: ["ADMIN", "DOCENTE", "ALUMNO"] 
+    {
+      name: "Inicio",
+      icon: Home,
+      path: role === "ADMIN" ? "/admin/dashboard" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/dashboard",
+      roles: ["ADMIN", "DOCENTE", "ALUMNO"]
     },
-    { 
-      name: "Alumnos", 
-      icon: GraduationCap, 
-      path: role === "ADMIN" ? "/admin/alumnos" : "/docente/grupos/show", 
-      roles: ["ADMIN", "DOCENTE"] 
+    {
+      name: "Alumnos",
+      icon: GraduationCap,
+      path: role === "ADMIN" ? "/admin/alumnos" : "/docente/grupos/show",
+      roles: ["ADMIN", "DOCENTE"]
     },
-    { 
-      name: "Profesores", 
-      icon: Users, 
-      path: "/admin/docentes", 
-      roles: ["ADMIN"] 
+    {
+      name: "Profesores",
+      icon: Users,
+      path: "/admin/docentes",
+      roles: ["ADMIN"]
     },
-    { 
-      name: "Materias", 
-      icon: BookOpen, 
-      path: role === "ADMIN" ? "/admin/materias" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/calificaciones", 
-      roles: ["ADMIN", "ALUMNO"] 
+    {
+      name: "Materias",
+      icon: BookOpen,
+      path: role === "ADMIN" ? "/admin/materias" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/calificaciones",
+      roles: ["ADMIN", "ALUMNO"]
     },
-    { 
-      name: "Grupos", 
-      icon: Layers, 
-      path: "/admin/grupos", 
-      roles: ["ADMIN"] 
+    {
+      name: "Grupos",
+      icon: Layers,
+      path: "/admin/grupos",
+      roles: ["ADMIN"]
     },
-    { 
-      name: "Reportes", 
-      icon: FileText, 
-      path: role === "ADMIN" ? "/admin/reportes" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/documentos", 
-      roles: ["ADMIN", "ALUMNO"] 
+    {
+      name: "Reportes",
+      icon: FileText,
+      path: role === "ADMIN" ? "/admin/reportes" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/documentos",
+      roles: ["ADMIN", "ALUMNO"]
     },
-    { 
-      name: "Usuarios", 
-      icon: User, 
-      path: "/admin/users", 
-      roles: ["ADMIN"] 
+    {
+      name: "Usuarios",
+      icon: User,
+      path: "/admin/users",
+      roles: ["ADMIN"]
     },
   ];
 
@@ -101,16 +101,16 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   className="rounded-none h-14"
                 >
                   <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-[#1e88e5]" : "text-slate-500 group-hover:text-[#1e88e5]")} />
-                  
+
                   {isMenuExpanded && (
                     <span className={cn(
-                      "text-[15px] font-medium ml-1 transition-all duration-300", 
+                      "text-[15px] font-medium ml-1 transition-all duration-300",
                       isActive ? "text-[#1e88e5]" : "text-slate-600 group-hover:text-[#1e88e5]"
                     )}>
                       {item.name}
                     </span>
                   )}
-                  
+
                   {/* Línea azul al final (extremo derecho de la barra) */}
                   {isActive && (
                     <div className="absolute right-0 top-0 bottom-0 w-1 bg-[#1e88e5]" />
@@ -128,20 +128,20 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
           <div className="p-4 mx-4 mb-2 bg-slate-50 rounded-xl border border-slate-100">
             <span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-widest text-center">Simulador de Rol</span>
             <div className="grid grid-cols-3 gap-1">
-              <Link 
-                href="/admin/dashboard" 
+              <Link
+                href="/admin/dashboard"
                 className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'ADMIN' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
               >
                 Admin
               </Link>
-              <Link 
-                href="/docente/dashboard" 
+              <Link
+                href="/docente/dashboard"
                 className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'DOCENTE' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
               >
                 Docente
               </Link>
-              <Link 
-                href="/alumno/dashboard" 
+              <Link
+                href="/alumno/dashboard"
                 className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'ALUMNO' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
               >
                 Alumno
@@ -295,8 +295,8 @@ export const SidebarMenuButton = React.forwardRef<
       className={cn(
         "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-14 rounded-none w-full",
         expanded ? "px-6 gap-3" : "justify-center px-0",
-        isActive 
-          ? "bg-[#e8f2ff] text-[#1e88e5] font-semibold animate-none" 
+        isActive
+          ? "bg-[#e8f2ff] text-[#1e88e5] font-semibold animate-none"
           : "text-slate-500 hover:bg-blue-50/50 hover:text-[#1e88e5] font-medium",
         className
       )}

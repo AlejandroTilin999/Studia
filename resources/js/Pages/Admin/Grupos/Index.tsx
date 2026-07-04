@@ -1,53 +1,64 @@
 import { useState } from 'react';
-import GroupTable, { GroupRecord } from './GroupTable';
+import { useForm } from '@inertiajs/react';
+import GroupTable from './GroupTable';
 import GroupTableControls from './GroupTableControls';
 import GroupFormModal from './GroupFormModal';
-import AssignTeacherModal from './AssignTeacherModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 
-export default function GruposIndex() {
-    // 1. Datos iniciales simulados que coinciden exactamente con la maqueta
-    const [groups, setGroups] = useState<GroupRecord[]>([
-        { id: 1, code: 'MAT1', name: '1er Año TI', shift: 'Horario único', teacherName: 'Ing. Uriel Cambron', specialty: 'TI' },
-        { id: 2, code: 'TI001', name: '1er Año gastronomía', shift: 'Horario único', teacherName: 'DP. Ana Karen', specialty: 'Gastronomía' },
-        { id: 3, code: 'GAS01', name: '2do año TI', shift: 'Horario único', teacherName: 'Chef Ana', specialty: 'TI' },
-        { id: 4, code: 'TI001', name: '2do Año gastronomía', shift: 'Horario único', teacherName: 'Ing. Uriel Cambron', specialty: 'Gastronomía' },
-        { id: 5, code: 'TI001', name: '1er Año TI', shift: 'Horario único', teacherName: 'DP. Ana Karen', specialty: 'TI' },
-        { id: 6, code: 'MAT1', name: '1er Año gastronomía', shift: 'Horario único', teacherName: 'Chef Ana', specialty: 'Gastronomía' },
-        { id: 7, code: 'TI001', name: '1er Año gastronomía', shift: 'Horario único', teacherName: 'Chef Ana', specialty: 'Gastronomía' },
-        { id: 8, code: 'GAS01', name: '2do año TI', shift: 'Horario único', teacherName: 'Chef Ana', specialty: 'TI' },
-        { id: 9, code: 'BIO01', name: '1er Año Biotecnología', shift: 'Horario único', teacherName: 'Dra. Carmen Solís', specialty: 'Biotecnología' },
-        { id: 10, code: 'BIO02', name: '2do Año Biotecnología', shift: 'Horario único', teacherName: 'Dr. Luis Morales', specialty: 'Biotecnología' }
-    ]);
+interface GrupoBackend {
+    id: number;
+    codigo: string;
+    nombre: string;
+    turno: string;
+    especialidad: string;
+    teacher_id: number | null;
+    profesor: string;
+}
 
-    const teachersList = [
-        'Ing. Uriel Cambron',
-        'DP. Ana Karen',
-        'Chef Ana',
-        'Dra. Carmen Solís',
-        'Dr. Luis Morales',
-        'Pendiente de Asignación'
-    ];
+interface ProfesorSelect {
+    id: number;
+    nombre_completo: string;
+}
 
-    // 2. Control de filtros y búsqueda
+interface GruposIndexProps {
+    grupos?: GrupoBackend[];
+    profesores?: ProfesorSelect[];
+}
+
+export default function GruposIndex({ grupos = [], profesores = [] }: GruposIndexProps) {
+    const formattedGroups = grupos.map(g => ({
+        id: g.id,
+        code: g.codigo || 'S/C',
+        name: g.nombre || 'Sin nombre',
+        shift: g.turno || 'Horario único',
+        teacherName: g.profesor || 'Pendiente de Asignación',
+        teacher_id: g.teacher_id,
+        specialty: g.especialidad || 'TI'
+    }));
+
     const [searchQuery, setSearchQuery] = useState('');
     const [specialtyFilter, setSpecialtyFilter] = useState('all');
 
-    // 3. Modales
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isAssignTeacherModalOpen, setIsAssignTeacherModalOpen] = useState(false);
-    const [selectedGroup, setSelectedGroup] = useState<GroupRecord | null>(null);
-
+    const [selectedGroup, setSelectedGroup] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+    // Formulario reactivo de Inertia
+    const { data, setData, post, put, reset, processing, errors } = useForm({
+        code: '',
+        name: '',
+        shift: 'Horario único',
+        specialty: 'TI',
+        teacher_id: '' as string | number
+    });
 
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    // Filtrar Grupos
-    const filteredGroups = groups.filter(g => {
+    const filteredGroups = formattedGroups.filter(g => {
         const matchesSearch = g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             g.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             g.teacherName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -55,77 +66,71 @@ export default function GruposIndex() {
         return matchesSearch && matchesSpecialty;
     });
 
-    // Crear grupo
-    const handleCreateGroup = (formData: any) => {
-        const newRecord: GroupRecord = {
-            id: Date.now(),
-            code: formData.code.toUpperCase(),
-            name: formData.name,
-            shift: formData.shift,
-            teacherName: formData.teacherName,
-            specialty: formData.specialty
-        };
-        setGroups([...groups, newRecord]);
-        setIsCreateModalOpen(false);
-        triggerToast(`Grupo "${formData.name}" creado correctamente.`);
+    const openCreateModal = () => {
+        reset();
+        setIsCreateModalOpen(true);
     };
 
-    // Abrir modal de edición
-    const openEditModal = (group: GroupRecord) => {
+    const openEditModal = (group: any) => {
         setSelectedGroup(group);
+        setData({
+            code: group.code,
+            name: group.name,
+            shift: group.shift,
+            specialty: group.specialty,
+            teacher_id: group.teacher_id ?? ''
+        });
         setIsEditModalOpen(true);
     };
 
-    // Editar grupo
-    const handleEditGroup = (formData: any) => {
+    const handleCreateSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('groups.store'), {
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
+                triggerToast(`Grupo creado correctamente.`);
+            }
+        });
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
         if (selectedGroup) {
-            setGroups(groups.map(g => g.id === selectedGroup.id ? {
-                ...g,
-                code: formData.code.toUpperCase(),
-                name: formData.name,
-                shift: formData.shift,
-                teacherName: formData.teacherName,
-                specialty: formData.specialty
-            } : g));
-            setIsEditModalOpen(false);
-            triggerToast(`Grupo "${formData.name}" actualizado.`);
+            put(route('groups.update', selectedGroup.id), {
+                onSuccess: () => {
+                    setIsEditModalOpen(false);
+                    triggerToast(`Grupo actualizado correctamente.`);
+                }
+            });
         }
     };
 
-    // Asignar Profesor
-    const handleAssignTeacherSubmit = (formData: any) => {
-        setGroups(groups.map(g => g.code === formData.groupCode ? {
-            ...g,
-            teacherName: formData.teacherName
-        } : g));
-        setIsAssignTeacherModalOpen(false);
-        triggerToast(`Profesor asignado al grupo con éxito.`);
-    };
-
-    // Estadísticas
-    const totalCount = groups.length;
-    const gastroCount = groups.filter(g => g.specialty === 'Gastronomía').length;
-    const bioCount = groups.filter(g => g.specialty === 'Biotecnología').length;
+    const totalGroupsCount = formattedGroups.length;
+    const shiftCount = Array.from(new Set(formattedGroups.map(g => g.shift))).length;
 
     return (
         <AdminPageLayout
             headTitle="Gestión de Grupos"
-            title="Administración de grupos"
-            subtitle="Consulta y gestiona todos los grupos de la universidad"
+            title={`Gestión de grupos (${totalGroupsCount})`}
+            subtitle="Consulta, edita y registra grupos académicos y tutores"
             breadcrumb="Grupos"
             toastMessage={toastMessage}
             metrics={[
-                { code: "T1", label: "Grupos totales", value: totalCount },
-                { code: "T4", label: "Gastronomía", value: gastroCount },
-                { code: "T2", label: "Biotecnología", value: bioCount }
+                { code: "T1", label: "Grupos totales", value: totalGroupsCount },
+                { code: "T3", label: "Turnos", value: shiftCount },
+                { code: "T4", label: "Asignados", value: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length }
             ]}
             quickActions={[
-                { label: "Crear nuevo grupo", onClick: () => setIsCreateModalOpen(true) },
-                { label: "Asignar profesor", onClick: () => setIsAssignTeacherModalOpen(true) }
+                { label: "Registrar grupo", onClick: openCreateModal }
+            ]}
+            donutChartLabel="grupos"
+            donutChartSegments={[
+                { name: "Asignados", count: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                { name: "Sin tutor", count: formattedGroups.filter(g => g.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
-            {/* Controls: Search and Actions */}
-            <GroupTableControls 
+            {/* Controls */}
+            <GroupTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 specialtyFilter={specialtyFilter}
@@ -133,38 +138,37 @@ export default function GruposIndex() {
             />
 
             {/* Table */}
-            <GroupTable 
+            <GroupTable
                 groups={filteredGroups}
                 onOpenEditModal={openEditModal}
             />
 
-            {/* Modal: Crear Grupo */}
-            <GroupFormModal 
+            {/* Create Modal */}
+            <GroupFormModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 mode="create"
                 group={null}
-                teachersList={teachersList}
-                onSubmit={handleCreateGroup}
+                profesores={profesores}
+                data={data}
+                setData={setData}
+                errors={errors}
+                processing={processing}
+                onSubmit={handleCreateSubmit}
             />
 
-            {/* Modal: Editar Grupo */}
-            <GroupFormModal 
+            {/* Edit Modal */}
+            <GroupFormModal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
                 mode="edit"
                 group={selectedGroup}
-                teachersList={teachersList}
-                onSubmit={handleEditGroup}
-            />
-
-            {/* Modal: Asignar Profesor */}
-            <AssignTeacherModal 
-                isOpen={isAssignTeacherModalOpen}
-                onClose={() => setIsAssignTeacherModalOpen(false)}
-                groups={groups}
-                teachersList={teachersList}
-                onSubmit={handleAssignTeacherSubmit}
+                profesores={profesores}
+                data={data}
+                setData={setData}
+                errors={errors}
+                processing={processing}
+                onSubmit={handleEditSubmit}
             />
         </AdminPageLayout>
     );

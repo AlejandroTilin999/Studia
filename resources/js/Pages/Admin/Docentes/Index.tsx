@@ -1,102 +1,100 @@
 import { useState } from 'react';
+import { useForm } from '@inertiajs/react';
 import TeacherFormModal from './TeacherFormModal';
 import TeacherAssignmentsModal from './TeacherAssignmentsModal';
 import TeacherTableControls from "./TeacherTableControls";
 import TeacherTable from "./TeacherTable";
 import AdminPageLayout from '@/Components/AdminPageLayout';
 
-interface MockTeacher {
+interface TeacherFromBackend {
     id: number;
-    matricula: string;
-    name: string;
-    email: string;
-    phone: string;
+    employee_code: string;
+    nombre: string;
+    apellido_paterno: string;
+    apellido_materno: string | null;
     specialty: string;
-    assignments: { subject: string; groupName: string }[];
+    phone: string | null;
+    email?: string;
+    courses?: {
+        id: number;
+        name: string;
+        code: string;
+    }[];
 }
 
-export default function DocentesIndex() {
-    // 1. Initial teachers mock database keeping the original records
-    const [teachers, setTeachers] = useState<MockTeacher[]>([
-        { 
-            id: 1, matricula: 'P001', name: 'Francisco Javier Martínez', 
-            email: 'f.martinez@prepahidalgo.edu.mx', phone: '7711234567', 
-            specialty: 'Ciencias Exactas e Ingeniería', 
-            assignments: [
-                { subject: 'Matemáticas I', groupName: '1-A' },
-                { subject: 'Física I', groupName: '2-B' },
-            ]
-        },
-        { 
-            id: 2, matricula: 'P002',name: 'María Elena Rodríguez', 
-            email: 'm.rodriguez@prepahidalgo.edu.mx', phone: '7712223344', 
-            specialty: 'Lenguaje y Comunicación',
-            assignments: [
-                { subject: 'Español I', groupName: '1-A' },
-            ]
-        },
-        { 
-            id: 3, matricula: 'P003',name: 'Humberto Soler Castro', email: 'h.soler@prepahidalgo.edu.mx', 
-            phone: '7715556677', specialty: 'Historia y Ciencias Sociales',
-            assignments: [
-                { subject: 'Historia I', groupName: '1-A' },
-            ]
-        },
-        { 
-            id: 4, matricula: 'P004',name: 'Luisa Fernanda Vega', 
-            email: 'l.vega@prepahidalgo.edu.mx', phone: '7719998877', 
-            specialty: 'Química y Biología',
-            assignments: [
-                { subject: 'Química I', groupName: '2-B' },
-            ]
-        }
-    ]);
+interface DocentesIndexProps {
+    teachers?: TeacherFromBackend[];
+}
 
-    // 2. React state for search & filtering
+export default function DocentesIndex({ teachers: backendTeachers = [] }: DocentesIndexProps) {
+    const formattedTeachers = backendTeachers.map((t) => {
+        const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
+        const correoDocente = t.email || (t.employee_code ? `${t.employee_code.toLowerCase()}@studia.edu.mx` : 'docente@studia.edu.mx');
+
+        return {
+            id: t.id,
+            matricula: t.employee_code || 'S/M',
+            name: nombreCompleto,
+            rawNombre: t.nombre || '',
+            rawPaterno: t.apellido_paterno || '',
+            rawMaterno: t.apellido_materno || '',
+            email: correoDocente,
+            phone: t.phone || 'Sin teléfono',
+            specialty: t.specialty || 'General',
+            assignments: t.courses?.map(c => ({
+                subject: c.name,
+                groupName: 'Asignado'
+            })) || []
+        };
+    });
+
     const [searchQuery, setSearchQuery] = useState('');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
-    // 3. Form & Assignments Modals State
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-    const [selectedTeacher, setSelectedTeacher] = useState<MockTeacher | null>(null);
+    const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
+    // FORMULARIO DE INERTIA CONECTADO AL BACKEND
+    const { data, setData, post, put, reset, processing, errors } = useForm({
+        nombre: '',
+        apellido_paterno: '',
+        apellido_materno: '',
         phone: '',
         specialty: ''
     });
-
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    // Filter Logic
-    const filteredTeachers = teachers.filter(teacher => 
+    const filteredTeachers = formattedTeachers.filter(teacher => 
         teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         teacher.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchQuery.toLowerCase())
+        teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        teacher.matricula.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Handlers
+    const totalTeachersCount = formattedTeachers.length;
+    const specialtyCount = Array.from(new Set(formattedTeachers.map(t => t.specialty))).length;
+
     const openCreateModal = () => {
         setModalMode('create');
-        setFormData({ name: '', email: '', phone: '', specialty: '' });
+        reset();
         setIsFormModalOpen(true);
     };
 
-    const openEditModal = (teacher: MockTeacher) => {
+    const openEditModal = (teacher: any) => {
         setModalMode('edit');
         setSelectedTeacher(teacher);
-        setFormData({
-            name: teacher.name,
-            email: teacher.email,
-            phone: teacher.phone,
+        setData({
+            nombre: teacher.rawNombre,
+            apellido_paterno: teacher.rawPaterno,
+            apellido_materno: teacher.rawMaterno,
+            phone: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
             specialty: teacher.specialty
         });
         setIsFormModalOpen(true);
@@ -105,107 +103,81 @@ export default function DocentesIndex() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (modalMode === 'create') {
-            const nextId = teachers.length + 1;
-            const newTeacher: MockTeacher = {
-                id: Date.now(),
-                matricula: `P${nextId < 10 ? '00' + nextId : nextId < 100 ? '0' + nextId : nextId}`,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                specialty: formData.specialty,
-                assignments: []
-            };
-            setTeachers([...teachers, newTeacher]);
-            triggerToast(`Docente "${formData.name}" registrado correctamente.`);
-        } else if (modalMode === 'edit' && selectedTeacher) {
-            setTeachers(teachers.map(t => t.id === selectedTeacher.id ? {
-                ...t,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                specialty: formData.specialty
-            } : t));
-            triggerToast(`Datos de "${formData.name}" actualizados.`);
-        }
-        setIsFormModalOpen(false);
-    };
-
-    const handleDelete = (teacherId: number, name: string) => {
-        if (confirm(`¿Estás seguro de eliminar al docente "${name}"? Se perderán todas sus asignaciones académicas.`)) {
-            setTeachers(teachers.filter(t => t.id !== teacherId));
-            triggerToast(`Docente "${name}" eliminado del sistema.`);
+            post(route('admin.docentes.store'), {
+                onSuccess: () => {
+                    setIsFormModalOpen(false);
+                    triggerToast("¡Profesor registrado con éxito!");
+                }
+            });
+        } else {
+            put(route('admin.docentes.update', selectedTeacher.id), {
+                onSuccess: () => {
+                    setIsFormModalOpen(false);
+                    triggerToast("¡Expediente actualizado con éxito!");
+                }
+            });
         }
     };
 
-    const openAssignmentsModal = (teacher: MockTeacher) => {
+    const openAssignmentsModal = (teacher: any) => {
         setSelectedTeacher(teacher);
         setIsAssignmentsModalOpen(true);
     };
-    // Dynamic stats
-    const totalTeachersCount = teachers.length;
-    const tiempoCompletoCount = teachers.filter(t => t.assignments.length >= 2).length;
-    const porHorasCount = teachers.filter(t => t.assignments.length < 2).length;
-    const alCorrienteCount = teachers.filter(t => t.assignments.length > 0).length;
-    const pendienteCount = teachers.filter(t => t.assignments.length === 0).length;
 
     return (
         <AdminPageLayout
             headTitle="Gestión de Profesores"
             title={`Gestión de profesores (${totalTeachersCount})`}
-            subtitle="Consulta, registra y administra la información de los profesores."
+            subtitle="Consulta, edita y registra expedientes de personal docente"
             breadcrumb="Profesores"
             toastMessage={toastMessage}
             metrics={[
-                { code: "T1", label: "Profesores", value: totalTeachersCount, },
-                { code: "T2", label: "Por Horas", value: porHorasCount, },
-                { code: "T4", label: "Tiempo Completo", value: tiempoCompletoCount, },
+                { code: "T1", label: "Docentes totales", value: totalTeachersCount },
+                { code: "T3", label: "Especialidades", value: specialtyCount },
+                { code: "T4", label: "Activos en ciclo", value: totalTeachersCount }
             ]}
             quickActions={[
-                { label: "Registrar profesor", onClick: openCreateModal },
-                { label: "Configuración de Ciclo", onClick: () => alert("Módulo de configuración de Ciclo Escolar disponible en Inicio."), },
+                { label: "Registrar profesor", onClick: openCreateModal }
             ]}
-            donutChartTitle="Entrega de Calificaciones"
-            donutChartLabel="Totales"
+            donutChartLabel="profesores"
             donutChartSegments={[
-                { name: "Profesores Al Corriente", count: alCorrienteCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]", },
-                { name: "Profesores Pendientes", count: pendienteCount, color: "#e2e8f0", bulletClass: "bg-slate-200", },
+                { name: "Activos", count: totalTeachersCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" }
             ]}
         >
+            {/* Controls */}
             <TeacherTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                onCreate={openCreateModal}
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
-                onCreate={openCreateModal}
             />
-          
+
+            {/* Table */}
             <TeacherTable
                 teachers={filteredTeachers}
                 onEdit={openEditModal}
-                onDelete={handleDelete}
                 onViewAssignments={openAssignmentsModal}
             />
 
-            {/* Modal: Create/Edit Teacher */}
-            {isFormModalOpen && (
-                <TeacherFormModal
-                    open={isFormModalOpen}
-                    mode={modalMode}
-                    formData={formData}
-                    setFormData={setFormData}
-                    onClose={() => setIsFormModalOpen(false)}
-                    onSubmit={handleSubmit}
-                />  
-            )}
-             
-            {/* Modal: Asignaciones Académicas */}
-            {isAssignmentsModalOpen && selectedTeacher && (
-                <TeacherAssignmentsModal
-                    open={isAssignmentsModalOpen}
-                    teacher={selectedTeacher}
-                    onClose={() => setIsAssignmentsModalOpen(false)}
-                />
-            )}
+            {/* Form Modal */}
+            <TeacherFormModal
+                open={isFormModalOpen}
+                mode={modalMode}
+                data={data}
+                setData={setData}
+                errors={errors}
+                processing={processing}
+                onClose={() => setIsFormModalOpen(false)}
+                onSubmit={handleSubmit}
+            />
+
+            {/* Assignments Modal */}
+            <TeacherAssignmentsModal
+                open={isAssignmentsModalOpen}
+                onClose={() => setIsAssignmentsModalOpen(false)}
+                teacher={selectedTeacher}
+            />
         </AdminPageLayout>
     );
 }

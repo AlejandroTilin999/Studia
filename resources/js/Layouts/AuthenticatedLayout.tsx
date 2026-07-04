@@ -33,14 +33,14 @@ function LayoutContent({
                         </button>
 
                         {/* Logo institucional */}
-                        <img 
-                            src="/assets/logo-ph.webp" 
-                            alt="Logo Prepa Hidalgo" 
+                        <img
+                            src="/assets/logo-ph.webp"
+                            alt="Logo Prepa Hidalgo"
                             className="h-9 w-auto object-contain"
                         />
 
                         <div className="h-5 w-px bg-slate-200 hidden sm:block mx-1"></div>
-                        
+
                         <span className="text-sm font-bold text-slate-700 hidden sm:inline-block">
                             Sistema de Control Escolar
                         </span>
@@ -51,8 +51,8 @@ function LayoutContent({
                         <div className="relative">
                             <Dropdown>
                                 <Dropdown.Trigger>
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         className="inline-flex items-center rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all"
                                     >
                                         {user.name}

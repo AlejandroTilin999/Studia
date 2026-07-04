@@ -2,21 +2,33 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Grade extends Model
 {
-    protected $fillable = ['enrollment_id', 'course_id', 'score', 'remarks'];
+    use HasFactory;
 
-    // La calificación pertenece a la boleta/inscripción de un alumno
+    protected $fillable = [
+        'enrollment_id',
+        'course_id',
+        'score',
+        'period',
+    ];
+
+    /**
+     * Relación inversa con el Alumno Inscrito
+     */
     public function enrollment()
     {
-        return $this->belongsTo(Enrollment::class);
+        return $this->belongsTo(Enrollment::class, 'enrollment_id');
     }
 
-    // La calificación está asignada a una materia en particular
+    /**
+     * Relación con la Materia (Course)
+     */
     public function course()
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'course_id');
     }
 }

@@ -1,81 +1,80 @@
-import { Mail, Phone } from "lucide-react";
+import React from 'react';
+import { Phone } from "lucide-react";
 import BaseModal from "@/Components/BaseModal";
 import { FormLabel, FormInput, FormSelect } from '@/Components/FormFields';
-
-interface FormData {
-    name: string;
-    email: string;
-    phone: string;
-    specialty: string;
-}
 
 interface TeacherFormModalProps {
     open: boolean;
     mode: "create" | "edit";
-    formData: FormData;
-    setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+    data: {
+        nombre: string;
+        apellido_paterno: string;
+        apellido_materno: string;
+        phone: string;
+        specialty: string;
+    };
+    setData: (key: any, value: any) => void;
+    errors: Record<string, string>;
+    processing: boolean;
     onClose: () => void;
-    onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+    onSubmit: (e: React.FormEvent) => void;
 }
 
 export default function TeacherFormModal({
     open,
     mode,
-    formData,
-    setFormData,
+    data,
+    setData,
+    errors,
+    processing,
     onClose,
     onSubmit,
 }: TeacherFormModalProps) {
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(e as any);
-    };
-
     return (
         <BaseModal
             isOpen={open}
             onClose={onClose}
             title={mode === "create" ? "Registrar Nuevo Docente" : "Editar Expediente de Docente"}
-            subtitle="Configura el nombre, correo electrónico y especialidad del docente"
+            subtitle="Configura el nombre completo, teléfono y especialidad del docente"
             maxWidthClass="max-w-lg"
-            onSubmit={handleSubmit}
-            confirmLabel={mode === "create" ? "Registrar" : "Guardar"}
+            onSubmit={onSubmit}
+            confirmLabel={processing ? "Guardando..." : mode === "create" ? "Registrar" : "Guardar"}
+            isConfirmDisabled={processing}
         >
-            {/* Nombre */}
-            <div className="space-y-1.5 text-left">
-                <FormLabel required>Nombre Completo</FormLabel>
-                <FormInput
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                        setFormData({
-                            ...formData,
-                            name: e.target.value,
-                        })
-                    }
-                    placeholder="Ej: Francisco Javier Martínez"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                <div className="space-y-1.5">
+                    <FormLabel required>Nombre(s)</FormLabel>
+                    <FormInput
+                        required
+                        value={data.nombre}
+                        onChange={e => setData('nombre', e.target.value)}
+                        placeholder="Ej: Francisco Javier"
+                    />
+                    {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
+                </div>
+
+                <div className="space-y-1.5">
+                    <FormLabel required>Apellido Paterno</FormLabel>
+                    <FormInput
+                        required
+                        value={data.apellido_paterno}
+                        onChange={e => setData('apellido_paterno', e.target.value)}
+                        placeholder="Ej: Martínez"
+                    />
+                    {errors.apellido_paterno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_paterno}</span>}
+                </div>
+
+                <div className="space-y-1.5">
+                    <FormLabel>Apellido Materno</FormLabel>
+                    <FormInput
+                        value={data.apellido_materno}
+                        onChange={e => setData('apellido_materno', e.target.value)}
+                        placeholder="Ej: López"
+                    />
+                    {errors.apellido_materno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_materno}</span>}
+                </div>
             </div>
 
-            {/* Correo */}
-            <div className="space-y-1.5 text-left">
-                <FormLabel required>Correo Electrónico</FormLabel>
-                <FormInput
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) =>
-                        setFormData({
-                            ...formData,
-                            email: e.target.value,
-                        })
-                    }
-                    placeholder="correo.docente@prepahidalgo.edu.mx"
-                    icon={<Mail size={14} />}
-                />
-            </div>
-
-            {/* Teléfono y Especialidad */}
             <div className="grid grid-cols-2 gap-4 text-left">
                 <div className="space-y-1.5">
                     <FormLabel required>Teléfono</FormLabel>
@@ -84,36 +83,32 @@ export default function TeacherFormModal({
                         required
                         maxLength={10}
                         pattern="[0-9]{10}"
-                        value={formData.phone}
+                        value={data.phone}
                         onChange={(e) => {
                             const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                            setFormData({
-                                ...formData,
-                                phone: val,
-                            });
+                            setData('phone', val);
                         }}
                         placeholder="Ej: 7711234567"
                         icon={<Phone size={14} />}
                     />
+                    {errors.phone && <span className="text-red-500 text-[10px] mt-1 block">{errors.phone}</span>}
                 </div>
 
                 <div className="space-y-1.5">
                     <FormLabel required>Área de Especialidad</FormLabel>
                     <FormSelect
                         required
-                        value={formData.specialty}
-                        onChange={(e) =>
-                            setFormData({
-                                ...formData,
-                                specialty: e.target.value,
-                            })
-                        }
+                        value={data.specialty}
+                        onChange={e => setData('specialty', e.target.value)}
                     >
                         <option value="">Seleccionar área...</option>
-                        <option value="Ciencias">Ciencias</option>
-                        <option value="Lenguaje">Lenguaje</option>
-                        <option value="Historia">Historia</option>
+                        <option value="Ciencias Exactas e Ingeniería">Ciencias Exactas e Ingeniería</option>
+                        <option value="Lenguaje y Comunicación">Lenguaje y Comunicación</option>
+                        <option value="Historia y Ciencias Sociales">Historia y Ciencias Sociales</option>
+                        <option value="Química y Biología">Química y Biología</option>
+                        <option value="General">General</option>
                     </FormSelect>
+                    {errors.specialty && <span className="text-red-500 text-[10px] mt-1 block">{errors.specialty}</span>}
                 </div>
             </div>
         </BaseModal>

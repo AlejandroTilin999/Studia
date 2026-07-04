@@ -1,6 +1,5 @@
 import React from 'react';
-import { Hash, Folder, Download } from 'lucide-react';
-import { MockStudent } from './Index';
+import { Hash } from 'lucide-react';
 import AppTable, { AppTableColumn } from '@/Components/AppTable';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel, FormInput } from '@/Components/FormFields';
@@ -8,9 +7,8 @@ import { FormLabel, FormInput } from '@/Components/FormFields';
 interface StudentKardexModalProps {
     isOpen: boolean;
     onClose: () => void;
-    student: MockStudent | null;
-    onEditClick?: (student: MockStudent) => void;
-    onDownloadKardex: (student: MockStudent) => void;
+    student: any;
+    onDownloadKardex: (student: any) => void;
     calculateGPA: (grades: { score: number }[]) => string;
 }
 
@@ -18,18 +16,12 @@ export default function StudentKardexModal({
     isOpen,
     onClose,
     student,
-    onEditClick,
     onDownloadKardex,
     calculateGPA
 }: StudentKardexModalProps) {
     if (!student) return null;
 
-    const displayGrades = student.grades.length > 0 ? student.grades : [
-        { subject: 'Matemáticas', score: 10, period: '2° Semestre (Ene-Jun 2026)' },
-        { subject: 'Inglés', score: 10, period: '2° Semestre (Ene-Jun 2026)' },
-        { subject: 'Redes', score: 10, period: '2° Semestre (Ene-Jun 2026)' },
-        { subject: 'Literatura', score: 10, period: '2° Semestre (Ene-Jun 2026)' }
-    ];
+    const displayGrades = student.grades || [];
     const gpa = calculateGPA(displayGrades);
 
     const handleDownloadSubmit = (e: React.FormEvent) => {
@@ -45,7 +37,7 @@ export default function StudentKardexModal({
                 return isFirstOfPeriod ? (
                     <div>
                         <span className="text-slate-800 font-extrabold block">{grade.period}</span>
-                        <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Ciclo escolar: 2025-2026</span>
+                        <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Ciclo activo</span>
                     </div>
                 ) : null;
             },
@@ -60,7 +52,7 @@ export default function StudentKardexModal({
         },
         {
             header: "Calificación",
-            accessor: (grade) => grade.score.toFixed(0),
+            accessor: (grade) => Number(grade.score).toFixed(1),
             align: "left",
             className: "text-slate-700 font-medium w-1/3 pl-6 text-left"
         }
@@ -124,6 +116,7 @@ export default function StudentKardexModal({
                     columns={kardexColumns}
                     data={displayGrades}
                     keyExtractor={(grade, idx) => idx}
+                    emptyMessage="Sin calificaciones asentadas en el sistema."
                     className="border border-slate-200 rounded-2xl overflow-hidden shadow-none text-sm animate-none"
                 />
             </div>

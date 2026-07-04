@@ -1,31 +1,14 @@
 import AppTable from "@/Components/AppTable";
 
-interface Assignment {
-    subject: string;
-    groupName: string;
-}
-
-interface MockTeacher {
-    id: number;
-    matricula: string;
-    name: string;
-    email: string;
-    phone: string;
-    specialty: string;
-    assignments: Assignment[];
-}
-
 interface TeacherTableProps {
-    teachers: MockTeacher[];
-    onEdit: (teacher: MockTeacher) => void;
-    onDelete: (id: number, name: string) => void;
-    onViewAssignments: (teacher: MockTeacher) => void;
+    teachers: any[];
+    onEdit: (teacher: any) => void;
+    onViewAssignments: (teacher: any) => void;
 }
 
 export default function TeacherTable({
     teachers,
     onEdit,
-    onDelete,
     onViewAssignments,
 }: TeacherTableProps) {
     return (
@@ -57,7 +40,7 @@ export default function TeacherTable({
                     accessor: (row) => (
                         <div className="flex flex-col text-left">
                             <span className="text-[13px] text-slate-700 font-bold">
-                                {row.assignments.map(a => a.subject).join(", ") || "Sin materias"}
+                                {row.assignments.map((a: any) => a.subject).join(", ") || "Sin materias"}
                             </span>
 
                             {row.assignments.length > 0 && (
@@ -95,13 +78,6 @@ export default function TeacherTable({
                                 className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] transition-all"
                             >
                                 Editar
-                            </button>
-
-                            <button
-                                onClick={() => onDelete(row.id, row.name)}
-                                className="font-bold h-8 px-5 rounded-lg text-[12px] transition-all bg-rose-50 hover:bg-rose-100 text-rose-600"
-                            >
-                                Eliminar
                             </button>
                         </div>
                     ),

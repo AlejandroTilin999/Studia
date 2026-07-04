@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { MockSubject } from './SubjectTable';
+import React from 'react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel, FormInput, FormSelect, FormTextarea } from '@/Components/FormFields';
 
@@ -7,16 +6,20 @@ interface SubjectFormModalProps {
     isOpen: boolean;
     onClose: () => void;
     mode: 'create' | 'edit';
-    subject: MockSubject | null;
-    teachersList: string[];
+    subject: any;
+    teachersList: { id: string; name: string }[];
     groupsList: string[];
-    onSubmit: (data: {
+    data: {
         code: string;
         name: string;
-        teacherName: string;
-        linkedGroups: string[];
         description: string;
-    }) => void;
+        teacher_id: string | number;
+        linked_groups: string[];
+    };
+    setData: (key: any, value: any) => void;
+    errors: Record<string, string>;
+    processing: boolean;
+    onSubmit: (e: React.FormEvent) => void;
 }
 
 export default function SubjectFormModal({
@@ -26,55 +29,18 @@ export default function SubjectFormModal({
     subject,
     teachersList,
     groupsList,
+    data,
+    setData,
+    errors,
+    processing,
     onSubmit,
 }: SubjectFormModalProps) {
-    const [formData, setFormData] = useState({
-        code: '',
-        name: '',
-        teacherName: '',
-        linkedGroups: [] as string[],
-        description: '',
-    });
-
-    useEffect(() => {
-        if (isOpen) {
-            if (mode === 'edit' && subject) {
-                setFormData({
-                    code: subject.code,
-                    name: subject.name,
-                    teacherName: subject.teacherName,
-                    linkedGroups: [...subject.linkedGroups],
-                    description: subject.description,
-                });
-            } else {
-                setFormData({
-                    code: '',
-                    name: '',
-                    teacherName: teachersList[0] || 'Francisco Javier Martínez',
-                    linkedGroups: [],
-                    description: '',
-                });
-            }
-        }
-    }, [isOpen, mode, subject, teachersList]);
-
     const toggleGroupSelection = (group: string) => {
-        if (formData.linkedGroups.includes(group)) {
-            setFormData({
-                ...formData,
-                linkedGroups: formData.linkedGroups.filter(g => g !== group)
-            });
+        if (data.linked_groups.includes(group)) {
+            setData('linked_groups', data.linked_groups.filter(g => g !== group));
         } else {
-            setFormData({
-                ...formData,
-                linkedGroups: [...formData.linkedGroups, group]
-            });
+            setData('linked_groups', [...data.linked_groups, group]);
         }
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(formData);
     };
 
     return (
@@ -84,43 +50,52 @@ export default function SubjectFormModal({
             title={mode === 'create' ? 'Registrar Nueva Materia' : 'Editar Materia'}
             subtitle="Configura el temario, el docente a cargo y los grupos vinculados"
             maxWidthClass="max-w-md"
-            onSubmit={handleSubmit}
-            confirmLabel={mode === 'create' ? 'Registrar' : 'Guardar'}
+            onSubmit={onSubmit}
+            confirmLabel={processing ? 'Guardando...' : mode === 'create' ? 'Registrar' : 'Guardar'}
+            isConfirmDisabled={processing}
         >
-            <div className="space-y-1.5 text-left">
-                <FormLabel required>Código de la Materia</FormLabel>
-                <FormInput
-                    required
-                    placeholder="Ej: MAT-101"
-                    value={formData.code}
-                    onChange={e => setFormData({ ...formData, code: e.target.value })}
-                />
+            <div className="grid grid-cols-3 gap-4 text-left">
+                <div className="space-y-1.5 col-span-1">
+                    <FormLabel required>Código</FormLabel>
+                    <FormInput
+                        required
+                        placeholder="Ej: MAT-101"
+                        value={data.code}
+                        onChange={e => setData('code', e.target.value)}
+                    />
+                    {errors.code && <span className="text-red-500 text-[10px] mt-1 block">{errors.code}</span>}
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                    <FormLabel required>Nombre de la Asignatura</FormLabel>
+                    <FormInput
+                        required
+                        placeholder="Ej: Matemáticas I"
+                        value={data.name}
+                        onChange={e => setData('name', e.target.value)}
+                    />
+                    {errors.name && <span className="text-red-500 text-[10px] mt-1 block">{errors.name}</span>}
+                </div>
             </div>
-            <div className="space-y-1.5 text-left">
-                <FormLabel required>Nombre de la Asignatura</FormLabel>
-                <FormInput
-                    required
-                    placeholder="Ej: Matemáticas I"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                />
-            </div>
+
             <div className="space-y-1.5 text-left">
                 <FormLabel required>Profesor Asignado</FormLabel>
                 <FormSelect
-                    value={formData.teacherName}
-                    onChange={e => setFormData({ ...formData, teacherName: e.target.value })}
+                    value={data.teacher_id}
+                    onChange={e => setData('teacher_id', e.target.value)}
                 >
-                    {teachersList.map((t, idx) => (
-                        <option key={idx} value={t}>{t}</option>
+                    <option value="">Seleccionar un docente...</option>
+                    {teachersList.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </FormSelect>
+                {errors.teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.teacher_id}</span>}
             </div>
+
             <div className="space-y-1.5 text-left">
                 <FormLabel required>Vincular Grupos</FormLabel>
                 <div className="flex flex-wrap gap-2 pt-1">
                     {groupsList.map((group, idx) => {
-                        const isSelected = formData.linkedGroups.includes(group);
+                        const isSelected = data.linked_groups.includes(group);
                         return (
                             <button
                                 type="button"
@@ -137,15 +112,18 @@ export default function SubjectFormModal({
                         );
                     })}
                 </div>
+                {errors.linked_groups && <span className="text-red-500 text-[10px] mt-1 block">{errors.linked_groups}</span>}
             </div>
+
             <div className="space-y-1.5 text-left">
-                <FormLabel required>Descripción / Temario resumido</FormLabel>
+                <FormLabel>Descripción / Temario resumido</FormLabel>
                 <FormTextarea
                     placeholder="Escribe el alcance o temas clave..."
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    value={data.description}
+                    onChange={e => setData('description', e.target.value)}
                     rows={3}
                 />
+                {errors.description && <span className="text-red-500 text-[10px] mt-1 block">{errors.description}</span>}
             </div>
         </BaseModal>
     );

@@ -1,21 +1,29 @@
-import { useEffect, useState } from 'react';
-import { GroupRecord } from './GroupTable';
+import React from 'react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel, FormInput, FormSelect } from '@/Components/FormFields';
+
+interface ProfesorSelect {
+    id: number;
+    nombre_completo: string;
+}
 
 interface GroupFormModalProps {
     isOpen: boolean;
     onClose: () => void;
     mode: 'create' | 'edit';
-    group: GroupRecord | null;
-    teachersList: string[];
-    onSubmit: (data: {
+    group: any;
+    profesores: ProfesorSelect[];
+    data: {
         code: string;
         name: string;
         shift: string;
-        specialty: 'TI' | 'Gastronomía' | 'Biotecnología';
-        teacherName: string;
-    }) => void;
+        specialty: string;
+        teacher_id: number | string;
+    };
+    setData: (key: any, value: any) => void;
+    errors: Record<string, string>;
+    processing: boolean;
+    onSubmit: (e: React.FormEvent) => void;
 }
 
 export default function GroupFormModal({
@@ -23,44 +31,13 @@ export default function GroupFormModal({
     onClose,
     mode,
     group,
-    teachersList,
+    profesores,
+    data,
+    setData,
+    errors,
+    processing,
     onSubmit,
 }: GroupFormModalProps) {
-    const [formData, setFormData] = useState({
-        code: '',
-        name: '',
-        shift: 'Horario único',
-        specialty: 'TI' as 'TI' | 'Gastronomía' | 'Biotecnología',
-        teacherName: '',
-    });
-
-    useEffect(() => {
-        if (isOpen) {
-            if (mode === 'edit' && group) {
-                setFormData({
-                    code: group.code,
-                    name: group.name,
-                    shift: group.shift,
-                    specialty: group.specialty,
-                    teacherName: group.teacherName,
-                });
-            } else {
-                setFormData({
-                    code: '',
-                    name: '',
-                    shift: 'Horario único',
-                    specialty: 'TI',
-                    teacherName: teachersList[0] || 'Ing. Uriel Cambron',
-                });
-            }
-        }
-    }, [isOpen, mode, group, teachersList]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(formData);
-    };
-
     return (
         <BaseModal
             isOpen={isOpen}
@@ -68,61 +45,72 @@ export default function GroupFormModal({
             title={mode === 'create' ? 'Crear Nuevo Grupo' : 'Editar Grupo'}
             subtitle="Configura la información básica y el tutor asignado del grupo"
             maxWidthClass="max-w-md"
-            onSubmit={handleSubmit}
-            confirmLabel={mode === 'create' ? 'Crear Grupo' : 'Guardar'}
+            onSubmit={onSubmit}
+            confirmLabel={processing ? 'Guardando...' : mode === 'create' ? 'Crear Grupo' : 'Guardar'}
+            isConfirmDisabled={processing}
         >
             <div className="space-y-1.5 text-left">
                 <FormLabel required>Código del Grupo</FormLabel>
                 <FormInput
                     required
                     placeholder="Ej: MAT1, TI001"
-                    value={formData.code}
-                    onChange={e => setFormData({ ...formData, code: e.target.value })}
+                    value={data.code}
+                    onChange={e => setData('code', e.target.value)}
                 />
+                {errors.code && <span className="text-red-500 text-[10px] mt-1 block">{errors.code}</span>}
             </div>
+
             <div className="space-y-1.5 text-left">
                 <FormLabel required>Nombre del Grupo</FormLabel>
                 <FormInput
                     required
                     placeholder="Ej: 1er Año TI"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    value={data.name}
+                    onChange={e => setData('name', e.target.value)}
                 />
+                {errors.name && <span className="text-red-500 text-[10px] mt-1 block">{errors.name}</span>}
             </div>
+
             <div className="grid grid-cols-2 gap-4 text-left">
                 <div className="space-y-1.5">
                     <FormLabel required>Turno</FormLabel>
                     <FormSelect
-                        value={formData.shift}
-                        onChange={e => setFormData({ ...formData, shift: e.target.value })}
+                        value={data.shift}
+                        onChange={e => setData('shift', e.target.value)}
                     >
                         <option value="Horario único">Horario único</option>
                         <option value="Matutino">Matutino</option>
                         <option value="Vespertino">Vespertino</option>
                     </FormSelect>
+                    {errors.shift && <span className="text-red-500 text-[10px] mt-1 block">{errors.shift}</span>}
                 </div>
+
                 <div className="space-y-1.5">
                     <FormLabel required>Especialidad</FormLabel>
                     <FormSelect
-                        value={formData.specialty}
-                        onChange={e => setFormData({ ...formData, specialty: e.target.value as any })}
+                        value={data.specialty}
+                        onChange={e => setData('specialty', e.target.value)}
                     >
                         <option value="TI">TI</option>
                         <option value="Gastronomía">Gastronomía</option>
                         <option value="Biotecnología">Biotecnología</option>
                     </FormSelect>
+                    {errors.specialty && <span className="text-red-500 text-[10px] mt-1 block">{errors.specialty}</span>}
                 </div>
             </div>
+
             <div className="space-y-1.5 text-left">
                 <FormLabel required>Profesor Titular</FormLabel>
                 <FormSelect
-                    value={formData.teacherName}
-                    onChange={e => setFormData({ ...formData, teacherName: e.target.value })}
+                    value={data.teacher_id}
+                    onChange={e => setData('teacher_id', e.target.value ? Number(e.target.value) : '')}
                 >
-                    {teachersList.map((t, idx) => (
-                        <option key={idx} value={t}>{t}</option>
+                    <option value="">Pendiente de Asignación</option>
+                    {profesores.map((p) => (
+                        <option key={p.id} value={p.id}>{p.nombre_completo}</option>
                     ))}
                 </FormSelect>
+                {errors.teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.teacher_id}</span>}
             </div>
         </BaseModal>
     );

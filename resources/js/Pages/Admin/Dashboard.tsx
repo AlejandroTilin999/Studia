@@ -16,12 +16,12 @@ export default function AdminDashboard() {
     if (mainEl) {
       const originalOverflow = mainEl.style.overflow;
       const originalPadding = mainEl.style.padding;
-      
+
       mainEl.style.padding = '0';
       if (window.innerWidth >= 1024) {
         mainEl.style.overflow = 'hidden';
       }
-      
+
       return () => {
         mainEl.style.overflow = originalOverflow;
         mainEl.style.padding = originalPadding;

@@ -6,7 +6,7 @@ export interface GroupRecord {
     name: string;
     shift: string;
     teacherName: string;
-    specialty: 'TI' | 'Gastronomía' | 'Biotecnología';
+    specialty: string;
 }
 
 interface GroupTableProps {
