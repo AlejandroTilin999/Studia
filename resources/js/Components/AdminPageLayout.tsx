@@ -16,6 +16,7 @@ interface MetricItem {
 interface ActionItem {
     label: string;
     onClick: () => void;
+    icon?: React.ComponentType<any>;
 }
 
 interface SegmentItem {
@@ -54,20 +55,29 @@ export default function AdminPageLayout({
 }: AdminPageLayoutProps) {
     useEffect(() => {
         const mainEl = document.querySelector('main');
-        if (mainEl) {
-            const originalOverflow = mainEl.style.overflow;
-            const originalPadding = mainEl.style.padding;
-            
-            mainEl.style.padding = '0';
+        if (!mainEl) return;
+        
+        const originalOverflow = mainEl.style.overflow;
+        const originalPadding = mainEl.style.padding;
+        
+        mainEl.style.padding = '0';
+        
+        const handleResize = () => {
             if (window.innerWidth >= 1024) {
                 mainEl.style.overflow = 'hidden';
+            } else {
+                mainEl.style.overflow = originalOverflow || 'auto';
             }
-            
-            return () => {
-                mainEl.style.overflow = originalOverflow;
-                mainEl.style.padding = originalPadding;
-            };
-        }
+        };
+        
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        
+        return () => {
+            mainEl.style.overflow = originalOverflow;
+            mainEl.style.padding = originalPadding;
+            window.removeEventListener('resize', handleResize);
+        };
     }, []);
 
     return (
@@ -99,14 +109,14 @@ export default function AdminPageLayout({
 
                     {/* Workspace panel container */}
                     <div className="p-3 md:p-6 flex-1 lg:overflow-y-auto flex flex-col lg:min-h-0">
-                        <div className="bg-white rounded-2xl md:rounded-xl p-4 md:p-8 shadow-sm border border-slate-100 flex flex-col">
+                        <div className="bg-white rounded-2xl md:rounded-xl p-4 md:p-8 shadow-sm border border-slate-100 flex flex-col flex-1">
                             {children}
                         </div>
                     </div>
                 </div>
 
                 {/* Right Side: Sidebar Widgets */}
-                <div className="w-full lg:w-[320px] bg-white border-l border-slate-100 p-5 space-y-5 shrink-0 lg:h-full lg:overflow-hidden">
+                <div className="w-full lg:w-[360px] xl:w-[400px] bg-white border-l border-slate-100 p-5 lg:p-6 xl:p-8 space-y-5 lg:space-y-8 xl:space-y-12 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-start">
                     <QuickSummaryWidget metrics={metrics} />
                     <QuickActionsWidget actions={quickActions} />
                     {donutChartSegments && donutChartLabel && (

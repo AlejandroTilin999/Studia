@@ -23,13 +23,13 @@ export default function QuickSummaryWidget({ title = "Resumen rápido", metrics 
             <div 
               key={index} 
               className={cn(
-                "border border-slate-100 shadow-none rounded-xl bg-slate-50/50 p-3.5 flex flex-col gap-0.5",
+                "border border-slate-100 shadow-none rounded-xl bg-white group hover:bg-blue-50/50 hover:border-blue-100 transition-all duration-200 cursor-default p-6 flex flex-col gap-1.5 text-left",
                 isLastOdd ? "col-span-2" : "col-span-1"
               )}
             >
-              <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">{item.code}</span>
-              <p className="text-[10px] font-black text-slate-500 uppercase leading-none truncate">{item.label}</p>
-              <p className="text-xl font-black text-slate-800 mt-1 tracking-tight">{item.value}</p>
+              <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest group-hover:text-blue-300 transition-colors">{item.code}</span>
+              <p className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase leading-none mt-1 group-hover:text-[#1e88e5] transition-colors truncate">{item.label}</p>
+              <p className="text-xl md:text-2xl font-black text-slate-800 mt-2 tracking-tight">{item.value}</p>
             </div>
           );
         })}

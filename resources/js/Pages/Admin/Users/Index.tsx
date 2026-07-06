@@ -21,6 +21,7 @@ export default function UsersIndex() {
 
     // 3. Modales de agregar/editar
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
 
@@ -54,29 +55,34 @@ export default function UsersIndex() {
         setIsModalOpen(true);
     };
 
-    // Guardar formulario (Simulación de POST/PUT)
+    // Guardar formulario (Simulación de POST/PUT con latencia animada)
     const handleFormSubmit = (formData: any) => {
-        if (modalMode === 'create') {
-            const newUser: MockUser = {
-                id: Date.now(),
-                name: formData.name,
-                email: formData.email,
-                role: formData.role,
-                status: formData.status
-            };
-            setUsers([newUser, ...users]);
-            triggerToast(`Usuario "${formData.name}" registrado correctamente.`);
-        } else if (modalMode === 'edit' && selectedUser) {
-            setUsers(users.map(u => u.id === selectedUser.id ? { 
-                ...u, 
-                name: formData.name, 
-                email: formData.email, 
-                role: formData.role, 
-                status: formData.status 
-            } : u));
-            triggerToast(`Información de "${formData.name}" actualizada.`);
-        }
-        setIsModalOpen(false);
+        setSaveStatus('saving');
+        setTimeout(() => {
+            if (modalMode === 'create') {
+                const newUser: MockUser = {
+                    id: Date.now(),
+                    name: formData.name,
+                    email: formData.email,
+                    role: formData.role,
+                    status: formData.status
+                };
+                setUsers([newUser, ...users]);
+            } else if (modalMode === 'edit' && selectedUser) {
+                setUsers(users.map(u => u.id === selectedUser.id ? { 
+                    ...u, 
+                    name: formData.name, 
+                    email: formData.email, 
+                    role: formData.role, 
+                    status: formData.status 
+                } : u));
+            }
+            setSaveStatus('success');
+            setTimeout(() => {
+                setIsModalOpen(false);
+                setSaveStatus('idle');
+            }, 1800);
+        }, 1000);
     };
 
     // Alternar estado activo/inactivo (Simulado)
@@ -141,10 +147,15 @@ export default function UsersIndex() {
             {/* Modal de Agregar / Editar */}
             <UserFormModal 
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    if (saveStatus === 'idle') {
+                        setIsModalOpen(false);
+                    }
+                }}
                 mode={modalMode}
                 user={selectedUser}
                 onSubmit={handleFormSubmit}
+                saveStatus={saveStatus}
             />
         </AdminPageLayout>
     );

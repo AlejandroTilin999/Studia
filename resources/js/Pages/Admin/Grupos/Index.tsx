@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
+import { Download, Layers, Users } from 'lucide-react';
 import GroupTable from './GroupTable';
 import GroupTableControls from './GroupTableControls';
 import GroupFormModal from './GroupFormModal';
@@ -40,6 +41,7 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
     const [specialtyFilter, setSpecialtyFilter] = useState('all');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -56,6 +58,68 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    const handleExportExcel = () => {
+        const rows = filteredGroups.map(g => [
+            g.code,
+            g.name,
+            g.shift,
+            g.teacherName,
+            g.specialty
+        ]);
+        
+        const htmlTemplate = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8"/>
+                <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Grupos Escolares</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }
+                    th { background-color: #1565c0; color: white; font-weight: bold; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                </style>
+            </head>
+            <body>
+                <h2>Reporte de Grupos Académicos - PrepaHid</h2>
+                <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre del Grupo</th>
+                            <th>Turno</th>
+                            <th>Tutor / Profesor Asignado</th>
+                            <th>Especialidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(r => `
+                            <tr>
+                                <td>${r[0]}</td>
+                                <td>${r[1]}</td>
+                                <td>${r[2]}</td>
+                                <td>${r[3]}</td>
+                                <td>${r[4]}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `reporte_grupos_${new Date().toISOString().slice(0,10)}.xls`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("Reporte de grupos exportado a Excel con éxito.");
     };
 
     const filteredGroups = formattedGroups.filter(g => {
@@ -85,10 +149,21 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setSaveStatus('saving');
         post(route('groups.store'), {
             onSuccess: () => {
-                setIsCreateModalOpen(false);
-                triggerToast(`Grupo creado correctamente.`);
+                setSaveStatus('success');
+                reset();
+                setTimeout(() => {
+                    setIsCreateModalOpen(false);
+                    setSaveStatus('idle');
+                }, 2000);
+            },
+            onError: () => {
+                setSaveStatus('error');
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                }, 2500);
             }
         });
     };
@@ -96,10 +171,21 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedGroup) {
+            setSaveStatus('saving');
             put(route('groups.update', selectedGroup.id), {
                 onSuccess: () => {
-                    setIsEditModalOpen(false);
-                    triggerToast(`Grupo actualizado correctamente.`);
+                    setSaveStatus('success');
+                    reset();
+                    setTimeout(() => {
+                        setIsEditModalOpen(false);
+                        setSaveStatus('idle');
+                    }, 2000);
+                },
+                onError: () => {
+                    setSaveStatus('error');
+                    setTimeout(() => {
+                        setSaveStatus('idle');
+                    }, 2500);
                 }
             });
         }
@@ -121,7 +207,9 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
                 { code: "T4", label: "Asignados", value: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length }
             ]}
             quickActions={[
-                { label: "Registrar grupo", onClick: openCreateModal }
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Gestionar materias", onClick: () => router.visit('/admin/materias'), icon: Layers },
+                { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }
             ]}
             donutChartLabel="grupos"
             donutChartSegments={[
@@ -135,6 +223,7 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
                 setSearchQuery={setSearchQuery}
                 specialtyFilter={specialtyFilter}
                 setSpecialtyFilter={setSpecialtyFilter}
+                onOpenCreateModal={openCreateModal}
             />
 
             {/* Table */}
@@ -146,7 +235,11 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
             {/* Create Modal */}
             <GroupFormModal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
+                onClose={() => {
+                    if (saveStatus === 'idle') {
+                        setIsCreateModalOpen(false);
+                    }
+                }}
                 mode="create"
                 group={null}
                 profesores={profesores}
@@ -155,12 +248,17 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
                 errors={errors}
                 processing={processing}
                 onSubmit={handleCreateSubmit}
+                saveStatus={saveStatus}
             />
 
             {/* Edit Modal */}
             <GroupFormModal
                 isOpen={isEditModalOpen}
-                onClose={() => setIsEditModalOpen(false)}
+                onClose={() => {
+                    if (saveStatus === 'idle') {
+                        setIsEditModalOpen(false);
+                    }
+                }}
                 mode="edit"
                 group={selectedGroup}
                 profesores={profesores}
@@ -169,6 +267,7 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
                 errors={errors}
                 processing={processing}
                 onSubmit={handleEditSubmit}
+                saveStatus={saveStatus}
             />
         </AdminPageLayout>
     );

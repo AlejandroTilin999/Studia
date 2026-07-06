@@ -124,28 +124,30 @@ export default function BaseModal({
                 "mt-8 flex gap-3 font-body",
                 isFormType ? "justify-end" : "justify-center"
             )}>
-                <button 
-                    type="button"
-                    onClick={onClose}
-                    className="px-6 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all focus:outline-none"
-                >
-                    {cancelLabel}
-                </button>
-                
                 {(confirmLabel || onSubmit) && (
                     <button 
                         type="submit"
                         disabled={isConfirmDisabled}
                         className={cn(
-                            "px-6 py-2.5 rounded-xl text-xs font-bold transition-all focus:outline-none shadow-sm",
+                            "px-5 py-2.5 rounded-lg text-xs font-bold transition-colors focus:outline-none shadow-sm",
                             isConfirmDisabled
-                                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                                : "bg-[#1e88e5] hover:bg-[#1565c0] text-white active:scale-[0.98]"
+                                ? "bg-[#f1f3f5] text-[#8a99a8] cursor-not-allowed border border-slate-150"
+                                : type === 'error' || type === 'warning'
+                                    ? "bg-[#c23c1a] hover:bg-[#a63013] text-white active:scale-[0.98]"
+                                    : "bg-[#1e88e5] hover:bg-blue-700 text-white active:scale-[0.98]"
                         )}
                     >
                         {confirmLabel || 'Aceptar'}
                     </button>
                 )}
+
+                <button 
+                    type="button"
+                    onClick={onClose}
+                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors focus:outline-none shadow-sm"
+                >
+                    {cancelLabel}
+                </button>
             </div>
         );
     };

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
+import { Download, Layers, Users } from 'lucide-react';
 import SubjectTable from './SubjectTable';
 import SubjectTableControls from './SubjectTableControls';
 import SubjectFormModal from './SubjectFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
+import ConfirmActionModal from '@/Components/ConfirmActionModal';
 
 interface MateriaBackend {
     id: number;
@@ -42,9 +44,14 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     const [groupFilter, setGroupFilter] = useState('all');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+    const [subjectToDelete, setSubjectToDelete] = useState<{ id: number; name: string } | null>(null);
 
     // Formulario de Inertia
     const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
@@ -58,6 +65,65 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    const handleExportExcel = () => {
+        const rows = filteredSubjects.map(s => [
+            s.code,
+            s.name,
+            s.teacherName,
+            s.linkedGroups.join(', ') || 'Sin grupos'
+        ]);
+        
+        const htmlTemplate = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8"/>
+                <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Plan de Estudios</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }
+                    th { background-color: #1565c0; color: white; font-weight: bold; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                </style>
+            </head>
+            <body>
+                <h2>Reporte de Materias - PrepaHid</h2>
+                <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre de la Materia</th>
+                            <th>Profesor Asignado</th>
+                            <th>Grupos Vinculados</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(r => `
+                            <tr>
+                                <td>${r[0]}</td>
+                                <td>${r[1]}</td>
+                                <td>${r[2]}</td>
+                                <td>${r[3]}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `reporte_materias_${new Date().toISOString().slice(0,10)}.xls`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("Reporte de materias exportado a Excel con éxito.");
     };
 
     const filteredSubjects = formattedSubjects.filter(subject => {
@@ -91,29 +157,66 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setSaveStatus('saving');
         if (modalMode === 'create') {
             post(route('materias.store'), {
                 onSuccess: () => {
-                    setIsModalOpen(false);
-                    triggerToast(`Materia "${data.name}" creada con éxito.`);
+                    setSaveStatus('success');
                     reset();
+                    setTimeout(() => {
+                        setIsModalOpen(false);
+                        setSaveStatus('idle');
+                    }, 2000);
+                },
+                onError: () => {
+                    setSaveStatus('error');
+                    setTimeout(() => {
+                        setSaveStatus('idle');
+                    }, 2500);
                 }
             });
         } else if (modalMode === 'edit' && selectedSubject) {
             put(route('materias.update', selectedSubject.id), {
                 onSuccess: () => {
-                    setIsModalOpen(false);
-                    triggerToast(`Materia "${data.name}" actualizada con éxito.`);
+                    setSaveStatus('success');
+                    reset();
+                    setTimeout(() => {
+                        setIsModalOpen(false);
+                        setSaveStatus('idle');
+                    }, 2000);
+                },
+                onError: () => {
+                    setSaveStatus('error');
+                    setTimeout(() => {
+                        setSaveStatus('idle');
+                    }, 2500);
                 }
             });
         }
     };
 
-    const handleDeleteSubject = (id: number, name: string) => {
-        if (confirm(`¿Estás seguro de que deseas eliminar la materia "${name}"?`)) {
-            destroy(route('materias.destroy', id), {
+    const triggerDeleteConfirm = (id: number, name: string) => {
+        setSubjectToDelete({ id, name });
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteSubject = () => {
+        if (subjectToDelete) {
+            setDeleteStatus('saving');
+            destroy(route('materias.destroy', subjectToDelete.id), {
                 onSuccess: () => {
-                    triggerToast(`Materia "${name}" eliminada correctamente.`);
+                    setDeleteStatus('success');
+                    setTimeout(() => {
+                        setIsDeleteModalOpen(false);
+                        setDeleteStatus('idle');
+                        setSubjectToDelete(null);
+                    }, 2000);
+                },
+                onError: () => {
+                    setDeleteStatus('error');
+                    setTimeout(() => {
+                        setDeleteStatus('idle');
+                    }, 2500);
                 }
             });
         }
@@ -134,7 +237,9 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                 { code: "T4", label: "Sin docente", value: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length }
             ]}
             quickActions={[
-                { label: "Registrar materia", onClick: openCreateModal }
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
+                { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }
             ]}
             donutChartLabel="materias"
             donutChartSegments={[
@@ -156,13 +261,17 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
             <SubjectTable
                 subjects={filteredSubjects}
                 onOpenEditModal={openEditModal}
-                onDelete={handleDeleteSubject}
+                onDelete={triggerDeleteConfirm}
             />
 
             {/* Form Modal */}
             <SubjectFormModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    if (saveStatus === 'idle') {
+                        setIsModalOpen(false);
+                    }
+                }}
                 mode={modalMode}
                 subject={selectedSubject}
                 teachersList={teachersList}
@@ -172,6 +281,25 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                 errors={errors}
                 processing={processing}
                 onSubmit={handleSubmit}
+                saveStatus={saveStatus}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmActionModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    if (deleteStatus === 'idle') {
+                        setIsDeleteModalOpen(false);
+                        setSubjectToDelete(null);
+                    }
+                }}
+                onConfirm={confirmDeleteSubject}
+                title="¿Deseas eliminar esta materia?"
+                description={`La materia "${subjectToDelete?.name || ''}" se eliminará permanentemente del plan de estudios escolar y no se podrá recuperar.`}
+                confirmLabel="Eliminar materia"
+                saveStatus={deleteStatus}
+                processingLabel="Eliminando materia..."
+                successLabel="¡Materia eliminada!"
             />
         </AdminPageLayout>
     );

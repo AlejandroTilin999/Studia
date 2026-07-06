@@ -13,7 +13,7 @@ export default function Navbar() {
                     {/* Logo */}
                     <div className="flex-shrink-0">
                         <Link href="/">
-                            <img src="/assets/logo-ph.webp" className="w-40 md:w-48 translate-y-2" alt="Logo"/>
+                            <img src="/assets/phid_logo.png" className="w-52 md:w-64 h-auto object-contain translate-y-1.5" alt="Logo"/>
                         </Link>
                     </div>
                     
@@ -21,7 +21,7 @@ export default function Navbar() {
                     <div className="hidden md:flex items-center gap-8 font-semibold text-sm text-slate-500">
                         <span className="flex items-center gap-1.5 text-slate-500 font-medium text-xs">
                             <PhoneCall size={14} className="text-blue-600" />
-                            Soporte: 800-STUDIA-12
+                            Soporte: 800-PREPAHID-12
                         </span>
                         <span className="text-slate-200">|</span>
                         <span className="text-slate-500 font-medium text-xs">
@@ -51,7 +51,7 @@ export default function Navbar() {
                     <div className="flex flex-col gap-2 pb-2 border-b border-slate-100 text-slate-500 text-xs font-medium">
                         <span className="flex items-center gap-1.5">
                             <PhoneCall size={14} className="text-blue-600" />
-                            Soporte: 800-STUDIA-12
+                            Soporte: 800-PREPAHID-12
                         </span>
                         <span>Hidalgo, Michoacán</span>
                     </div>

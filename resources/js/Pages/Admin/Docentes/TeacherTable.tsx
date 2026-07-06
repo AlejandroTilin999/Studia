@@ -4,12 +4,14 @@ interface TeacherTableProps {
     teachers: any[];
     onEdit: (teacher: any) => void;
     onViewAssignments: (teacher: any) => void;
+    onDelete: (teacher: any) => void;
 }
 
 export default function TeacherTable({
     teachers,
     onEdit,
     onViewAssignments,
+    onDelete,
 }: TeacherTableProps) {
     return (
         <AppTable
@@ -70,14 +72,19 @@ export default function TeacherTable({
                 },
                 {
                     header: "Acciones",
-                    align: "right",
                     accessor: (row) => (
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-start gap-2">
                             <button
                                 onClick={() => onEdit(row)}
-                                className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] transition-all"
+                                className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] transition-all active:scale-[0.97]"
                             >
                                 Editar
+                            </button>
+                            <button
+                                onClick={() => onDelete(row)}
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold h-8 px-5 rounded-lg text-[12px] transition-all active:scale-[0.97]"
+                            >
+                                Eliminar
                             </button>
                         </div>
                     ),

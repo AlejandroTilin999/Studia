@@ -40,7 +40,7 @@ export default function AppTable<T>({
     <div className={cn("rounded-xl border border-slate-100 overflow-hidden bg-white shadow-sm overflow-x-auto text-left", className)}>
       <Table className="w-full border-collapse">
         <TableHeader className="bg-[#f8faff]">
-          <TableRow className="border-none hover:bg-transparent">
+          <TableRow className="border-b border-slate-100 hover:bg-transparent">
             {columns.map((col, idx) => {
               const alignClass = 
                 col.align === "right" ? "text-right pr-6" : 
@@ -62,7 +62,7 @@ export default function AppTable<T>({
             })}
           </TableRow>
         </TableHeader>
-        <TableBody className="divide-y divide-slate-50">
+        <TableBody className="divide-y divide-slate-100">
           {data.length > 0 ? (
             data.map((row, rowIdx) => {
               const rowClass = typeof rowClassName === 'function' ? rowClassName(row, rowIdx) : rowClassName;
@@ -72,7 +72,7 @@ export default function AppTable<T>({
                   key={keyExtractor(row, rowIdx)}
                   onClick={() => onRowClick && onRowClick(row, rowIdx)}
                   className={cn(
-                    "border-slate-50 transition-colors",
+                    "border-slate-100 transition-colors",
                     onRowClick ? "cursor-pointer" : "cursor-default",
                     "hover:bg-blue-50/30",
                     rowClass

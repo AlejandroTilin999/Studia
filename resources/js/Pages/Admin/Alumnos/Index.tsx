@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Filter, Plus } from "lucide-react";
+import { Search, Filter, Plus, Download, Layers, FileText } from "lucide-react";
 import { Head, useForm, router } from '@inertiajs/react';
 import AppTable, { AppTableColumn } from '@/Components/AppTable';
 import StudentFormModal from './StudentFormModal';
@@ -50,7 +50,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         id: enrollment.id,
         matricula: enrollment.student_code || 'S/M',
         name: enrollment.user?.name || 'Sin nombre asignado',
-        email: enrollment.user?.email || 'sin-correo@studia.edu.mx',
+        email: enrollment.user?.email || 'sin-correo@prepahidalgo.edu.mx',
         groupId: enrollment.academic_group?.id || 0,
         groupName: enrollment.academic_group?.name || 'Sin grupo',
         status: enrollment.status || 'active',
@@ -66,11 +66,13 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isConfirmBajaOpen, setIsConfirmBajaOpen] = useState(false);
+    const [bajaStatus, setBajaStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [studentToBaja, setStudentToBaja] = useState<any>(null);
 
     // FORMULARIO INTEGRADO A LAS TABLAS USERS Y ENROLLMENTS
@@ -84,6 +86,68 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    const handleExportExcel = () => {
+        const rows = filteredStudents.map(s => [
+            s.matricula,
+            s.name,
+            s.email,
+            s.groupName,
+            s.status === 'active' ? 'Activo' : 'Inactivo'
+        ]);
+        
+        const htmlTemplate = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8"/>
+                <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Listado de Alumnos</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }
+                    th { background-color: #1565c0; color: white; font-weight: bold; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                </style>
+            </head>
+            <body>
+                <h2>Reporte de Alumnos - PrepaHid</h2>
+                <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Matrícula</th>
+                            <th>Nombre Completo</th>
+                            <th>Correo Electrónico</th>
+                            <th>Grupo Asignado</th>
+                            <th>Estado Matrícula</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(r => `
+                            <tr>
+                                <td>${r[0]}</td>
+                                <td>${r[1]}</td>
+                                <td>${r[2]}</td>
+                                <td>${r[3]}</td>
+                                <td>${r[4]}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `reporte_alumnos_${new Date().toISOString().slice(0,10)}.xls`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("Reporte de alumnos exportado a Excel con éxito.");
     };
 
     const filteredStudents = formattedStudents.filter(student => {
@@ -118,27 +182,60 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setSaveStatus('saving');
         if (modalMode === 'create') {
             post(route('admin.alumnos.store'), {
                 onSuccess: () => {
-                    setIsFormModalOpen(false);
-                    triggerToast(`Estudiante registrado exitosamente.`);
+                    setSaveStatus('success');
+                    reset();
+                    setTimeout(() => {
+                        setIsFormModalOpen(false);
+                        setSaveStatus('idle');
+                    }, 2000);
+                },
+                onError: () => {
+                    setSaveStatus('error');
+                    setTimeout(() => {
+                        setSaveStatus('idle');
+                    }, 2500);
                 }
             });
         } else if (modalMode === 'edit' && selectedStudent) {
             put(route('admin.alumnos.update', selectedStudent.id), {
                 onSuccess: () => {
-                    setIsFormModalOpen(false);
-                    triggerToast(`Datos actualizados correctamente.`);
+                    setSaveStatus('success');
+                    reset();
+                    setTimeout(() => {
+                        setIsFormModalOpen(false);
+                        setSaveStatus('idle');
+                    }, 2000);
+                },
+                onError: () => {
+                    setSaveStatus('error');
+                    setTimeout(() => {
+                        setSaveStatus('idle');
+                    }, 2500);
                 }
             });
         }
     };
 
     const toggleStatus = (student: any) => {
+        setBajaStatus('saving');
         router.post(route('admin.alumnos.toggle', student.id), {}, {
             onSuccess: () => {
-                triggerToast(`Estatus modificado con éxito.`);
+                setBajaStatus('success');
+                setTimeout(() => {
+                    setIsConfirmBajaOpen(false);
+                    setBajaStatus('idle');
+                    setStudentToBaja(null);
+                }, 2000);
+            },
+            onError: () => {
+                setBajaStatus('error');
+                setTimeout(() => {
+                    setBajaStatus('idle');
+                }, 2500);
             }
         });
     };
@@ -196,10 +293,10 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         },
         {
             header: "Acciones",
-            align: "right",
-            headerClassName: "text-right",
+            align: "left",
+            headerClassName: "text-left",
             accessor: (student) => (
-                <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-start gap-2" onClick={e => e.stopPropagation()}>
                     <button 
                         onClick={() => openEditModal(student)}
                         className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] shadow-none transition-all"
@@ -208,12 +305,8 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                     </button>
                     <button 
                         onClick={() => {
-                            if (student.status === 'active') {
-                                setStudentToBaja(student);
-                                setIsConfirmBajaOpen(true);
-                            } else {
-                                toggleStatus(student);
-                            }
+                            setStudentToBaja(student);
+                            setIsConfirmBajaOpen(true);
                         }}
                         className={`font-bold h-8 px-5 rounded-lg text-[12px] transition-all ${
                             student.status === 'active' 
@@ -241,7 +334,9 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 { code: "T4", label: "De baja", value: inactiveCount }
             ]}
             quickActions={[
-                { label: "Registrar alumno", onClick: openCreateModal }
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
+                { label: "Ver reportes escolares", onClick: () => router.visit('/admin/reportes'), icon: FileText }
             ]}
             donutChartLabel="alumnos"
             donutChartSegments={[
@@ -306,13 +401,17 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 data={filteredStudents}
                 keyExtractor={(student) => student.id}
                 emptyMessage="No se encontraron alumnos coincidentes."
-                className="flex-1 border-none shadow-none rounded-none scrollbar-hide"
+                className="flex-1 scrollbar-hide"
             />
 
             {/* Modal: Add/Edit student */}
             <StudentFormModal
                 isOpen={isFormModalOpen}
-                onClose={() => setIsFormModalOpen(false)}
+                onClose={() => {
+                    if (saveStatus === 'idle') {
+                        setIsFormModalOpen(false);
+                    }
+                }}
                 mode={modalMode}
                 student={selectedStudent}
                 groups={groups}
@@ -321,6 +420,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 errors={errors}
                 processing={processing}
                 onSubmit={handleFormSubmit}
+                saveStatus={saveStatus}
             />
 
             {/* Modal: Kardex View */}
@@ -335,19 +435,34 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             />
 
             {/* Modal de confirmación de Baja */}
+            {/* Modal de confirmación de Baja / Alta */}
             <ConfirmActionModal
                 isOpen={isConfirmBajaOpen}
                 onClose={() => {
-                    setIsConfirmBajaOpen(false);
-                    setStudentToBaja(null);
+                    if (bajaStatus === 'idle') {
+                        setIsConfirmBajaOpen(false);
+                        setStudentToBaja(null);
+                    }
                 }}
                 onConfirm={() => toggleStatus(studentToBaja)}
-                title="Suspender Alumno del Sistema"
-                description={`Esta acción cambiará el estado de la matrícula de ${studentToBaja?.name || 'este alumno'} a 'Baja' (inactivo) de forma inmediata.`}
+                title={studentToBaja?.status === 'active' ? "Suspender Alumno del Sistema" : "Reactivar Alumno en el Sistema"}
+                description={
+                    studentToBaja?.status === 'active'
+                        ? `Esta acción cambiará el estado de la matrícula de ${studentToBaja?.name || 'este alumno'} a 'Baja' (inactivo) de forma inmediata.`
+                        : `Esta acción reactivará la matrícula de ${studentToBaja?.name || 'este alumno'} a 'Activo' de forma inmediata.`
+                }
                 confirmText={studentToBaja?.matricula || ''}
-                actionPhrase="dar de baja"
-                warningMessage="Al dar de baja al alumno, este perderá acceso completo al portal escolar de Studia y sus expedientes se pausarán."
-                confirmLabel="Dar de Baja"
+                actionPhrase={studentToBaja?.status === 'active' ? "dar de baja" : "dar de alta"}
+                warningMessage={
+                    studentToBaja?.status === 'active'
+                        ? "Al dar de baja al alumno, este perderá acceso completo al portal escolar de PrepaHid y sus expedientes se pausarán."
+                        : "Al dar de alta al alumno, este recuperará su acceso completo al portal escolar y sus expedientes se reactivarán."
+                }
+                confirmLabel={studentToBaja?.status === 'active' ? "Dar de Baja" : "Dar de Alta"}
+                confirmButtonVariant={studentToBaja?.status === 'active' ? 'danger' : 'primary'}
+                saveStatus={bajaStatus}
+                processingLabel={studentToBaja?.status === 'active' ? "Dando de baja al alumno..." : "Dando de alta al alumno..."}
+                successLabel={studentToBaja?.status === 'active' ? "¡Alumno dado de baja!" : "¡Alumno reactivado!"}
             />
         </AdminPageLayout>
     );

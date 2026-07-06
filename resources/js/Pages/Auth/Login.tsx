@@ -40,11 +40,11 @@ export default function LoginPage() {
             </Button>
           </div>
           
-          <div className="mb-10 lg:mb-14 flex justify-start ml-0 w-full max-w-[420px]">
+          <div className="mb-4 lg:mb-5 flex justify-start ml-0 w-full max-w-[490px] lg:max-w-[500px]">
             <img 
-              src="/assets/logo-ph.webp" 
+              src="/assets/phid_logo.png" 
               alt="Logo PREPAHID" 
-              className="w-[320px] lg:w-[380px] h-auto object-contain"
+              className="w-[490px] lg:w-[500px] h-auto object-contain"
             />
           </div>
 

@@ -71,9 +71,8 @@ export default function SubjectTable({
                 },
                 {
                     header: "Acciones",
-                    align: "right",
                     accessor: (row) => (
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-start gap-2">
                             <button 
                                 type="button"
                                 onClick={() => onOpenEditModal(row)}

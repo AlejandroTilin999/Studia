@@ -15,7 +15,7 @@ export default function Topbar() {
                 style={{ color: COLORS.accent }}
             >
                 <PhoneCall className='text-white' size={16} />
-                Soporte: 800-STUDIA-12
+                Soporte: 800-PREPAHID-12
             </span>
 
 

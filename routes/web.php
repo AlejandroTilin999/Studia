@@ -57,7 +57,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Módulo de Administración (Admin)
     Route::prefix('admin')->group(function () {
         Route::get('/dashboard', function () {
-            return Inertia::render('Admin/Dashboard');
+            return Inertia::render('Admin/Dashboard', [
+                'studentsCount' => \App\Models\Enrollment::count(),
+                'teachersCount' => \App\Models\Teacher::count(),
+                'groupsCount' => \App\Models\AcademicGroup::count(),
+                'coursesCount' => \App\Models\Course::count(),
+            ]);
         })->name('admin.dashboard');
 
         Route::get('/users', function () {
@@ -73,6 +78,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Docentes (Usa su controlador)
         Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
         Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
+        Route::put('/docentes/{id}', [TeacherController::class, 'update'])->name('admin.docentes.update');
+        Route::delete('/docentes/{id}', [TeacherController::class, 'destroy'])->name('admin.docentes.destroy');
 
         // Grupos (Usa su controlador)
         Route::get('/grupos', [GroupController::class, 'index'])->name('admin.grupos.index');

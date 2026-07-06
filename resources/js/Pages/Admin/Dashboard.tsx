@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
-import { Search, Filter, Check } from 'lucide-react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { Search, Filter, Check, Calendar, Archive, Clock, Lock, Unlock, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/Components/ui/card';
 import { ButtonLogin as Button } from '@/Components/ButtonLogin';
 import { Input } from '@/Components/Input';
@@ -9,32 +9,53 @@ import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import AppTable from '@/Components/AppTable';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel, FormInput, FormSelect } from '@/Components/FormFields';
+import ConfirmActionModal from '@/Components/ConfirmActionModal';
 
 export default function AdminDashboard() {
+  const { auth, studentsCount, teachersCount, groupsCount, coursesCount } = usePage().props as any;
+  const adminName = auth?.user?.name || 'Administrador';
   useEffect(() => {
     const mainEl = document.querySelector('main');
-    if (mainEl) {
-      const originalOverflow = mainEl.style.overflow;
-      const originalPadding = mainEl.style.padding;
+    if (!mainEl) return;
 
-      mainEl.style.padding = '0';
+    const originalOverflow = mainEl.style.overflow;
+    const originalPadding = mainEl.style.padding;
+
+    mainEl.style.padding = '0';
+
+    const handleResize = () => {
       if (window.innerWidth >= 1024) {
         mainEl.style.overflow = 'hidden';
+      } else {
+        mainEl.style.overflow = originalOverflow || 'auto';
       }
+    };
 
-      return () => {
-        mainEl.style.overflow = originalOverflow;
-        mainEl.style.padding = originalPadding;
-      };
-    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      mainEl.style.overflow = originalOverflow;
+      mainEl.style.padding = originalPadding;
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
+  const [isCloseCycleModalOpen, setIsCloseCycleModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [cycles, setCycles] = useState([
+    { id: 1, name: 'Ciclo Escolar 2026-2', start_date: '2026-02-01', end_date: '2026-07-30', is_active: true },
+    { id: 2, name: 'Ciclo Escolar 2026-1', start_date: '2025-08-01', end_date: '2026-01-25', is_active: false },
+    { id: 3, name: 'Ciclo Escolar 2025-2', start_date: '2025-02-01', end_date: '2025-07-25', is_active: false },
+  ]);
+  const activeCycle = cycles.find(c => c.is_active);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3050);
   };
 
   const { data, setData, post, processing, errors, reset } = useForm({
@@ -46,18 +67,46 @@ export default function AdminDashboard() {
 
   const handleSubmitPeriod = (e: React.FormEvent) => {
     e.preventDefault();
-    post(route('academic.periods.store'), {
-      onSuccess: () => {
-        setIsPeriodModalOpen(false);
-        reset();
-        triggerToast("¡Ciclo escolar configurado y guardado correctamente!");
-      },
-      onError: () => {
-        triggerToast("Ocurrió un error al configurar el ciclo escolar. Verifica los campos.");
+    const newCycleName = data.name;
+    const isNewActive = data.is_active;
+
+    const newCycleItem = {
+      id: Date.now(),
+      name: newCycleName,
+      start_date: data.start_date || new Date().toISOString().split('T')[0],
+      end_date: data.end_date || new Date().toISOString().split('T')[0],
+      is_active: isNewActive
+    };
+
+    setCycles(prev => {
+      let list = [...prev];
+      if (isNewActive) {
+        list = list.map(c => ({ ...c, is_active: false }));
       }
+      return [newCycleItem, ...list];
     });
+
+    setIsPeriodModalOpen(false);
+    reset();
+    triggerToast(`¡${newCycleName} creado y configurado con éxito!`);
   };
-  const activities = [
+
+  const handleCloseActiveCycle = () => {
+    if (activeCycle) {
+      setCycles(prev => prev.map(c => c.id === activeCycle.id ? { ...c, is_active: false } : c));
+      setIsCloseCycleModalOpen(false);
+      triggerToast(`¡${activeCycle.name} concluido y archivado correctamente!`);
+    }
+  };
+
+  const handleActivateCycle = (id: number) => {
+    setCycles(prev => prev.map(c => ({
+      ...c,
+      is_active: c.id === id
+    })));
+    triggerToast("Ciclo escolar cambiado correctamente.");
+  };
+  const [activitiesList, setActivitiesList] = useState([
     { id: 1, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
     { id: 2, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
     { id: 3, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
@@ -66,16 +115,21 @@ export default function AdminDashboard() {
     { id: 6, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
     { id: 7, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
     { id: 8, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-  ];
+  ]);
+
+  const handleDeleteActivity = (id: number) => {
+    setActivitiesList(prev => prev.filter(act => act.id !== id));
+    triggerToast("Registro de actividad eliminado correctamente.");
+  };
 
   const QuickSummary = () => (
     <div className="space-y-3 font-body">
       <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider select-none text-left">Resumen rápido</h4>
       <div className="grid grid-cols-2 gap-2.5">
-        <StatSmallCard label="Alumnos" value="300" code="T1" />
-        <StatSmallCard label="Profesores" value="20" code="T2" />
-        <StatSmallCard label="Grupos" value="15" code="T3" />
-        <StatSmallCard label="Materias" value="17" code="T4" />
+        <StatSmallCard label="Alumnos" value={studentsCount !== undefined ? String(studentsCount) : "0"} code="T1" />
+        <StatSmallCard label="Profesores" value={teachersCount !== undefined ? String(teachersCount) : "0"} code="T2" />
+        <StatSmallCard label="Grupos" value={groupsCount !== undefined ? String(groupsCount) : "0"} code="T3" />
+        <StatSmallCard label="Materias" value={coursesCount !== undefined ? String(coursesCount) : "0"} code="T4" />
       </div>
     </div>
   );
@@ -89,10 +143,72 @@ export default function AdminDashboard() {
         <div className="flex-1 p-3.5 md:p-6 space-y-6 lg:overflow-y-auto lg:h-full flex flex-col lg:min-h-0">
           {/* Banner de Bienvenida */}
           <DashboardWelcomeBanner
-            greeting={`Hola `}
+            greeting={`Hola ${adminName}`}
             subtitle="Sistema de Control Escolar"
-            wrapperClassName="pt-0 md:pt-10 pb-6 md:pb-10"
+            wrapperClassName="pb-2"
           />
+
+          {/* Tarjeta de Control del Ciclo Escolar */}
+          <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-100 shadow-none flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 text-left font-body">
+            <div className="space-y-1.5 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                {activeCycle ? (
+                  <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">
+                    Activo
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-black uppercase text-rose-600 tracking-wider">
+                    Inactivo
+                  </span>
+                )}
+                <span className="text-slate-200 font-normal">|</span>
+                <span className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-300" />
+                  Vigencia del Ciclo
+                </span>
+              </div>
+              <h3 className="text-lg font-black text-slate-800 tracking-tight">
+                {activeCycle?.name || 'Ningún ciclo escolar seleccionado'}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {activeCycle ? (
+                  <>
+                    Periodo académico: <strong className="text-slate-700 font-bold">{new Date(activeCycle.start_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> al <strong className="text-slate-700 font-bold">{new Date(activeCycle.end_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                  </>
+                ) : (
+                  "Abre un nuevo ciclo para comenzar a inscribir alumnos y asignar docentes."
+                )}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto mt-2 xl:mt-0">
+              <button
+                onClick={() => setIsPeriodModalOpen(true)}
+                className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-extrabold h-10 px-4 rounded-xl text-[11.5px] transition-all shadow-none flex items-center gap-2 active:scale-[0.98]"
+              >
+                <Unlock className="w-3.5 h-3.5 text-[#1e88e5]" />
+                Abrir Nuevo Ciclo
+              </button>
+              
+              {activeCycle && (
+                <button
+                  onClick={() => setIsCloseCycleModalOpen(true)}
+                  className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold h-10 px-4 rounded-xl text-[11.5px] transition-all shadow-none flex items-center gap-2 active:scale-[0.98]"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  Concluir Ciclo
+                </button>
+              )}
+              
+              <button
+                onClick={() => setIsHistoryModalOpen(true)}
+                className="bg-slate-50 hover:bg-slate-100 text-slate-600 font-extrabold h-10 px-4 rounded-xl text-[11.5px] transition-all shadow-none flex items-center gap-2 active:scale-[0.98]"
+              >
+                <Archive className="w-3.5 h-3.5 text-slate-400" />
+                Historial ({cycles.length})
+              </button>
+            </div>
+          </div>
 
           {/* Resumen Rápido (Solo Móvil) */}
           <div className="lg:hidden pb-2">
@@ -100,7 +216,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Sección de Actividades */}
-          <div className="bg-white rounded-2xl md:rounded-2xl p-4 md:p-8 border border-slate-100 shadow-none">
+          <div className="bg-white rounded-2xl md:rounded-2xl p-4 md:p-8 border border-slate-100 shadow-none flex-1 flex flex-col">
             <div className="flex items-center gap-4 mb-8">
               <h3 className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap animate-none">
                 Actividades recientes
@@ -123,8 +239,9 @@ export default function AdminDashboard() {
             </div>
 
             <AppTable
-              data={activities}
+              data={activitiesList}
               keyExtractor={(item) => item.id}
+              className="flex-1 scrollbar-hide"
               columns={[
                 {
                   header: "Actividad",
@@ -145,9 +262,13 @@ export default function AdminDashboard() {
                 {
                   header: "Acción",
                   align: "right",
-                  accessor: () => (
-                    <Button size="sm" className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold rounded-lg px-4 md:px-6 h-8 md:h-9 text-[10px] md:text-xs transition-all shadow-none">
-                      Editar
+                  accessor: (row) => (
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleDeleteActivity(row.id)}
+                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg px-4 md:px-6 h-8 md:h-9 text-[10px] md:text-xs transition-all shadow-none border-none"
+                    >
+                      Eliminar
                     </Button>
                   ),
                 },
@@ -157,21 +278,21 @@ export default function AdminDashboard() {
         </div>
 
         {/* Barra Lateral Derecha */}
-        <div className="w-full lg:w-[340px] bg-white border-l-0 lg:border-l border-t lg:border-t-0 border-slate-100 p-5 space-y-5 shrink-0 flex flex-col shadow-none lg:h-full lg:overflow-hidden">
+        <div className="w-full lg:w-[340px] bg-white border-l-0 lg:border-l border-t lg:border-t-0 border-slate-100 p-5 lg:p-6 xl:p-8 space-y-5 lg:space-y-8 xl:space-y-12 shrink-0 flex flex-col shadow-none lg:h-full lg:overflow-y-auto lg:justify-start">
           {/* Resumen Rápido (Solo Desktop) */}
           <div className="hidden lg:block">
             <QuickSummary />
           </div>
 
           {/* Sección de herramientas */}
-          <div className="space-y-3 lg:pt-0 font-body text-left">
+          <div className="space-y-3 lg:space-y-5 lg:pt-0 font-body text-left">
             <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider select-none leading-none">
               Herramientas del ciclo
             </h4>
 
-            <div className="space-y-3.5">
+            <div className="space-y-3.5 lg:space-y-5">
               {/* Tarjeta 1 */}
-              <div className="bg-[#f0f2ff] hover:bg-[#e6e9ff] transition-colors p-6 rounded-2xl flex items-center justify-between gap-5 group">
+              <div className="bg-[#f0f2ff] hover:bg-[#e6e9ff] transition-colors py-8 px-6 rounded-2xl flex items-center justify-between gap-5 group">
                 <div className="min-w-0">
                   <p className="font-black text-slate-800 text-sm group-hover:text-[#1e88e5] transition-colors leading-tight">
                     Asignación de grupos y aulas
@@ -186,7 +307,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Tarjeta 2 */}
-              <div className="bg-[#f0f2ff] hover:bg-[#e6e9ff] transition-colors p-6 rounded-2xl flex items-center justify-between gap-5 group">
+              <div className="bg-[#f0f2ff] hover:bg-[#e6e9ff] transition-colors py-8 px-6 rounded-2xl flex items-center justify-between gap-5 group">
                 <div className="min-w-0">
                   <p className="font-black text-slate-800 text-sm group-hover:text-[#1e88e5] transition-colors leading-tight">
                     Apertura de Nuevo Ciclo
@@ -278,6 +399,70 @@ export default function AdminDashboard() {
           </div>
         </div>
       </BaseModal>
+
+      {/* Modal de Historial de Ciclos */}
+      <BaseModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title="Historial de Ciclos Escolares"
+        subtitle="Administra y consulta los ciclos académicos pasados y planificados."
+        cancelLabel="Cerrar"
+        maxWidthClass="max-w-xl"
+      >
+        <div className="space-y-3.5 mt-4 text-left font-body">
+          {cycles.map((c) => (
+            <div 
+              key={c.id} 
+              className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${
+                c.is_active 
+                  ? 'border-blue-150 bg-blue-50/20' 
+                  : 'border-slate-100 bg-slate-50/30'
+              }`}
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-slate-800 text-sm">{c.name}</h4>
+                  {c.is_active ? (
+                    <span className="text-[8.5px] font-extrabold uppercase bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100">
+                      Activo
+                    </span>
+                  ) : (
+                    <span className="text-[8.5px] font-extrabold uppercase bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                      Archivado
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-550 font-semibold">
+                  Inicio: {new Date(c.start_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })} | Fin: {new Date(c.end_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+
+              {!c.is_active && (
+                <button
+                  onClick={() => handleActivateCycle(c.id)}
+                  className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold h-8 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 active:scale-[0.98]"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#1e88e5]" />
+                  Activar
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </BaseModal>
+
+      {/* Modal de Confirmar Conclusión de Ciclo */}
+      <ConfirmActionModal
+        isOpen={isCloseCycleModalOpen}
+        onClose={() => setIsCloseCycleModalOpen(false)}
+        onConfirm={handleCloseActiveCycle}
+        title="Concluir Ciclo Escolar Activo"
+        description={`Esta acción dará por finalizado el "${activeCycle?.name || ''}". Las asignaciones y calificaciones quedarán bloqueadas de forma permanente.`}
+        confirmText={activeCycle?.name || ''}
+        actionPhrase="concluir ciclo"
+        warningMessage="¡Atención! Una vez concluido el ciclo, los profesores no podrán ingresar nuevas calificaciones ni modificar las existentes."
+        confirmLabel="Concluir y Archivar"
+      />
     </AuthenticatedLayout>
   );
 }
@@ -285,7 +470,7 @@ export default function AdminDashboard() {
 function StatSmallCard({ label, value, code }: { label: string, value: string, code: string }) {
   return (
     <Card className="border border-slate-50 shadow-none rounded-xl overflow-hidden bg-white group hover:bg-blue-50/50 hover:border-blue-100 transition-all duration-200 cursor-default">
-      <CardContent className="p-4 md:p-5 flex flex-col gap-1">
+      <CardContent className="p-6 flex flex-col gap-1.5">
         <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest group-hover:text-blue-300 transition-colors">{code}</span>
         <p className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase leading-none mt-1 group-hover:text-[#1e88e5] transition-colors">{label}</p>
         <p className="text-2xl md:text-3xl font-black text-slate-800 mt-2 tracking-tight">{value}</p>

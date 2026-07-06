@@ -84,13 +84,25 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
   const SidebarInner = ({ isSheet = false }) => (
     <div className="flex flex-col h-full bg-white font-body pt-2">
+      {/* Logo de la Institución */}
+      <div className={cn(
+        "shrink-0 flex items-center mb-6 pt-4",
+        (expanded || isSheet) ? "px-10 justify-start" : "justify-center px-0"
+      )}>
+        {(expanded || isSheet) ? (
+          <img src="/assets/phid_logo.png" alt="Logo Prepa Hidalgo" className="h-[52px] w-auto object-contain" />
+        ) : (
+          <img src="/assets/icono-sidebar.png" alt="Icono" className="h-8 w-auto object-contain" />
+        )}
+      </div>
+
       <SidebarContent className="flex-1 overflow-y-auto scrollbar-hide py-0">
         <SidebarMenu className="px-0">
           {filteredItems.map((item) => {
             const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
             const isMenuExpanded = expanded || isSheet;
             return (
-              <SidebarMenuItem key={item.path}>
+              <SidebarMenuItem key={item.path} className="mb-1.5">
                 <SidebarMenuButton
                   isActive={isActive}
                   expanded={isMenuExpanded}
@@ -98,22 +110,30 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     router.visit(item.path);
                     if (isSheet) setOpenMobile(false);
                   }}
-                  className="rounded-none h-14"
                 >
-                  <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-[#1e88e5]" : "text-slate-500 group-hover:text-[#1e88e5]")} />
+                  <item.icon className={cn(
+                    "w-5 h-5 shrink-0 transition-colors", 
+                    isActive ? "text-[#1e88e5]" : "text-slate-400 group-hover:text-slate-650"
+                  )} />
 
                   {isMenuExpanded && (
-                    <span className={cn(
-                      "text-[15px] font-medium ml-1 transition-all duration-300",
-                      isActive ? "text-[#1e88e5]" : "text-slate-600 group-hover:text-[#1e88e5]"
-                    )}>
-                      {item.name}
-                    </span>
-                  )}
-
-                  {/* Línea azul al final (extremo derecho de la barra) */}
-                  {isActive && (
-                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-[#1e88e5]" />
+                    <>
+                      <span className={cn(
+                        "text-[14px] ml-1 transition-all duration-300",
+                        isActive ? "text-[#1e88e5] font-extrabold" : "text-slate-450 font-bold group-hover:text-slate-650"
+                      )}>
+                        {item.name}
+                      </span>
+                      
+                      {/* Botón de flecha blanca para el activo */}
+                      {isActive && (
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm text-[#1e88e5] ml-auto shrink-0 transition-transform group-hover:translate-x-0.5">
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </>
                   )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -123,6 +143,30 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-0 border-none shrink-0 mb-4">
+        {/* Tarjeta de Soporte y Ayuda 24/7 (Estilo Rocket Plexus) */}
+        {(expanded || isSheet) && (
+          <div className="mx-4 mb-4 mt-4 p-5 bg-[#f4f7ff] border border-blue-50/40 rounded-3xl text-center font-body select-none flex flex-col items-center gap-3.5">
+            <img 
+              src="/assets/image-sidebar.png" 
+              alt="Soporte" 
+              className="w-24 h-auto object-contain drop-shadow-sm"
+            />
+            <div>
+              <h4 className="font-extrabold text-[#1a2b4b] text-[13px] tracking-tight">Mi Cuenta</h4>
+              <p className="text-[10px] text-slate-450 font-bold leading-normal mt-1 max-w-[140px] mx-auto">Gestiona tu contraseña, preferencias y datos de acceso.</p>
+              <button 
+                type="button"
+                onClick={() => {
+                  router.visit('/profile');
+                }}
+                className="mt-3.5 bg-[#1e88e5] hover:bg-blue-700 text-white font-black text-[11px] px-6 py-2 rounded-full transition-all duration-200 shadow-sm"
+              >
+                Configurar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Simulador de Rol (Solo para desarrollo local) */}
         {(expanded || isSheet) && (
           <div className="p-4 mx-4 mb-2 bg-slate-50 rounded-xl border border-slate-100">
@@ -150,21 +194,28 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
           </div>
         )}
 
-        {/* Botón Cerrar Sesión */}
+        {/* Botón Cerrar Sesión (Estilo Plexus) */}
+        <div className="mx-6 border-t border-slate-100 my-4" />
         <SidebarMenu className="px-0">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              expanded={expanded || isSheet}
+          <SidebarMenuItem className="mb-2">
+            <button
               onClick={() => router.post('/logout')}
-              className="text-slate-600 hover:bg-red-50 hover:text-red-600 font-medium h-14 rounded-none border-none transition-colors"
+              className={cn(
+                "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
+                (expanded || isSheet) 
+                  ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5 hover:bg-slate-50" 
+                  : "justify-center px-0 rounded-none w-full hover:bg-slate-50"
+              )}
             >
-              <LogOut className="w-5 h-5 shrink-0" />
+              <div className="w-9 h-9 rounded-full bg-blue-50 text-[#1e88e5] group-hover:bg-[#1e88e5] group-hover:text-white transition-all flex items-center justify-center shrink-0">
+                <LogOut className="w-4 h-4" />
+              </div>
               {(expanded || isSheet) && (
-                <span className="text-[15px] font-medium ml-1">
+                <span className="text-[14px] font-extrabold text-slate-800 ml-0.5 group-hover:text-[#1e88e5] transition-colors">
                   Cerrar sesión
                 </span>
               )}
-            </SidebarMenuButton>
+            </button>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
@@ -293,11 +344,13 @@ export const SidebarMenuButton = React.forwardRef<
     <button
       ref={ref}
       className={cn(
-        "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-14 rounded-none w-full",
-        expanded ? "px-6 gap-3" : "justify-center px-0",
+        "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
+        expanded 
+          ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" 
+          : "justify-center px-0 rounded-none w-full",
         isActive
-          ? "bg-[#e8f2ff] text-[#1e88e5] font-semibold animate-none"
-          : "text-slate-500 hover:bg-blue-50/50 hover:text-[#1e88e5] font-medium",
+          ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold animate-none"
+          : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold",
         className
       )}
       {...props}

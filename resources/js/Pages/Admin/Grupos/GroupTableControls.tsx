@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { Search, Filter, Plus } from 'lucide-react';
 
 interface GroupTableControlsProps {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     specialtyFilter: string;
     setSpecialtyFilter: (specialty: string) => void;
+    onOpenCreateModal: () => void;
 }
 
 export default function GroupTableControls({
@@ -14,6 +14,7 @@ export default function GroupTableControls({
     setSearchQuery,
     specialtyFilter,
     setSpecialtyFilter,
+    onOpenCreateModal,
 }: GroupTableControlsProps) {
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
@@ -32,10 +33,11 @@ export default function GroupTableControls({
             <div className="flex items-center gap-3 w-full md:w-auto relative">
                 <button 
                     type="button"
-                    onClick={() => router.visit('/admin/materias')}
+                    onClick={onOpenCreateModal}
                     className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
                 >
-                    Buscar materias
+                    <Plus className="w-4 h-4" />
+                    Registrar grupo
                 </button>
                 
                 <button 
