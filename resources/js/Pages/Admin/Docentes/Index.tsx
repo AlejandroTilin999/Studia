@@ -187,6 +187,15 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         } else {
@@ -204,6 +213,15 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         }
@@ -231,6 +249,15 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                     setTimeout(() => {
                         setDeleteStatus('idle');
                     }, 2550);
+                },
+                onFinish: () => {
+                    setDeleteStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setDeleteStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         }

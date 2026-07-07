@@ -21,4 +21,10 @@ class Student extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    // Relación con la inscripción del alumno para jalar grupo y estatus académico
+    public function enrollment()
+    {
+        return $this->hasOne(Enrollment::class, 'user_id', 'user_id');
+    }
 }

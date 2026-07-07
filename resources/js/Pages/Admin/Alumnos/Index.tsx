@@ -195,6 +195,15 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         } else if (modalMode === 'edit' && selectedStudent) {
@@ -212,6 +221,15 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         }
@@ -233,6 +251,17 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 setTimeout(() => {
                     setBajaStatus('idle');
                 }, 2500);
+            },
+            onFinish: () => {
+                setBajaStatus(current => {
+                    if (current === 'saving') {
+                        setTimeout(() => {
+                            setBajaStatus('idle');
+                        }, 3000);
+                        return 'error';
+                    }
+                    return current;
+                });
             }
         });
     };

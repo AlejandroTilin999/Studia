@@ -173,6 +173,15 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         } else if (modalMode === 'edit' && selectedSubject) {
@@ -190,6 +199,15 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         }
@@ -217,6 +235,15 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                     setTimeout(() => {
                         setDeleteStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setDeleteStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setDeleteStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         }

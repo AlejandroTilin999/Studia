@@ -164,6 +164,15 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
                 setTimeout(() => {
                     setSaveStatus('idle');
                 }, 2500);
+            },
+            onFinish: () => {
+                setSaveStatus(current => {
+                    if (current === 'saving') {
+                        setTimeout(() => setSaveStatus('idle'), 3000);
+                        return 'error';
+                    }
+                    return current;
+                });
             }
         });
     };
@@ -186,6 +195,15 @@ export default function GruposIndex({ grupos = [], profesores = [] }: GruposInde
                     setTimeout(() => {
                         setSaveStatus('idle');
                     }, 2500);
+                },
+                onFinish: () => {
+                    setSaveStatus(current => {
+                        if (current === 'saving') {
+                            setTimeout(() => setSaveStatus('idle'), 3000);
+                            return 'error';
+                        }
+                        return current;
+                    });
                 }
             });
         }
