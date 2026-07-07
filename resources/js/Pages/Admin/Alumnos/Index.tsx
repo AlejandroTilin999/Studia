@@ -17,15 +17,12 @@ interface BackendGrade {
     };
 }
 
-interface BackendEnrollment {
+interface BackendStudent {
     id: number;
-    student_code: string;
-    status: 'active' | 'suspended';
-    user?: {
-        id: number;
-        name: string;
-        email: string;
-    };
+    matricula: string;
+    name: string;
+    email: string;
+    status?: 'active' | 'suspended';
     academic_group?: {
         id: number;
         name: string;
@@ -40,21 +37,21 @@ interface AcademicGroupProp {
 }
 
 interface AlumnosIndexProps {
-    alumnos?: BackendEnrollment[];
+    alumnos?: BackendStudent[];
     groups?: AcademicGroupProp[];
 }
 
 export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndexProps) {
-    // Mapeamos los datos unificando la inscripción del alumno (enrollment) y la cuenta global (user)
-    const formattedStudents = alumnos.map(enrollment => ({
-        id: enrollment.id,
-        matricula: enrollment.student_code || 'S/M',
-        name: enrollment.user?.name || 'Sin nombre asignado',
-        email: enrollment.user?.email || 'sin-correo@prepahidalgo.edu.mx',
-        groupId: enrollment.academic_group?.id || 0,
-        groupName: enrollment.academic_group?.name || 'Sin grupo',
-        status: enrollment.status || 'active',
-        grades: enrollment.grades?.map(g => ({
+    // Mapeamos los datos simplificados directamente de la tabla única de alumnos
+    const formattedStudents = alumnos.map(student => ({
+        id: student.id,
+        matricula: student.matricula || 'S/M',
+        name: student.name || 'Sin nombre asignado',
+        email: student.email || 'sin-correo@prepahidalgo.edu.mx',
+        groupId: student.academic_group?.id || 0,
+        groupName: student.academic_group?.name || 'Sin grupo',
+        status: student.status || 'active',
+        grades: student.grades?.map(g => ({
             subject: g.course?.name || 'Materia Desconocida',
             score: g.score,
             period: g.period || '2026-A'
