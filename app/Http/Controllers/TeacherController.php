@@ -70,6 +70,13 @@ class TeacherController extends Controller
     public function destroy($id)
     {
         $teacher = Teacher::findOrFail($id);
+
+        if ($teacher->tutoredGroups()->exists() || $teacher->courses()->exists()) {
+            return redirect()->back()->withErrors([
+                'delete' => 'No se puede eliminar el docente porque tiene materias o grupos tutorados asignados a su cargo.'
+            ]);
+        }
+
         $teacher->delete();
 
         return redirect()->back();

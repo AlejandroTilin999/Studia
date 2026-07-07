@@ -52,6 +52,7 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [subjectToDelete, setSubjectToDelete] = useState<{ id: number; name: string } | null>(null);
+    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     // Formulario de Inertia
     const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
@@ -214,6 +215,7 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     };
 
     const triggerDeleteConfirm = (id: number, name: string) => {
+        setDeleteErrorMessage(null);
         setSubjectToDelete({ id, name });
         setIsDeleteModalOpen(true);
     };
@@ -230,11 +232,12 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                         setSubjectToDelete(null);
                     }, 2000);
                 },
-                onError: () => {
+                onError: (err) => {
                     setDeleteStatus('error');
+                    setDeleteErrorMessage(err.delete || "No se pudo realizar la acción.");
                     setTimeout(() => {
                         setDeleteStatus('idle');
-                    }, 2500);
+                    }, 4000);
                 },
                 onFinish: () => {
                     setDeleteStatus(current => {
@@ -327,6 +330,7 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                 saveStatus={deleteStatus}
                 processingLabel="Eliminando materia..."
                 successLabel="¡Materia eliminada!"
+                errorLabel={deleteErrorMessage || undefined}
             />
         </AdminPageLayout>
     );

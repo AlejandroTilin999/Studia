@@ -63,6 +63,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [teacherToDelete, setTeacherToDelete] = useState<any>(null);
+    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     // FORMULARIO DE INERTIA CONECTADO AL BACKEND
     const { data, setData, post, put, reset, processing, errors } = useForm({
@@ -228,6 +229,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     };
 
     const triggerDeleteConfirm = (teacher: any) => {
+        setDeleteErrorMessage(null);
         setTeacherToDelete(teacher);
         setIsDeleteModalOpen(true);
     };
@@ -244,11 +246,12 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                         setTeacherToDelete(null);
                     }, 2000);
                 },
-                onError: () => {
+                onError: (err) => {
                     setDeleteStatus('error');
+                    setDeleteErrorMessage(err.delete || "No se pudo realizar la acción.");
                     setTimeout(() => {
                         setDeleteStatus('idle');
-                    }, 2550);
+                    }, 4000);
                 },
                 onFinish: () => {
                     setDeleteStatus(current => {
@@ -350,6 +353,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 saveStatus={deleteStatus}
                 processingLabel="Eliminando profesor del sistema..."
                 successLabel="¡Profesor eliminado!"
+                errorLabel={deleteErrorMessage || undefined}
             />
         </AdminPageLayout>
     );

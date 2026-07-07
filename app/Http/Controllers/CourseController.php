@@ -103,6 +103,12 @@ class CourseController extends Controller
     public function destroy($id)
     {
         $course = Course::findOrFail($id);
+
+        if (\App\Models\Grade::where('course_id', $course->id)->exists()) {
+            return redirect()->back()->withErrors([
+                'delete' => 'No se puede eliminar la materia porque tiene calificaciones registradas para alumnos en el sistema.'
+            ]);
+        }
         
         // Desvincular grupos de la tabla intermedia antes de borrar para evitar fallos de llave foránea
         $course->academicGroups()->detach();

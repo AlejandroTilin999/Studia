@@ -17,6 +17,7 @@ interface ConfirmActionModalProps {
     saveStatus?: 'idle' | 'saving' | 'success' | 'error';
     processingLabel?: string;
     successLabel?: string;
+    errorLabel?: string;       // 👈 Permite mostrar un mensaje específico de error de base de datos
 }
 
 export default function ConfirmActionModal({
@@ -35,6 +36,7 @@ export default function ConfirmActionModal({
     saveStatus,
     processingLabel,
     successLabel,
+    errorLabel,
 }: ConfirmActionModalProps) {
     const [firstInput, setFirstInput] = useState('');
     const [secondInput, setSecondInput] = useState('');
@@ -113,7 +115,9 @@ export default function ConfirmActionModal({
                                     </svg>
                                 </div>
                                 <h3 className="font-extrabold text-slate-800 text-base">Hubo un problema</h3>
-                                <p className="text-xs text-rose-500 font-bold text-center">No se pudo realizar la acción. Inténtalo de nuevo.</p>
+                                <p className="text-xs text-rose-550 font-bold text-center max-w-[280px]">
+                                    {errorLabel || "No se pudo realizar la acción. Inténtalo de nuevo."}
+                                </p>
                             </div>
                         )}
                     </div>
