@@ -66,12 +66,4 @@ class TeacherController extends Controller
 
         return redirect()->back();
     }
-
-    public function destroy($id)
-    {
-        $teacher = Teacher::findOrFail($id);
-        $teacher->delete();
-
-        return redirect()->back();
-    }
 }

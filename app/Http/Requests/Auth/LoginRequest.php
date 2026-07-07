@@ -30,11 +30,13 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'profile_type' => ['nullable', 'string'], // 👈 Hace nullable para compatibilidad con tests
         ];
     }
 
     /**
      * Attempt to authenticate the request's credentials.
+     *
      *
      * @throws ValidationException
      */
@@ -42,6 +44,32 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // 1. Buscar al usuario directamente en la base de datos de manera previa
+        $user = \App\Models\User::where('email', $this->input('email'))->first();
+
+        if ($user) {
+            $profileType = $this->input('profile_type');
+
+            if ($profileType) {
+                // Validar si eligió la pestaña "Estudiante" pero NO tiene rol de alumno
+                if ($profileType === 'student' && $user->role !== 'alumno') {
+                    RateLimiter::hit($this->throttleKey());
+                    throw ValidationException::withMessages([
+                        'email' => 'Este correo no pertenece a una cuenta de estudiante.',
+                    ]);
+                }
+
+                // Validar si eligió la pestaña "Personal" pero NO es docente ni admin
+                if ($profileType === 'staff' && !in_array($user->role, ['docente', 'admin'])) {
+                    RateLimiter::hit($this->throttleKey());
+                    throw ValidationException::withMessages([
+                        'email' => 'Este correo no pertenece al personal docente o administrativo.',
+                    ]);
+                }
+            }
+        }
+
+        // 2. Si pasó los filtros de rol, intentar la autenticación real (Contraseña)
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
@@ -52,7 +80,6 @@ class LoginRequest extends FormRequest
 
         RateLimiter::clear($this->throttleKey());
     }
-
     /**
      * Ensure the login request is not rate limited.
      *
