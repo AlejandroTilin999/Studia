@@ -1,49 +1,23 @@
 import { useState } from 'react';
-import { Search, Filter, Plus, Download, Layers, FileText } from "lucide-react";
-import { Head, useForm, router } from '@inertiajs/react';
-import AppTable, { AppTableColumn } from '@/Components/AppTable';
-import StudentFormModal from './StudentFormModal';
-import StudentKardexModal from './StudentKardexModal';
+import { Download, Layers, FileText } from "lucide-react";
+import { useForm, router } from '@inertiajs/react';
+import { useToast } from '@/hooks/useToast';
+import { useExportExcel } from '@/hooks/useExportExcel';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
-
-interface BackendGrade {
-    id: number;
-    score: number;
-    period: string;
-    course?: {
-        id: number;
-        name: string;
-    };
-}
-
-interface BackendStudent {
-    id: number;
-    matricula: string;
-    name: string;
-    email: string;
-    status?: 'active' | 'suspended';
-    academic_group?: {
-        id: number;
-        name: string;
-    };
-    grades?: BackendGrade[];
-}
-
-interface AcademicGroupProp {
-    id: number;
-    name: string;
-    code: string;
-}
-
-interface AlumnosIndexProps {
-    alumnos?: BackendStudent[];
-    groups?: AcademicGroupProp[];
-}
+import { studentService } from './services/studentService';
+import StudentTable from './components/StudentTable';
+import StudentTableControls from './components/StudentTableControls';
+import StudentFormModal from './components/StudentFormModal';
+import StudentKardexModal from './components/StudentKardexModal';
+import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } from './types';
 
 export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndexProps) {
+    const { toastMessage, triggerToast } = useToast();
+    const { exportToExcel } = useExportExcel();
+
     // Mapeamos los datos simplificados directamente de la tabla única de alumnos
-    const formattedStudents = alumnos.map(student => ({
+    const formattedStudents: StudentFormatted[] = alumnos.map((student: BackendStudent) => ({
         id: student.id,
         matricula: student.matricula || 'S/M',
         name: student.name || 'Sin nombre asignado',
@@ -51,7 +25,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         groupId: student.academic_group?.id || 0,
         groupName: student.academic_group?.name || 'Sin grupo',
         status: student.status || 'active',
-        grades: student.grades?.map(g => ({
+        grades: student.grades?.map((g: BackendGrade) => ({
             subject: g.course?.name || 'Materia Desconocida',
             score: g.score,
             period: g.period || '2026-A'
@@ -67,23 +41,17 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isConfirmBajaOpen, setIsConfirmBajaOpen] = useState(false);
     const [bajaStatus, setBajaStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [studentToBaja, setStudentToBaja] = useState<any>(null);
 
     // FORMULARIO INTEGRADO A LAS TABLAS USERS Y ENROLLMENTS
-    const { data, setData, post, put, reset, processing, errors } = useForm({
+    const { data, setData, reset, processing, errors } = useForm({
         nombre: '',
         email: '',
         academic_group_id: groups[0]?.id || '',
         status: 'active' as 'active' | 'suspended'
     });
-
-    const triggerToast = (msg: string) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 3000);
-    };
 
     const handleExportExcel = () => {
         const rows = filteredStudents.map(s => [
@@ -94,57 +62,14 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             s.status === 'active' ? 'Activo' : 'Inactivo'
         ]);
         
-        const htmlTemplate = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head>
-                <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8"/>
-                <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Listado de Alumnos</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-                <style>
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }
-                    th { background-color: #1565c0; color: white; font-weight: bold; }
-                    tr:nth-child(even) { background-color: #f8fafc; }
-                </style>
-            </head>
-            <body>
-                <h2>Reporte de Alumnos - PrepaHid</h2>
-                <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Matrícula</th>
-                            <th>Nombre Completo</th>
-                            <th>Correo Electrónico</th>
-                            <th>Grupo Asignado</th>
-                            <th>Estado Matrícula</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows.map(r => `
-                            <tr>
-                                <td>${r[0]}</td>
-                                <td>${r[1]}</td>
-                                <td>${r[2]}</td>
-                                <td>${r[3]}</td>
-                                <td>${r[4]}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
-
-        const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `reporte_alumnos_${new Date().toISOString().slice(0,10)}.xls`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        triggerToast("Reporte de alumnos exportado a Excel con éxito.");
+        exportToExcel(
+            "Reporte de Alumnos - PrepaHid",
+            "Listado de Alumnos",
+            ["Matrícula", "Nombre Completo", "Correo Electrónico", "Grupo Asignado", "Estado Matrícula"],
+            rows,
+            "reporte_alumnos",
+            (msg) => triggerToast("Reporte de alumnos exportado a Excel con éxito.")
+        );
     };
 
     const filteredStudents = formattedStudents.filter(student => {
@@ -180,64 +105,43 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setSaveStatus('saving');
+        
+        const serviceCallback = {
+            onSuccess: () => {
+                setSaveStatus('success');
+                reset();
+                setTimeout(() => {
+                    setIsFormModalOpen(false);
+                    setSaveStatus('idle');
+                }, 2000);
+            },
+            onError: () => {
+                setSaveStatus('error');
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                }, 2500);
+            },
+            onFinish: () => {
+                setSaveStatus(current => {
+                    if (current === 'saving') {
+                        setTimeout(() => setSaveStatus('idle'), 3000);
+                        return 'error';
+                    }
+                    return current;
+                });
+            }
+        };
+
         if (modalMode === 'create') {
-            post(route('admin.alumnos.store'), {
-                onSuccess: () => {
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsFormModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
-                },
-                onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
+            studentService.store(data, serviceCallback);
         } else if (modalMode === 'edit' && selectedStudent) {
-            put(route('admin.alumnos.update', selectedStudent.id), {
-                onSuccess: () => {
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsFormModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
-                },
-                onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
+            studentService.update(selectedStudent.id, data, serviceCallback);
         }
     };
 
     const toggleStatus = (student: any) => {
         setBajaStatus('saving');
-        router.post(route('admin.alumnos.toggle', student.id), {}, {
+        studentService.toggle(student.id, {
             onSuccess: () => {
                 setBajaStatus('success');
                 setTimeout(() => {
@@ -271,82 +175,6 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         setIsKardexModalOpen(true);
     };
 
-    const calculateGPA = (grades: { score: number }[]) => {
-        if (grades.length === 0) return '0.0';
-        const sum = grades.reduce((acc, curr) => acc + Number(curr.score), 0);
-        return (sum / grades.length).toFixed(1);
-    };
-
-    const mainColumns: AppTableColumn<any>[] = [
-        {
-            header: "Matrícula",
-            accessor: (student) => student.matricula,
-            align: "left",
-            className: "text-slate-500 font-medium text-[13px] h-16",
-        },
-        {
-            header: "Nombre",
-            accessor: (student) => (
-                <div className="leading-tight">
-                    <span className="text-slate-700 font-bold text-[15px] block">{student.name}</span>
-                    <span className="text-[10.5px] text-slate-400 font-medium">{student.email}</span>
-                </div>
-            ),
-            align: "left",
-            className: "px-2",
-        },
-        {
-            header: "Grado y grupo",
-            accessor: (student) => student.groupName,
-            align: "left",
-            className: "text-slate-500 font-medium text-[13px]",
-        },
-        {
-            header: "Kardex",
-            align: "center",
-            headerClassName: "text-center",
-            accessor: (student) => (
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        openKardexModal(student);
-                    }}
-                    className="bg-[#e3f2fd] hover:bg-[#bbdefb] text-[#1e88e5] font-black h-8 px-4 rounded-lg text-[12px] transition-all"
-                >
-                    Ver
-                </button>
-            )
-        },
-        {
-            header: "Acciones",
-            align: "left",
-            headerClassName: "text-left",
-            accessor: (student) => (
-                <div className="flex items-center justify-start gap-2" onClick={e => e.stopPropagation()}>
-                    <button 
-                        onClick={() => openEditModal(student)}
-                        className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] shadow-none transition-all"
-                    >
-                        Editar
-                    </button>
-                    <button 
-                        onClick={() => {
-                            setStudentToBaja(student);
-                            setIsConfirmBajaOpen(true);
-                        }}
-                        className={`font-bold h-8 px-5 rounded-lg text-[12px] transition-all ${
-                            student.status === 'active' 
-                                ? 'bg-rose-50 hover:bg-rose-100 text-rose-600' 
-                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
-                        }`}
-                    >
-                        {student.status === 'active' ? 'Baja' : 'Alta'}
-                    </button>
-                </div>
-            )
-        }
-    ];
-
     return (
         <AdminPageLayout
             headTitle="Gestión de Alumnos"
@@ -371,63 +199,26 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             ]}
         >
             {/* Controls: Search and Actions */}
-            <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
-                <div className="relative flex-1 w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre, matrícula o correo..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none focus:ring-0 shadow-none text-slate-700 placeholder-slate-400"
-                    />
-                </div>
-                <div className="flex items-center gap-3 w-full md:w-auto relative">
-                    <button
-                        onClick={openCreateModal}
-                        className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Registrar alumno
-                    </button>
-
-                    <button
-                        onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-                        className="h-12 border border-slate-200 text-slate-500 font-bold rounded-lg flex-1 md:flex-initial gap-2 px-8 text-sm hover:bg-slate-50 transition-all flex items-center justify-center"
-                    >
-                        <Filter className="w-4 h-4" />
-                        Filtros
-                    </button>
-
-                    {/* Dropdown Filters Selector */}
-                    {showFiltersDropdown && (
-                        <div className="absolute right-0 top-14 w-52 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-3.5 space-y-2">
-                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Filtrar por grupo</span>
-                            <select
-                                value={groupFilter}
-                                onChange={e => {
-                                    setGroupFilter(e.target.value);
-                                    setShowFiltersDropdown(false);
-                                }}
-                                className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
-                            >
-                                <option value="all">Todos los Grupos</option>
-                                {groups.map(g => (
-                                    <option key={g.id} value={g.id.toString()}>{g.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                </div>
-            </div>
+            <StudentTableControls
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                groupFilter={groupFilter}
+                setGroupFilter={setGroupFilter}
+                groups={groups}
+                onOpenCreateModal={openCreateModal}
+                showFiltersDropdown={showFiltersDropdown}
+                setShowFiltersDropdown={setShowFiltersDropdown}
+            />
 
             {/* Table */}
-            <AppTable
-                columns={mainColumns}
-                data={filteredStudents}
-                keyExtractor={(student) => student.id}
-                emptyMessage="No se encontraron alumnos coincidentes."
-                className="flex-1 scrollbar-hide"
+            <StudentTable
+                students={filteredStudents}
+                onOpenEditModal={openEditModal}
+                onOpenBajaModal={(student) => {
+                    setStudentToBaja(student);
+                    setIsConfirmBajaOpen(true);
+                }}
+                onOpenKardexModal={openKardexModal}
             />
 
             {/* Modal: Add/Edit student */}
@@ -457,10 +248,8 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 onDownloadKardex={(student) => {
                     triggerToast(`Descargando Kardex oficial de ${student.name}...`);
                 }}
-                calculateGPA={calculateGPA}
             />
 
-            {/* Modal de confirmación de Baja */}
             {/* Modal de confirmación de Baja / Alta */}
             <ConfirmActionModal
                 isOpen={isConfirmBajaOpen}

@@ -8,7 +8,8 @@ import {
   FileText,
   LogOut,
   Layers,
-  User
+  User,
+  ClipboardList
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       name: "Grupos",
       icon: Layers,
       path: "/admin/grupos",
+      roles: ["ADMIN"]
+    },
+    {
+      name: "Asignaciones",
+      icon: ClipboardList,
+      path: "/admin/asignaciones",
       roles: ["ADMIN"]
     },
     {

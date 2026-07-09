@@ -4,6 +4,8 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\AcademicLoadController;
+use App\Http\Controllers\AcademicPeriodController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordChangeController; // 👈 Controlador para cambio obligatorio
 use Illuminate\Foundation\Application;
@@ -62,8 +64,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         Route::prefix('admin')->group(function () {
             Route::get('/dashboard', function () {
-                return Inertia::render('Admin/Dashboard');
+                $cycles = \App\Models\AcademicPeriod::orderBy('start_date', 'desc')->get()->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'name' => $p->name,
+                        'start_date' => $p->start_date instanceof \DateTimeInterface ? $p->start_date->format('Y-m-d') : $p->start_date,
+                        'end_date' => $p->end_date instanceof \DateTimeInterface ? $p->end_date->format('Y-m-d') : $p->end_date,
+                        'is_active' => (bool)$p->is_active,
+                    ];
+                });
+
+                $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+                $activePeriodId = $activePeriod ? $activePeriod->id : null;
+
+                if ($activePeriodId) {
+                    $studentsCount = \App\Models\Enrollment::where('academic_period_id', $activePeriodId)->count();
+                    $teachersCount = \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->distinct('teacher_id')->count('teacher_id');
+                    $groupsCount = \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->distinct('academic_group_id')->count('academic_group_id');
+                    $coursesCount = \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->distinct('course_id')->count('course_id');
+                } else {
+                    $studentsCount = 0;
+                    $teachersCount = 0;
+                    $groupsCount = 0;
+                    $coursesCount = 0;
+                }
+
+                return Inertia::render('Admin/Dashboard', [
+                    'cycles' => $cycles,
+                    'studentsCount' => $studentsCount,
+                    'teachersCount' => $teachersCount,
+                    'groupsCount' => $groupsCount,
+                    'coursesCount' => $coursesCount,
+                ]);
             })->name('admin.dashboard');
+
+            // Gestión de Ciclos Escolares desde el Dashboard
+            Route::post('/cycles', [AcademicPeriodController::class, 'store'])->name('admin.cycles.store');
+            Route::post('/cycles/{id}/activate', [AcademicPeriodController::class, 'activate'])->name('admin.cycles.activate');
+            Route::post('/cycles/{id}/close', [AcademicPeriodController::class, 'close'])->name('admin.cycles.close');
 
             // Usuarios / Alumnos globales del Panel Admin
             Route::get('/users', function () {
@@ -85,6 +123,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/grupos', [GroupController::class, 'index'])->name('groups.index');
             Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
             Route::put('/grupos/{id}', [GroupController::class, 'update'])->name('groups.update');
+
+            // Asignaciones de Materias (Cargas Académicas)
+            Route::get('/asignaciones', [AcademicLoadController::class, 'index'])->name('admin.loads.index');
+            Route::post('/asignaciones', [AcademicLoadController::class, 'store'])->name('admin.loads.store');
+            Route::put('/asignaciones/{id}', [AcademicLoadController::class, 'update'])->name('admin.loads.update');
+            Route::delete('/asignaciones/{id}', [AcademicLoadController::class, 'destroy'])->name('admin.loads.destroy');
 
             // Materias Asociadas al Panel Admin
             Route::get('/materias', [CourseController::class, 'index'])->name('admin.materias.index');

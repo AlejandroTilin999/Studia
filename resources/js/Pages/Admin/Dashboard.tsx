@@ -8,12 +8,26 @@ import { Input } from '@/Components/Input';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import AppTable from '@/Components/AppTable';
 import BaseModal from '@/Components/BaseModal';
-import { FormLabel, FormInput, FormSelect } from '@/Components/FormFields';
+import { FormLabel } from '@/Components/forms/FormLabel';
+import { FormInput } from '@/Components/forms/FormInput';
+import { FormSelect } from '@/Components/forms/FormSelect';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
+import QuickSummaryWidget, { MetricItem } from '@/Components/QuickSummaryWidget';
+import { useToast } from '@/hooks/useToast';
+import { cycleService } from '@/services/cycleService';
+
+interface Cycle {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
 
 export default function AdminDashboard() {
-  const { auth, studentsCount, teachersCount, groupsCount, coursesCount } = usePage().props as any;
+  const { auth, cycles = [], studentsCount, teachersCount, groupsCount, coursesCount } = usePage().props as any;
   const adminName = auth?.user?.name || 'Administrador';
+  
   useEffect(() => {
     const mainEl = document.querySelector('main');
     if (!mainEl) return;
@@ -44,19 +58,10 @@ export default function AdminDashboard() {
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [isCloseCycleModalOpen, setIsCloseCycleModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [cycles, setCycles] = useState([
-    { id: 1, name: 'Ciclo Escolar 2026-2', start_date: '2026-02-01', end_date: '2026-07-30', is_active: true },
-    { id: 2, name: 'Ciclo Escolar 2026-1', start_date: '2025-08-01', end_date: '2026-01-25', is_active: false },
-    { id: 3, name: 'Ciclo Escolar 2025-2', start_date: '2025-02-01', end_date: '2025-07-25', is_active: false },
-  ]);
-  const activeCycle = cycles.find(c => c.is_active);
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const activeCycle = cycles.find((c: Cycle) => c.is_active);
 
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3050);
-  };
+  const { toastMessage, triggerToast } = useToast();
 
   const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
@@ -67,45 +72,44 @@ export default function AdminDashboard() {
 
   const handleSubmitPeriod = (e: React.FormEvent) => {
     e.preventDefault();
-    const newCycleName = data.name;
-    const isNewActive = data.is_active;
-
-    const newCycleItem = {
-      id: Date.now(),
-      name: newCycleName,
-      start_date: data.start_date || new Date().toISOString().split('T')[0],
-      end_date: data.end_date || new Date().toISOString().split('T')[0],
-      is_active: isNewActive
-    };
-
-    setCycles(prev => {
-      let list = [...prev];
-      if (isNewActive) {
-        list = list.map(c => ({ ...c, is_active: false }));
+    cycleService.store(data, {
+      onSuccess: () => {
+        setIsPeriodModalOpen(false);
+        reset();
+        triggerToast(`¡${data.name} creado y configurado con éxito!`);
+      },
+      onError: () => {
+        triggerToast("Hubo un problema al crear el ciclo escolar.");
       }
-      return [newCycleItem, ...list];
     });
-
-    setIsPeriodModalOpen(false);
-    reset();
-    triggerToast(`¡${newCycleName} creado y configurado con éxito!`);
   };
 
   const handleCloseActiveCycle = () => {
     if (activeCycle) {
-      setCycles(prev => prev.map(c => c.id === activeCycle.id ? { ...c, is_active: false } : c));
-      setIsCloseCycleModalOpen(false);
-      triggerToast(`¡${activeCycle.name} concluido y archivado correctamente!`);
+      cycleService.close(activeCycle.id, {
+        onSuccess: () => {
+          setIsCloseCycleModalOpen(false);
+          triggerToast(`¡${activeCycle.name} concluido y archivado correctamente!`);
+        },
+        onError: () => {
+          triggerToast("Hubo un problema al concluir el ciclo escolar.");
+        }
+      });
     }
   };
 
   const handleActivateCycle = (id: number) => {
-    setCycles(prev => prev.map(c => ({
-      ...c,
-      is_active: c.id === id
-    })));
-    triggerToast("Ciclo escolar cambiado correctamente.");
+    cycleService.activate(id, {
+      onSuccess: () => {
+        setIsHistoryModalOpen(false);
+        triggerToast("Ciclo escolar cambiado correctamente.");
+      },
+      onError: () => {
+        triggerToast("Hubo un problema al cambiar el ciclo escolar.");
+      }
+    });
   };
+
   const [activitiesList, setActivitiesList] = useState([
     { id: 1, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
     { id: 2, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
@@ -122,17 +126,12 @@ export default function AdminDashboard() {
     triggerToast("Registro de actividad eliminado correctamente.");
   };
 
-  const QuickSummary = () => (
-    <div className="space-y-3 font-body">
-      <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider select-none text-left">Resumen rápido</h4>
-      <div className="grid grid-cols-2 gap-2.5">
-        <StatSmallCard label="Alumnos" value={studentsCount !== undefined ? String(studentsCount) : "0"} code="T1" />
-        <StatSmallCard label="Profesores" value={teachersCount !== undefined ? String(teachersCount) : "0"} code="T2" />
-        <StatSmallCard label="Grupos" value={groupsCount !== undefined ? String(groupsCount) : "0"} code="T3" />
-        <StatSmallCard label="Materias" value={coursesCount !== undefined ? String(coursesCount) : "0"} code="T4" />
-      </div>
-    </div>
-  );
+  const metrics: MetricItem[] = [
+    { code: "T1", label: "Alumnos", value: studentsCount !== undefined ? String(studentsCount) : "0" },
+    { code: "T2", label: "Profesores", value: teachersCount !== undefined ? String(teachersCount) : "0" },
+    { code: "T3", label: "Grupos", value: groupsCount !== undefined ? String(groupsCount) : "0" },
+    { code: "T4", label: "Materias", value: coursesCount !== undefined ? String(coursesCount) : "0" }
+  ];
 
   return (
     <AuthenticatedLayout>
@@ -212,7 +211,7 @@ export default function AdminDashboard() {
 
           {/* Resumen Rápido (Solo Móvil) */}
           <div className="lg:hidden pb-2">
-            <QuickSummary />
+            <QuickSummaryWidget metrics={metrics} />
           </div>
 
           {/* Sección de Actividades */}
@@ -281,7 +280,7 @@ export default function AdminDashboard() {
         <div className="w-full lg:w-[340px] bg-white border-l-0 lg:border-l border-t lg:border-t-0 border-slate-100 p-5 lg:p-6 xl:p-8 space-y-5 lg:space-y-8 xl:space-y-12 shrink-0 flex flex-col shadow-none lg:h-full lg:overflow-y-auto lg:justify-start">
           {/* Resumen Rápido (Solo Desktop) */}
           <div className="hidden lg:block">
-            <QuickSummary />
+            <QuickSummaryWidget metrics={metrics} />
           </div>
 
           {/* Sección de herramientas */}
@@ -297,7 +296,7 @@ export default function AdminDashboard() {
                   <p className="font-black text-slate-800 text-sm group-hover:text-[#1e88e5] transition-colors leading-tight">
                     Asignación de grupos y aulas
                   </p>
-                  <p className="text-xs text-slate-500 font-bold mt-1.5">
+                  <p className="text-xs text-slate-555 font-bold mt-1.5">
                     Distribución de alumnos y profesores
                   </p>
                 </div>
@@ -312,7 +311,7 @@ export default function AdminDashboard() {
                   <p className="font-black text-slate-800 text-sm group-hover:text-[#1e88e5] transition-colors leading-tight">
                     Apertura de Nuevo Ciclo
                   </p>
-                  <p className="text-xs text-slate-500 font-bold mt-1.5">
+                  <p className="text-xs text-slate-555 font-bold mt-1.5">
                     Configurar periodos de evaluación y fechas clave
                   </p>
                 </div>
@@ -410,7 +409,7 @@ export default function AdminDashboard() {
         maxWidthClass="max-w-xl"
       >
         <div className="space-y-3.5 mt-4 text-left font-body">
-          {cycles.map((c) => (
+          {cycles.map((c: Cycle) => (
             <div 
               key={c.id} 
               className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${
@@ -464,17 +463,5 @@ export default function AdminDashboard() {
         confirmLabel="Concluir y Archivar"
       />
     </AuthenticatedLayout>
-  );
-}
-
-function StatSmallCard({ label, value, code }: { label: string, value: string, code: string }) {
-  return (
-    <Card className="border border-slate-50 shadow-none rounded-xl overflow-hidden bg-white group hover:bg-blue-50/50 hover:border-blue-100 transition-all duration-200 cursor-default">
-      <CardContent className="p-6 flex flex-col gap-1.5">
-        <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-widest group-hover:text-blue-300 transition-colors">{code}</span>
-        <p className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase leading-none mt-1 group-hover:text-[#1e88e5] transition-colors">{label}</p>
-        <p className="text-2xl md:text-3xl font-black text-slate-800 mt-2 tracking-tight">{value}</p>
-      </CardContent>
-    </Card>
   );
 }

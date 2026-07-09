@@ -27,4 +27,10 @@ class Student extends Model
     {
         return $this->hasOne(Enrollment::class, 'user_id', 'user_id');
     }
+
+    // Un alumno puede tener múltiples inscripciones a lo largo de su historial (por ciclo)
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class, 'user_id', 'user_id');
+    }
 }

@@ -1,35 +1,22 @@
 import { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { Download, Layers, FileText } from 'lucide-react';
-import TeacherFormModal from './TeacherFormModal';
-import TeacherAssignmentsModal from './TeacherAssignmentsModal';
-import TeacherTableControls from "./TeacherTableControls";
-import TeacherTable from "./TeacherTable";
+import { useToast } from '@/hooks/useToast';
+import { useExportExcel } from '@/hooks/useExportExcel';
+import { teacherService } from './services/teacherService';
+import TeacherFormModal from './components/TeacherFormModal';
+import TeacherAssignmentsModal from './components/TeacherAssignmentsModal';
+import TeacherTableControls from "./components/TeacherTableControls";
+import TeacherTable from "./components/TeacherTable";
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
-
-interface TeacherFromBackend {
-    id: number;
-    employee_code: string;
-    nombre: string;
-    apellido_paterno: string;
-    apellido_materno: string | null;
-    specialty: string;
-    phone: string | null;
-    email?: string;
-    courses?: {
-        id: number;
-        name: string;
-        code: string;
-    }[];
-}
-
-interface DocentesIndexProps {
-    teachers?: TeacherFromBackend[];
-}
+import { DocentesIndexProps, TeacherFormatted, TeacherFromBackend } from './types';
 
 export default function DocentesIndex({ teachers: backendTeachers = [] }: DocentesIndexProps) {
-    const formattedTeachers = backendTeachers.map((t) => {
+    const { toastMessage, triggerToast } = useToast();
+    const { exportToExcel } = useExportExcel();
+
+    const formattedTeachers: TeacherFormatted[] = backendTeachers.map((t: TeacherFromBackend) => {
         const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
         const correoDocente = t.email || (t.employee_code ? `${t.employee_code.toLowerCase()}@prepahidalgo.edu.mx` : 'docente@prepahidalgo.edu.mx');
 
@@ -58,7 +45,6 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
     
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -66,18 +52,13 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     // FORMULARIO DE INERTIA CONECTADO AL BACKEND
-    const { data, setData, post, put, reset, processing, errors } = useForm({
+    const { data, setData, reset, processing, errors } = useForm({
         nombre: '',
         apellido_paterno: '',
         apellido_materno: '',
         phone: '',
         specialty: ''
     });
-
-    const triggerToast = (msg: string) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 3000);
-    };
 
     const handleExportExcel = () => {
         const rows = filteredTeachers.map(t => [
@@ -88,57 +69,14 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             t.specialty
         ]);
         
-        const htmlTemplate = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head>
-                <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8"/>
-                <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Listado de Docentes</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-                <style>
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }
-                    th { background-color: #1565c0; color: white; font-weight: bold; }
-                    tr:nth-child(even) { background-color: #f8fafc; }
-                </style>
-            </head>
-            <body>
-                <h2>Reporte de Docentes - PrepaHid</h2>
-                <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Matrícula</th>
-                            <th>Nombre Completo</th>
-                            <th>Correo Electrónico</th>
-                            <th>Teléfono</th>
-                            <th>Especialidad</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows.map(r => `
-                            <tr>
-                                <td>${r[0]}</td>
-                                <td>${r[1]}</td>
-                                <td>${r[2]}</td>
-                                <td>${r[3]}</td>
-                                <td>${r[4]}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
-
-        const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `reporte_docentes_${new Date().toISOString().slice(0,10)}.xls`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        triggerToast("Reporte de docentes exportado a Excel con éxito.");
+        exportToExcel(
+            "Reporte de Docentes - PrepaHid",
+            "Listado de Docentes",
+            ["Matrícula", "Nombre Completo", "Correo Electrónico", "Teléfono", "Especialidad"],
+            rows,
+            "reporte_docentes",
+            (msg) => triggerToast("Reporte de docentes exportado a Excel con éxito.")
+        );
     };
 
     const filteredTeachers = formattedTeachers.filter(teacher => 
@@ -173,58 +111,37 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setSaveStatus('saving');
+
+        const serviceCallback = {
+            onSuccess: () => {
+                setSaveStatus('success');
+                reset();
+                setTimeout(() => {
+                    setIsFormModalOpen(false);
+                    setSaveStatus('idle');
+                }, 2000);
+            },
+            onError: () => {
+                setSaveStatus('error');
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                }, 2500);
+            },
+            onFinish: () => {
+                setSaveStatus(current => {
+                    if (current === 'saving') {
+                        setTimeout(() => setSaveStatus('idle'), 3000);
+                        return 'error';
+                    }
+                    return current;
+                });
+            }
+        };
+
         if (modalMode === 'create') {
-            post(route('admin.docentes.store'), {
-                onSuccess: () => {
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsFormModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
-                },
-                onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
+            teacherService.store(data, serviceCallback);
         } else {
-            put(route('admin.docentes.update', selectedTeacher.id), {
-                onSuccess: () => {
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsFormModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
-                },
-                onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
+            teacherService.update(selectedTeacher.id, data, serviceCallback);
         }
     };
 
@@ -237,7 +154,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const confirmDeleteTeacher = () => {
         if (teacherToDelete) {
             setDeleteStatus('saving');
-            router.delete(route('admin.docentes.destroy', teacherToDelete.id), {
+            teacherService.destroy(teacherToDelete.id, {
                 onSuccess: () => {
                     setDeleteStatus('success');
                     setTimeout(() => {
@@ -246,7 +163,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                         setTeacherToDelete(null);
                     }, 2000);
                 },
-                onError: (err) => {
+                onError: (err: any) => {
                     setDeleteStatus('error');
                     setDeleteErrorMessage(err.delete || "No se pudo realizar la acción.");
                     setTimeout(() => {

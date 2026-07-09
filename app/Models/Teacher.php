@@ -16,14 +16,21 @@ class Teacher extends Model
         'phone'
     ];
 
-    // 2. CORREGIDO: Relación Muchos a Muchos con Cursos mediante la tabla intermedia
+    // Relación Uno a Muchos con Cursos (Materias) mediante la columna teacher_id
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_teacher');
+        return $this->hasMany(Course::class, 'teacher_id');
     }
 
+    // Relación con los grupos tutoreados usando el foreign key correcto (tutor_teacher_id)
     public function tutoredGroups()
     {
         return $this->hasMany(AcademicGroup::class, 'tutor_teacher_id');
+    }
+
+    // Relación con las cargas académicas
+    public function academicLoads()
+    {
+        return $this->hasMany(AcademicLoad::class, 'teacher_id');
     }
 }

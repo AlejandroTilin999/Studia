@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { User, Mail, Lock } from 'lucide-react';
 import { MockUser } from './UserTable';
 import BaseModal from '@/Components/BaseModal';
-import { FormLabel, FormInput, FormSelect } from '@/Components/FormFields';
+import { FormLabel } from '@/Components/forms/FormLabel';
+import { FormInput } from '@/Components/forms/FormInput';
+import { FormSelect } from '@/Components/forms/FormSelect';
 
 interface UserFormModalProps {
     isOpen: boolean;
@@ -105,7 +107,7 @@ export default function UserFormModal({
                         </svg>
                     </div>
                     <h3 className="font-extrabold text-slate-800 text-base">Hubo un problema</h3>
-                    <p className="text-xs text-rose-500 font-bold text-center max-w-[280px]">
+                    <p className="text-xs text-rose-550 font-bold text-center max-w-[280px]">
                         No se pudo guardar la información de usuario.
                     </p>
                 </div>

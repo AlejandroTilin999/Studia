@@ -17,4 +17,9 @@ class Course extends Model
     {
         return $this->belongsToMany(AcademicGroup::class, 'course_group');
     }
+
+    public function academicLoads()
+    {
+        return $this->hasMany(AcademicLoad::class, 'course_id');
+    }
 }

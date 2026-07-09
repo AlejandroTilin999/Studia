@@ -13,23 +13,36 @@ class CourseController extends Controller
      */
     public function index()
     {
-        $coursesFromDb = Course::with(['teacher', 'academicGroups'])->get();
+        $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+        $activePeriodId = $activePeriod ? $activePeriod->id : null;
 
-        $materiasMapeadas = $coursesFromDb->map(function ($course) {
-            $nombreProfesor = 'Sin profesor asignado';
-            if ($course->teacher) {
-                $nombre = $course->teacher->nombre ?? '';
-                $paterno = $course->teacher->apellido_paterno ?? '';
-                $materno = $course->teacher->apellido_materno ?? '';
-                $nombreProfesor = trim("$nombre $paterno $materno");
-            }
+        $coursesFromDb = Course::all();
+        
+        $loads = $activePeriodId 
+            ? \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->with(['teacher', 'academicGroup'])->get()
+            : collect();
 
-            $gruposVinculados = [];
-            if ($course->academicGroups && count($course->academicGroups) > 0) {
-                $gruposVinculados = $course->academicGroups->pluck('code')->toArray();
-            } else {
-                $gruposVinculados = ['1-A']; 
-            }
+        $materiasMapeadas = $coursesFromDb->map(function ($course) use ($loads) {
+            // Buscar todas las asignaciones para esta materia en el ciclo activo
+            $courseLoads = $loads->where('course_id', $course->id);
+
+            // Obtener profesores asignados
+            $profesores = $courseLoads->map(function ($load) {
+                if ($load->teacher) {
+                    $nombre = $load->teacher->nombre ?? '';
+                    $paterno = $load->teacher->apellido_paterno ?? '';
+                    $materno = $load->teacher->apellido_materno ?? '';
+                    return trim("$nombre $paterno $materno");
+                }
+                return null;
+            })->filter()->unique();
+
+            $nombreProfesor = $profesores->isNotEmpty() ? $profesores->implode(', ') : 'Pendiente de Asignación';
+
+            // Obtener grupos asignados
+            $gruposVinculados = $courseLoads->map(function ($load) {
+                return $load->academicGroup->code ?? null;
+            })->filter()->unique()->toArray();
 
             return [
                 'id' => $course->id,
@@ -41,8 +54,16 @@ class CourseController extends Controller
             ];
         });
 
+        $teachers = \App\Models\Teacher::all()->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'nombre_completo' => trim("{$t->nombre} {$t->apellido_paterno} " . ($t->apellido_materno ?? ''))
+            ];
+        });
+
         return Inertia::render('Admin/Materias/Index', [
-            'materias' => $materiasMapeadas
+            'materias' => $materiasMapeadas,
+            'profesores' => $teachers
         ]);
     }
 
@@ -55,18 +76,10 @@ class CourseController extends Controller
             'code'        => 'required|string|unique:courses,code',
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'teacher_id'  => 'nullable|integer'
         ]);
 
         // Crear curso
         $course = Course::create($validated);
-
-        // Vincular grupos en la tabla intermedia de forma segura si se seleccionaron
-        if ($request->has('linked_groups') && is_array($request->linked_groups)) {
-            // Nota: Si mandas códigos ("1-A"), buscamos sus IDs correspondientes en academic_groups
-            $groupIds = \App\Models\AcademicGroup::whereIn('code', $request->linked_groups)->pluck('id');
-            $course->academicGroups()->sync($groupIds);
-        }
 
         return redirect()->back();
     }
@@ -82,17 +95,10 @@ class CourseController extends Controller
             'code'        => 'required|string|unique:courses,code,' . $course->id,
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'teacher_id'  => 'nullable|integer'
         ]);
 
         // Actualizar datos primarios
         $course->update($validated);
-
-        // Actualizar la tabla intermedia de grupos asociados
-        if ($request->has('linked_groups') && is_array($request->linked_groups)) {
-            $groupIds = \App\Models\AcademicGroup::whereIn('code', $request->linked_groups)->pluck('id');
-            $course->academicGroups()->sync($groupIds);
-        }
 
         return redirect()->back();
     }

@@ -1,27 +1,18 @@
 import { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { Download, Layers, Users } from 'lucide-react';
-import SubjectTable from './SubjectTable';
-import SubjectTableControls from './SubjectTableControls';
-import SubjectFormModal from './SubjectFormModal';
+import SubjectTable from './components/SubjectTable';
+import SubjectTableControls from './components/SubjectTableControls';
+import SubjectFormModal from './components/SubjectFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
+import { useToast } from '@/hooks/useToast';
+import { useExportExcel } from '@/hooks/useExportExcel';
+import { subjectService } from './services/subjectService';
+import { MateriasIndexProps, SubjectFormatted } from './types';
 
-interface MateriaBackend {
-    id: number;
-    codigo: string;
-    nombre: string;
-    descripcion: string;
-    profesor: string;
-    grupos: string[];
-}
-
-interface MateriasIndexProps {
-    materias?: MateriaBackend[];
-}
-
-export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
-    const formattedSubjects = materias.map(course => ({
+export default function MateriasIndex({ materias = [], profesores = [], grupos = [] }: MateriasIndexProps) {
+    const formattedSubjects: SubjectFormatted[] = materias.map(course => ({
         id: course.id,
         code: course.codigo || 'S/C',
         name: course.nombre || 'Sin nombre',
@@ -30,15 +21,8 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
         description: course.descripcion || 'Sin descripción disponible.'
     }));
 
-    // List of teachers (hardcoded to align with DB IDs on main)
-    const teachersList = [
-        { id: '1', name: 'Francisco Javier Martínez' },
-        { id: '2', name: 'María Elena Rodríguez' },
-        { id: '3', name: 'Humberto Soler Castro' },
-        { id: '4', name: 'Luisa Fernanda Vega' },
-    ];
-
-    const groupsList = ['1-A', '2-B', '3-A'];
+    // Cargamos los grupos directamente desde la base de datos
+    const groupsList = grupos.map(g => g.code);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [groupFilter, setGroupFilter] = useState('all');
@@ -46,8 +30,10 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-    const [selectedSubject, setSelectedSubject] = useState<any>(null);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [selectedSubject, setSelectedSubject] = useState<SubjectFormatted | null>(null);
+    
+    const { toastMessage, triggerToast } = useToast();
+    const { exportToExcel } = useExportExcel();
     
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -59,72 +45,25 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
         code: '',
         name: '',
         description: '',
-        teacher_id: '' as string | number,
-        linked_groups: [] as string[]
     });
 
-    const triggerToast = (msg: string) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 3000);
-    };
-
     const handleExportExcel = () => {
+        const headers = ["Código", "Nombre de la Materia", "Profesor Asignado", "Grupos Vinculados"];
         const rows = filteredSubjects.map(s => [
             s.code,
             s.name,
             s.teacherName,
             s.linkedGroups.join(', ') || 'Sin grupos'
         ]);
-        
-        const htmlTemplate = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head>
-                <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8"/>
-                <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Plan de Estudios</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-                <style>
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 13px; }
-                    th { background-color: #1565c0; color: white; font-weight: bold; }
-                    tr:nth-child(even) { background-color: #f8fafc; }
-                </style>
-            </head>
-            <body>
-                <h2>Reporte de Materias - PrepaHid</h2>
-                <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Nombre de la Materia</th>
-                            <th>Profesor Asignado</th>
-                            <th>Grupos Vinculados</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows.map(r => `
-                            <tr>
-                                <td>${r[0]}</td>
-                                <td>${r[1]}</td>
-                                <td>${r[2]}</td>
-                                <td>${r[3]}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
 
-        const blob = new Blob([htmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `reporte_materias_${new Date().toISOString().slice(0,10)}.xls`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        triggerToast("Reporte de materias exportado a Excel con éxito.");
+        exportToExcel(
+            "Reporte de Materias - PrepaHid",
+            "Plan de Estudios",
+            headers,
+            rows,
+            "reporte_materias",
+            (msg) => triggerToast("Reporte de materias exportado a Excel con éxito.")
+        );
     };
 
     const filteredSubjects = formattedSubjects.filter(subject => {
@@ -141,17 +80,13 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
         setIsModalOpen(true);
     };
 
-    const openEditModal = (subject: any) => {
+    const openEditModal = (subject: SubjectFormatted) => {
         setModalMode('edit');
         setSelectedSubject(subject);
-        // Find teacher ID from hardcoded list matching name
-        const matchTeacher = teachersList.find(t => t.name === subject.teacherName);
         setData({
             code: subject.code,
             name: subject.name,
             description: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
-            teacher_id: matchTeacher ? matchTeacher.id : '',
-            linked_groups: subject.linkedGroups
         });
         setIsModalOpen(true);
     };
@@ -159,58 +94,37 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setSaveStatus('saving');
+
+        const submitOptions = {
+            onSuccess: () => {
+                setSaveStatus('success');
+                reset();
+                setTimeout(() => {
+                    setIsModalOpen(false);
+                    setSaveStatus('idle');
+                }, 2000);
+            },
+            onError: () => {
+                setSaveStatus('error');
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                }, 2500);
+            },
+            onFinish: () => {
+                setSaveStatus(current => {
+                    if (current === 'saving') {
+                        setTimeout(() => setSaveStatus('idle'), 3000);
+                        return 'error';
+                    }
+                    return current;
+                });
+            }
+        };
+
         if (modalMode === 'create') {
-            post(route('materias.store'), {
-                onSuccess: () => {
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
-                },
-                onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
+            subjectService.store(data, submitOptions);
         } else if (modalMode === 'edit' && selectedSubject) {
-            put(route('materias.update', selectedSubject.id), {
-                onSuccess: () => {
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
-                },
-                onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
+            subjectService.update(selectedSubject.id, data, submitOptions);
         }
     };
 
@@ -223,7 +137,7 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
     const confirmDeleteSubject = () => {
         if (subjectToDelete) {
             setDeleteStatus('saving');
-            destroy(route('materias.destroy', subjectToDelete.id), {
+            subjectService.destroy(subjectToDelete.id, {
                 onSuccess: () => {
                     setDeleteStatus('success');
                     setTimeout(() => {
@@ -232,7 +146,7 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                         setSubjectToDelete(null);
                     }, 2000);
                 },
-                onError: (err) => {
+                onError: (err: any) => {
                     setDeleteStatus('error');
                     setDeleteErrorMessage(err.delete || "No se pudo realizar la acción.");
                     setTimeout(() => {
@@ -304,8 +218,6 @@ export default function MateriasIndex({ materias = [] }: MateriasIndexProps) {
                 }}
                 mode={modalMode}
                 subject={selectedSubject}
-                teachersList={teachersList}
-                groupsList={groupsList}
                 data={data}
                 setData={setData}
                 errors={errors}

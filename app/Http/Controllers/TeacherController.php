@@ -13,13 +13,48 @@ class TeacherController extends Controller
     {
         $search = $request->query('search');
 
-        $teachers = Teacher::with('courses')
-            ->when($search, function ($query, $search) {
+        $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+        $activePeriodId = $activePeriod ? $activePeriod->id : null;
+
+        $teachers = Teacher::when($search, function ($query, $search) {
                 $query->where('employee_code', 'ILIKE', "%{$search}%")
                       ->orWhere('nombre', 'ILIKE', "%{$search}%")
                       ->orWhere('apellido_paterno', 'ILIKE', "%{$search}%")
                       ->orWhere('specialty', 'ILIKE', "%{$search}%");
-            })->get();
+            })
+            ->get()
+            ->map(function ($teacher) use ($activePeriodId) {
+                // Obtener las materias asignadas a este profesor en el ciclo activo
+                $courses = [];
+                if ($activePeriodId) {
+                    $loads = \App\Models\AcademicLoad::where('teacher_id', $teacher->id)
+                        ->where('academic_period_id', $activePeriodId)
+                        ->with('course')
+                        ->get();
+                    
+                    foreach ($loads as $load) {
+                        if ($load->course) {
+                            $courses[] = [
+                                'id' => $load->course->id,
+                                'name' => $load->course->name,
+                                'code' => $load->course->code,
+                            ];
+                        }
+                    }
+                }
+
+                return [
+                    'id' => $teacher->id,
+                    'employee_code' => $teacher->employee_code,
+                    'nombre' => $teacher->nombre,
+                    'apellido_paterno' => $teacher->apellido_paterno,
+                    'apellido_materno' => $teacher->apellido_materno,
+                    'specialty' => $teacher->specialty,
+                    'phone' => $teacher->phone,
+                    'email' => $teacher->email,
+                    'courses' => $courses,
+                ];
+            });
 
         return Inertia::render('Admin/Docentes/Index', [
             'teachers' => $teachers

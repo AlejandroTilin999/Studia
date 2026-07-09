@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\Enrollment;
 use App\Models\AcademicGroup;
+use App\Models\Grade;
+use App\Models\AcademicLoad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -13,11 +15,44 @@ use Inertia\Inertia;
 
 class StudentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Jalamos los alumnos trayendo el nombre y email de la tabla users relacionada, más relaciones académicas
-        $alumnos = Student::with(['user', 'enrollment.academicGroup', 'enrollment.grades.course'])->get()->map(function ($student) {
-            $enrollment = $student->enrollment;
+        $search = $request->query('search');
+        $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+        $activePeriodId = $activePeriod ? $activePeriod->id : null;
+
+        $alumnosQuery = Student::query();
+
+        if ($activePeriodId) {
+            // Solo alumnos que tienen una inscripción en el ciclo activo
+            $alumnosQuery->whereHas('enrollments', function ($q) use ($activePeriodId) {
+                $q->where('academic_period_id', $activePeriodId);
+            });
+        } else {
+            // Si no hay ciclo activo, no mostrar ningún alumno
+            $alumnosQuery->whereRaw('1 = 0');
+        }
+
+        // Filtro de búsqueda
+        if ($search) {
+            $alumnosQuery->where(function ($query) use ($search) {
+                $query->where('matricula', 'ILIKE', "%{$search}%")
+                      ->orWhereHas('user', function ($q) use ($search) {
+                          $q->where('name', 'ILIKE', "%{$search}%")
+                            ->orWhere('email', 'ILIKE', "%{$search}%");
+                      });
+            });
+        }
+
+        $alumnos = $alumnosQuery->with([
+            'user',
+            'enrollments' => function ($q) use ($activePeriodId) {
+                $q->where('academic_period_id', $activePeriodId);
+            },
+            'enrollments.academicGroup',
+            'enrollments.grades.course'
+        ])->get()->map(function ($student) use ($activePeriodId) {
+            $enrollment = $student->enrollments->where('academic_period_id', $activePeriodId)->first();
             return [
                 'id' => $student->id,
                 'user_id' => $student->user_id,
@@ -74,14 +109,32 @@ class StudentController extends Controller
                 'telefono' => $request->telefono,
             ]);
 
+            // Obtener ciclo escolar activo real de base de datos
+            $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+            $activePeriodId = $activePeriod ? $activePeriod->id : 1;
+
             // 4. Crear la inscripción correspondiente
-            Enrollment::create([
+            $enrollment = Enrollment::create([
                 'user_id' => $user->id,
                 'academic_group_id' => $request->academic_group_id,
-                'academic_period_id' => 1,
+                'academic_period_id' => $activePeriodId,
                 'student_code' => $studentCode,
                 'status' => $request->status,
             ]);
+
+            // 5. Vincular materias de la carga académica automáticamente
+            $loads = AcademicLoad::where('academic_group_id', $request->academic_group_id)
+                ->where('academic_period_id', $activePeriodId)
+                ->get();
+
+            foreach ($loads as $load) {
+                Grade::create([
+                    'enrollment_id' => $enrollment->id,
+                    'course_id'     => $load->course_id,
+                    'score'         => 0.00,
+                    'period'        => 'Parcial 1',
+                ]);
+            }
         });
 
         return redirect()->route('admin.alumnos.index');
@@ -114,18 +167,58 @@ class StudentController extends Controller
             // 3. Actualizar o crear inscripción académica (Enrollment)
             $enrollment = Enrollment::where('user_id', $student->user_id)->first();
             if ($enrollment) {
+                $oldGroupId = $enrollment->academic_group_id;
                 $enrollment->update([
                     'academic_group_id' => $request->academic_group_id,
                     'status' => $request->status,
                 ]);
+
+                // Si cambió de grupo, registrar automáticamente las nuevas materias asociadas
+                if ($oldGroupId != $request->academic_group_id) {
+                    $loads = AcademicLoad::where('academic_group_id', $request->academic_group_id)
+                        ->where('academic_period_id', $enrollment->academic_period_id)
+                        ->get();
+
+                    foreach ($loads as $load) {
+                        $gradeExists = Grade::where('enrollment_id', $enrollment->id)
+                            ->where('course_id', $load->course_id)
+                            ->exists();
+
+                        if (!$gradeExists) {
+                            Grade::create([
+                                'enrollment_id' => $enrollment->id,
+                                'course_id'     => $load->course_id,
+                                'score'         => 0.00,
+                                'period'        => 'Parcial 1',
+                            ]);
+                        }
+                    }
+                }
             } else {
-                Enrollment::create([
+                // Obtener ciclo escolar activo real de base de datos
+                $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+                $activePeriodId = $activePeriod ? $activePeriod->id : 1;
+
+                $enrollment = Enrollment::create([
                     'user_id' => $student->user_id,
                     'academic_group_id' => $request->academic_group_id,
-                    'academic_period_id' => 1,
+                    'academic_period_id' => $activePeriodId,
                     'student_code' => $student->matricula,
                     'status' => $request->status,
                 ]);
+
+                $loads = AcademicLoad::where('academic_group_id', $request->academic_group_id)
+                    ->where('academic_period_id', $activePeriodId)
+                    ->get();
+
+                foreach ($loads as $load) {
+                    Grade::create([
+                        'enrollment_id' => $enrollment->id,
+                        'course_id'     => $load->course_id,
+                        'score'         => 0.00,
+                        'period'        => 'Parcial 1',
+                    ]);
+                }
             }
         });
 
