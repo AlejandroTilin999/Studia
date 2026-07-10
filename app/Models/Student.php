@@ -14,6 +14,7 @@ class Student extends Model
         'matricula',
         'telefono',
         'fecha_nacimiento',
+        'status',
     ];
 
     // Relación inversa para jalar el nombre y correo del alumno desde la tabla users

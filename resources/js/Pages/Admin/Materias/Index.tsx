@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Search,
     Filter,
@@ -10,7 +10,6 @@ import {
     Hash
 } from "lucide-react";
 
-// Componentes reutilizables (Subieron de nivel en carpetas, ajustamos las rutas a @/Components)
 import PageHeaderBanner from '@/Components/PageHeaderBanner';
 import QuickSummaryWidget from '@/Components/QuickSummaryWidget';
 import QuickActionsWidget from '@/Components/QuickActionsWidget';
@@ -29,18 +28,16 @@ interface MateriasIndexProps {
 }
 
 export default function Index({ materias = [] }: MateriasIndexProps) {
-    // 1. Estados para búsqueda y filtrado en el cliente
     const [searchQuery, setSearchQuery] = useState('');
     const [groupFilter, setGroupFilter] = useState('all');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
-    // 2. Estado de Modales e interfaz
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    // 3. Formulario de Inertia (Mapeado exacto a tus rutas en web.php)
+    // Formulario de InertiaJS
     const { data, setData, post, put, delete: destroy, reset, errors } = useForm({
         code: '',
         name: '',
@@ -49,12 +46,21 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
         linked_groups: [] as string[] 
     });
 
+    // Autogeneración automática del código de la asignatura (solo al crear)
+    useEffect(() => {
+        if (modalMode === 'create' && data.name.trim().length >= 3) {
+            const prefix = data.name.trim().substring(0, 3).toUpperCase();
+            const suffix = data.teacher_id ? `-${data.teacher_id}` : '-00';
+            setData('code', `${prefix}${suffix}`);
+        }
+    }, [data.name, data.teacher_id, modalMode]);
+
     const triggerToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 3000);
     };
 
-    // 4. Lógica de filtrado en tiempo real en la vista
+    // Filtros de búsqueda en tiempo real en el cliente
     const filteredCourses = materias.filter(course => {
         const matchesSearch = 
             course.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -65,14 +71,12 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
         return matchesSearch && matchesGroup;
     });
 
-    // 5. Abrir Modal Alta
     const openCreateModal = () => {
         setModalMode('create');
         reset();
         setIsModalOpen(true);
     };
 
-    // 6. Abrir Modal Edición pre-cargando los datos reales
     const openEditModal = (course: MateriaBackend) => {
         setModalMode('edit');
         setSelectedId(course.id);
@@ -80,13 +84,13 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
             code: course.codigo,
             name: course.nombre,
             description: course.descripcion === 'Sin descripción disponible' ? '' : course.descripcion,
-            teacher_id: '1', 
-            linked_groups: course.grupos
+            teacher_id: '1', // ID referencial simulado para tu select de docentes
+            linked_groups: course.grupos || []
         });
         setIsModalOpen(true);
     };
 
-    // Manejar selección/deselección de grupos en el modal (badges)
+    // Agregar o remover del array reactivo los grupos seleccionados/deseleccionados
     const toggleGroupSelection = (groupCode: string) => {
         if (data.linked_groups.includes(groupCode)) {
             setData('linked_groups', data.linked_groups.filter(g => g !== groupCode));
@@ -95,7 +99,6 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
         }
     };
 
-    // 7. Envío del formulario al Backend (Laravel Controller) utilizando los alias corregidos
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -117,7 +120,6 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
         }
     };
 
-    // 8. Eliminar Materia conectando al endpoint DELETE de Laravel
     const handleDelete = (id: number, name: string) => {
         if (confirm(`¿Estás seguro de que deseas eliminar la materia de ${name}?`)) {
             destroy(route('materias.destroy', id), {
@@ -126,14 +128,15 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
         }
     };
 
-    // Obtener todos los grupos únicos disponibles para el filtro dinámico
-    const todosLosGrupos = Array.from(new Set(materias.flatMap(m => m.grupos)));
+    // Listado único de grupos extraído de las materias cargadas para filtros y checkboxes
+    const todosLosGrupos = Array.from(new Set(materias.flatMap(m => m.grupos || [])));
+    const gruposDisponiblesModal = todosLosGrupos.length > 0 ? todosLosGrupos : ["1-A", "2-B", "3-A"];
 
     return (
         <AuthenticatedLayout>
             <Head title="Gestión de Materias" />
 
-            {/* Toast de Alertas y Notificaciones */}
+            {/* Notificaciones Toast */}
             {toastMessage && (
                 <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-sm select-none">
                     <div className="bg-[#1e88e5] p-1 rounded-full text-white">
@@ -143,11 +146,9 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                 </div>
             )}
 
-            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] font-body overflow-x-hidden -m-6 md:-m-8">
-                
-                {/* Sección Principal de la Tabla */}
+            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] overflow-x-hidden -m-6 md:-m-8">
+                {/* Contenido Principal */}
                 <div className="flex-1 flex flex-col min-w-0">
-                    
                     <PageHeaderBanner
                         title={`Gestión de materias (${materias.length})`}
                         subtitle="Configura el mapa curricular, asignaturas y profesores"
@@ -157,7 +158,7 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                     <div className="p-0 md:p-6 flex-1 overflow-hidden flex flex-col">
                         <div className="bg-white rounded-none md:rounded-xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100 flex-1 flex flex-col min-h-0">
                             
-                            {/* Barra de Búsqueda y Filtros */}
+                            {/* Herramientas superiores */}
                             <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
                                 <div className="relative flex-1 w-full">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -186,7 +187,6 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                                         Filtros
                                     </button>
 
-                                    {/* Menú Desplegable de Filtros */}
                                     {showFiltersDropdown && (
                                         <div className="absolute right-0 top-14 w-52 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-3.5 space-y-2">
                                             <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Filtrar por Grupo</span>
@@ -208,11 +208,11 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                                 </div>
                             </div>
 
-                            {/* Tabla de Datos de la BD */}
-                            <div className="flex-1 overflow-x-auto scrollbar-hide">
+                            {/* Tabla de Resultados */}
+                            <div className="flex-1 overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-transparent border-b border-slate-100">
-                                        <tr className="hover:bg-transparent border-none">
+                                        <tr>
                                             <th className="font-bold text-slate-400 uppercase text-[12px] tracking-wider h-12 px-2 w-[15%]">Código</th>
                                             <th className="font-bold text-slate-400 uppercase text-[12px] tracking-wider h-12 px-2 w-[35%]">Materia</th>
                                             <th className="font-bold text-slate-400 uppercase text-[12px] tracking-wider h-12 px-2 w-[25%]">Profesor Asignado</th>
@@ -288,7 +288,7 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                     </div>
                 </div>
 
-                {/* Widgets Laterales */}
+                {/* Lateral derecha */}
                 <div className="w-full lg:w-[320px] bg-white border-l border-slate-100 p-6 space-y-8 shrink-0">
                     <QuickSummaryWidget
                         metrics={[
@@ -306,7 +306,7 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                 </div>
             </div>
 
-            {/* Modal "Dar de Alta Nueva Materia" */}
+            {/* Modal Formulario */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white w-full max-w-xl rounded-xl border border-slate-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
@@ -334,9 +334,10 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                                                 type="text"
                                                 value={data.code}
                                                 onChange={e => setData('code', e.target.value)}
-                                                placeholder="Ej: MAT-101"
+                                                placeholder="Ej: MAT-1"
                                                 required
-                                                className="w-full pl-8 pr-2 py-2.5 bg-slate-50 border border-slate-100 rounded-lg font-mono text-xs font-bold text-slate-600 focus:bg-white focus:ring-1 focus:ring-[#1e88e5]"
+                                                disabled={modalMode === 'edit'} 
+                                                className="w-full pl-8 pr-2 py-2.5 bg-slate-50 border border-slate-100 rounded-lg font-mono text-xs font-bold text-slate-600 focus:bg-white focus:ring-1 focus:ring-[#1e88e5] disabled:opacity-60"
                                             />
                                         </div>
                                         {errors.code && <p className="text-rose-500 text-[11px] font-semibold">{errors.code}</p>}
@@ -384,7 +385,7 @@ export default function Index({ materias = [] }: MateriasIndexProps) {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vincular con Grupos</label>
                                     <div className="flex items-center gap-2">
-                                        {["1-A", "2-B", "3-A"].map((groupCode) => {
+                                        {gruposDisponiblesModal.map((groupCode) => {
                                             const isSelected = data.linked_groups.includes(groupCode);
                                             return (
                                                 <button

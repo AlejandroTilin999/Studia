@@ -4,10 +4,7 @@ import { useState } from 'react';
 import AppTable from '@/Components/AppTable';
 import { 
     Search, 
-    Filter, 
     Plus, 
-    Mail, 
-    Phone,
     X, 
     Check,
     BookOpen,
@@ -16,7 +13,6 @@ import {
 
 import PageHeaderBanner from '@/Components/PageHeaderBanner';
 import QuickSummaryWidget from '@/Components/QuickSummaryWidget';
-import QuickActionsWidget from '@/Components/QuickActionsWidget';
 import DonutChartWidget from '@/Components/DonutChartWidget';
 
 interface TeacherFromBackend {
@@ -45,14 +41,14 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
             id: t.id,
             matricula: t.employee_code || 'S/M',
             name: nombreCompleto,
-            // Guardamos los apellidos desglosados para rellenar el formulario al editar
             rawNombre: t.nombre,
             rawPaterno: t.apellido_paterno,
             rawMaterno: t.apellido_materno || '',
             email: correoDocente,
-            phone: t.phone || 'Sin teléfono',
+            phone: t.phone || '',
             specialty: t.specialty || 'General',
             assignments: t.courses?.map(c => ({
+                id: c.id, 
                 subject: c.name,
                 groupName: 'Asignado'
             })) || []
@@ -60,20 +56,19 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
     });
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    // 🌟 FORMULARIO DE INERTIA CONECTADO AL BACKEND
     const { data, setData, post, put, reset, processing, errors } = useForm({
         nombre: '',
         apellido_paterno: '',
         apellido_materno: '',
         phone: '',
-        specialty: ''
+        specialty: '',
+        course_ids: [] as number[]
     });
 
     const triggerToast = (msg: string) => {
@@ -92,7 +87,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
 
     const openCreateModal = () => {
         setModalMode('create');
-        reset(); // Limpia los campos usando Inertia
+        reset();
         setIsFormModalOpen(true);
     };
 
@@ -100,18 +95,19 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
         setModalMode('edit');
         setSelectedTeacher(teacher);
         
-        // Rellenamos el formulario con los datos crudos del profesor seleccionado
+        const currentCourseIds = teacher.assignments ? teacher.assignments.map((a: any) => a.id) : [];
+
         setData({
             nombre: teacher.rawNombre,
             apellido_paterno: teacher.rawPaterno,
             apellido_materno: teacher.rawMaterno,
-            phone: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
-            specialty: teacher.specialty
+            phone: teacher.phone,
+            specialty: teacher.specialty,
+            course_ids: currentCourseIds
         });
         setIsFormModalOpen(true);
     };
 
-    // Enviar datos dinámicos a Laravel
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -119,7 +115,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
             post(route('admin.docentes.store'), {
                 onSuccess: () => {
                     setIsFormModalOpen(false);
-                    triggerToast("¡Profesor registrado con éxito en Neon!");
+                    triggerToast("¡Profesor registrado con éxito!");
                 }
             });
         } else {
@@ -227,7 +223,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
                                         accessor: (row) => (
                                             <div className="leading-tight text-left">
                                                 <span className="text-slate-500 font-medium text-[13px] block">{row.email}</span>
-                                                <span className="text-[10px] text-slate-400 font-bold block mt-0.5">{row.phone}</span>
+                                                <span className="text-[10px] text-slate-400 font-bold block mt-0.5">{row.phone || 'Sin teléfono'}</span>
                                             </div>
                                         ),
                                     },
@@ -285,30 +281,38 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
 
                         <form onSubmit={handleSubmit}>
                             <div className="p-6 space-y-4 text-left">
+                                {/* Nombre */}
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Nombre(s)</label>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">
+                                        Nombre(s) <span className="text-red-500">*</span>
+                                    </label>
                                     <input
                                         type="text"
                                         required
                                         value={data.nombre}
                                         onChange={e => setData('nombre', e.target.value)}
-                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
+                                        className={`w-full px-4 py-2 bg-slate-50 border rounded-lg text-xs text-slate-700 text-left ${errors.nombre ? 'border-red-500' : 'border-slate-100'}`}
                                     />
-                                    {errors.nombre && <span className="text-red-500 text-[10px]">{errors.nombre}</span>}
+                                    {errors.nombre && <span className="text-red-500 text-[10px] font-semibold block">{errors.nombre}</span>}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
+                                    {/* Apellido Paterno */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Apellido Merlo (Paterno)</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">
+                                            Apellido Paterno <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             type="text"
                                             required
                                             value={data.apellido_paterno}
                                             onChange={e => setData('apellido_paterno', e.target.value)}
-                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
+                                            className={`w-full px-4 py-2 bg-slate-50 border rounded-lg text-xs text-slate-700 text-left ${errors.apellido_paterno ? 'border-red-500' : 'border-slate-100'}`}
                                         />
+                                        {errors.apellido_paterno && <span className="text-red-500 text-[10px] font-semibold block">{errors.apellido_paterno}</span>}
                                     </div>
 
+                                    {/* Apellido Materno */}
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Apellido Materno</label>
                                         <input
@@ -317,29 +321,43 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: { teac
                                             onChange={e => setData('apellido_materno', e.target.value)}
                                             className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
                                         />
+                                        {errors.apellido_materno && <span className="text-red-500 text-[10px] font-semibold block">{errors.apellido_materno}</span>}
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
+                                    {/* Celular / Teléfono (10 Dígitos obligatorios) */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Teléfono</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">
+                                            Celular (10 dígitos) <span className="text-red-500">*</span>
+                                        </label>
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            required
+                                            maxLength={10}
+                                            pattern="[0-9]{10}"
+                                            title="El número de teléfono debe constar de exactamente 10 dígitos numéricos."
+                                            placeholder="Ej. 5512345678"
                                             value={data.phone}
-                                            onChange={e => setData('phone', e.target.value)}
-                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
+                                            onChange={e => setData('phone', e.target.value.replace(/\D/g, ''))}
+                                            className={`w-full px-4 py-2 bg-slate-50 border rounded-lg text-xs text-slate-700 text-left ${errors.phone ? 'border-red-500' : 'border-slate-100'}`}
                                         />
+                                        {errors.phone && <span className="text-red-500 text-[10px] font-semibold block">{errors.phone}</span>}
                                     </div>
 
+                                    {/* Especialidad */}
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Especialidad / Área</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">
+                                            Especialidad / Área <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             type="text"
                                             required
                                             value={data.specialty}
                                             onChange={e => setData('specialty', e.target.value)}
-                                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 text-left"
+                                            className={`w-full px-4 py-2 bg-slate-50 border rounded-lg text-xs text-slate-700 text-left ${errors.specialty ? 'border-red-500' : 'border-slate-100'}`}
                                         />
+                                        {errors.specialty && <span className="text-red-500 text-[10px] font-semibold block">{errors.specialty}</span>}
                                     </div>
                                 </div>
                             </div>

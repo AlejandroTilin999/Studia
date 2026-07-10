@@ -31,29 +31,32 @@ class StudentController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
+        // Sincronizado con las variables del formulario React
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
+            'nombre'    => 'required|string|max:255',
+            'email'     => 'required|string|email|max:255|unique:users,email',
             'matricula' => 'required|string|max:50|unique:students,matricula',
-            'telefono' => 'nullable|string|max:20',
+            'telefono'  => 'nullable|string|max:20',
         ]);
 
         DB::transaction(function () use ($request) {
             // 1. Crear primero las credenciales de acceso en users
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make('Prepahid2026'), // Contraseña por defecto
-                'role' => 'alumno',
+                'name'     => $request->nombre, // <--- Usa 'nombre' del formulario
+                'email'    => $request->email,
+                'password' => Hash::make('Prepahid2026'), 
+                'role'     => 'alumno',
             ]);
 
             // 2. Crear los metadatos del estudiante amarrados a ese user_id
             Student::create([
-                'user_id' => $user->id,
+                'user_id'   => $user->id,
                 'matricula' => $request->matricula,
-                'telefono' => $request->telefono,
+                'telefono'  => $request->telefono,
+                // Si agregas grupo académico a la tabla 'students', puedes descomentar la línea de abajo:
+                // 'academic_group_id' => $request->academic_group_id, 
             ]);
         });
 
@@ -64,24 +67,26 @@ class StudentController extends Controller
     {
         $student = Student::findOrFail($id);
         
+        // Sincronizado con las variables del formulario React
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => "required|string|email|max:255|unique:users,email,{$student->user_id}",
+            'nombre'    => 'required|string|max:255',
+            'email'     => "required|string|email|max:255|unique:users,email,{$student->user_id}",
             'matricula' => "required|string|max:50|unique:students,matricula,{$student->id}",
-            'telefono' => 'nullable|string|max:20',
+            'telefono'  => 'nullable|string|max:20',
         ]);
 
         DB::transaction(function () use ($request, $student) {
             // 1. Actualizar datos en la tabla general de usuarios
             $student->user->update([
-                'name' => $request->name,
+                'name'  => $request->nombre, // <--- Usa 'nombre' del formulario
                 'email' => $request->email,
             ]);
 
             // 2. Actualizar datos específicos de la tabla estudiantes
             $student->update([
                 'matricula' => $request->matricula,
-                'telefono' => $request->telefono,
+                'telefono'  => $request->telefono,
+                // 'academic_group_id' => $request->academic_group_id,
             ]);
         });
 

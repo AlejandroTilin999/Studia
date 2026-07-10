@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Teacher extends Model
 {
-    // 1. Añadimos tus nuevas columnas al fillable para permitir su creación/edición
     protected $fillable = [
         'employee_code', 
         'nombre', 
@@ -16,10 +15,10 @@ class Teacher extends Model
         'phone'
     ];
 
-    // 2. CORREGIDO: Relación Muchos a Muchos con Cursos mediante la tabla intermedia
+    // CORREGIDO: De la tabla 'courses', usando la columna 'teacher_id'
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_teacher');
+        return $this->hasMany(Course::class, 'teacher_id');
     }
 
     public function tutoredGroups()

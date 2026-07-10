@@ -78,7 +78,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Docentes asociados al panel de Administración
             Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
             Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
-
+            Route::put('/docentes/{teacher}', [TeacherController::class, 'update'])->name('admin.docentes.update');
+            
             // Grupos Académicos del Panel Admin (Corregido y unificado)
             Route::get('/grupos', [GroupController::class, 'index'])->name('groups.index');
             Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');

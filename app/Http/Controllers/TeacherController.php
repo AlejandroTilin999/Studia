@@ -2,24 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TeacherController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $search = $request->query('search');
-
-        $teachers = Teacher::with('courses')
-            ->when($search, function ($query, $search) {
-                $query->where('employee_code', 'ILIKE', "%{$search}%")
-                      ->orWhere('nombre', 'ILIKE', "%{$search}%")
-                      ->orWhere('apellido_paterno', 'ILIKE', "%{$search}%")
-                      ->orWhere('specialty', 'ILIKE', "%{$search}%");
-            })->get();
+        // Traemos los docentes con sus cursos asignados
+        $teachers = Teacher::with('courses')->get();
 
         return Inertia::render('Admin/Docentes/Index', [
             'teachers' => $teachers
@@ -28,42 +20,63 @@ class TeacherController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validamos los datos entrantes del formulario
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:100',
-            'apellido_paterno' => 'required|string|max:100',
-            'apellido_materno' => 'nullable|string|max:100',
-            'phone' => 'nullable|string|max:20',
-            'specialty' => 'required|string|max:150',
+        $request->validate([
+            'nombre'           => 'required|string|max:255',
+            'apellido_paterno' => 'required|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'specialty'        => 'required|string|max:255',
+            'phone'            => 'required|numeric|digits:10', // Obligatorio y exactamente 10 números
+        ], [
+            'nombre.required'           => 'El nombre es obligatorio.',
+            'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
+            'specialty.required'        => 'La especialidad es obligatoria.',
+            'phone.required'            => 'El número de celular es obligatorio.',
+            'phone.numeric'             => 'El celular solo debe contener números.',
+            'phone.digits'              => 'El número de celular debe tener exactamente 10 dígitos.',
         ]);
 
-        // 2. Generamos una matrícula secuencial automática (Ej: EMP-2026-006)
-        $latestTeacher = Teacher::latest('id')->first();
-        $nextId = $latestTeacher ? $latestTeacher->id + 1 : 1;
-        $validated['employee_code'] = 'EMP-2026-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
+        // Generar código de empleado único
+        $employeeCode = 'EMP-' . mt_rand(1000, 9999);
 
-        // 3. Creamos el registro en Neon
-        Teacher::create($validated);
+        Teacher::create([
+            'employee_code'    => $employeeCode,
+            'nombre'           => $request->nombre,
+            'apellido_paterno' => $request->apellido_paterno,
+            'apellido_materno' => $request->apellido_materno,
+            'specialty'        => $request->specialty,
+            'phone'            => $request->phone,
+        ]);
 
-        // 4. Redireccionamos de vuelta refrescando la tabla automáticamente con Inertia
-        return redirect()->back();
+        return redirect()->route('admin.docentes.index');
     }
 
     public function update(Request $request, $id)
     {
         $teacher = Teacher::findOrFail($id);
 
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:100',
-            'apellido_paterno' => 'required|string|max:100',
-            'apellido_materno' => 'nullable|string|max:100',
-            'phone' => 'nullable|string|max:20',
-            'specialty' => 'required|string|max:150',
+        $request->validate([
+            'nombre'           => 'required|string|max:255',
+            'apellido_paterno' => 'required|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'specialty'        => 'required|string|max:255',
+            'phone'            => 'required|numeric|digits:10', // Mismas reglas estrictas
+        ], [
+            'nombre.required'           => 'El nombre es obligatorio.',
+            'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
+            'specialty.required'        => 'La especialidad es obligatoria.',
+            'phone.required'            => 'El número de celular es obligatorio.',
+            'phone.numeric'             => 'El celular solo debe contener números.',
+            'phone.digits'              => 'El número de celular debe tener exactamente 10 dígitos.',
         ]);
 
-        // Actualizamos los datos del profesor
-        $teacher->update($validated);
+        $teacher->update([
+            'nombre'           => $request->nombre,
+            'apellido_paterno' => $request->apellido_paterno,
+            'apellido_materno' => $request->apellido_materno,
+            'specialty'        => $request->specialty,
+            'phone'            => $request->phone,
+        ]);
 
-        return redirect()->back();
+        return redirect()->route('admin.docentes.index');
     }
 }

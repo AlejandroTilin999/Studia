@@ -2,113 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
+use App\Http\Controllers\Controller;
+use App\Models\Course; 
+use App\Models\AcademicGroup; // 👈 CORREGIDO: Importamos AcademicGroup en vez de Group
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class CourseController extends Controller
 {
-    /**
-     * Listar las materias en la tabla
-     */
     public function index()
     {
-        $coursesFromDb = Course::with(['teacher', 'academicGroups'])->get();
+        $coursesRaw = Course::with(['teacher', 'groups'])->get();
 
-        $materiasMapeadas = $coursesFromDb->map(function ($course) {
-            $nombreProfesor = 'Sin profesor asignado';
-            if ($course->teacher) {
-                $nombre = $course->teacher->nombre ?? '';
-                $paterno = $course->teacher->apellido_paterno ?? '';
-                $materno = $course->teacher->apellido_materno ?? '';
-                $nombreProfesor = trim("$nombre $paterno $materno");
-            }
-
-            $gruposVinculados = [];
-            if ($course->academicGroups && count($course->academicGroups) > 0) {
-                $gruposVinculados = $course->academicGroups->pluck('code')->toArray();
-            } else {
-                $gruposVinculados = ['1-A']; 
-            }
-
+        $materiasFormateadas = $coursesRaw->map(function ($course) {
             return [
                 'id' => $course->id,
-                'codigo' => $course->code ?? 'S/C',
-                'nombre' => $course->name ?? 'Materia sin nombre',
-                'descripcion' => $course->description ?? 'Sin descripción disponible.',
-                'profesor' => $nombreProfesor,
-                'grupos' => $gruposVinculados
+                'codigo' => $course->code ?? $course->codigo ?? 'N/A',
+                'nombre' => $course->name ?? $course->nombre,
+                'descripcion' => $course->description ?? $course->descripcion ?? 'Sin descripción disponible',
+                'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
+                'grupos' => $course->groups ? $course->groups->pluck('code')->toArray() : [],
             ];
         });
 
         return Inertia::render('Admin/Materias/Index', [
-            'materias' => $materiasMapeadas
+            'materias' => $materiasFormateadas,
         ]);
     }
 
-    /**
-     * Guardar una nueva materia (Alta)
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code'        => 'required|string|unique:courses,code',
-            'name'        => 'required|string|max:255',
+            'code' => 'required|string|unique:courses,code|max:20',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'teacher_id'  => 'nullable|integer'
+            'teacher_id' => 'nullable|exists:teachers,id',
+            'linked_groups' => 'nullable|array', 
         ]);
 
-        // Crear curso
-        $course = Course::create($validated);
+        $course = Course::create([
+            'code' => $validated['code'],
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'teacher_id' => $validated['teacher_id'] ?: null,
+        ]);
 
-        // Vincular grupos en la tabla intermedia de forma segura si se seleccionaron
-        if ($request->has('linked_groups') && is_array($request->linked_groups)) {
-            // Nota: Si mandas códigos ("1-A"), buscamos sus IDs correspondientes en academic_groups
-            $groupIds = \App\Models\AcademicGroup::whereIn('code', $request->linked_groups)->pluck('id');
-            $course->academicGroups()->sync($groupIds);
+        if (!empty($validated['linked_groups'])) {
+            // 👈 CORREGIDO: Usamos AcademicGroup
+            $groupIds = AcademicGroup::whereIn('code', $validated['linked_groups'])->pluck('id');
+            $course->groups()->sync($groupIds);
         }
 
-        return redirect()->back();
+        return redirect()->route('admin.materias.index')
+            ->with('message', 'Materia creada correctamente.');
     }
 
-    /**
-     * 🛠️ EDITAR / ACTUALIZAR MATERIA (El método que te faltaba)
-     */
     public function update(Request $request, $id)
     {
         $course = Course::findOrFail($id);
 
         $validated = $request->validate([
-            'code'        => 'required|string|unique:courses,code,' . $course->id,
-            'name'        => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'teacher_id'  => 'nullable|integer'
+            'teacher_id' => 'nullable|exists:teachers,id',
+            'linked_groups' => 'nullable|array',
         ]);
 
-        // Actualizar datos primarios
-        $course->update($validated);
+        $course->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'teacher_id' => $validated['teacher_id'] ?: null,
+        ]);
 
-        // Actualizar la tabla intermedia de grupos asociados
-        if ($request->has('linked_groups') && is_array($request->linked_groups)) {
-            $groupIds = \App\Models\AcademicGroup::whereIn('code', $request->linked_groups)->pluck('id');
-            $course->academicGroups()->sync($groupIds);
+        if (isset($validated['linked_groups'])) {
+            // 👈 CORREGIDO: Usamos AcademicGroup
+            $groupIds = AcademicGroup::whereIn('code', $validated['linked_groups'])->pluck('id');
+            $course->groups()->sync($groupIds);
+        } else {
+            $course->groups()->detach();
         }
 
-        return redirect()->back();
+        return redirect()->route('admin.materias.index')
+            ->with('message', 'Materia actualizada correctamente.');
     }
 
-    /**
-     * 🛠️ ELIMINAR MATERIA
-     */
     public function destroy($id)
     {
         $course = Course::findOrFail($id);
-        
-        // Desvincular grupos de la tabla intermedia antes de borrar para evitar fallos de llave foránea
-        $course->academicGroups()->detach();
-        
+        $course->groups()->detach();
         $course->delete();
 
-        return redirect()->back();
+        return redirect()->route('admin.materias.index')
+            ->with('message', 'Materia registrada eliminada con éxito.');
     }
-}
+}   

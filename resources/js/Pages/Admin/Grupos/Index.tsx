@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
-import { Search, Filter, X, Users } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Search, Filter, X } from "lucide-react";
 
 interface GrupoBackend {
     id: number;
@@ -9,7 +9,7 @@ interface GrupoBackend {
     nombre: string;
     turno: string;
     especialidad: string;
-    teacher_id: number | null;
+    tutor_teacher_id: number | null;
     profesor: string;
 }
 
@@ -29,14 +29,34 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
-    // Formulario reactivo de Inertia
+    // Formulario reactivo adaptado a tu DB
     const { data, setData, post, put, reset, errors } = useForm({
         code: '',
         name: '',
-        shift: 'Horario único',
-        specialty: 'TI',
-        teacher_id: '' as string | number
+        semester: '1', 
+        letter: 'A',   
+        shift: 'Matutino',
+        major: 'TI', 
+        tutor_teacher_id: '' as string | number 
     });
+
+    // Autogeneración del Nombre (Semestre-Letra) y del Código en tiempo real
+    useEffect(() => {
+        if (modalMode === 'create') {
+            const compositeName = `${data.semester}-${data.letter.toUpperCase()}`;
+            
+            // Generar código limpio usando iniciales: Carrera + Turno + Nombre compuesto (Ej: TI-M-1A)
+            const majorKey = data.major.substring(0, 3).toUpperCase();
+            const shiftKey = data.shift.substring(0, 1).toUpperCase();
+            const compositeCode = `${majorKey}-${shiftKey}-${data.semester}${data.letter.toUpperCase()}`;
+
+            setData(prev => ({
+                ...prev,
+                name: compositeName,
+                code: compositeCode
+            }));
+        }
+    }, [data.semester, data.letter, data.shift, data.major, modalMode]);
 
     const filteredGrupos = grupos.filter(g => 
         g.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -53,12 +73,20 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
     const openEditModal = (grupo: GrupoBackend) => {
         setModalMode('edit');
         setSelectedId(grupo.id);
+
+        // Separar el nombre "3-A" en semestre "3" y letra "A" para los inputs del formulario
+        const parts = grupo.nombre.split('-');
+        const currentSemester = parts[0] || '1';
+        const currentLetter = parts[1] || 'A';
+
         setData({
             code: grupo.codigo,
             name: grupo.nombre,
+            semester: currentSemester,
+            letter: currentLetter,
             shift: grupo.turno,
-            specialty: grupo.especialidad,
-            teacher_id: grupo.teacher_id ?? ''
+            major: grupo.especialidad,
+            tutor_teacher_id: grupo.tutor_teacher_id ?? ''
         });
         setIsModalOpen(true);
     };
@@ -77,7 +105,6 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
             <Head title="Gestión de Grupos" />
 
             <div className="p-6 bg-[#f8fafc] min-h-screen">
-                {/* Filtros superiores idénticos a la imagen */}
                 <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -93,15 +120,11 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                         onClick={openCreateModal}
                         className="bg-[#1e88e5] hover:bg-blue-700 text-white font-semibold h-12 px-6 rounded-lg text-sm transition-all"
                     >
-                        Buscar materias
-                    </button>
-                    <button className="h-12 border border-slate-200 bg-white text-slate-600 font-medium rounded-lg px-6 text-sm hover:bg-slate-50 transition-all flex items-center gap-2">
-                        <Filter className="w-4 h-4" />
-                        Filtros
+                        Registrar grupo
                     </button>
                 </div>
 
-                {/* Tabla de Grupos Académicos (Diseño image_075d6d.png) */}
+                {/* Tabla de Grupos */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -118,7 +141,15 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                                 <tr key={grupo.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="py-5 px-6 font-semibold text-slate-500 font-mono">{grupo.codigo}</td>
                                     <td className="py-5 px-6">
-                                        <div className="font-bold text-slate-700">{grupo.nombre}</div>
+                                        {/* Aquí se formatea el texto de forma dinámica */}
+                                        <div className="font-bold text-slate-700">
+                                            {(() => {
+                                                const parts = grupo.nombre.split('-');
+                                                const semestre = parts[0] || '';
+                                                const letra = parts[1] || '';
+                                                return `Grupo ${semestre}° Semestre - Grupo ${letra}`;
+                                            })()}
+                                        </div>
                                         <div className="text-xs text-slate-400 mt-0.5">{grupo.especialidad}</div>
                                     </td>
                                     <td className="py-5 px-6 text-slate-500">{grupo.turno}</td>
@@ -141,13 +172,13 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                 </div>
             </div>
 
-            {/* Modal de Grupo (Estructura exacta image_0760ca.png) */}
+            {/* Modal de Formulario */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                     <div className="bg-white w-full max-w-md rounded-xl shadow-xl overflow-hidden">
                         <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="font-bold text-slate-800 text-lg">
-                                {modalMode === 'create' ? 'Crear Nuevo Grupo' : `Editar Grupo ${data.name}`}
+                                {modalMode === 'create' ? 'Crear Nuevo Grupo' : `Editar Grupo`}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                                 <X size={20} />
@@ -155,29 +186,59 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Código del Grupo</label>
-                                <input
-                                    type="text"
-                                    value={data.code}
-                                    onChange={e => setData('code', e.target.value)}
-                                    placeholder="Ej: TI001"
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-blue-400"
-                                    required
-                                />
-                                {errors.code && <p className="text-rose-500 text-xs mt-1">{errors.code}</p>}
+                            
+                            {/* Inputs separados para Semestre y Letra */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Semestre</label>
+                                    <select
+                                        value={data.semester}
+                                        onChange={e => setData('semester', e.target.value)}
+                                        disabled={modalMode === 'edit'}
+                                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
+                                    >
+                                        {[1,2,3,4,5,6,7,8].map(n => (
+                                            <option key={n} value={n}>{n}° Semestre</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Letra / Grupo</label>
+                                    <input
+                                        type="text"
+                                        maxLength={1}
+                                        value={data.letter}
+                                        onChange={e => setData('letter', e.target.value.toUpperCase())}
+                                        disabled={modalMode === 'edit'}
+                                        placeholder="Ej: A"
+                                        required
+                                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-blue-400 font-bold uppercase"
+                                    />
+                                </div>
                             </div>
 
+                            {/* Nombre Combinado Resultante (Se enviará a la DB como "1-A") */}
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre del Grupo</label>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre en Base de Datos</label>
                                 <input
                                     type="text"
                                     value={data.name}
-                                    onChange={e => setData('name', e.target.value)}
-                                    placeholder="Ej: 1er Año TI"
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-blue-400"
-                                    required
+                                    disabled
+                                    className="w-full px-3 py-2.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold"
                                 />
+                                {errors.name && <p className="text-rose-500 text-xs mt-1 font-semibold">{errors.name}</p>}
+                            </div>
+
+                            {/* Código Autogenerado */}
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Código Autogenerado</label>
+                                <input
+                                    type="text"
+                                    value={data.code}
+                                    disabled
+                                    className="w-full px-3 py-2.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-lg text-sm font-mono"
+                                />
+                                {errors.code && <p className="text-rose-500 text-xs mt-1 font-semibold">{errors.code}</p>}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -188,16 +249,16 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                                         onChange={e => setData('shift', e.target.value)}
                                         className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none"
                                     >
-                                        <option value="Horario único">Horario único</option>
                                         <option value="Matutino">Matutino</option>
                                         <option value="Vespertino">Vespertino</option>
+                                        <option value="Horario único">Horario único</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Especialidad</label>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Especialidad (Carrera)</label>
                                     <select
-                                        value={data.specialty}
-                                        onChange={e => setData('specialty', e.target.value)}
+                                        value={data.major}
+                                        onChange={e => setData('major', e.target.value)}
                                         className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none"
                                     >
                                         <option value="TI">TI</option>
@@ -208,10 +269,10 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Profesor Asignado</label>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Profesor Tutor</label>
                                 <select
-                                    value={data.teacher_id}
-                                    onChange={e => setData('teacher_id', e.target.value)}
+                                    value={data.tutor_teacher_id}
+                                    onChange={e => setData('tutor_teacher_id', e.target.value)}
                                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none"
                                 >
                                     <option value="">Selecciona un tutor...</option>
@@ -222,17 +283,10 @@ export default function Index({ grupos = [], profesores = [] }: GruposProps) {
                             </div>
 
                             <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsModalOpen(false)} 
-                                    className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg"
-                                >
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 rounded-lg">
                                     Cancelar
                                 </button>
-                                <button 
-                                    type="submit" 
-                                    className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition-all"
-                                >
+                                <button type="submit" className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition-all">
                                     Guardar Cambios
                                 </button>
                             </div>
