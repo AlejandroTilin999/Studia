@@ -15,8 +15,10 @@ interface StudentFormModalProps {
     data: {
         nombre: string;
         email: string;
+        telefono: string;
+        fecha_nacimiento: string;
         academic_group_id: number | string;
-        status: 'active' | 'suspended';
+        status: 'active' | 'inactive' | 'suspended';
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -24,6 +26,7 @@ interface StudentFormModalProps {
     onSubmit: (e: React.FormEvent) => void;
     saveStatus?: 'idle' | 'saving' | 'success' | 'error';
 }
+
 
 export default function StudentFormModal({
     isOpen,
@@ -117,27 +120,51 @@ export default function StudentFormModal({
                         <FormInput
                             type="email"
                             required
+                            readOnly
                             value={data.email}
-                            onChange={e => setData('email', e.target.value)}
+                            className="bg-slate-100/50 border-0 text-slate-500 font-mono"
                             placeholder="correo.alumno@alumno.prepahidalgo.edu.mx"
                             icon={<Mail size={14} />}
                         />
                         {errors.email && <span className="text-red-500 text-[10px] mt-1 block">{errors.email}</span>}
                     </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+    <div className="space-y-1.5 text-left">
+        <FormLabel>Teléfono</FormLabel>
+        <FormInput
+    type="tel"
+    value={data.telefono}
+    maxLength={10}
+    onChange={e => {
+        const value = e.target.value.replace(/\D/g, '');
+        setData('telefono', value);
+    }}
+    placeholder="Ej. 4431234567"
+/>
+        {errors.telefono && (
+            <span className="text-red-500 text-[10px] mt-1 block">
+                {errors.telefono}
+            </span>
+        )}
+    </div>
+
+    <div className="space-y-1.5 text-left">
+        <FormLabel>Fecha de nacimiento</FormLabel>
+        <FormInput
+            type="date"
+            value={data.fecha_nacimiento}
+            onChange={e => setData('fecha_nacimiento', e.target.value)}
+        />
+        {errors.fecha_nacimiento && (
+            <span className="text-red-500 text-[10px] mt-1 block">
+                {errors.fecha_nacimiento}
+            </span>
+        )}
+    </div>
+</div>
 
                     <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="space-y-1.5 text-left">
-                            <FormLabel required>Grupo Asignado</FormLabel>
-                            <FormSelect
-                                value={data.academic_group_id}
-                                onChange={e => setData('academic_group_id', Number(e.target.value))}
-                            >
-                                {groups.map(g => (
-                                    <option key={g.id} value={g.id}>{g.name}</option>
-                                ))}
-                            </FormSelect>
-                            {errors.academic_group_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.academic_group_id}</span>}
-                        </div>
+                        
 
                         <div className="space-y-1.5 text-left">
                             <FormLabel required>Estatus Inicial</FormLabel>

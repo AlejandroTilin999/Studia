@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Layers, FileText } from "lucide-react";
 import { useForm, router } from '@inertiajs/react';
 import { useToast } from '@/hooks/useToast';
@@ -18,19 +18,30 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     // Mapeamos los datos simplificados directamente de la tabla única de alumnos
     const formattedStudents: StudentFormatted[] = alumnos.map((student: BackendStudent) => ({
-        id: student.id,
-        matricula: student.matricula || 'S/M',
-        name: student.name || 'Sin nombre asignado',
-        email: student.email || 'sin-correo@prepahidalgo.edu.mx',
-        groupId: student.academic_group?.id || 0,
-        groupName: student.academic_group?.name || 'Sin grupo',
-        status: student.status || 'active',
-        grades: student.grades?.map((g: BackendGrade) => ({
-            subject: g.course?.name || 'Materia Desconocida',
-            score: g.score,
-            period: g.period || '2026-A'
-        })) || []
-    }));
+    id: student.id,
+    matricula: student.matricula || 'S/M',
+    name: student.name || 'Sin nombre asignado',
+    email: student.email || 'sin-correo@prepahidalgo.edu.mx',
+    groupId: student.academic_group?.id || 0,
+    groupName: student.academic_group?.name || 'Sin grupo',
+    status: student.status || 'active',
+    grades: student.grades?.map((g: BackendGrade) => ({
+        subject: g.course?.name || 'Materia Desconocida',
+        score: g.score,
+        period: g.period || '2026-A'
+    })) || []
+}));
+const generateEmail = (nombre: string, suffix: number) => {
+    const cleanName = nombre
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .replace(/\s+/g, ".");
+
+    return `${cleanName}${suffix}@prepahidalgo.edu.mx`;
+};
+
 
     const [searchQuery, setSearchQuery] = useState('');
     const [groupFilter, setGroupFilter] = useState('all');
@@ -47,11 +58,33 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     // FORMULARIO INTEGRADO A LAS TABLAS USERS Y ENROLLMENTS
     const { data, setData, reset, processing, errors } = useForm({
+        matricula: '',
         nombre: '',
         email: '',
+        telefono: '',
+        fecha_nacimiento: '',
         academic_group_id: groups[0]?.id || '',
-        status: 'active' as 'active' | 'suspended'
+        status: 'active' as 'active' | 'inactive' | 'suspended'
     });
+
+    const [randomSuffix, setRandomSuffix] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (modalMode === 'create') {
+            if (data.nombre.trim() === '') {
+                setData('email', '');
+            } else {
+                const suffix = randomSuffix || Math.floor(1000 + Math.random() * 9000);
+                if (!randomSuffix) {
+                    setRandomSuffix(suffix);
+                }
+                const newEmail = generateEmail(data.nombre, suffix);
+                if (data.email !== newEmail) {
+                    setData('email', newEmail);
+                }
+            }
+        }
+    }, [data.nombre, modalMode, randomSuffix, data.email]);
 
     const handleExportExcel = () => {
         const rows = filteredStudents.map(s => [
@@ -86,6 +119,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     const openCreateModal = () => {
         setModalMode('create');
+        setRandomSuffix(null);
         reset();
         setIsFormModalOpen(true);
     };
@@ -93,12 +127,15 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const openEditModal = (student: any) => {
         setModalMode('edit');
         setSelectedStudent(student);
-        setData({
-            nombre: student.name,
-            email: student.email,
-            academic_group_id: student.groupId,
-            status: student.status
-        });
+    setData({
+        matricula: student.matricula,
+        nombre: student.name,
+        email: student.email,
+        telefono: student.telefono,
+        fecha_nacimiento: student.fecha_nacimiento,
+        academic_group_id: student.groupId,
+        status: student.status
+    });
         setIsFormModalOpen(true);
     };
 
@@ -132,8 +169,15 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             }
         };
 
+        
+
         if (modalMode === 'create') {
-            studentService.store(data, serviceCallback);
+            let finalData = { ...data };
+            if (!finalData.email && finalData.nombre) {
+                const suffix = randomSuffix || Math.floor(1000 + Math.random() * 9000);
+                finalData.email = generateEmail(finalData.nombre, suffix);
+            }
+            studentService.store(finalData, serviceCallback);
         } else if (modalMode === 'edit' && selectedStudent) {
             studentService.update(selectedStudent.id, data, serviceCallback);
         }

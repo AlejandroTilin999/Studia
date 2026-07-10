@@ -2,125 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
+use App\Http\Controllers\Controller;
+use App\Models\Course; 
+use App\Models\AcademicGroup; // 👈 CORREGIDO: Importamos AcademicGroup en vez de Group
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class CourseController extends Controller
 {
-    /**
-     * Listar las materias en la tabla
-     */
     public function index()
     {
-        $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
-        $activePeriodId = $activePeriod ? $activePeriod->id : null;
+        $coursesRaw = Course::with(['teacher', 'groups'])->get();
 
-        $coursesFromDb = Course::all();
-        
-        $loads = $activePeriodId 
-            ? \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->with(['teacher', 'academicGroup'])->get()
-            : collect();
-
-        $materiasMapeadas = $coursesFromDb->map(function ($course) use ($loads) {
-            // Buscar todas las asignaciones para esta materia en el ciclo activo
-            $courseLoads = $loads->where('course_id', $course->id);
-
-            // Obtener profesores asignados
-            $profesores = $courseLoads->map(function ($load) {
-                if ($load->teacher) {
-                    $nombre = $load->teacher->nombre ?? '';
-                    $paterno = $load->teacher->apellido_paterno ?? '';
-                    $materno = $load->teacher->apellido_materno ?? '';
-                    return trim("$nombre $paterno $materno");
-                }
-                return null;
-            })->filter()->unique();
-
-            $nombreProfesor = $profesores->isNotEmpty() ? $profesores->implode(', ') : 'Pendiente de Asignación';
-
-            // Obtener grupos asignados
-            $gruposVinculados = $courseLoads->map(function ($load) {
-                return $load->academicGroup->code ?? null;
-            })->filter()->unique()->toArray();
-
+        $materiasFormateadas = $coursesRaw->map(function ($course) {
             return [
                 'id' => $course->id,
-                'codigo' => $course->code ?? 'S/C',
-                'nombre' => $course->name ?? 'Materia sin nombre',
-                'descripcion' => $course->description ?? 'Sin descripción disponible.',
-                'profesor' => $nombreProfesor,
-                'grupos' => $gruposVinculados
-            ];
-        });
-
-        $teachers = \App\Models\Teacher::all()->map(function ($t) {
-            return [
-                'id' => $t->id,
-                'nombre_completo' => trim("{$t->nombre} {$t->apellido_paterno} " . ($t->apellido_materno ?? ''))
+                'codigo' => $course->code ?? $course->codigo ?? 'N/A',
+                'nombre' => $course->name ?? $course->nombre,
+                'descripcion' => $course->description ?? $course->descripcion ?? 'Sin descripción disponible',
+                'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
+                'grupos' => $course->groups ? $course->groups->pluck('code')->toArray() : [],
             ];
         });
 
         return Inertia::render('Admin/Materias/Index', [
-            'materias' => $materiasMapeadas,
-            'profesores' => $teachers
+            'materias' => $materiasFormateadas,
         ]);
     }
 
-    /**
-     * Guardar una nueva materia (Alta)
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code'        => 'required|string|unique:courses,code',
-            'name'        => 'required|string|max:255',
+            'code' => 'required|string|unique:courses,code|max:20',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'teacher_id' => 'nullable|exists:teachers,id',
+            'linked_groups' => 'nullable|array', 
         ]);
 
-        // Crear curso
-        $course = Course::create($validated);
+        $course = Course::create([
+            'code' => $validated['code'],
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'teacher_id' => $validated['teacher_id'] ?: null,
+        ]);
 
-        return redirect()->back();
+        if (!empty($validated['linked_groups'])) {
+            // 👈 CORREGIDO: Usamos AcademicGroup
+            $groupIds = AcademicGroup::whereIn('code', $validated['linked_groups'])->pluck('id');
+            $course->groups()->sync($groupIds);
+        }
+
+        return redirect()->route('admin.materias.index')
+            ->with('message', 'Materia creada correctamente.');
     }
 
-    /**
-     * 🛠️ EDITAR / ACTUALIZAR MATERIA (El método que te faltaba)
-     */
     public function update(Request $request, $id)
     {
         $course = Course::findOrFail($id);
 
         $validated = $request->validate([
-            'code'        => 'required|string|unique:courses,code,' . $course->id,
-            'name'        => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'teacher_id' => 'nullable|exists:teachers,id',
+            'linked_groups' => 'nullable|array',
         ]);
 
-        // Actualizar datos primarios
-        $course->update($validated);
+        $course->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'teacher_id' => $validated['teacher_id'] ?: null,
+        ]);
 
-        return redirect()->back();
+        if (isset($validated['linked_groups'])) {
+            // 👈 CORREGIDO: Usamos AcademicGroup
+            $groupIds = AcademicGroup::whereIn('code', $validated['linked_groups'])->pluck('id');
+            $course->groups()->sync($groupIds);
+        } else {
+            $course->groups()->detach();
+        }
+
+        return redirect()->route('admin.materias.index')
+            ->with('message', 'Materia actualizada correctamente.');
     }
 
-    /**
-     * 🛠️ ELIMINAR MATERIA
-     */
     public function destroy($id)
     {
         $course = Course::findOrFail($id);
-
-        if (\App\Models\Grade::where('course_id', $course->id)->exists()) {
-            return redirect()->back()->withErrors([
-                'delete' => 'No se puede eliminar la materia porque tiene calificaciones registradas para alumnos en el sistema.'
-            ]);
-        }
-        
-        // Desvincular grupos de la tabla intermedia antes de borrar para evitar fallos de llave foránea
-        $course->academicGroups()->detach();
-        
+        $course->groups()->detach();
         $course->delete();
 
-        return redirect()->back();
+        return redirect()->route('admin.materias.index')
+            ->with('message', 'Materia registrada eliminada con éxito.');
     }
-}
+}   

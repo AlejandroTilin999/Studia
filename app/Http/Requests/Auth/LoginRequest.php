@@ -30,7 +30,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'profile_type' => ['nullable', 'string'], // 👈 Hace nullable para compatibilidad con tests
+            'profile_type' => ['required', 'string'], // 👈 Recibe 'student' o 'staff' desde tu Login.tsx
         ];
     }
 
@@ -50,22 +50,20 @@ class LoginRequest extends FormRequest
         if ($user) {
             $profileType = $this->input('profile_type');
 
-            if ($profileType) {
-                // Validar si eligió la pestaña "Estudiante" pero NO tiene rol de alumno
-                if ($profileType === 'student' && $user->role !== 'alumno') {
-                    RateLimiter::hit($this->throttleKey());
-                    throw ValidationException::withMessages([
-                        'email' => 'Este correo no pertenece a una cuenta de estudiante.',
-                    ]);
-                }
+            // Validar si eligió la pestaña "Estudiante" pero NO tiene rol de alumno
+            if ($profileType === 'student' && $user->role !== 'alumno') {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Este correo no pertenece a una cuenta de estudiante.',
+                ]);
+            }
 
-                // Validar si eligió la pestaña "Personal" pero NO es docente ni admin
-                if ($profileType === 'staff' && !in_array($user->role, ['docente', 'admin'])) {
-                    RateLimiter::hit($this->throttleKey());
-                    throw ValidationException::withMessages([
-                        'email' => 'Este correo no pertenece al personal docente o administrativo.',
-                    ]);
-                }
+            // Validar si eligió la pestaña "Personal" pero NO es docente ni admin
+            if ($profileType === 'staff' && !in_array($user->role, ['docente', 'admin'])) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Este correo no pertenece al personal docente o administrativo.',
+                ]);
             }
         }
 

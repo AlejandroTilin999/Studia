@@ -19,6 +19,8 @@ export interface BackendStudent {
         name: string;
     };
     grades?: BackendGrade[];
+    telefono?: string;
+fecha_nacimiento?: string;
 }
 
 export interface AcademicGroupProp {
