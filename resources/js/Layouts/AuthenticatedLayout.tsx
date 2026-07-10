@@ -1,8 +1,8 @@
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
 import { usePage } from '@inertiajs/react';
 import Dropdown from '@/Components/Dropdown';
 import Sidebar, { SidebarProvider, useSidebar } from '@/Components/Sidebar';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft, Maximize, Minimize } from 'lucide-react';
 
 function LayoutContent({
     header,
@@ -10,6 +10,25 @@ function LayoutContent({
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const user = usePage().props.auth.user as any;
     const { expanded, setExpanded, openMobile, setOpenMobile, isMobile } = useSidebar();
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((err) => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
 
     return (
         <div className="h-screen w-full flex bg-[#f9fafb] overflow-hidden">
@@ -42,8 +61,17 @@ function LayoutContent({
                             </span>
                         </div>
 
-                        {/* Dropdown del Usuario */}
-                        <div className="flex items-center">
+                        {/* Dropdown del Usuario + Botón Pantalla Completa */}
+                        <div className="flex items-center gap-3">
+                            {/* Fullscreen Button */}
+                            <button
+                                onClick={toggleFullscreen}
+                                className="p-2 hover:bg-slate-50 rounded-xl text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center"
+                                title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+                            >
+                                {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                            </button>
+
                             <div className="relative">
                                 <Dropdown>
                                     <Dropdown.Trigger>

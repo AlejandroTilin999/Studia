@@ -44,6 +44,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       roles: ["ADMIN", "DOCENTE", "ALUMNO"]
     },
     {
+      name: "Tareas",
+      icon: ClipboardList,
+      path: "/alumno/tareas",
+      roles: ["ALUMNO"]
+    },
+    {
       name: "Alumnos",
       icon: GraduationCap,
       path: role === "ADMIN" ? "/admin/alumnos" : "/docente/grupos/show",

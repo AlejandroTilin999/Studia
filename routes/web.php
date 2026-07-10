@@ -162,6 +162,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 return Inertia::render('Alumno/Dashboard');
             })->name('alumno.dashboard');
 
+            Route::get('/tareas', function () {
+                return Inertia::render('Alumno/Dashboard', [
+                    'defaultView' => 'tareas'
+                ]);
+            })->name('alumno.tareas.index');
+
             Route::get('/calificaciones', function () {
                 return Inertia::render('Alumno/Calificaciones/Index');
             })->name('alumno.calificaciones.index');

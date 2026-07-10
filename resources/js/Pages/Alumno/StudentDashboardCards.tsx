@@ -6,6 +6,7 @@ interface Task {
     title: string;
     status: string;
     desc: string;
+    subjectName?: string;
 }
 
 interface StudentInfo {
@@ -24,12 +25,14 @@ interface StudentDashboardCardsProps {
     studentInfo: StudentInfo;
     taskList: Task[];
     onOpenTaskModal: (task: Task) => void;
+    onViewAllTasks?: () => void;
 }
 
 export default function StudentDashboardCards({
     studentInfo,
     taskList,
     onOpenTaskModal,
+    onViewAllTasks,
 }: StudentDashboardCardsProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -79,7 +82,18 @@ export default function StudentDashboardCards({
 
             {/* Card 3: Resumen de Tareas */}
             <div className="bg-slate-50 border border-slate-150 rounded-xl p-4 shadow-none flex flex-col justify-between min-h-[160px]">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block text-left">Resumen de tareas</h4>
+                <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider block text-left">Resumen de tareas</h4>
+                    {onViewAllTasks && (
+                        <button 
+                            type="button"
+                            onClick={onViewAllTasks}
+                            className="text-[10px] text-[#1e88e5] font-extrabold hover:underline"
+                        >
+                            Ver todas →
+                        </button>
+                    )}
+                </div>
                 <div className="flex-1 space-y-2.5">
                     {taskList.map((task, idx) => (
                         <div 
