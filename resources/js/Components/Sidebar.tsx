@@ -76,7 +76,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Grupos",
       icon: GalleryVerticalEnd,
-      path: role === "ADMIN" ? "/admin/grupos" : "/docente/grupos/show?id=ODU0NTA3NzkzNjM5",
+      path: role === "ADMIN" ? "/admin/grupos" : (user?.docenteGroups?.length > 0 ? `/docente/grupos/show?id=${user.docenteGroups[0].id}` : '/docente/dashboard'),
       roles: ["ADMIN", "DOCENTE"]
     },
     {
@@ -107,11 +107,8 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
   const filteredItems = menuItems.filter(item => item.roles.includes(role));
 
-  // Datos de los grupos del docente (simulados - en producción vendrían como props)
-  const docenteGroups = [
-    { id: 'ODU0NTA3NzkzNjM5', name: '1-A', materia: 'Matemáticas I', code: 'MAT-101' },
-    { id: 'ODU0NTA5MDk2Nzgx', name: '2-B', materia: 'Física I', code: 'FIS-101' },
-  ];
+  // Datos de los grupos del docente (leídos dinámicamente)
+  const docenteGroups = user?.docenteGroups || [];
 
   const [gruposOpen, setGruposOpen] = useState(() => {
     // Mantener abierto si la ruta actual es de grupos
@@ -183,8 +180,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     onClick={() => {
                       if (isMenuExpanded) {
                         setGruposOpen(prev => !prev);
-                      } else {
-                        router.visit('/docente/grupos/show?id=ODU0NTA3NzkzNjM5');
+                        const firstGroupId = docenteGroups.length > 0 ? docenteGroups[0].id : '';
+                        if (firstGroupId) {
+                          router.visit(`/docente/grupos/show?id=${firstGroupId}`);
+                        } else {
+                          router.visit('/docente/dashboard');
+                        }
                         if (isSheet) setOpenMobile(false);
                       }
                     }}
@@ -222,7 +223,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   {/* Sub-ítems de cada grupo */}
                   {isMenuExpanded && gruposOpen && (
                     <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
-                      {docenteGroups.map((g) => {
+                      {docenteGroups.map((g: any) => {
                         const groupPath = `/docente/grupos/show?id=${g.id}`;
                         const isGroupActive = pathname === '/docente/grupos/show' 
                           && (url.includes(`id=${g.id}`) || (url.includes(`grupo=${g.name}`) && url.includes(encodeURIComponent(g.materia))))

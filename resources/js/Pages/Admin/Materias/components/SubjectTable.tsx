@@ -27,13 +27,45 @@ export default function SubjectTable({
                 {
                     header: "Materia",
                     accessor: (row) => row.name,
-
-                    className: "text-slate-700 text-[13px] text-left leading-tight text-left",
+                    className: "text-slate-700 text-[13px] text-left leading-tight text-left font-normal",
+                },
+                {
+                    header: "Tipo",
+                    accessor: (row) => (
+                        <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-[12px] font-normal rounded-lg block w-fit text-left">
+                            {row.tipo}
+                        </span>
+                    ),
+                    className: "text-left",
+                },
+                {
+                    header: "Especialidad",
+                    accessor: (row) => {
+                        if (row.tipo === 'General') {
+                            return <span className="text-slate-500 font-medium text-xs">Todas las Carreras</span>;
+                        }
+                        if (!row.specialties || row.specialties.length === 0) {
+                            return <span className="text-slate-500 font-semibold text-xs">Sin asignar</span>;
+                        }
+                        return (
+                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                {row.specialties.map(spec => (
+                                    <span key={spec.id} className="text-slate-500 font-medium text-xs" title={spec.name}>
+                                        {spec.name}
+                                    </span>
+                                ))}
+                            </div>
+                        );
+                    },
+                    className: "text-left max-w-xs whitespace-normal break-words",
                 },
                 {
                     header: "Descripción",
-                    accessor: (row) => row.description || "Sin descripción",
-                    className: "text-slate-500 text-[12.5px] text-left max-w-sm whitespace-normal break-words ",
+                    accessor: (row) => {
+                        const desc = row.description || "Sin descripción";
+                        return desc.length > 50 ? desc.slice(0, 50) + '...' : desc;
+                    },
+                    className: "text-slate-500 text-[12.5px] text-left max-w-sm whitespace-normal break-words",
                 },
                 {
                     header: "Acciones",

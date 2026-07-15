@@ -9,33 +9,55 @@ import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import TeacherInfoCard from '@/Components/TeacherInfoCard';
 import TeacherRightSidebar from '@/Components/TeacherRightSidebar';
 
-export default function DocenteDashboard() {
-    // 1. Datos simulados del docente autenticado
-    const teacherInfo = {
+interface AssignedLoadItem {
+    id: string | number;
+    code: string;
+    subject: string;
+    groupName: string;
+    studentsCount: number;
+    schedule: string;
+    status: string;
+}
+
+interface DocenteDashboardProps {
+    teacherInfo?: {
+        name: string;
+        specialty: string;
+        email: string;
+    };
+    assignedLoad?: AssignedLoadItem[];
+}
+
+export default function DocenteDashboard({
+    teacherInfo: propTeacherInfo,
+    assignedLoad: propAssignedLoad
+}: DocenteDashboardProps) {
+    // 1. Datos del docente
+    const teacherInfo = propTeacherInfo || {
         name: 'Mtro. Francisco Javier Hernández',
         specialty: 'General',
         email: 'f.martinez@prepahidalgo.edu.mx'
     };
 
     // Materias y grupos asignados para el ciclo activo
-    const assignedLoad = [
+    const assignedLoad = propAssignedLoad || [
         { 
-            id: 1, 
+            id: 'ODU0NTA3NzkzNjM5', 
             code: 'MAT-101', 
             subject: 'Matemáticas I', 
             groupName: '1-A', 
             studentsCount: 22, 
             schedule: 'Lunes y Miércoles 07:00 - 08:40',
-            status: 'completed' // Notas completas del parcial
+            status: 'completed'
         },
         { 
-            id: 2, 
+            id: 'ODU0NTA5MDk2Nzgx', 
             code: 'FIS-101', 
             subject: 'Física I', 
             groupName: '2-B', 
             studentsCount: 18, 
             schedule: 'Martes y Jueves 08:40 - 10:20',
-            status: 'pending' // Notas pendientes de asentar
+            status: 'pending'
         }
     ];
 

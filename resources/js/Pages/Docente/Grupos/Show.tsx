@@ -67,6 +67,7 @@ export default function DocenteGruposShow() {
         sendPrivateMessage,
         getParcialAverage,
         getFinalAverage,
+        isParcialClosed,
         totalPct,
         pctValid
     } = useGroupClass();
@@ -120,18 +121,34 @@ export default function DocenteGruposShow() {
                             {PARCIALES.map(({ num, label }) => {
                                 const cfg = configs[num];
                                 const done = cfg?.configured;
+                                const isLocked = num === 2 
+                                    ? !isParcialClosed(1) 
+                                    : num === 3 
+                                    ? (!isParcialClosed(1) || !isParcialClosed(2)) 
+                                    : false;
+
                                 return (
                                     <div
                                         key={num}
-                                        className="bg-white border border-slate-100 rounded-2xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md hover:border-blue-100 transition-all cursor-pointer group text-left"
+                                        className={`bg-white border rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all text-left ${
+                                            isLocked 
+                                                ? 'opacity-60 border-slate-100 cursor-not-allowed select-none' 
+                                                : 'border-slate-100 hover:shadow-md hover:border-blue-100 cursor-pointer group'
+                                        }`}
                                         onClick={() => openParcial(num)}
                                     >
                                         {/* Badge estado */}
                                         <div className="flex items-center justify-between">
-                                            <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full ${done ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
-                                                {done ? '✓ Configurado' : 'Pendiente'}
-                                            </span>
-                                            {done && (
+                                            {isLocked ? (
+                                                <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 flex items-center gap-1">
+                                                    🔒 Bloqueado
+                                                </span>
+                                            ) : (
+                                                <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full ${done ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
+                                                    {done ? '✓ Configurado' : 'Pendiente'}
+                                                </span>
+                                            )}
+                                            {done && !isLocked && (
                                                 <button
                                                     onClick={e => { e.stopPropagation(); resetParcial(num); }}
                                                     className="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-300 hover:text-slate-500 transition-all"
@@ -162,13 +179,19 @@ export default function DocenteGruposShow() {
                                             </div>
                                         ) : (
                                             <p className="text-xs text-slate-400 font-semibold leading-relaxed">
-                                                Configura los criterios de evaluación para este parcial.
+                                                {isLocked 
+                                                    ? 'Se desbloqueará al concluir y calificar el parcial anterior.' 
+                                                    : 'Configura los criterios de evaluación para este parcial.'}
                                             </p>
                                         )}
 
                                         {/* CTA */}
                                         <div className="mt-auto pt-2">
-                                            {done ? (
+                                            {isLocked ? (
+                                                <div className="h-9 px-5 bg-slate-100 text-slate-400 rounded-t-full rounded-bl-full rounded-br-none flex items-center justify-center gap-1.5 text-[11px] font-black w-full select-none">
+                                                    Bloqueado
+                                                </div>
+                                            ) : done ? (
                                                 <div className="h-9 px-5 bg-[#0066CC] text-white rounded-t-full rounded-bl-full rounded-br-none flex items-center justify-center gap-1.5 text-[11px] font-black hover:bg-[#0055aa] transition-all hover:scale-[1.02] active:scale-[0.98] w-full">
                                                     <CheckCircle2 size={13} />
                                                     Ver calificaciones

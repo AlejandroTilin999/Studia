@@ -106,11 +106,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/cycles/{id}/close', [AcademicPeriodController::class, 'close'])->name('admin.cycles.close');
 
             // Usuarios globales del Panel Admin
-            Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
-            Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
-            Route::put('/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
-            Route::post('/users/{id}/toggle', [UserController::class, 'toggleStatus'])->name('admin.users.toggle');
-            Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset_password');
+            Route::get('/usuarios', [UserController::class, 'index'])->name('admin.users.index');
+            Route::post('/usuarios', [UserController::class, 'store'])->name('admin.users.store');
+            Route::put('/usuarios/{id}', [UserController::class, 'update'])->name('admin.users.update');
+            Route::post('/usuarios/{id}/toggle', [UserController::class, 'toggleStatus'])->name('admin.users.toggle');
+            Route::post('/usuarios/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset_password');
 
             Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
             Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
@@ -156,15 +156,73 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         Route::prefix('docente')->group(function () {
             Route::get('/dashboard', function () {
-                return Inertia::render('Docente/Dashboard');
+                $user = auth()->user();
+                $teacher = \App\Models\Teacher::where('user_id', $user->id)->first();
+                
+                $loads = [];
+                if ($teacher) {
+                    $loads = \App\Models\AcademicLoad::where('teacher_id', $teacher->id)
+                        ->with(['academicGroup', 'course'])
+                        ->get()
+                        ->map(function ($load) {
+                            return [
+                                'id' => $load->uuid,
+                                'code' => $load->course->code ?? 'N/A',
+                                'subject' => $load->course->name ?? 'N/A',
+                                'groupName' => $load->academicGroup->name ?? 'N/A',
+                                'studentsCount' => \App\Models\Enrollment::where('academic_group_id', $load->academic_group_id)
+                                    ->where('status', 'active')
+                                    ->count(),
+                                'schedule' => 'Lunes y Miércoles 07:00 - 08:40',
+                                'status' => 'pending',
+                            ];
+                        });
+                }
+
+                return Inertia::render('Docente/Dashboard', [
+                    'assignedLoad' => $loads,
+                    'teacherInfo' => $teacher ? [
+                        'name' => trim("{$teacher->nombre} {$teacher->apellido_paterno} " . ($teacher->apellido_materno ?? '')),
+                        'specialty' => $teacher->specialty ?? 'General',
+                        'email' => $user->email,
+                    ] : null
+                ]);
             })->name('docente.dashboard');
 
             Route::get('/grupos', function () {
                 return Inertia::render('Docente/Grupos/Index');
             })->name('docente.grupos.index');
 
-            Route::get('/grupos/show', function () {
-                return Inertia::render('Docente/Grupos/Show');
+            Route::get('/grupos/show', function (Illuminate\Http\Request $request) {
+                $uuid = $request->query('id');
+                $load = \App\Models\AcademicLoad::where('uuid', $uuid)
+                    ->with(['academicGroup', 'course'])
+                    ->first();
+                
+                $students = [];
+                if ($load) {
+                    $students = \App\Models\Enrollment::where('academic_group_id', $load->academic_group_id)
+                        ->where('status', 'active')
+                        ->with('user')
+                        ->get()
+                        ->map(function ($enrollment) {
+                            return [
+                                'id' => $enrollment->user_id,
+                                'name' => $enrollment->user->name ?? 'Sin nombre',
+                                'matricula' => $enrollment->student_code ?? 'N/A',
+                            ];
+                        })->toArray();
+                }
+
+                return Inertia::render('Docente/Grupos/Show', [
+                    'classInfo' => $load ? [
+                        'id' => $load->uuid,
+                        'groupName' => $load->academicGroup->name ?? 'N/A',
+                        'subject' => $load->course->name ?? 'N/A',
+                        'code' => $load->course->code ?? 'N/A',
+                        'students' => $students,
+                    ] : null
+                ]);
             })->name('docente.grupos.show');
         });
 

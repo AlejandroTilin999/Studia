@@ -17,6 +17,7 @@ interface UserFormModalProps {
         role: 'admin' | 'docente' | 'alumno';
         status: 'active' | 'inactive';
         password?: string;
+        phone?: string;
     }) => void;
     saveStatus?: 'idle' | 'saving' | 'success' | 'error';
 }
@@ -30,38 +31,110 @@ export default function UserFormModal({
     saveStatus = 'idle',
 }: UserFormModalProps) {
     const [formData, setFormData] = useState({
-        name: '',
+        nombre: '',
+        apellido_paterno: '',
+        apellido_materno: '',
         email: '',
-        role: 'alumno' as 'admin' | 'docente' | 'alumno',
+        role: 'admin' as 'admin' | 'docente' | 'alumno',
         status: 'active' as 'active' | 'inactive',
         password: '',
+        phone: '',
     });
+
+    const parseFullName = (fullName: string) => {
+        const parts = fullName.trim().split(/\s+/);
+        if (parts.length === 1) {
+            return { nombre: parts[0], paterno: '', materno: '' };
+        } else if (parts.length === 2) {
+            return { nombre: parts[0], paterno: parts[1], materno: '' };
+        } else {
+            const materno = parts[parts.length - 1];
+            const paterno = parts[parts.length - 2];
+            const nombre = parts.slice(0, parts.length - 2).join(' ');
+            return { nombre, paterno, materno };
+        }
+    };
 
     useEffect(() => {
         if (isOpen) {
             if (mode === 'edit' && user) {
+                const parsed = parseFullName(user.name);
                 setFormData({
-                    name: user.name,
+                    nombre: parsed.nombre,
+                    apellido_paterno: parsed.paterno,
+                    apellido_materno: parsed.materno,
                     email: user.email,
                     role: user.role,
                     status: user.status,
                     password: '',
+                    phone: user.telefono || '',
                 });
             } else {
                 setFormData({
-                    name: '',
+                    nombre: '',
+                    apellido_paterno: '',
+                    apellido_materno: '',
                     email: '',
-                    role: 'alumno',
+                    role: 'admin',
                     status: 'active',
                     password: '',
+                    phone: '',
                 });
             }
         }
     }, [isOpen, mode, user]);
 
+    const generateEmailFromName = (nombre: string, paterno: string) => {
+        if (!nombre) return '';
+        
+        const cleanWord = (word: string) => {
+            return word
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]/g, "");
+        };
+
+        const cleanName = cleanWord(nombre.split(/\s+/)[0]);
+        const cleanPaterno = paterno ? cleanWord(paterno.split(/\s+/)[0]) : 'admin';
+        
+        return `${cleanName}.${cleanPaterno}@prepahidalgo.edu.mx`;
+    };
+
+    const handleNameChange = (val: string) => {
+        setFormData(prev => {
+            const next = { ...prev, nombre: val };
+            if (mode === 'create') {
+                next.email = generateEmailFromName(val, prev.apellido_paterno);
+            }
+            return next;
+        });
+    };
+
+    const handlePaternoChange = (val: string) => {
+        setFormData(prev => {
+            const next = { ...prev, apellido_paterno: val };
+            if (mode === 'create') {
+                next.email = generateEmailFromName(prev.nombre, val);
+            }
+            return next;
+        });
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(formData);
+        const fullName = [formData.nombre, formData.apellido_paterno, formData.apellido_materno]
+            .filter(Boolean)
+            .join(' ');
+        onSubmit({
+            name: fullName,
+            email: formData.email,
+            role: formData.role,
+            status: formData.status,
+            password: formData.password,
+            phone: formData.phone,
+        });
     };
 
     return (
@@ -150,15 +223,47 @@ export default function UserFormModal({
                     <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[360px] relative">
                         <div className="space-y-4 flex-1 pr-2">
 
-                            {/* Nombre */}
+                            {/* Nombres */}
                             <div className="space-y-1.5 text-left">
-                                <FormLabel required>Nombre Completo</FormLabel>
+                                <FormLabel required>Nombres</FormLabel>
                                 <FormInput
                                     required
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Ej: Ing. Francisco Javier Martínez"
+                                    value={formData.nombre}
+                                    onChange={e => handleNameChange(e.target.value)}
+                                    placeholder="Ej: Francisco Javier"
                                     icon={<User size={16} />}
+                                />
+                            </div>
+
+                            {/* Apellidos */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5 text-left">
+                                    <FormLabel required>Apellido Paterno</FormLabel>
+                                    <FormInput
+                                        required
+                                        value={formData.apellido_paterno}
+                                        onChange={e => handlePaternoChange(e.target.value)}
+                                        placeholder="Ej: Martínez"
+                                    />
+                                </div>
+                                <div className="space-y-1.5 text-left">
+                                    <FormLabel required>Apellido Materno</FormLabel>
+                                    <FormInput
+                                        required
+                                        value={formData.apellido_materno}
+                                        onChange={e => setFormData({ ...formData, apellido_materno: e.target.value })}
+                                        placeholder="Ej: López"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Celular / Teléfono */}
+                            <div className="space-y-1.5 text-left">
+                                <FormLabel>Número de Celular</FormLabel>
+                                <FormInput
+                                    value={formData.phone}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                    placeholder="Ej: 4878787997"
                                 />
                             </div>
 
@@ -199,8 +304,12 @@ export default function UserFormModal({
                                         onChange={e => setFormData({ ...formData, role: e.target.value as any })}
                                     >
                                         <option value="admin">Administrador</option>
-                                        <option value="docente">Docente</option>
-                                        <option value="alumno">Alumno</option>
+                                        {mode === 'edit' && (
+                                            <>
+                                                <option value="docente">Docente</option>
+                                                <option value="alumno">Alumno</option>
+                                            </>
+                                        )}
                                     </FormSelect>
                                 </div>
 

@@ -23,7 +23,7 @@ export default function QuickActionsWidget({ title = "Accesos rápidos", actions
             <button
               key={index}
               onClick={action.onClick}
-              className="w-full bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-10 rounded-xl justify-start px-4 gap-2.5 text-xs transition-all flex items-center shadow-none active:scale-[0.98] focus:outline-none"
+              className="w-full bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-14 rounded-xl justify-start px-4 gap-2.5 text-sm transition-all flex items-center shadow-none active:scale-[0.98] focus:outline-none"
             >
               <Icon className="w-3.5 h-3.5 shrink-0 stroke-[3]" />
               <span>{action.label}</span>

@@ -15,8 +15,21 @@ class AcademicLoad extends Model
         'academic_period_id',
         'academic_group_id',
         'course_id',
-        'teacher_id'
+        'teacher_id',
+        'uuid'
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                do {
+                    $uuid = strtoupper(\Illuminate\Support\Str::random(12));
+                } while (static::where('uuid', $uuid)->exists());
+                $model->uuid = $uuid;
+            }
+        });
+    }
 
     /**
      * Relación con el Ciclo Escolar (AcademicPeriod)

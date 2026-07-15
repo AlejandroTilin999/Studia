@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePage } from '@inertiajs/react';
 import { 
     Criterion, 
     Task, 
@@ -36,14 +37,29 @@ function saveConfig(grupo: string, materia: string, parcial: number, config: Par
 export type Screen = 'parciales' | 'wizard' | 'grades';
 
 export function useGroupClass() {
+    const { classInfo } = usePage().props as any;
+
     // 1. Resolver grupo, materia e ID de carga académica
     const [loadId, setLoadId] = useState<string | null>(null);
     const [grupo, setGrupo] = useState('1-A');
     const [materia, setMateria] = useState('Matemáticas I');
     const [themeKey, setThemeKey] = useState<string>('blue');
     const [showPaletteMenu, setShowPaletteMenu] = useState(false);
+    const [students, setStudents] = useState<any[]>(() => {
+        return classInfo?.students || MOCK_STUDENTS;
+    });
 
     useEffect(() => {
+        if (classInfo) {
+            setLoadId(classInfo.id);
+            setGrupo(classInfo.groupName);
+            setMateria(classInfo.subject);
+            if (classInfo.students) {
+                setStudents(classInfo.students);
+            }
+            return;
+        }
+
         const params = new URLSearchParams(window.location.search);
         const queryId = params.get('id');
         const queryGrupo = params.get('grupo');
@@ -55,7 +71,6 @@ export function useGroupClass() {
                 setLoadId(load.id);
                 setGrupo(load.groupName);
                 setMateria(load.subject);
-                // Si accedió con los IDs antiguos '1' o '2', forzamos a reescribir la URL al nuevo Hash
                 if (queryId === '1' || queryId === '2') {
                     window.history.replaceState(null, '', `/docente/grupos/show?id=${load.id}`);
                 }
@@ -68,11 +83,10 @@ export function useGroupClass() {
             const load = getLoadByParams(queryGrupo, queryMateria);
             if (load) {
                 setLoadId(load.id);
-                // Actualizar la URL de forma transparente sin recargar la página
                 window.history.replaceState(null, '', `/docente/grupos/show?id=${load.id}`);
             }
         }
-    }, []);
+    }, [classInfo]);
 
     // 2. Control del tema visual
     useEffect(() => {
@@ -146,6 +160,15 @@ export function useGroupClass() {
 
     function resetConfig() {
         if (!activeParcial) return;
+        if (activeParcial === 2 && !isParcialClosed(1)) {
+            alert('No se puede reconfigurar el Segundo Parcial. Primero debes concluir y cerrar el Primer Parcial.');
+            return;
+        }
+        if (activeParcial === 3 && (!isParcialClosed(1) || !isParcialClosed(2))) {
+            alert('No se puede reconfigurar el Tercer Parcial. Primero debes concluir y cerrar los parciales anteriores.');
+            return;
+        }
+
         const freshCriteria = configs[activeParcial]?.criteria?.length
             ? configs[activeParcial].criteria.map(c => ({ ...c }))
             : DEFAULT_CRITERIA.map(c => ({ ...c }));
@@ -176,7 +199,7 @@ export function useGroupClass() {
             if (storedGrades) {
                 setStudentGrades(JSON.parse(storedGrades) as StudentGrade[]);
             } else {
-                setStudentGrades(MOCK_STUDENTS.map(s => ({ ...s, scores: {} })));
+                setStudentGrades(students.map(s => ({ ...s, scores: {} })));
             }
 
             // Cargar tareas
@@ -206,7 +229,7 @@ export function useGroupClass() {
                 localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`, JSON.stringify(defaultTasks));
             }
         }
-    }, [activeParcial, grupo, materia]);
+    }, [activeParcial, grupo, materia, students]);
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
@@ -232,6 +255,15 @@ export function useGroupClass() {
     }
 
     function openParcial(parcialNum: number) {
+        if (parcialNum === 2 && !isParcialClosed(1)) {
+            alert('No se puede configurar ni acceder al Segundo Parcial. Primero debes concluir y cerrar el Primer Parcial.');
+            return;
+        }
+        if (parcialNum === 3 && (!isParcialClosed(1) || !isParcialClosed(2))) {
+            alert('No se puede configurar ni acceder al Tercer Parcial. Primero debes concluir y cerrar los parciales anteriores.');
+            return;
+        }
+
         setActiveParcial(parcialNum);
         setActiveTab('grades');
         setSelectedTaskId(null);
@@ -337,7 +369,7 @@ export function useGroupClass() {
         if (stored) {
             studentGradesList = JSON.parse(stored);
         } else {
-            studentGradesList = MOCK_STUDENTS.map(s => ({ ...s, scores: {} }));
+            studentGradesList = students.map(s => ({ ...s, scores: {} }));
         }
 
         const sGrade = studentGradesList.find(sg => sg.id === studentId);
@@ -375,6 +407,16 @@ export function useGroupClass() {
         }, 0);
 
         return parseFloat(avg.toFixed(1));
+    }
+
+    function isParcialClosed(parcialNum: number): boolean {
+        const cfg = configs[parcialNum] || loadConfig(grupo, materia, parcialNum);
+        if (!cfg || !cfg.configured) return false;
+
+        return students.every(student => {
+            const avg = getParcialAverage(student.id, parcialNum);
+            return typeof avg === 'number';
+        });
     }
 
     function getFinalAverage(studentId: number): number | string {
@@ -442,6 +484,7 @@ export function useGroupClass() {
         sendPrivateMessage,
         getParcialAverage,
         getFinalAverage,
+        isParcialClosed,
         totalPct,
         pctValid
     };

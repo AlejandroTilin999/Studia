@@ -54,9 +54,9 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
     // 1. Datos simulados del alumno
     const studentInfo = {
         name: auth?.user?.name || 'José Eduardo Gómez López',
-        matricula: 'PH2026-001',
-        groupName: '1°A',
-        email: 'jose.gomez@alumno.prepahidalgo.edu.mx',
+        matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'PH2026-001',
+        groupName: auth?.user?.alumnoGroups?.[0]?.groupName || '1°A',
+        email: auth?.user?.email || 'jose.gomez@alumno.prepahidalgo.edu.mx',
         registeredAt: 'Agosto 2025',
         gpa: '10',
         tutor: 'Ing. Uriel Cambron',
@@ -64,27 +64,14 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
         periodo: '(Enero-Abril 2026)'
     };
 
-    // Catálogo de materias
-    const subjects: Subject[] = [
-        { 
-            name: 'Desarrollo para dispositivos inteligentes', 
-            iconName: 'smartphone', 
-            teacher: 'Dra. Ana Karen Camacho', 
-            description: 'Crea aplicaciones móviles nativas y multiplataforma con las últimas tecnologías.' 
-        },
-        { 
-            name: 'Física I', 
-            iconName: 'atom', 
-            teacher: 'Mtro. Francisco Javier Hernández', 
-            description: 'Leyes del movimiento, cinemática y mecánica fundamental en el espacio físico.' 
-        },
-        { 
-            name: 'Matemáticas I', 
-            iconName: 'compass', 
-            teacher: 'Ing. Uriel Cambron', 
-            description: 'Cálculo diferencial, álgebra lineal y fundamentos de trigonometría aplicada.' 
-        }
-    ];
+    // Catálogo de materias leídas dinámicamente
+    const subjects = (auth?.user?.alumnoGroups || []).map((group: any) => ({
+        id: group.id,
+        name: group.name,
+        iconName: 'compass',
+        teacher: group.teacher,
+        description: group.description
+    }));
 
     // Listado general de tareas
     const [taskList, setTaskList] = useState<Task[]>([
@@ -169,7 +156,7 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
                                     studentInfo={studentInfo}
                                     taskList={taskList}
                                     onOpenTaskModal={(task) => {
-                                        const sub = subjects.find(s => s.name === task.subjectName);
+                                        const sub = subjects.find((s: any) => s.name === task.subjectName);
                                         if (sub) {
                                             setCurrentView('tareas');
                                             setSelectedSubject(sub);

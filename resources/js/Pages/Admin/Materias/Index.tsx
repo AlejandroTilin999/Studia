@@ -11,14 +11,16 @@ import { useExportExcel } from '@/hooks/useExportExcel';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
-export default function MateriasIndex({ materias = [], profesores = [], grupos = [] }: MateriasIndexProps) {
+export default function MateriasIndex({ materias = [], profesores = [], grupos = [], specialties = [] }: MateriasIndexProps) {
     const formattedSubjects: SubjectFormatted[] = materias.map(course => ({
         id: course.id,
         code: course.codigo || 'S/C',
         name: course.nombre || 'Sin nombre',
+        tipo: course.tipo || 'General',
         teacherName: course.profesor || 'Pendiente de Asignación',
         linkedGroups: course.grupos || [],
-        description: course.descripcion || 'Sin descripción disponible.'
+        description: course.descripcion || 'Sin descripción disponible.',
+        specialties: course.especialidades || []
     }));
 
     // Cargamos los grupos directamente desde la base de datos
@@ -45,15 +47,19 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         code: '',
         name: '',
         description: '',
+        tipo: 'General' as 'General' | 'Especialidad',
         teacher_id: '' as string | number,
-        linked_groups: [] as string[]
+        linked_groups: [] as string[],
+        specialty_ids: [] as number[]
     });
 
     const handleExportExcel = () => {
-        const headers = ["Código", "Nombre de la Materia", "Profesor Asignado", "Grupos Vinculados"];
+        const headers = ["Código", "Nombre de la Materia", "Tipo", "Especialidades", "Profesor Asignado", "Grupos Vinculados"];
         const rows = filteredSubjects.map(s => [
             s.code,
             s.name,
+            s.tipo,
+            s.tipo === 'General' ? 'Todas' : s.specialties.map(sp => sp.name).join(', '),
             s.teacherName,
             s.linkedGroups.join(', ') || 'Sin grupos'
         ]);
@@ -89,8 +95,10 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             code: subject.code,
             name: subject.name,
             description: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
+            tipo: subject.tipo || 'General',
             teacher_id: '1', // ID referencial simulado para tu select de docentes
-            linked_groups: subject.linkedGroups || []
+            linked_groups: subject.linkedGroups || [],
+            specialty_ids: subject.specialties ? subject.specialties.map(s => s.id) : []
         });
         setIsModalOpen(true);
     };
@@ -230,6 +238,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 saveStatus={saveStatus}
                 profesores={profesores}
                 grupos={grupos}
+                specialties={specialties}
                 existingCodes={formattedSubjects.map(s => s.code)}
             />
 

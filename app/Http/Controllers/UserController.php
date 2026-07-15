@@ -21,10 +21,11 @@ class UserController extends Controller
                 'email' => $u->email,
                 'role' => $u->role ?? 'admin',
                 'status' => ($u->activo !== false) ? 'active' : 'inactive',
+                'telefono' => $u->telefono ?? '',
             ];
         });
 
-        return Inertia::render('Admin/Users/Index', [
+        return Inertia::render('Admin/Usuarios/Index', [
             'dbUsers' => $users
         ]);
     }
@@ -37,6 +38,7 @@ class UserController extends Controller
             'role' => 'required|string|in:admin,docente,alumno',
             'status' => 'required|string|in:active,inactive',
             'password' => 'required|string|min:6',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -46,6 +48,7 @@ class UserController extends Controller
                 'password' => Hash::make($request->password),
                 'role' => $request->role,
                 'activo' => $request->status === 'active',
+                'telefono' => $request->phone,
             ]);
 
             // Si es docente o alumno, crear perfil base si no existe
@@ -77,6 +80,7 @@ class UserController extends Controller
             'email' => "required|string|email|max:255|unique:users,email,{$user->id}",
             'role' => 'required|string|in:admin,docente,alumno',
             'status' => 'required|string|in:active,inactive',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         DB::transaction(function () use ($request, $user) {
@@ -85,6 +89,7 @@ class UserController extends Controller
                 'email' => $request->email,
                 'role' => $request->role,
                 'activo' => $request->status === 'active',
+                'telefono' => $request->phone,
             ]);
 
             // Sincronizar perfiles

@@ -15,8 +15,10 @@ interface SubjectFormModalProps {
         code: string;
         name: string;
         description: string;
+        tipo: 'General' | 'Especialidad';
         teacher_id: string | number;
         linked_groups: string[];
+        specialty_ids: number[];
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -25,6 +27,7 @@ interface SubjectFormModalProps {
     saveStatus?: 'idle' | 'saving' | 'success' | 'error';
     profesores: any[];
     grupos: any[];
+    specialties: any[];
     existingCodes?: string[];
 }
 
@@ -41,8 +44,11 @@ export default function SubjectFormModal({
     saveStatus = 'idle',
     profesores = [],
     grupos = [],
+    specialties = [],
     existingCodes = [],
 }: SubjectFormModalProps) {
+    console.log("SubjectFormModal - Specialties:", specialties);
+
     const generateSubjectCode = (name: string) => {
         if (!name) return '';
         
@@ -127,7 +133,7 @@ export default function SubjectFormModal({
                     <p className="font-extrabold text-slate-800 text-sm">
                         {mode === 'create' ? 'Registrando asignatura...' : 'Guardando cambios...'}
                     </p>
-                    <p className="text-xs text-slate-400 font-bold">Por favor, espera un momento.</p>
+                    <p className="text-xs text-slate-455 font-bold">Por favor, espera un momento.</p>
                 </div>
             )}
 
@@ -139,7 +145,7 @@ export default function SubjectFormModal({
                         </svg>
                     </div>
                     <h3 className="font-extrabold text-slate-800 text-base">¡Operación Exitosa!</h3>
-                    <p className="text-xs text-slate-500 font-medium text-center">
+                    <p className="text-xs text-slate-550 font-medium text-center">
                         {mode === 'create' ? 'La materia ha sido registrada con éxito.' : 'Los cambios han sido guardados correctamente.'}
                     </p>
                 </div>
@@ -226,10 +232,63 @@ export default function SubjectFormModal({
                                     placeholder="Escribe el alcance o temas clave..."
                                     value={data.description}
                                     onChange={e => setData('description', e.target.value)}
-                                    rows={3}
+                                    rows={2}
                                 />
                                 {errors.description && <span className="text-red-500 text-[10px] mt-1 block">{errors.description}</span>}
                             </div>
+
+                            {/* Tipo de Materia Selector */}
+                            <div className="space-y-1.5 text-left">
+                                <FormLabel required>Tipo de Materia</FormLabel>
+                                <FormSelect
+                                    value={data.tipo}
+                                    onChange={e => {
+                                        const val = e.target.value as 'General' | 'Especialidad';
+                                        setData('tipo', val);
+                                        if (val === 'General') {
+                                            setData('specialty_ids', []);
+                                        }
+                                    }}
+                                >
+                                    <option value="General">General</option>
+                                    <option value="Especialidad">Especialidad</option>
+                                </FormSelect>
+                                {errors.tipo && <span className="text-red-500 text-[10px] mt-1 block">{errors.tipo}</span>}
+                            </div>
+
+                            {/* Selector de Especialidades/Carreras */}
+                            {data.tipo === 'Especialidad' && (
+                                <div className="space-y-1.5 text-left pt-1">
+                                    <FormLabel required>Carreras / Especialidades asociadas</FormLabel>
+                                    {specialties.length === 0 ? (
+                                        <p className="text-[11px] text-slate-450 italic">Crea especialidades en el panel de control para vincularlas.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[90px] overflow-y-auto border border-slate-100 p-2.5 rounded-lg bg-slate-50/50">
+                                            {specialties.map(spec => {
+                                                const isChecked = data.specialty_ids.includes(spec.id);
+                                                return (
+                                                    <label key={spec.id} className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={() => {
+                                                                if (isChecked) {
+                                                                    setData('specialty_ids', data.specialty_ids.filter(id => id !== spec.id));
+                                                                } else {
+                                                                    setData('specialty_ids', [...data.specialty_ids, spec.id]);
+                                                                }
+                                                            }}
+                                                            className="rounded border-slate-200 text-[#1e88e5] focus:ring-[#1e88e5] h-3.5 w-3.5"
+                                                        />
+                                                        <span className="truncate">{spec.name}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {errors.specialty_ids && <span className="text-red-500 text-[10px] mt-1 block">{errors.specialty_ids}</span>}
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer de Navegación Aligned Right */}

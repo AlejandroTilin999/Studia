@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
+import { GraduationCap, Users, FileText } from 'lucide-react';
 import UserTable, { MockUser } from './UserTable';
 import UserTableControls from './UserTableControls';
 import UserFormModal from './UserFormModal';
@@ -55,12 +56,13 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
         setSaveStatus('saving');
         
         if (modalMode === 'create') {
-            router.post('/admin/users', {
+            router.post('/admin/usuarios', {
                 name: formData.name,
                 email: formData.email,
                 role: formData.role,
                 status: formData.status,
-                password: formData.password || 'Prepahid2026'
+                password: formData.password || 'Prepahid2026',
+                phone: formData.phone
             }, {
                 onSuccess: () => {
                     setSaveStatus('success');
@@ -76,11 +78,12 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 }
             });
         } else if (modalMode === 'edit' && selectedUser) {
-            router.put(`/admin/users/${selectedUser.id}`, {
+            router.put(`/admin/usuarios/${selectedUser.id}`, {
                 name: formData.name,
                 email: formData.email,
                 role: formData.role,
-                status: formData.status
+                status: formData.status,
+                phone: formData.phone
             }, {
                 onSuccess: () => {
                     setSaveStatus('success');
@@ -100,7 +103,7 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
 
     // Alternar estado activo/inactivo
     const toggleStatus = (user: MockUser) => {
-        router.post(`/admin/users/${user.id}/toggle`, {}, {
+        router.post(`/admin/usuarios/${user.id}/toggle`, {}, {
             onSuccess: () => {
                 const newStatus = user.status === 'active' ? 'INACTIVO' : 'ACTIVO';
                 triggerToast(`Usuario "${user.name}" marcado como ${newStatus}.`);
@@ -110,7 +113,7 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
 
     // Simular restablecimiento de contraseña
     const handleResetPassword = (user: MockUser) => {
-        router.post(`/admin/users/${user.id}/reset-password`, {}, {
+        router.post(`/admin/usuarios/${user.id}/reset-password`, {}, {
             onSuccess: () => {
                 triggerToast(`Contraseña restablecida a Prepahid2026 para: ${user.email}`);
             }
@@ -138,7 +141,9 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 { code: "T2", label: "Alumnos", value: studentCount }
             ]}
             quickActions={[
-                { label: "Registrar Cuenta", onClick: openCreateModal }
+                { label: "Ver docentes", onClick: () => router.visit('/admin/docentes'), icon: Users },
+                { label: "Ver alumnos", onClick: () => router.visit('/admin/alumnos'), icon: GraduationCap },
+                { label: "Ver reportes", onClick: () => router.visit('/admin/reportes'), icon: FileText }
             ]}
             donutChartTitle="Estado de Cuentas"
             donutChartLabel="usuarios"

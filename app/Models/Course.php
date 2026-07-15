@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Course extends Model
 {
     protected $table = 'materias';
-    protected $fillable = ['code', 'name', 'description', 'teacher_id'];
+    protected $fillable = ['code', 'name', 'description', 'teacher_id', 'tipo'];
 
     public function teacher()
     {
@@ -27,5 +27,10 @@ class Course extends Model
     public function academicLoads()
     {
         return $this->hasMany(AcademicLoad::class, 'course_id');
+    }
+
+    public function specialties()
+    {
+        return $this->belongsToMany(Specialty::class, 'especialidad_materia', 'materia_id', 'especialidad_id');
     }
 }

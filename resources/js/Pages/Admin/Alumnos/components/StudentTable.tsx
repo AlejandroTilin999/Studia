@@ -28,7 +28,7 @@ export default function StudentTable({
             header: "Nombre",
             accessor: (student: StudentFormatted) => (
                 <div className="leading-tight">
-                    <span className="text-slate-700 font-medium text-[14px] block">{student.name}</span>
+                    <span className="text-slate-700 font-normal text-[14px] block">{student.name}</span>
                     <span className="text-[10.5px] text-slate-400 font-medium">{student.email}</span>
                 </div>
             ),

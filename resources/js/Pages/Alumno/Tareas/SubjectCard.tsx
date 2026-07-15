@@ -1,6 +1,8 @@
 import * as React from 'react';
+import { router } from '@inertiajs/react';
 
 interface Subject {
+    id?: string;
     name: string;
     iconName: string;
     teacher: string;
@@ -59,7 +61,13 @@ export default function SubjectCard({ subjects, onSelectSubject }: SubjectCardPr
                             {/* Asymmetrical Login style Access Button */}
                             <button
                                 type="button"
-                                onClick={() => onSelectSubject(sub)}
+                                onClick={() => {
+                                    if (sub.id) {
+                                        router.visit(`/docente/grupos/show?id=${sub.id}`);
+                                    } else {
+                                        onSelectSubject(sub);
+                                    }
+                                }}
                                 className="h-9 px-5 bg-[#0266E0] hover:bg-blue-700 text-white rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-[10px] font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0 w-fit"
                             >
                                 Acceder

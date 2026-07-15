@@ -8,6 +8,7 @@ export interface MockUser {
     email: string;
     role: 'admin' | 'docente' | 'alumno';
     status: 'active' | 'inactive';
+    telefono?: string;
 }
 
 interface UserTableProps {
@@ -46,11 +47,13 @@ export default function UserTable({
                 {
                     header: "Rol",
                     accessor: (row) => (
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${row.role === 'admin' ? 'bg-purple-50 text-purple-700' :
-                                row.role === 'docente' ? 'bg-amber-50 text-amber-700' :
-                                    'bg-blue-50 text-blue-700'
-                            }`}>
-                            <Shield size={12} />
+                        <span className={`flex items-center justify-center w-[110px] h-7 rounded-lg text-xs font-normal border ${
+                            row.role === 'admin' 
+                                ? 'bg-purple-50 text-purple-700 border-purple-100' 
+                                : row.role === 'docente' 
+                                    ? 'bg-amber-50 text-amber-700 border-amber-100' 
+                                    : 'bg-blue-50 text-blue-700 border-blue-100'
+                        }`}>
                             {row.role === 'admin' ? 'Administrador' :
                                 row.role === 'docente' ? 'Docente' : 'Alumno'}
                         </span>
@@ -62,10 +65,11 @@ export default function UserTable({
                         <button
                             type="button"
                             onClick={() => onToggleStatus(row)}
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold transition-all ${row.status === 'active'
-                                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                                }`}
+                            className={`flex items-center justify-center w-[110px] h-7 rounded-lg text-xs font-normal border transition-all ${
+                                row.status === 'active'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
+                                    : 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'
+                            }`}
                         >
                             {row.status === 'active' ? 'Activo' : 'Inactivo'}
                         </button>

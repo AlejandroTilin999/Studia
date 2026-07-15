@@ -166,7 +166,7 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
                 <button 
                     type="button"
                     onClick={openCreateModal}
-                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg w-full md:w-auto text-sm transition-all shadow-none flex items-center justify-center gap-2"
+                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg w-full md:w-auto text-sm transition-all shadow-none flex items-center justify-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
                     Registrar especialidad
