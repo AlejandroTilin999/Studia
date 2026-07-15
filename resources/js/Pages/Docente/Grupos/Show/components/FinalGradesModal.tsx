@@ -1,10 +1,10 @@
 import React from 'react';
-import { FileText, X, Users, CheckCircle, GraduationCap } from 'lucide-react';
+import { FileText, X, Users, CheckCircle } from 'lucide-react';
 import AppTable from '@/Components/table/AppTable';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
-import { MOCK_STUDENTS, MINIMUM_PASSING_GRADE, StudentGrade } from '../services/constants';
+import { MOCK_STUDENTS, MINIMUM_PASSING_GRADE } from '../services/constants';
 
 interface FinalGradesModalProps {
     isOpen: boolean;
