@@ -7,7 +7,7 @@ import { Input } from "@/Components/Input";
 import { Label } from "@/Components/Label";
 import { cn } from "@/lib/utils";
 import Button from "@/Components/ui/button";
-import { ChevronLeft, GraduationCap, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, User, Lock, Mail, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [profile, setProfile] = useState<"student" | "staff">("student");

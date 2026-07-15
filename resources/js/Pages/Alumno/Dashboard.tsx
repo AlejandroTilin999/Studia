@@ -5,7 +5,6 @@ import { Calendar, Check } from 'lucide-react';
 import StudentRightSidebar from '@/Components/StudentRightSidebar';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import StudentDashboardCards from './StudentDashboardCards';
-import StudentFeaturedSubjects from './StudentFeaturedSubjects';
 
 // Componentes modulares (Organizados en carpetas correspondientes)
 import SubjectCard from './Tareas/SubjectCard';
@@ -54,12 +53,12 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
 
     // 1. Datos simulados del alumno
     const studentInfo = {
-        name: auth?.user?.name || 'José Eduardo Gómez',
+        name: auth?.user?.name || 'José Eduardo Gómez López',
         matricula: 'PH2026-001',
         groupName: '1°A',
         email: 'jose.gomez@alumno.prepahidalgo.edu.mx',
         registeredAt: 'Agosto 2025',
-        gpa: '9.3',
+        gpa: '10',
         tutor: 'Ing. Uriel Cambron',
         ciclo: '2025-2026',
         periodo: '(Enero-Abril 2026)'
@@ -149,10 +148,10 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
         : [];
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout noPadding>
             <Head title={currentView === 'tareas' ? "Mis Tareas" : "Mi Perfil Escolar"} />
 
-            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] lg:overflow-hidden font-body -m-6 md:-m-8">
+            <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
                 
                 {/* Columna Izquierda: Panel Principal */}
                 <div className="flex-1 flex flex-col min-w-0 lg:overflow-y-auto lg:h-full">
@@ -165,7 +164,7 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
                                 wrapperClassName="pb-2"
                             />
 
-                            <div className="bg-white rounded-none md:rounded-2xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100 space-y-8">
+                            <div className="space-y-6">
                                 <StudentDashboardCards 
                                     studentInfo={studentInfo}
                                     taskList={taskList}
@@ -177,10 +176,7 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
                                             setSelectedTask(task);
                                         }
                                     }}
-                                    onViewAllTasks={() => router.visit('/alumno/tareas')}
                                 />
-
-                                <StudentFeaturedSubjects featuredSubjects={featuredSubjects} />
                             </div>
                         </div>
                     ) : (

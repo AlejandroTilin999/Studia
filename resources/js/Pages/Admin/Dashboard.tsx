@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { Search, Filter, Check, Calendar, Archive, Clock, Lock, Unlock, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent } from '@/Components/ui/card';
+import { Search, Filter, Check, Archive, Clock, Lock, Unlock, CheckCircle2, Trash2 } from 'lucide-react';
 import { ButtonLogin as Button } from '@/Components/ButtonLogin';
 import { Input } from '@/Components/Input';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
-import AppTable from '@/Components/AppTable';
+import AppTable from '@/Components/table/AppTable';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
@@ -15,6 +14,8 @@ import ConfirmActionModal from '@/Components/ConfirmActionModal';
 import QuickSummaryWidget, { MetricItem } from '@/Components/QuickSummaryWidget';
 import { useToast } from '@/hooks/useToast';
 import { cycleService } from '@/services/cycleService';
+import { TableActionButton } from '@/Components/TableActions';
+
 
 interface Cycle {
   id: number;
@@ -27,7 +28,7 @@ interface Cycle {
 export default function AdminDashboard() {
   const { auth, cycles = [], studentsCount, teachersCount, groupsCount, coursesCount } = usePage().props as any;
   const adminName = auth?.user?.name || 'Administrador';
-  
+
   useEffect(() => {
     const mainEl = document.querySelector('main');
     if (!mainEl) return;
@@ -111,14 +112,11 @@ export default function AdminDashboard() {
   };
 
   const [activitiesList, setActivitiesList] = useState([
-    { id: 1, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 2, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 3, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 4, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 5, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 6, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 7, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
-    { id: 8, action: "Subió calificaciones", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
+    { id: 1, action: "Alta de alumno", user: "Yisus Esquivel", time: "01/06/2025 - 11:30 AM" },
+    { id: 2, action: "Alta de profesor", user: "Uriel Cambrón", time: "01/06/2025 - 11:30 AM" },
+    { id: 3, action: "Alta de grupo", user: "Yisus Esquivel", time: "01/06/2025 - 11:30 AM" },
+    { id: 4, action: "Consulta de alumnos", user: "Yisus Esquivel", time: "01/06/2025 - 11:30 AM" },
+
   ]);
 
   const handleDeleteActivity = (id: number) => {
@@ -137,9 +135,9 @@ export default function AdminDashboard() {
     <AuthenticatedLayout>
       <Head title="Inicio Administrador" />
 
-      <div className="flex flex-col lg:flex-row bg-[#f9fafb] lg:h-[calc(100vh-64px)] lg:overflow-hidden font-body">
+      <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
         {/* Columna Principal */}
-        <div className="flex-1 p-3.5 md:p-6 space-y-6 lg:overflow-y-auto lg:h-full flex flex-col lg:min-h-0">
+        <div className="flex-1 p-6 md:p-8 space-y-6 lg:overflow-y-auto lg:h-full flex flex-col lg:min-h-0">
           {/* Banner de Bienvenida */}
           <DashboardWelcomeBanner
             greeting={`Hola ${adminName}`}
@@ -179,7 +177,7 @@ export default function AdminDashboard() {
                 )}
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto mt-2 xl:mt-0">
               <button
                 onClick={() => setIsPeriodModalOpen(true)}
@@ -188,7 +186,7 @@ export default function AdminDashboard() {
                 <Unlock className="w-3.5 h-3.5 text-[#1e88e5]" />
                 Abrir Nuevo Ciclo
               </button>
-              
+
               {activeCycle && (
                 <button
                   onClick={() => setIsCloseCycleModalOpen(true)}
@@ -198,7 +196,7 @@ export default function AdminDashboard() {
                   Concluir Ciclo
                 </button>
               )}
-              
+
               <button
                 onClick={() => setIsHistoryModalOpen(true)}
                 className="bg-slate-50 hover:bg-slate-100 text-slate-600 font-extrabold h-10 px-4 rounded-xl text-[11.5px] transition-all shadow-none flex items-center gap-2 active:scale-[0.98]"
@@ -245,7 +243,7 @@ export default function AdminDashboard() {
                 {
                   header: "Actividad",
                   accessor: (row) => row.action,
-                  className: "text-slate-655 font-semibold text-sm",
+                  className: "text-slate-500 text-sm",
                 },
                 {
                   header: "Usuario",
@@ -255,29 +253,28 @@ export default function AdminDashboard() {
                 {
                   header: "Fecha y hora",
                   accessor: "time",
-                  className: "text-slate-400 font-medium text-xs hidden md:table-cell",
+                  className: "text-slate-500 text-xs hidden md:table-cell",
                   headerClassName: "hidden md:table-cell",
                 },
                 {
                   header: "Acción",
-                  align: "right",
+                  align: "center", // Si tu tabla usa esta prop, asegúrate de que esté en 'center'
                   accessor: (row) => (
-                    <Button 
-                      size="sm" 
+                    <TableActionButton
                       onClick={() => handleDeleteActivity(row.id)}
-                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg px-4 md:px-6 h-8 md:h-9 text-[10px] md:text-xs transition-all shadow-none border-none"
-                    >
-                      Eliminar
-                    </Button>
+                      title="Eliminar Actividad"
+                      icon="delete"
+                      variant="danger"
+                    />
                   ),
-                },
+                }
               ]}
             />
           </div>
         </div>
 
         {/* Barra Lateral Derecha */}
-        <div className="w-full lg:w-[340px] bg-white border-l-0 lg:border-l border-t lg:border-t-0 border-slate-100 p-5 lg:p-6 xl:p-8 space-y-5 lg:space-y-8 xl:space-y-12 shrink-0 flex flex-col shadow-none lg:h-full lg:overflow-y-auto lg:justify-start">
+        <div className="w-full lg:w-[340px] bg-white border-l-0 lg:border-l border-t lg:border-t-0 border-slate-150 p-6 lg:pt-8 lg:pb-12 lg:px-5 space-y-5 lg:space-y-8 xl:space-y-12 shrink-0 flex flex-col shadow-none lg:h-full lg:overflow-y-auto lg:justify-start">
           {/* Resumen Rápido (Solo Desktop) */}
           <div className="hidden lg:block">
             <QuickSummaryWidget metrics={metrics} />
@@ -410,13 +407,12 @@ export default function AdminDashboard() {
       >
         <div className="space-y-3.5 mt-4 text-left font-body">
           {cycles.map((c: Cycle) => (
-            <div 
-              key={c.id} 
-              className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${
-                c.is_active 
-                  ? 'border-blue-150 bg-blue-50/20' 
+            <div
+              key={c.id}
+              className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${c.is_active
+                  ? 'border-blue-150 bg-blue-50/20'
                   : 'border-slate-100 bg-slate-50/30'
-              }`}
+                }`}
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">

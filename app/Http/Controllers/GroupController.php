@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicGroup;
 use App\Models\Teacher;
+use App\Models\PlanEstudio;
+use App\Models\Turno;
+use App\Models\Specialty;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,18 +14,22 @@ class GroupController extends Controller
 {
     public function index()
     {
-        // Traer grupos mapeados con sus nombres de columnas reales de la DB
-        $groups = AcademicGroup::with('tutor')->get()->map(function ($group) {
+        // Traer grupos mapeados con sus nombres de columnas reales de la DB y planes
+        $groups = AcademicGroup::with(['tutor', 'plan'])->get()->map(function ($group) {
             return [
                 'id' => $group->id,
                 'codigo' => $group->code,
                 'nombre' => $group->name,
                 'turno' => $group->shift ?? 'Horario único',
                 'especialidad' => $group->major, // Mapeado de major
-                'tutor_teacher_id' => $group->tutor_teacher_id ?? '', // Columna exacta
+                'tutor_teacher_id' => $group->tutor_teacher_id ?? '',
                 'profesor' => $group->tutor 
                     ? trim("{$group->tutor->nombre} {$group->tutor->apellido_paterno}")
-                    : 'Sin tutor asignado'
+                    : 'Sin tutor asignado',
+                'plan_id' => $group->plan_id ?? '',
+                'plan_nombre' => $group->plan->nombre ?? 'Sin plan de estudios',
+                'turno_id' => $group->turno_id ?? '',
+                'activo' => (bool)($group->activo ?? true)
             ];
         });
 
@@ -33,23 +40,56 @@ class GroupController extends Controller
             ];
         });
 
+        $specialties = Specialty::all()->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'name' => $s->name,
+                'code' => $s->code,
+            ];
+        });
+
+        $planes = PlanEstudio::all()->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'nombre' => $p->nombre,
+            ];
+        });
+
+        $turnos = Turno::all()->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'nombre' => $t->nombre,
+            ];
+        });
+
         return Inertia::render('Admin/Grupos/Index', [
             'grupos' => $groups,
-            'profesores' => $teachers
+            'profesores' => $teachers,
+            'especialidades' => $specialties,
+            'planes' => $planes,
+            'turnos' => $turnos
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:academic_groups,code',
-            'name' => 'required|string|unique:academic_groups,name|max:20', // Valida si el nombre ya existe
+            'code' => 'required|string|unique:grupos,code',
+            'name' => 'required|string|unique:grupos,name|max:20',
             'shift' => 'required|string',
-            'major' => 'required|string', // Cambiado a major
-            'tutor_teacher_id' => 'nullable', // Cambiado a tutor_teacher_id
+            'major' => 'required|string',
+            'tutor_teacher_id' => 'nullable',
+            'plan_id' => 'nullable|exists:planes_estudio,id',
+            'turno_id' => 'nullable|exists:turnos,id',
+            'activo' => 'nullable|boolean',
+        ], [
+            'code.unique' => 'Este grupo ya existe (el código ya está registrado).',
+            'name.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
         ]);
 
         $validated['tutor_teacher_id'] = $validated['tutor_teacher_id'] ?: null;
+        $validated['plan_id'] = $validated['plan_id'] ?: null;
+        $validated['turno_id'] = $validated['turno_id'] ?: null;
 
         AcademicGroup::create($validated);
 
@@ -61,15 +101,22 @@ class GroupController extends Controller
         $group = AcademicGroup::findOrFail($id);
         
         $validated = $request->validate([
-            'code' => 'required|string|unique:academic_groups,code,' . $group->id,
-            // Valida único ignorando el ID del grupo actual que estás editando
-            'name' => 'required|string|unique:academic_groups,name,' . $group->id . '|max:20', 
+            'code' => 'required|string|unique:grupos,code,' . $group->id,
+            'name' => 'required|string|unique:grupos,name,' . $group->id . '|max:20', 
             'shift' => 'required|string',
             'major' => 'required|string',
             'tutor_teacher_id' => 'nullable',
+            'plan_id' => 'nullable|exists:planes_estudio,id',
+            'turno_id' => 'nullable|exists:turnos,id',
+            'activo' => 'nullable|boolean',
+        ], [
+            'code.unique' => 'Este grupo ya existe (el código ya está registrado).',
+            'name.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
         ]);
 
         $validated['tutor_teacher_id'] = $validated['tutor_teacher_id'] ?: null;
+        $validated['plan_id'] = $validated['plan_id'] ?: null;
+        $validated['turno_id'] = $validated['turno_id'] ?: null;
 
         $group->update($validated);
 

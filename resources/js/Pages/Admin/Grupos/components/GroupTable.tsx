@@ -1,5 +1,6 @@
-import AppTable from '@/Components/AppTable';
+import AppTable from '@/Components/table/AppTable';
 import { GroupFormatted } from '../types';
+import { TableActions, TableActionButton } from '@/Components/TableActions';
 
 interface GroupTableProps {
     groups: GroupFormatted[];
@@ -19,14 +20,14 @@ export default function GroupTable({
                 {
                     header: "Código",
                     accessor: (row) => row.code,
-                    className: "text-slate-500 font-mono text-[13px] font-bold text-left",
+                    className: "text-slate-500 font-medium text-[13px] text-left",
                 },
                 {
                     header: "Nombre del grupo",
                     accessor: (row) => (
                         <div className="leading-tight text-left">
-                            <span className="text-slate-700 font-bold text-[15px] block">{row.name}</span>
-                            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">{row.specialty}</span>
+                            <span className="text-slate-700 text-[13px] block">{row.name}</span>
+                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{row.specialty} • {row.plan_nombre}</span>
                         </div>
                     ),
                 },
@@ -36,28 +37,20 @@ export default function GroupTable({
                     className: "text-slate-500 font-medium text-[13px] text-left",
                 },
                 {
-                    header: "Profesor Asignado",
-                    accessor: (row) => (
-                        <div className="leading-tight text-left">
-                            <span className={`text-[13px] font-bold block ${row.teacherName === 'Pendiente de Asignación' ? 'text-amber-500' : 'text-slate-700'}`}>
-                                {row.teacherName}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Tutor titular</span>
-                        </div>
-                    ),
+                    header: "Tutor / Profesor Asignado",
+                    accessor: (row) => row.teacherName,
+                    className: "text-slate-500 font-medium text-[13px] text-left",
                 },
                 {
                     header: "Acciones",
                     accessor: (row) => (
-                        <div className="flex items-center justify-start gap-2">
-                            <button 
-                                type="button"
+                        <TableActions align="start">
+                            <TableActionButton
                                 onClick={() => onOpenEditModal(row)}
-                                className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] shadow-none transition-all"
-                            >
-                                Editar
-                            </button>
-                        </div>
+                                title="Editar Grupo"
+                                icon="edit"
+                            />
+                        </TableActions>
                     ),
                 },
             ]}

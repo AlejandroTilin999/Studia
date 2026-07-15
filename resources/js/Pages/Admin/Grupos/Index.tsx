@@ -10,15 +10,19 @@ import { useExportExcel } from '@/hooks/useExportExcel';
 import { groupService } from './services/groupService';
 import { GruposIndexProps, GroupFormatted } from './types';
 
-export default function GruposIndex({ grupos = [], profesores = [], materias = [] }: GruposIndexProps) {
+export default function GruposIndex({ grupos = [], profesores = [], materias = [], especialidades = [], planes = [], turnos = [] }: GruposIndexProps) {
     const formattedGroups: GroupFormatted[] = grupos.map(g => ({
         id: g.id,
         code: g.codigo || 'S/C',
         name: g.nombre || 'Sin nombre',
         shift: g.turno || 'Horario único',
         teacherName: g.profesor || 'Pendiente de Asignación',
-        teacher_id: g.teacher_id,
-        specialty: g.especialidad || 'TI'
+        teacher_id: g.tutor_teacher_id,
+        specialty: g.especialidad === 'TI' ? 'Informática' : (g.especialidad || (especialidades[0]?.name || 'Informática')),
+        plan_id: g.plan_id ?? '',
+        plan_nombre: g.plan_nombre || 'Sin plan de estudios',
+        turno_id: g.turno_id ?? '',
+        activo: g.activo ?? true
     }));
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -33,22 +37,24 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
     const { exportToExcel } = useExportExcel();
 
     // Formulario reactivo de Inertia
-    const { data, setData, post, put, reset, processing, errors } = useForm({
+    const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
         code: '',
         name: '',
         shift: 'Horario único',
-        specialty: 'TI',
-        teacher_id: '' as string | number,
-        linked_courses: [] as number[]
+        major: especialidades[0]?.name || 'Informática',
+        tutor_teacher_id: '' as string | number,
+        linked_courses: [] as number[],
+        plan_id: '' as string | number,
+        turno_id: '' as string | number,
+        activo: true
     });
 
     const handleExportExcel = () => {
-        const headers = ["Código", "Nombre del Grupo", "Turno", "Tutor / Profesor Asignado", "Especialidad"];
+        const headers = ["Código", "Nombre del Grupo", "Turno", "Especialidad"];
         const rows = filteredGroups.map(g => [
             g.code,
             g.name,
             g.shift,
-            g.teacherName,
             g.specialty
         ]);
 
@@ -62,29 +68,38 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
         );
     };
 
-    const filteredGroups = formattedGroups.filter(g => {
-        const matchesSearch = g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            g.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            g.teacherName.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesSpecialty = specialtyFilter === 'all' || g.specialty === specialtyFilter;
-        return matchesSearch && matchesSpecialty;
-    });
+    const filteredGroups = filteredGroupsList(formattedGroups, searchQuery, specialtyFilter);
+
+    function filteredGroupsList(list: GroupFormatted[], search: string, filter: string) {
+        return list.filter(g => {
+            const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase()) ||
+                g.code.toLowerCase().includes(search.toLowerCase()) ||
+                g.teacherName.toLowerCase().includes(search.toLowerCase());
+            const matchesSpecialty = filter === 'all' || g.specialty === filter;
+            return matchesSearch && matchesSpecialty;
+        });
+    }
 
     const openCreateModal = () => {
         reset();
+        clearErrors();
         setIsCreateModalOpen(true);
     };
 
     const openEditModal = (group: GroupFormatted) => {
         const rawGroup = grupos.find(g => g.id === group.id);
+        clearErrors();
         setSelectedGroup(group);
         setData({
             code: group.code,
             name: group.name,
             shift: group.shift,
-            specialty: group.specialty,
-            teacher_id: group.teacher_id ?? '',
-            linked_courses: rawGroup?.linked_courses || []
+            major: group.specialty,
+            tutor_teacher_id: group.teacher_id ?? '',
+            linked_courses: rawGroup?.linked_courses || [],
+            plan_id: group.plan_id ?? '',
+            turno_id: group.turno_id ?? '',
+            activo: group.activo ?? true
         });
         setIsEditModalOpen(true);
     };
@@ -93,8 +108,15 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
         e.preventDefault();
         setSaveStatus('saving');
 
-        groupService.store(data, {
-            onSuccess: () => {
+        post('/admin/grupos', {
+            onSuccess: (page) => {
+                if (page.props.errors && Object.keys(page.props.errors).length > 0) {
+                    setSaveStatus('error');
+                    setTimeout(() => {
+                        setSaveStatus('idle');
+                    }, 2500);
+                    return;
+                }
                 setSaveStatus('success');
                 reset();
                 setTimeout(() => {
@@ -108,15 +130,6 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                     setSaveStatus('idle');
                 }, 2500);
             },
-            onFinish: () => {
-                setSaveStatus(current => {
-                    if (current === 'saving') {
-                        setTimeout(() => setSaveStatus('idle'), 3000);
-                        return 'error';
-                    }
-                    return current;
-                });
-            }
         });
     };
 
@@ -124,8 +137,15 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
         e.preventDefault();
         if (selectedGroup) {
             setSaveStatus('saving');
-            groupService.update(selectedGroup.id, data, {
-                onSuccess: () => {
+            put(`/admin/grupos/${selectedGroup.id}`, {
+                onSuccess: (page) => {
+                    if (page.props.errors && Object.keys(page.props.errors).length > 0) {
+                        setSaveStatus('error');
+                        setTimeout(() => {
+                            setSaveStatus('idle');
+                        }, 2500);
+                        return;
+                    }
                     setSaveStatus('success');
                     reset();
                     setTimeout(() => {
@@ -139,15 +159,6 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                         setSaveStatus('idle');
                     }, 2500);
                 },
-                onFinish: () => {
-                    setSaveStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setSaveStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
             });
         }
     };
@@ -185,6 +196,7 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 specialtyFilter={specialtyFilter}
                 setSpecialtyFilter={setSpecialtyFilter}
                 onOpenCreateModal={openCreateModal}
+                specialties={especialidades}
             />
 
             {/* Table */}
@@ -198,6 +210,7 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 isOpen={isCreateModalOpen}
                 onClose={() => {
                     if (saveStatus === 'idle') {
+                        clearErrors();
                         setIsCreateModalOpen(false);
                     }
                 }}
@@ -205,6 +218,10 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 group={null}
                 profesores={profesores}
                 materiasList={materias}
+                specialties={especialidades}
+                groupsList={formattedGroups}
+                planes={planes}
+                turnos={turnos}
                 data={data}
                 setData={setData}
                 errors={errors}
@@ -218,6 +235,7 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 isOpen={isEditModalOpen}
                 onClose={() => {
                     if (saveStatus === 'idle') {
+                        clearErrors();
                         setIsEditModalOpen(false);
                     }
                 }}
@@ -225,6 +243,10 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 group={selectedGroup}
                 profesores={profesores}
                 materiasList={materias}
+                specialties={especialidades}
+                groupsList={formattedGroups}
+                planes={planes}
+                turnos={turnos}
                 data={data}
                 setData={setData}
                 errors={errors}

@@ -8,7 +8,7 @@ interface FormLabelProps {
 
 export function FormLabel({ children, required, className = '' }: FormLabelProps) {
     return (
-        <label className={`text-xs font-bold text-slate-700 block text-left mb-1.5 select-none ${className}`}>
+        <label className={`text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block text-left mb-1.5 select-none ${className}`}>
             {children} {required && <span className="text-red-500 font-bold ml-0.5">*</span>}
         </label>
     );

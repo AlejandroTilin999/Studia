@@ -17,8 +17,6 @@ export default function Topbar() {
                 <PhoneCall className='text-white' size={16} />
                 Soporte: 800-PREPAHID-12
             </span>
-
-
             <div className="flex gap-4">
                 <span style={{ color: COLORS.accent }}>Hidalgo, Michoacán</span>
 

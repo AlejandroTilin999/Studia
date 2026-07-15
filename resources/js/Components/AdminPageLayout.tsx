@@ -95,7 +95,7 @@ export default function AdminPageLayout({
             )}
 
             {/* Layout split container */}
-            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] lg:h-[calc(100vh-64px)] lg:overflow-hidden font-body">
+            <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body">
                 
                 {/* Left Side: Banner + Workspace */}
                 <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">

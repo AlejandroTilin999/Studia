@@ -35,7 +35,7 @@ export default function UserTableControls({
                 <button
                     type="button"
                     onClick={onOpenCreateModal}
-                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm transition-all shadow-none"
+                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm transition-all shadow-none"
                 >
                     <Plus size={16} />
                     Registrar Usuario

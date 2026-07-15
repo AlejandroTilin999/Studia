@@ -1,6 +1,8 @@
 import React from 'react';
-import AppTable, { AppTableColumn } from '@/Components/AppTable';
+import AppTable from '@/Components/table/AppTable';
+import { AppTableColumn } from '@/Components/table/types/table.types';
 import { StudentFormatted } from '../types';
+import { TableActions, TableActionButton } from '@/Components/TableActions';
 
 interface StudentTableProps {
     students: StudentFormatted[];
@@ -18,15 +20,15 @@ export default function StudentTable({
     const columns: AppTableColumn<StudentFormatted>[] = [
         {
             header: "Matrícula",
-            accessor: (student) => student.matricula,
+            accessor: (student: StudentFormatted) => student.matricula,
             align: "left",
             className: "text-slate-500 font-medium text-[13px] h-16",
         },
         {
             header: "Nombre",
-            accessor: (student) => (
+            accessor: (student: StudentFormatted) => (
                 <div className="leading-tight">
-                    <span className="text-slate-700 font-bold text-[15px] block">{student.name}</span>
+                    <span className="text-slate-700 font-medium text-[14px] block">{student.name}</span>
                     <span className="text-[10.5px] text-slate-400 font-medium">{student.email}</span>
                 </div>
             ),
@@ -35,7 +37,7 @@ export default function StudentTable({
         },
         {
             header: "Grado y grupo",
-            accessor: (student) => student.groupName,
+            accessor: (student: StudentFormatted) => student.groupName,
             align: "left",
             className: "text-slate-500 font-medium text-[13px]",
         },
@@ -43,41 +45,34 @@ export default function StudentTable({
             header: "Kardex",
             align: "center",
             headerClassName: "text-center",
-            accessor: (student) => (
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenKardexModal(student);
-                    }}
-                    className="bg-[#e3f2fd] hover:bg-[#bbdefb] text-[#1e88e5] font-black h-8 px-4 rounded-lg text-[12px] transition-all"
-                >
-                    Ver
-                </button>
+            accessor: (student: StudentFormatted) => (
+                <TableActions align="center">
+                    <TableActionButton
+                        onClick={() => onOpenKardexModal(student)}
+                        title="Ver Kardex"
+                        icon="kardex"
+                    />
+                </TableActions>
             )
         },
         {
             header: "Acciones",
             align: "left",
             headerClassName: "text-left",
-            accessor: (student) => (
-                <div className="flex items-center justify-start gap-2" onClick={e => e.stopPropagation()}>
-                    <button 
+            accessor: (student: StudentFormatted) => (
+                <TableActions align="start">
+                    <TableActionButton
                         onClick={() => onOpenEditModal(student)}
-                        className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] shadow-none transition-all"
-                    >
-                        Editar
-                    </button>
-                    <button 
+                        title="Editar Alumno"
+                        icon="edit"
+                    />
+                    <TableActionButton
                         onClick={() => onOpenBajaModal(student)}
-                        className={`font-bold h-8 px-5 rounded-lg text-[12px] transition-all ${
-                            student.status === 'active' 
-                                ? 'bg-rose-55 hover:bg-rose-100 text-rose-600' 
-                                : 'bg-emerald-55 hover:bg-emerald-100 text-emerald-600'
-                        }`}
-                    >
-                        {student.status === 'active' ? 'Baja' : 'Alta'}
-                    </button>
-                </div>
+                        title={student.status === 'active' ? "Dar de Baja" : "Dar de Alta"}
+                        icon={student.status === 'active' ? 'delete' : 'activate'}
+                        variant={student.status === 'active' ? 'danger' : 'success'}
+                    />
+                </TableActions>
             )
         }
     ];
@@ -86,7 +81,7 @@ export default function StudentTable({
         <AppTable
             columns={columns}
             data={students}
-            keyExtractor={(student) => student.id}
+            keyExtractor={(student: StudentFormatted) => student.id}
             emptyMessage="No se encontraron alumnos coincidentes."
             className="flex-1 scrollbar-hide"
         />

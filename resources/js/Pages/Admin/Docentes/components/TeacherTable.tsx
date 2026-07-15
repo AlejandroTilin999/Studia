@@ -1,18 +1,17 @@
 import React from 'react';
-import AppTable from "@/Components/AppTable";
+import AppTable from "@/Components/table/AppTable";
 import { TeacherFormatted } from '../types';
+import { TableActions, TableActionButton } from '@/Components/TableActions';
 
 interface TeacherTableProps {
     teachers: TeacherFormatted[];
     onEdit: (teacher: TeacherFormatted) => void;
-    onViewAssignments: (teacher: TeacherFormatted) => void;
     onDelete: (teacher: TeacherFormatted) => void;
 }
 
 export default function TeacherTable({
     teachers,
     onEdit,
-    onViewAssignments,
     onDelete,
 }: TeacherTableProps) {
     return (
@@ -24,37 +23,18 @@ export default function TeacherTable({
                 {
                     header: "Matrícula",
                     accessor: (row) => row.matricula,
-                    className: "text-slate-500 font-medium text-[13px]",
+                    className: "text-slate-500 font-medium text-[12.5px]",
                 },
                 {
                     header: "Nombre",
                     accessor: (row) => (
                         <div className="leading-tight text-left">
-                            <span className="text-slate-700 font-bold text-[15px] block">
+                            <span className="text-slate-500 font-medium text-[13px] block">
                                 {row.name}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+                            <span className="text-[12.5px] text-slate-400 font-medium block mt-0.5">
                                 {row.specialty}
                             </span>
-                        </div>
-                    ),
-                },
-                {
-                    header: "Materia asignada",
-                    accessor: (row) => (
-                        <div className="flex flex-col text-left">
-                            <span className="text-[13px] text-slate-700 font-bold">
-                                {row.assignments.map((a: any) => a.subject).join(", ") || "Sin materias"}
-                            </span>
-
-                            {row.assignments.length > 0 && (
-                                <button
-                                    onClick={() => onViewAssignments(row)}
-                                    className="text-[10.5px] text-[#1e88e5] font-extrabold hover:underline text-left mt-0.5"
-                                >
-                                    Ver asignaciones ({row.assignments.length})
-                                </button>
-                            )}
                         </div>
                     ),
                 },
@@ -66,7 +46,7 @@ export default function TeacherTable({
                                 {row.email}
                             </span>
 
-                            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+                            <span className="text-[11px] text-slate-400 font-bold block mt-0.5">
                                 {row.phone}
                             </span>
                         </div>
@@ -75,20 +55,19 @@ export default function TeacherTable({
                 {
                     header: "Acciones",
                     accessor: (row) => (
-                        <div className="flex items-center justify-start gap-2">
-                            <button
+                        <TableActions align="start">
+                            <TableActionButton
                                 onClick={() => onEdit(row)}
-                                className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-8 px-5 rounded-lg text-[12px] transition-all active:scale-[0.97]"
-                            >
-                                Editar
-                            </button>
-                            <button
+                                title="Editar Docente"
+                                icon="edit"
+                            />
+                            <TableActionButton
                                 onClick={() => onDelete(row)}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold h-8 px-5 rounded-lg text-[12px] transition-all active:scale-[0.97]"
-                            >
-                                Eliminar
-                            </button>
-                        </div>
+                                title="Eliminar Docente"
+                                icon="delete"
+                                variant="danger"
+                            />
+                        </TableActions>
                     ),
                 },
             ]}

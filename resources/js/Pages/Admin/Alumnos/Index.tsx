@@ -18,29 +18,25 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     // Mapeamos los datos simplificados directamente de la tabla única de alumnos
     const formattedStudents: StudentFormatted[] = alumnos.map((student: BackendStudent) => ({
-    id: student.id,
-    matricula: student.matricula || 'S/M',
-    name: student.name || 'Sin nombre asignado',
-    email: student.email || 'sin-correo@prepahidalgo.edu.mx',
-    groupId: student.academic_group?.id || 0,
-    groupName: student.academic_group?.name || 'Sin grupo',
-    status: student.status || 'active',
-    grades: student.grades?.map((g: BackendGrade) => ({
-        subject: g.course?.name || 'Materia Desconocida',
-        score: g.score,
-        period: g.period || '2026-A'
-    })) || []
-}));
-const generateEmail = (nombre: string, suffix: number) => {
-    const cleanName = nombre
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .replace(/\s+/g, ".");
+        id: student.id,
+        matricula: student.matricula || 'S/M',
+        name: student.name || 'Sin nombre asignado',
+        email: student.email || 'sin-correo@prepahidalgo.edu.mx',
+        groupId: student.academic_group?.id || 0,
+        groupName: student.academic_group?.name || 'Sin grupo',
+        status: student.status || 'active',
+        telefono: student.telefono || '',
+        fecha_nacimiento: student.fecha_nacimiento || '',
+        rawNombre: student.rawNombre || '',
+        rawPaterno: student.rawPaterno || '',
+        rawMaterno: student.rawMaterno || '',
+        grades: student.grades?.map((g: BackendGrade) => ({
+            subject: g.course?.name || 'Materia Desconocida',
+            score: g.score,
+            period: g.period || '2026-A'
+        })) || []
+    }));
 
-    return `${cleanName}${suffix}@prepahidalgo.edu.mx`;
-};
 
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -60,31 +56,50 @@ const generateEmail = (nombre: string, suffix: number) => {
     const { data, setData, reset, processing, errors } = useForm({
         matricula: '',
         nombre: '',
+        apellido_paterno: '',
+        apellido_materno: '',
         email: '',
         telefono: '',
         fecha_nacimiento: '',
-        academic_group_id: groups[0]?.id || '',
+        academic_group_id: '',
         status: 'active' as 'active' | 'inactive' | 'suspended'
     });
-
-    const [randomSuffix, setRandomSuffix] = useState<number | null>(null);
-
     useEffect(() => {
         if (modalMode === 'create') {
-            if (data.nombre.trim() === '') {
-                setData('email', '');
-            } else {
-                const suffix = randomSuffix || Math.floor(1000 + Math.random() * 9000);
-                if (!randomSuffix) {
-                    setRandomSuffix(suffix);
+            if (data.nombre.trim() === '' && data.apellido_paterno.trim() === '') {
+                if (data.matricula !== '' || data.email !== '') {
+                    setData(currentData => ({
+                        ...currentData,
+                        matricula: '',
+                        email: ''
+                    }));
                 }
-                const newEmail = generateEmail(data.nombre, suffix);
-                if (data.email !== newEmail) {
-                    setData('email', newEmail);
+            } else {
+                const firstInit = data.nombre.trim().charAt(0) || '';
+                const paternalInit = data.apellido_paterno.trim().charAt(0) || '';
+                const maternalInit = data.apellido_materno.trim().charAt(0) || '';
+                const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
+                const groupSelected = groups.find(g => g.id === Number(data.academic_group_id));
+                const groupCode = groupSelected ? groupSelected.id : '00';
+                const currentYear = new Date().getFullYear();
+                const generatedMatricula = `${initials}${groupCode}${currentYear}`;
+                
+                let firstNamePart = data.nombre.trim().split(/\s+/)[0]?.toLowerCase() || '';
+                let paternalPart = data.apellido_paterno.trim().split(/\s+/)[0]?.toLowerCase() || '';
+                let emailBase = `${firstNamePart}.${paternalPart}`.trim();
+                emailBase = emailBase.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
+                const generatedEmail = emailBase && emailBase !== '.' ? `${emailBase}@prepahid.edu.mx` : '';
+
+                if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
+                    setData(currentData => ({
+                        ...currentData,
+                        matricula: generatedMatricula,
+                        email: generatedEmail
+                    }));
                 }
             }
         }
-    }, [data.nombre, modalMode, randomSuffix, data.email]);
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.academic_group_id, modalMode, groups]);;
 
     const handleExportExcel = () => {
         const rows = filteredStudents.map(s => [
@@ -119,7 +134,6 @@ const generateEmail = (nombre: string, suffix: number) => {
 
     const openCreateModal = () => {
         setModalMode('create');
-        setRandomSuffix(null);
         reset();
         setIsFormModalOpen(true);
     };
@@ -127,15 +141,17 @@ const generateEmail = (nombre: string, suffix: number) => {
     const openEditModal = (student: any) => {
         setModalMode('edit');
         setSelectedStudent(student);
-    setData({
-        matricula: student.matricula,
-        nombre: student.name,
-        email: student.email,
-        telefono: student.telefono,
-        fecha_nacimiento: student.fecha_nacimiento,
-        academic_group_id: student.groupId,
-        status: student.status
-    });
+        setData({
+            matricula: student.matricula,
+            nombre: student.rawNombre || '',
+            apellido_paterno: student.rawPaterno || '',
+            apellido_materno: student.rawMaterno || '',
+            email: student.email,
+            telefono: student.telefono,
+            fecha_nacimiento: student.fecha_nacimiento,
+            academic_group_id: student.groupId,
+            status: student.status
+        });
         setIsFormModalOpen(true);
     };
 
@@ -172,12 +188,7 @@ const generateEmail = (nombre: string, suffix: number) => {
         
 
         if (modalMode === 'create') {
-            let finalData = { ...data };
-            if (!finalData.email && finalData.nombre) {
-                const suffix = randomSuffix || Math.floor(1000 + Math.random() * 9000);
-                finalData.email = generateEmail(finalData.nombre, suffix);
-            }
-            studentService.store(finalData, serviceCallback);
+            studentService.store(data, serviceCallback);
         } else if (modalMode === 'edit' && selectedStudent) {
             studentService.update(selectedStudent.id, data, serviceCallback);
         }

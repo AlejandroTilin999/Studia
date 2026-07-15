@@ -12,7 +12,7 @@ export default function PageHeaderBanner({
     breadcrumb,
 }: PageHeaderBannerProps) {
     return (
-        <div className="bg-[#1e88e5] text-white px-6 py-8 md:px-10 md:py-10 shadow-sm shrink-0 select-none">
+        <div className="bg-[#0266E0] text-white px-6 py-8 md:px-10 md:py-10 shadow-sm shrink-0 select-none">
             <div className="max-w-6xl">
 
                 {/* Breadcrumb */}

@@ -9,6 +9,8 @@ class Enrollment extends Model
 {
     use HasFactory;
 
+    protected $table = 'inscripciones';
+
     // Asegúrate de agregar phone y address al array $fillable
     protected $fillable = [
         'user_id',
@@ -18,6 +20,7 @@ class Enrollment extends Model
         'status',
         'phone',    // 👈 Permitir guardar teléfono
         'address',  // 👈 Permitir guardar dirección
+        'fecha_baja',
     ];
 
     /**

@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { 
+import {
     Download,
     ChevronDown,
     Search,
@@ -11,7 +11,7 @@ import {
 import StudentRightSidebar from '@/Components/StudentRightSidebar';
 import PageHeaderBanner from '@/Components/PageHeaderBanner';
 import StudentInfoCard from '@/Components/StudentInfoCard';
-import AppTable from '@/Components/AppTable';
+import AppTable from '@/Components/table/AppTable';
 import GradeDetailsModal from './GradeDetailsModal';
 
 interface Grade {
@@ -67,23 +67,23 @@ export default function AlumnoCalificacionesIndex() {
     };
 
     // Filtrado de materias
-    const filteredGrades = grades.filter(g => 
+    const filteredGrades = grades.filter(g =>
         g.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
         g.teacher.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout noPadding>
             <Head title="Mis Materias" />
 
             {/* Layout de Dos Columnas */}
-            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] lg:overflow-hidden font-body -m-6 md:-m-8">
-                
+            <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
+
                 {/* Columna Izquierda: Historial Académico */}
                 <div className="flex-1 flex flex-col min-w-0 lg:overflow-y-auto lg:h-full">
-                    
+
                     {/* Header Banner */}
-                    <PageHeaderBanner 
+                    <PageHeaderBanner
                         title="Mis Materias"
                         subtitle="Aquí esta tu historial Académico"
                         breadcrumb="Materias"
@@ -94,7 +94,7 @@ export default function AlumnoCalificacionesIndex() {
                         <div className="bg-white rounded-none md:rounded-xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100 flex-1 flex flex-col min-h-0 lg:min-h-fit">
 
                             {/* Ficha de Alumno */}
-                            <StudentInfoCard 
+                            <StudentInfoCard
                                 matricula={studentInfo.matricula}
                                 name={studentInfo.name}
                                 groupName={studentInfo.groupName}
@@ -104,7 +104,7 @@ export default function AlumnoCalificacionesIndex() {
                             <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
                                 <div className="relative flex-1 w-full text-left">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input 
+                                    <input
                                         type="text"
                                         placeholder="Buscar Materia"
                                         value={searchTerm}
@@ -114,7 +114,7 @@ export default function AlumnoCalificacionesIndex() {
                                 </div>
 
                                 <div className="flex items-center gap-3 w-full md:w-auto relative">
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={handleDownloadKardex}
                                         className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
@@ -161,7 +161,7 @@ export default function AlumnoCalificacionesIndex() {
                                         header: "Calificaciones",
                                         align: "right",
                                         accessor: (row) => (
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => openGradeDetail(row)}
                                                 className="bg-[#e3f2fd] hover:bg-[#bbdefb] text-[#1e88e5] font-black h-8 px-4 rounded-lg text-[12px] transition-all"
@@ -181,7 +181,7 @@ export default function AlumnoCalificacionesIndex() {
             </div>
 
             {/* Modal: Detalle de Parciales */}
-            <GradeDetailsModal 
+            <GradeDetailsModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 grade={selectedGrade}

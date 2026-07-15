@@ -56,7 +56,7 @@ export default function ConfirmActionModal({
     // Check matches only if verification fields are passed
     const requiresVerification = !!(confirmText && actionPhrase);
     const isMatch = !requiresVerification || (
-        firstInput.trim() === confirmText && 
+        firstInput.trim() === confirmText &&
         secondInput.trim().toLowerCase() === actionPhrase.toLowerCase()
     );
 
@@ -77,12 +77,12 @@ export default function ConfirmActionModal({
     };
 
     return (
-        <div 
+        <div
             onClick={handleBackdropClick}
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 select-none animate-in fade-in duration-200"
         >
             <div className="bg-white w-full max-w-md rounded-[24px] border border-slate-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col relative">
-                
+
                 {currentStatus !== 'idle' ? (
                     <div className="p-6">
                         {currentStatus === 'saving' && (
@@ -128,7 +128,7 @@ export default function ConfirmActionModal({
                             <h3 className="text-xl font-bold text-slate-900 leading-tight text-left">
                                 {title}
                             </h3>
-                            <button 
+                            <button
                                 type="button"
                                 onClick={onClose}
                                 className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-50 rounded-lg transition-all"
@@ -146,7 +146,7 @@ export default function ConfirmActionModal({
 
                         {/* Body Form */}
                         <form onSubmit={handleConfirmSubmit} className="flex-1 flex flex-col">
-                            
+
                             {/* Render inputs only if double verification is required */}
                             {requiresVerification && (
                                 <div className="px-6 pb-4 space-y-4">
@@ -207,13 +207,12 @@ export default function ConfirmActionModal({
                                 <button
                                     type="submit"
                                     disabled={!isMatch}
-                                    className={`px-5 py-2.5 text-xs font-bold rounded-xl transition-colors shadow-sm ${
-                                        isMatch
+                                    className={`px-5 py-2.5 text-xs font-bold rounded-xl transition-colors shadow-sm ${isMatch
                                             ? confirmButtonVariant === 'danger'
                                                 ? 'bg-[#c23c1a] hover:bg-[#a63013] text-white cursor-pointer active:scale-[0.98]'
                                                 : 'bg-[#1e88e5] hover:bg-blue-700 text-white cursor-pointer active:scale-[0.98]'
                                             : 'bg-[#f1f3f5] text-[#8a99a8] cursor-not-allowed border border-slate-150'
-                                    }`}
+                                        }`}
                                 >
                                     {confirmLabel}
                                 </button>

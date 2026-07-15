@@ -7,6 +7,7 @@ interface GroupTableControlsProps {
     specialtyFilter: string;
     setSpecialtyFilter: (specialty: string) => void;
     onOpenCreateModal: () => void;
+    specialties?: any[];
 }
 
 export default function GroupTableControls({
@@ -15,6 +16,7 @@ export default function GroupTableControls({
     specialtyFilter,
     setSpecialtyFilter,
     onOpenCreateModal,
+    specialties = [],
 }: GroupTableControlsProps) {
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
@@ -27,14 +29,14 @@ export default function GroupTableControls({
                     placeholder="Buscar grupo..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#1e88e5] focus:outline-none focus:ring-0 shadow-sm text-slate-700 placeholder-slate-450 transition-colors"
+                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#0266E0] focus:outline-none focus:ring-0 shadow-sm text-slate-700 placeholder-slate-450 transition-colors"
                 />
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto relative">
                 <button 
                     type="button"
                     onClick={onOpenCreateModal}
-                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
+                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
                     Registrar grupo
@@ -62,9 +64,11 @@ export default function GroupTableControls({
                                 className="w-full py-2 px-3 bg-slate-55 border border-slate-200 rounded-lg text-xs font-bold text-slate-650 focus:outline-none focus:border-blue-400 focus:ring-0"
                             >
                                 <option value="all">Todas</option>
-                                <option value="TI">Tecnologías de la Información (TI)</option>
-                                <option value="Gastronomía">Gastronomía</option>
-                                <option value="Biotecnología">Biotecnología</option>
+                                {specialties.map((s) => (
+                                    <option key={s.id} value={s.name}>
+                                        {s.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     )}

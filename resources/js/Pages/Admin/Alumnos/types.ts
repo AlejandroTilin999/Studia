@@ -20,7 +20,10 @@ export interface BackendStudent {
     };
     grades?: BackendGrade[];
     telefono?: string;
-fecha_nacimiento?: string;
+    fecha_nacimiento?: string;
+    rawNombre?: string;
+    rawPaterno?: string;
+    rawMaterno?: string;
 }
 
 export interface AcademicGroupProp {
@@ -37,6 +40,11 @@ export interface StudentFormatted {
     groupId: number;
     groupName: string;
     status: 'active' | 'suspended';
+    telefono?: string;
+    fecha_nacimiento?: string;
+    rawNombre?: string;
+    rawPaterno?: string;
+    rawMaterno?: string;
     grades: {
         subject: string;
         score: number;

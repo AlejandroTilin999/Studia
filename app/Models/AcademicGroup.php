@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AcademicGroup extends Model
 {
-    protected $table = 'academic_groups';
-    protected $fillable = ['code', 'name', 'shift', 'major', 'tutor_teacher_id'];
+    protected $table = 'grupos';
+    protected $fillable = ['code', 'name', 'shift', 'major', 'tutor_teacher_id', 'plan_id', 'turno_id', 'activo'];
 
     public function tutor()
     {
@@ -22,5 +22,15 @@ class AcademicGroup extends Model
     public function academicLoads()
     {
         return $this->hasMany(AcademicLoad::class, 'academic_group_id');
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(PlanEstudio::class, 'plan_id');
+    }
+
+    public function turnoRel()
+    {
+        return $this->belongsTo(Turno::class, 'turno_id');
     }
 }

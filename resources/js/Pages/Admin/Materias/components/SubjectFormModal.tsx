@@ -1,8 +1,10 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
 import { FormTextarea } from '@/Components/forms/FormTextarea';
+import { FormSelect } from '@/Components/forms/FormSelect';
 
 interface SubjectFormModalProps {
     isOpen: boolean;
@@ -13,12 +15,17 @@ interface SubjectFormModalProps {
         code: string;
         name: string;
         description: string;
+        teacher_id: string | number;
+        linked_groups: string[];
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
     saveStatus?: 'idle' | 'saving' | 'success' | 'error';
+    profesores: any[];
+    grupos: any[];
+    existingCodes?: string[];
 }
 
 export default function SubjectFormModal({
@@ -32,18 +39,87 @@ export default function SubjectFormModal({
     processing,
     onSubmit,
     saveStatus = 'idle',
+    profesores = [],
+    grupos = [],
+    existingCodes = [],
 }: SubjectFormModalProps) {
+    const generateSubjectCode = (name: string) => {
+        if (!name) return '';
+        
+        // Split by whitespace
+        const words = name.trim().split(/\s+/);
+        
+        // Spanish stop words to ignore
+        const stopWords = ['y', 'e', 'o', 'u', 'de', 'la', 'el', 'los', 'las', 'en', 'para', 'con', 'por', 'a', 'del', 'i', 'ii', 'iii', 'iv', 'v'];
+        
+        // Clean each word by removing accents and non-letters
+        const cleanWords = words
+            .map(word => {
+                return word
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/[^a-zA-Z]/g, "")
+                    .toUpperCase();
+            })
+            .filter(word => word.length > 0);
+
+        // Filter out stop words (but keep them if filtering results in empty array)
+        let mainWords = cleanWords.filter(w => !stopWords.includes(w.toLowerCase()));
+        if (mainWords.length === 0) {
+            mainWords = cleanWords;
+        }
+
+        let prefix = '';
+        if (mainWords.length === 1) {
+            // Only 1 word: take first 3 letters
+            prefix = mainWords[0].slice(0, 3);
+            while (prefix.length < 3) {
+                prefix += 'X';
+            }
+        } else if (mainWords.length === 2) {
+            // 2 words: first 2 letters of first word, first letter of second word (e.g. "Cálculo Diferencial" -> CAD)
+            const w1 = mainWords[0];
+            const w2 = mainWords[1];
+            prefix = w1.slice(0, 2) + w2.slice(0, 1);
+        } else {
+            // 3 or more words: first letter of each of the first 3 words (e.g. "Temas Selectos de Física" -> TSF)
+            prefix = mainWords[0].slice(0, 1) + mainWords[1].slice(0, 1) + mainWords[2].slice(0, 1);
+        }
+
+        // Pad if somehow less than 3 chars
+        while (prefix.length < 3) {
+            prefix += 'X';
+        }
+        
+        let suffix = 1;
+        let candidate = `${prefix}-${suffix.toString().padStart(3, '0')}`;
+        while (existingCodes.includes(candidate)) {
+            suffix++;
+            candidate = `${prefix}-${suffix.toString().padStart(3, '0')}`;
+        }
+        
+        return candidate;
+    };
+
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newName = e.target.value;
+        setData('name', newName);
+        
+        if (mode === 'create') {
+            const autoCode = generateSubjectCode(newName);
+            setData('code', autoCode);
+        }
+    };
+
     return (
         <BaseModal
             isOpen={isOpen}
             onClose={onClose}
-            title={saveStatus !== 'idle' ? '' : mode === 'create' ? 'Registrar Nueva Materia' : 'Editar Materia'}
-            subtitle={saveStatus !== 'idle' ? '' : "Configura el temario de la materia"}
-            maxWidthClass="max-w-md"
+            maxWidthClass="max-w-3xl"
             onSubmit={onSubmit}
-            confirmLabel={processing ? 'Guardando...' : mode === 'create' ? 'Registrar' : 'Guardar'}
             isConfirmDisabled={processing}
-            showFooter={saveStatus === 'idle'}
+            showFooter={false}
+            fullBleed={true}
         >
             {saveStatus === 'saving' && (
                 <div className="flex flex-col items-center justify-center py-10 space-y-4">
@@ -84,41 +160,97 @@ export default function SubjectFormModal({
             )}
 
             {saveStatus === 'idle' && (
-                <>
-                    <div className="grid grid-cols-3 gap-4 text-left">
-                        <div className="space-y-1.5 col-span-1">
-                            <FormLabel required>Código</FormLabel>
-                            <FormInput
-                                required
-                                placeholder="Ej: MAT-101"
-                                value={data.code}
-                                onChange={e => setData('code', e.target.value)}
-                            />
-                            {errors.code && <span className="text-red-500 text-[10px] mt-1 block">{errors.code}</span>}
+                <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[280px] h-full text-left relative">
+                    {/* Windows Close button relative to the entire grid modal container */}
+                    <button 
+                        type="button" 
+                        onClick={onClose} 
+                        className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
+                    >
+                        <X size={16} className="stroke-[2.5]" />
+                    </button>
+
+                    {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
+                    <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
+                        <div className="space-y-6">
+                            <div>
+                                <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
+                                <h3 className="text-xl font-bold text-white leading-tight">
+                                    {mode === 'create' ? 'Registrar Nueva Materia' : 'Modificar Información de la Materia'}
+                                </h3>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <p className="text-xs text-blue-100 leading-relaxed font-normal">
+                                    {mode === 'create' 
+                                        ? 'Crea una nueva materia. Configura el temario, asígnale un profesor y vincúlala con los grupos escolares correspondientes.'
+                                        : 'Actualiza la clave, el temario o la vinculación con grupos y profesores.'}
+                                </p>
+                            </div>
                         </div>
-                        <div className="space-y-1.5 col-span-2">
-                            <FormLabel required>Nombre de la Asignatura</FormLabel>
-                            <FormInput
-                                required
-                                placeholder="Ej: Matemáticas I"
-                                value={data.name}
-                                onChange={e => setData('name', e.target.value)}
-                            />
-                            {errors.name && <span className="text-red-500 text-[10px] mt-1 block">{errors.name}</span>}
+                        
+                        <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 shrink-0 hidden md:block">
+                            Prepahid Campus Escolar
                         </div>
                     </div>
 
-                    <div className="space-y-1.5 text-left mt-4">
-                        <FormLabel>Descripción / Temario resumido</FormLabel>
-                        <FormTextarea
-                            placeholder="Escribe el alcance o temas clave..."
-                            value={data.description}
-                            onChange={e => setData('description', e.target.value)}
-                            rows={3}
-                        />
-                        {errors.description && <span className="text-red-500 text-[10px] mt-1 block">{errors.description}</span>}
+                    {/* Right Form Panel (col-span-3) */}
+                    <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[260px] relative">
+                        <div className="space-y-4 flex-1 pr-2">
+                            <div className="grid grid-cols-3 gap-4 text-left">
+                                <div className="space-y-1.5 col-span-1">
+                                    <FormLabel required>Código</FormLabel>
+                                    <FormInput
+                                        readOnly
+                                        placeholder="AUTOGENERADO"
+                                        value={data.code || 'PROCESANDO...'}
+                                        className="bg-slate-50 border border-slate-200 hover:border-slate-200 text-slate-500 font-mono focus:border-slate-200 focus:ring-0 cursor-not-allowed select-none"
+                                    />
+                                    {errors.code && <span className="text-red-500 text-[10px] mt-1 block">{errors.code}</span>}
+                                </div>
+                                <div className="space-y-1.5 col-span-2">
+                                    <FormLabel required>Nombre de la Asignatura</FormLabel>
+                                    <FormInput
+                                        required
+                                        placeholder="Ej: Matemáticas I"
+                                        value={data.name}
+                                        onChange={handleNameChange}
+                                    />
+                                    {errors.name && <span className="text-red-500 text-[10px] mt-1 block">{errors.name}</span>}
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5 text-left">
+                                <FormLabel>Descripción / Temario resumido</FormLabel>
+                                <FormTextarea
+                                    placeholder="Escribe el alcance o temas clave..."
+                                    value={data.description}
+                                    onChange={e => setData('description', e.target.value)}
+                                    rows={3}
+                                />
+                                {errors.description && <span className="text-red-500 text-[10px] mt-1 block">{errors.description}</span>}
+                            </div>
+                        </div>
+
+                        {/* Footer de Navegación Aligned Right */}
+                        <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
+                            <button 
+                                type="button" 
+                                onClick={onClose} 
+                                className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                type="submit"
+                                disabled={processing}
+                                className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none active:scale-[0.98]"
+                            >
+                                {processing ? 'Guardando...' : mode === 'create' ? 'Registrar' : 'Guardar'}
+                            </button>
+                        </div>
                     </div>
-                </>
+                </div>
             )}
         </BaseModal>
     );

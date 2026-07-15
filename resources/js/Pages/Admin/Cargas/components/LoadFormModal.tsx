@@ -114,16 +114,23 @@ export default function LoadFormModal({
             {saveStatus === 'idle' && (
                 <div className="space-y-4 text-left">
                     {/* Ciclo Escolar */}
-                    <div className="space-y-1.5">
-                        <FormLabel required>Ciclo Escolar</FormLabel>
+                    <div className="space-y-1.5 opacity-90">
+                        <div className="flex items-center justify-between">
+                            <FormLabel required>Ciclo Escolar</FormLabel>
+                            <span className="text-[9px] bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded-full border border-emerald-100 select-none">
+                                Ciclo Activo
+                            </span>
+                        </div>
                         <FormSelect
                             value={data.academic_period_id}
                             onChange={e => setData('academic_period_id', e.target.value)}
+                            disabled={true}
+                            className="bg-slate-50 cursor-not-allowed select-none text-slate-500 font-bold"
                         >
                             <option value="">Selecciona un ciclo</option>
                             {periods.map(p => (
                                 <option key={p.id} value={p.id}>
-                                    {p.name} {p.is_active ? '(Activo)' : ''}
+                                    {p.name}
                                 </option>
                             ))}
                         </FormSelect>

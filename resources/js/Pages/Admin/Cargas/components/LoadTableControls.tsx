@@ -33,14 +33,14 @@ export default function LoadTableControls({
                     placeholder="Buscar por materia, grupo o profesor..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-xl text-sm focus:border-[#1e88e5] focus:outline-none transition-all text-slate-700 placeholder-slate-450 font-semibold"
+                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0266E0] focus:outline-none transition-all text-slate-700 placeholder-slate-450 font-semibold"
                 />
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto relative">
                 <button
                     onClick={onOpenCreateModal}
-                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-extrabold h-12 px-6 rounded-xl flex-1 xl:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]"
+                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-extrabold h-12 px-6 rounded-xl flex-1 xl:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]"
                 >
                     <Plus className="w-4 h-4" />
                     Registrar Asignación
@@ -50,7 +50,7 @@ export default function LoadTableControls({
                 <select
                     value={periodFilter}
                     onChange={(e) => setPeriodFilter(e.target.value)}
-                    className="h-12 border border-slate-200 bg-white text-slate-600 font-bold pl-4 pr-10 rounded-xl text-xs focus:outline-none focus:border-[#1e88e5] transition-all min-w-[185px] appearance-none cursor-pointer flex-1 xl:flex-initial"
+                    className="h-12 border border-slate-200 bg-white text-slate-600 font-bold pl-4 pr-10 rounded-xl text-xs focus:outline-none focus:border-[#0266E0] transition-all min-w-[185px] appearance-none cursor-pointer flex-1 xl:flex-initial"
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em 1.2em', backgroundRepeat: 'no-repeat' }}
                 >
                     <option value="all">Todos los ciclos</option>
@@ -63,7 +63,7 @@ export default function LoadTableControls({
                 <select
                     value={groupFilter}
                     onChange={(e) => setGroupFilter(e.target.value)}
-                    className="h-12 border border-slate-200 bg-white text-slate-600 font-bold pl-4 pr-10 rounded-xl text-xs focus:outline-none focus:border-[#1e88e5] transition-all min-w-[155px] appearance-none cursor-pointer flex-1 xl:flex-initial"
+                    className="h-12 border border-slate-200 bg-white text-slate-600 font-bold pl-4 pr-10 rounded-xl text-xs focus:outline-none focus:border-[#0266E0] transition-all min-w-[155px] appearance-none cursor-pointer flex-1 xl:flex-initial"
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em 1.2em', backgroundRepeat: 'no-repeat' }}
                 >
                     <option value="all">Todos los grupos</option>

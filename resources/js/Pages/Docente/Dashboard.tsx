@@ -13,7 +13,7 @@ export default function DocenteDashboard() {
     // 1. Datos simulados del docente autenticado
     const teacherInfo = {
         name: 'Mtro. Francisco Javier Hernández',
-        specialty: 'Ciencias Exactas e Ingeniería',
+        specialty: 'General',
         email: 'f.martinez@prepahidalgo.edu.mx'
     };
 
@@ -46,11 +46,11 @@ export default function DocenteDashboard() {
     ];
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout noPadding>
             <Head title="Panel del Docente" />
 
             {/* Layout de Dos Columnas */}
-            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] lg:overflow-hidden font-body -m-6 md:-m-8">
+            <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
                 
                 {/* Columna Izquierda: Panel Principal */}
                 <div className="flex-1 p-6 md:p-8 space-y-6 min-w-0 lg:overflow-y-auto lg:h-full">
@@ -119,7 +119,7 @@ export default function DocenteDashboard() {
 
                                             {/* Acción Capturar */}
                                             <Link 
-                                                href={`/docente/grupos/show?grupo=${load.groupName}&materia=${encodeURIComponent(load.subject)}`}
+                                                href={`/docente/grupos/show?id=${load.id}`}
                                                 className="h-10 w-10 bg-slate-100 hover:bg-[#1e88e5] text-slate-650 hover:text-white rounded-xl flex items-center justify-center transition-all border border-slate-150 shadow-sm"
                                             >
                                                 <ArrowRight size={18} />

@@ -1,20 +1,15 @@
 import { useState } from 'react';
+import { router } from '@inertiajs/react';
 import UserTable, { MockUser } from './UserTable';
 import UserTableControls from './UserTableControls';
 import UserFormModal from './UserFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 
-export default function UsersIndex() {
-    // 1. Datos simulados (mock users)
-    const [users, setUsers] = useState<MockUser[]>([
-        { id: 1, name: 'Director Particular Hidalgo', email: 'director@prepahidalgo.edu.mx', role: 'admin', status: 'active' },
-        { id: 2, name: 'Francisco Javier Martínez', email: 'f.martinez@prepahidalgo.edu.mx', role: 'docente', status: 'active' },
-        { id: 3, name: 'María Elena Rodríguez', email: 'm.rodriguez@prepahidalgo.edu.mx', role: 'docente', status: 'active' },
-        { id: 4, name: 'José Eduardo Gómez', email: 'jose.gomez@alumno.prepahidalgo.edu.mx', role: 'alumno', status: 'active' },
-        { id: 5, name: 'Ana Sofía López', email: 'sofia.lopez@alumno.prepahidalgo.edu.mx', role: 'alumno', status: 'active' },
-        { id: 6, name: 'Ex Alumno Suspendido', email: 'suspendido@alumno.prepahidalgo.edu.mx', role: 'alumno', status: 'inactive' },
-    ]);
+interface UsersIndexProps {
+    dbUsers?: MockUser[];
+}
 
+export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
     // 2. Control de filtros
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -25,7 +20,7 @@ export default function UsersIndex() {
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
 
-    // 4. Toasts o alertas simulados
+    // 4. Toasts o alertas
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     const triggerToast = (msg: string) => {
@@ -34,7 +29,7 @@ export default function UsersIndex() {
     };
 
     // Filtrar usuarios
-    const filteredUsers = users.filter(user => {
+    const filteredUsers = dbUsers.filter(user => {
         const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                              user.email.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesRole = roleFilter === 'all' || user.role === roleFilter;
@@ -55,60 +50,85 @@ export default function UsersIndex() {
         setIsModalOpen(true);
     };
 
-    // Guardar formulario (Simulación de POST/PUT con latencia animada)
+    // Guardar formulario
     const handleFormSubmit = (formData: any) => {
         setSaveStatus('saving');
-        setTimeout(() => {
-            if (modalMode === 'create') {
-                const newUser: MockUser = {
-                    id: Date.now(),
-                    name: formData.name,
-                    email: formData.email,
-                    role: formData.role,
-                    status: formData.status
-                };
-                setUsers([newUser, ...users]);
-            } else if (modalMode === 'edit' && selectedUser) {
-                setUsers(users.map(u => u.id === selectedUser.id ? { 
-                    ...u, 
-                    name: formData.name, 
-                    email: formData.email, 
-                    role: formData.role, 
-                    status: formData.status 
-                } : u));
-            }
-            setSaveStatus('success');
-            setTimeout(() => {
-                setIsModalOpen(false);
-                setSaveStatus('idle');
-            }, 1800);
-        }, 1000);
+        
+        if (modalMode === 'create') {
+            router.post('/admin/users', {
+                name: formData.name,
+                email: formData.email,
+                role: formData.role,
+                status: formData.status,
+                password: formData.password || 'Prepahid2026'
+            }, {
+                onSuccess: () => {
+                    setSaveStatus('success');
+                    setTimeout(() => {
+                        setIsModalOpen(false);
+                        setSaveStatus('idle');
+                        triggerToast('Usuario registrado con éxito.');
+                    }, 1000);
+                },
+                onError: (errs) => {
+                    setSaveStatus('error');
+                    setTimeout(() => setSaveStatus('idle'), 3000);
+                }
+            });
+        } else if (modalMode === 'edit' && selectedUser) {
+            router.put(`/admin/users/${selectedUser.id}`, {
+                name: formData.name,
+                email: formData.email,
+                role: formData.role,
+                status: formData.status
+            }, {
+                onSuccess: () => {
+                    setSaveStatus('success');
+                    setTimeout(() => {
+                        setIsModalOpen(false);
+                        setSaveStatus('idle');
+                        triggerToast('Usuario actualizado con éxito.');
+                    }, 1000);
+                },
+                onError: (errs) => {
+                    setSaveStatus('error');
+                    setTimeout(() => setSaveStatus('idle'), 3000);
+                }
+            });
+        }
     };
 
-    // Alternar estado activo/inactivo (Simulado)
+    // Alternar estado activo/inactivo
     const toggleStatus = (user: MockUser) => {
-        const newStatus = user.status === 'active' ? 'inactive' : 'active';
-        setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-        triggerToast(`Usuario "${user.name}" marcado como ${newStatus === 'active' ? 'ACTIVO' : 'INACTIVO'}.`);
+        router.post(`/admin/users/${user.id}/toggle`, {}, {
+            onSuccess: () => {
+                const newStatus = user.status === 'active' ? 'INACTIVO' : 'ACTIVO';
+                triggerToast(`Usuario "${user.name}" marcado como ${newStatus}.`);
+            }
+        });
     };
 
     // Simular restablecimiento de contraseña
     const handleResetPassword = (user: MockUser) => {
-        triggerToast(`Se ha enviado un enlace de restauración a: ${user.email}`);
+        router.post(`/admin/users/${user.id}/reset-password`, {}, {
+            onSuccess: () => {
+                triggerToast(`Contraseña restablecida a Prepahid2026 para: ${user.email}`);
+            }
+        });
     };
 
     // Estadísticas
-    const totalCount = users.length;
-    const adminCount = users.filter(u => u.role === 'admin').length;
-    const teacherCount = users.filter(u => u.role === 'docente').length;
-    const studentCount = users.filter(u => u.role === 'alumno').length;
-    const activeCount = users.filter(u => u.status === 'active').length;
+    const totalCount = dbUsers.length;
+    const adminCount = dbUsers.filter(u => u.role === 'admin').length;
+    const teacherCount = dbUsers.filter(u => u.role === 'docente').length;
+    const studentCount = dbUsers.filter(u => u.role === 'alumno').length;
+    const activeCount = dbUsers.filter(u => u.status === 'active').length;
 
     return (
         <AdminPageLayout
-            headTitle="Gestión de Usuarios"
-            title="Gestión de Usuarios"
-            subtitle="Registra y administra los accesos al sistema escolar"
+            headTitle="Gestión de Cuentas"
+            title="Gestión de Cuentas"
+            subtitle="Administra los accesos y credenciales globales de PrepaHid"
             breadcrumb="Usuarios"
             toastMessage={toastMessage}
             metrics={[
@@ -118,7 +138,7 @@ export default function UsersIndex() {
                 { code: "T2", label: "Alumnos", value: studentCount }
             ]}
             quickActions={[
-                { label: "Registrar Usuario", onClick: openCreateModal }
+                { label: "Registrar Cuenta", onClick: openCreateModal }
             ]}
             donutChartTitle="Estado de Cuentas"
             donutChartLabel="usuarios"

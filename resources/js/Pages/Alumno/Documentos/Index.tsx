@@ -1,9 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { 
-    FileText, 
-    Download, 
+import {
+    FileText,
+    Download,
     Calendar,
     Check,
     Eye
@@ -12,7 +12,7 @@ import StudentRightSidebar from '@/Components/StudentRightSidebar';
 import PageHeaderBanner from '@/Components/PageHeaderBanner';
 import StudentInfoCard from '@/Components/StudentInfoCard';
 import ReportDocCard from '@/Components/ReportDocCard';
-import AppTable from '@/Components/AppTable';
+import AppTable from '@/Components/table/AppTable';
 
 export default function AlumnoDocumentosIndex() {
     const { auth } = usePage().props as any;
@@ -46,17 +46,17 @@ export default function AlumnoDocumentosIndex() {
     };
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout noPadding>
             <Head title="Centro de Trámites y Reportes" />
 
             {/* Layout de Dos Columnas */}
-            <div className="flex flex-col lg:flex-row bg-[#f5f7fb] min-h-[calc(100vh-64px)] lg:h-[calc(100vh-64px)] lg:overflow-hidden font-body -m-6 md:-m-8">
-                
+            <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
+
                 {/* Columna Izquierda: Reportes y Trámites */}
                 <div className="flex-1 flex flex-col min-w-0 lg:overflow-y-auto lg:h-full">
-                    
+
                     {/* Header Banner */}
-                    <PageHeaderBanner 
+                    <PageHeaderBanner
                         title="Centro de trámites y reportes"
                         subtitle={`Hola ${studentInfo.name.split(' ')[0]}`}
                         breadcrumb="Reportes"
@@ -67,7 +67,7 @@ export default function AlumnoDocumentosIndex() {
                         <div className="bg-white rounded-none md:rounded-xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100 flex-1 flex flex-col min-h-0 lg:min-h-fit">
 
                             {/* Ficha de Alumno */}
-                            <StudentInfoCard 
+                            <StudentInfoCard
                                 matricula={studentInfo.matricula}
                                 name={studentInfo.name}
                                 groupName={studentInfo.groupName}
@@ -79,8 +79,8 @@ export default function AlumnoDocumentosIndex() {
 
                                 {/* Grid de las 4 Tarjetas de Trámite */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    
-                                    <ReportDocCard 
+
+                                    <ReportDocCard
                                         title="Boleta de calificaciones"
                                         description="Descarga tu boleta del periodo actual"
                                         icon={FileText}
@@ -89,7 +89,7 @@ export default function AlumnoDocumentosIndex() {
                                         onClick={() => handleDownloadPDF('Boleta de calificaciones')}
                                     />
 
-                                    <ReportDocCard 
+                                    <ReportDocCard
                                         title="Constancia de estudios:"
                                         description="Descarga tu boleta del periodo actual"
                                         icon={FileText}
@@ -98,7 +98,7 @@ export default function AlumnoDocumentosIndex() {
                                         onClick={() => handleDownloadPDF('Constancia de estudios')}
                                     />
 
-                                    <ReportDocCard 
+                                    <ReportDocCard
                                         title="Reporte de asistencia:"
                                         description="Descarga tu boleta del periodo actual"
                                         icon={Calendar}
@@ -107,7 +107,7 @@ export default function AlumnoDocumentosIndex() {
                                         onClick={() => handleViewReport('Reporte de asistencia')}
                                     />
 
-                                    <ReportDocCard 
+                                    <ReportDocCard
                                         title="Estado de cuenta:"
                                         description="Descarga tu boleta del periodo actual"
                                         icon={FileText}

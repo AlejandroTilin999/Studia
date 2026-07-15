@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { Download, Layers, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
@@ -18,7 +18,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
 
     const formattedTeachers: TeacherFormatted[] = backendTeachers.map((t: TeacherFromBackend) => {
         const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
-        const correoDocente = t.email || (t.employee_code ? `${t.employee_code.toLowerCase()}@prepahidalgo.edu.mx` : 'docente@prepahidalgo.edu.mx');
+        const correoDocente = t.user?.email || t.email || (t.employee_code ? `${t.employee_code.toLowerCase()}@prepahidalgo.edu.mx` : 'docente@prepahidalgo.edu.mx');
 
         return {
             id: t.id,
@@ -32,7 +32,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             specialty: t.specialty || 'General',
             assignments: t.courses?.map(c => ({
                 subject: c.name,
-                groupName: 'Asignado'
+                groupName: c.groupName || 'Asignado'
             })) || []
         };
     });
@@ -53,12 +53,42 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
 
     // FORMULARIO DE INERTIA CONECTADO AL BACKEND
     const { data, setData, reset, processing, errors } = useForm({
+        matricula: '',
+        email: '',
         nombre: '',
         apellido_paterno: '',
         apellido_materno: '',
         phone: '',
         specialty: ''
     });
+
+    // Auto-generar matrícula y correo igual que en alumnos
+    useEffect(() => {
+        if (modalMode !== 'create') return;
+        if (!data.nombre.trim() && !data.apellido_paterno.trim()) {
+            if (data.matricula !== '' || data.email !== '') {
+                setData(d => ({ ...d, matricula: '', email: '' }));
+            }
+            return;
+        }
+        const firstInit   = data.nombre.trim().charAt(0).toUpperCase();
+        const paternoInit = data.apellido_paterno.trim().charAt(0).toUpperCase();
+        const maternoInit = (data.apellido_materno?.trim().charAt(0).toUpperCase()) || 'X';
+        const year = new Date().getFullYear();
+        const generatedMatricula = `DOC-${firstInit}${paternoInit}${maternoInit}${year}`;
+
+        let primerNombre  = data.nombre.trim().split(/\s+/)[0]?.toLowerCase() || '';
+        let primerPaterno = data.apellido_paterno.trim().split(/\s+/)[0]?.toLowerCase() || '';
+        primerNombre  = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        primerPaterno = primerPaterno.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const generatedEmail = primerNombre && primerPaterno
+            ? `${primerNombre}.${primerPaterno}@prepahidalgo.edu.mx`
+            : '';
+
+        if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
+            setData(d => ({ ...d, matricula: generatedMatricula, email: generatedEmail }));
+        }
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, modalMode]);
 
     const handleExportExcel = () => {
         const rows = filteredTeachers.map(t => [
@@ -99,9 +129,11 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         setModalMode('edit');
         setSelectedTeacher(teacher);
         setData({
+            matricula: teacher.matricula === 'S/M' ? '' : teacher.matricula,
+            email: teacher.email,
             nombre: teacher.rawNombre,
             apellido_paterno: teacher.rawPaterno,
-            apellido_materno: teacher.rawMaterno,
+            apellido_materno: teacher.rawMaterno ?? '',
             phone: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
             specialty: teacher.specialty
         });
@@ -223,7 +255,6 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             <TeacherTable
                 teachers={filteredTeachers}
                 onEdit={openEditModal}
-                onViewAssignments={openAssignmentsModal}
                 onDelete={triggerDeleteConfirm}
             />
 

@@ -79,7 +79,7 @@ export default function TeacherRightSidebar({
                     external 
                 />
                 <ContactButton 
-                    href="/docente/grupos" 
+                    href="#" 
                     label="Carga Horaria" 
                     icon={Download} 
                     isLink 

@@ -7,10 +7,14 @@ export interface TeacherFromBackend {
     specialty: string;
     phone: string | null;
     email?: string;
+    user?: {
+        email: string;
+    };
     courses?: {
         id: number;
         name: string;
         code: string;
+        groupName?: string;
     }[];
 }
 

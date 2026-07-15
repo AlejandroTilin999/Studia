@@ -1,6 +1,6 @@
-import AppTable from '@/Components/AppTable';
-import { Edit, Trash2 } from 'lucide-react';
+import AppTable from '@/Components/table/AppTable';
 import { AcademicLoadItem } from '../types';
+import { TableActions, TableActionButton } from '@/Components/TableActions';
 
 interface LoadTableProps {
     loads: AcademicLoadItem[];
@@ -22,7 +22,7 @@ export default function LoadTable({
                 {
                     header: 'Ciclo Escolar',
                     accessor: (row) => row.period_name,
-                    className: "text-xs font-black text-slate-800 leading-normal text-left",
+                    className: "text-[13px] font-medium text-slate-700 leading-normal text-left",
                 },
                 {
                     header: 'Grupo',
@@ -37,10 +37,10 @@ export default function LoadTable({
                     header: 'Materia',
                     accessor: (row) => (
                         <div className="leading-normal text-left">
-                            <div className="text-xs font-extrabold text-[#1e88e5]">
+                            <div className="text-[13px] font-medium ">
                                 {row.course_name}
                             </div>
-                            <div className="text-[9.5px] font-bold text-slate-400 mt-0.5">
+                            <div className="text-[10px] font-normal text-slate-400 mt-0.5">
                                 Clave: {row.course_code}
                             </div>
                         </div>
@@ -50,29 +50,24 @@ export default function LoadTable({
                 {
                     header: 'Profesor / Docente',
                     accessor: (row) => row.teacher_name,
-                    className: "text-xs font-bold text-slate-600 leading-normal text-left",
+                    className: "text-[13px] font-medium text-slate-600 leading-normal text-left",
                 },
                 {
                     header: 'Acciones',
                     accessor: (row) => (
-                        <div className="flex items-center justify-start gap-2">
-                            <button
-                                type="button"
+                        <TableActions align="start">
+                            <TableActionButton
                                 onClick={() => onOpenEditModal(row)}
-                                className="p-2 text-slate-400 hover:text-[#1e88e5] hover:bg-blue-50/50 rounded-xl transition-all"
                                 title="Editar carga"
-                            >
-                                <Edit size={16} />
-                            </button>
-                            <button
-                                type="button"
+                                icon="edit"
+                            />
+                            <TableActionButton
                                 onClick={() => onOpenDeleteModal(row)}
-                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                                 title="Eliminar carga"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
+                                icon="delete"
+                                variant="danger"
+                            />
+                        </TableActions>
                     ),
                     className: "text-left",
                 }

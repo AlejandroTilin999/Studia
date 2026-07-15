@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Filter, Plus } from "lucide-react";
+import { SpecialtySelect } from '@/Components/SpecialtySelect';
 
 interface TeacherTableControlsProps {
     searchQuery: string;
@@ -25,13 +26,13 @@ export default function TeacherTableControls({
                     placeholder="Buscar profesor por nombre, matrícula, correo o especialidad..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none text-slate-700 placeholder-slate-400"
+                    className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#0266E0] focus:outline-none text-slate-700 placeholder-slate-400"
                 />
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto relative">
                 <button
                     onClick={onCreate}
-                    className="bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm"
+                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm"
                 >
                     <Plus size={16} />
                     Registrar profesor
@@ -48,21 +49,15 @@ export default function TeacherTableControls({
                         <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
                             Especialidad
                         </span>
-                        <select
+                        <SpecialtySelect
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value === "all" ? "" : e.target.value);
                                 setShowFiltersDropdown(false);
                             }}
-                            className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600"
-                        >
-                            <option value="all">Todas las especialidades</option>
-                            <option value="Ciencias Exactas e Ingeniería">Ciencias Exactas e Ingeniería</option>
-                            <option value="Lenguaje y Comunicación">Lenguaje y Comunicación</option>
-                            <option value="Historia y Ciencias Sociales">Historia y Ciencias Sociales</option>
-                            <option value="Química y Biología">Química y Biología</option>
-                            <option value="General">General</option>
-                        </select>
+                            showAllOption={true}
+                            className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer"
+                        />
                     </div>
                 )}
             </div>

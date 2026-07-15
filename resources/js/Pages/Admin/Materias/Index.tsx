@@ -45,6 +45,8 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         code: '',
         name: '',
         description: '',
+        teacher_id: '' as string | number,
+        linked_groups: [] as string[]
     });
 
     const handleExportExcel = () => {
@@ -87,6 +89,8 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             code: subject.code,
             name: subject.name,
             description: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
+            teacher_id: '1', // ID referencial simulado para tu select de docentes
+            linked_groups: subject.linkedGroups || []
         });
         setIsModalOpen(true);
     };
@@ -224,6 +228,9 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 processing={processing}
                 onSubmit={handleSubmit}
                 saveStatus={saveStatus}
+                profesores={profesores}
+                grupos={grupos}
+                existingCodes={formattedSubjects.map(s => s.code)}
             />
 
             {/* Delete Confirmation Modal */}

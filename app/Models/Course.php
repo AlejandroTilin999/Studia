@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Course extends Model
 {
+    protected $table = 'materias';
     protected $fillable = ['code', 'name', 'description', 'teacher_id'];
 
     public function teacher()
@@ -16,6 +17,11 @@ class Course extends Model
     public function academicGroups()
     {
         return $this->belongsToMany(AcademicGroup::class, 'course_group');
+    }
+
+    public function groups()
+    {
+        return $this->academicGroups();
     }
 
     public function academicLoads()

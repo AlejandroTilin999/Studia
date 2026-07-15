@@ -7,6 +7,8 @@ use App\Http\Controllers\GroupController;
 use App\Http\Controllers\AcademicLoadController;
 use App\Http\Controllers\AcademicPeriodController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SpecialtyController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\PasswordChangeController; // 👈 Controlador para cambio obligatorio
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -103,10 +105,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/cycles/{id}/activate', [AcademicPeriodController::class, 'activate'])->name('admin.cycles.activate');
             Route::post('/cycles/{id}/close', [AcademicPeriodController::class, 'close'])->name('admin.cycles.close');
 
-            // Usuarios / Alumnos globales del Panel Admin
-            Route::get('/users', function () {
-                return Inertia::render('Admin/Users/Index');
-            })->name('admin.users.index');
+            // Usuarios globales del Panel Admin
+            Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
+            Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
+            Route::put('/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
+            Route::post('/users/{id}/toggle', [UserController::class, 'toggleStatus'])->name('admin.users.toggle');
+            Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset_password');
 
             Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
             Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
@@ -136,6 +140,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/materias/{id}', [CourseController::class, 'update'])->name('materias.update');
             Route::delete('/materias/{id}', [CourseController::class, 'destroy'])->name('materias.destroy');
 
+            // Especialidades Asociadas al Panel Admin
+            Route::get('/especialidades', [SpecialtyController::class, 'index'])->name('admin.especialidades.index');
+            Route::post('/especialidades', [SpecialtyController::class, 'store'])->name('admin.especialidades.store');
+            Route::put('/especialidades/{id}', [SpecialtyController::class, 'update'])->name('admin.especialidades.update');
+            Route::delete('/especialidades/{id}', [SpecialtyController::class, 'destroy'])->name('admin.especialidades.destroy');
+
             Route::get('/reportes', function () {
                 return Inertia::render('Admin/Reportes/Index');
             })->name('admin.reportes.index');
@@ -148,6 +158,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/dashboard', function () {
                 return Inertia::render('Docente/Dashboard');
             })->name('docente.dashboard');
+
+            Route::get('/grupos', function () {
+                return Inertia::render('Docente/Grupos/Index');
+            })->name('docente.grupos.index');
 
             Route::get('/grupos/show', function () {
                 return Inertia::render('Docente/Grupos/Show');

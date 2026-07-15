@@ -9,7 +9,7 @@ class AcademicLoad extends Model
 {
     use HasFactory;
 
-    protected $table = 'academic_loads';
+    protected $table = 'cargas_academicas';
 
     protected $fillable = [
         'academic_period_id',

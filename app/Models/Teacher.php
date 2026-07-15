@@ -6,15 +6,29 @@ use Illuminate\Database\Eloquent\Model;
 
 class Teacher extends Model
 {
-    // 1. Añadimos tus nuevas columnas al fillable para permitir su creación/edición
+    protected $table = 'docentes';
+
     protected $fillable = [
+        'user_id',
         'employee_code', 
         'nombre', 
         'apellido_paterno', 
         'apellido_materno', 
         'specialty', 
-        'phone'
+        'phone',
+        'activo'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // Accessor to get full name as ->name attribute
+    public function getNameAttribute()
+    {
+        return trim("{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}");
+    }
 
     // Relación Uno a Muchos con Cursos (Materias) mediante la columna teacher_id
     public function courses()

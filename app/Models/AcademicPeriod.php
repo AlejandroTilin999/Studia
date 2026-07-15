@@ -8,6 +8,7 @@ class AcademicPeriod extends Model
 {
     const UPDATED_AT = null;
 
+    protected $table = 'ciclos_escolares';
     protected $fillable = ['name', 'start_date', 'end_date', 'is_active'];
 
     protected $casts = [

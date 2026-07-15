@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormSelect } from '@/Components/forms/FormSelect';
-import { ProfesorSelect, MateriaSelect } from '../types';
 
 interface GroupFormModalProps {
     isOpen: boolean;
     onClose: () => void;
     mode: 'create' | 'edit';
     group: any;
-    profesores: ProfesorSelect[];
-    materiasList?: MateriaSelect[];
     data: {
         code: string;
         name: string;
         shift: string;
-        specialty: string;
-        teacher_id: number | string;
-        linked_courses: number[];
+        major: string;
+        tutor_teacher_id: string | number;
+        plan_id: string | number;
+        turno_id: string | number;
+        activo: boolean;
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
     saveStatus?: 'idle' | 'saving' | 'success' | 'error';
+    profesores?: any[];
+    materiasList?: any[];
+    specialties?: any[];
+    groupsList?: any[];
+    planes?: any[];
+    turnos?: any[];
 }
 
 export default function GroupFormModal({
@@ -31,40 +37,46 @@ export default function GroupFormModal({
     onClose,
     mode,
     group,
-    profesores,
-    materiasList = [],
     data,
     setData,
     errors,
     processing,
     onSubmit,
     saveStatus = 'idle',
+    specialties = [],
+    profesores = [],
+    groupsList = [],
+    planes = [],
+    turnos = [],
 }: GroupFormModalProps) {
-    const [step, setStep] = useState(1);
     const [selectedSemester, setSelectedSemester] = useState('1');
     const [selectedSection, setSelectedSection] = useState('A');
-    const [subjectSearch, setSubjectSearch] = useState('');
 
     // Sincronizar y parsear datos al abrir el modal
     useEffect(() => {
         if (isOpen) {
-            setStep(1);
-            setSubjectSearch('');
-            
             if (mode === 'edit' && data.code) {
-                // Intentamos desestructurar el código (ej: "1-A" o "1A")
-                const parts = data.code.split('-');
-                if (parts.length === 2) {
-                    setSelectedSemester(parts[0]);
-                    setSelectedSection(parts[1].toUpperCase());
+                const cleanCode = data.code.trim();
+                const parts = cleanCode.split('-');
+                if (parts.length >= 2) {
+                    const firstPart = parts[0];
+                    if (firstPart.length === 2) {
+                        setSelectedSemester(firstPart.charAt(0));
+                        setSelectedSection(firstPart.charAt(1).toUpperCase());
+                    } else if (firstPart.length === 1) {
+                        setSelectedSemester(firstPart);
+                        if (parts[1] && parts[1].length === 1) {
+                            setSelectedSection(parts[1].toUpperCase());
+                        }
+                    }
                 } else {
-                    const firstChar = data.code.charAt(0);
-                    const lastChar = data.code.slice(1);
+                    const firstChar = cleanCode.charAt(0);
+                    const secondChar = cleanCode.charAt(1);
                     if (['1','2','3','4','5','6'].includes(firstChar)) {
                         setSelectedSemester(firstChar);
                     }
-                    if (lastChar) {
-                        setSelectedSection(lastChar.toUpperCase());
+                    if (secondChar && /^[A-Z]$/i.test(secondChar)) {
+                        setSelectedSection(secondChar.toUpperCase());
                     }
                 }
             } else {
@@ -74,58 +86,44 @@ export default function GroupFormModal({
         }
     }, [isOpen, mode]);
 
-    // Autogenerar código y nombre al cambiar semestre o sección
-    useEffect(() => {
-        if (isOpen) {
-            setData('code', `${selectedSemester}-${selectedSection}`);
-        }
-    }, [selectedSemester, selectedSection, isOpen]);
-
-    useEffect(() => {
-        if (isOpen) {
-            setData('name', `${selectedSemester}° Semestre - Grupo ${selectedSection}`);
-        }
-    }, [selectedSemester, selectedSection, isOpen]);
-
-    const toggleCourseSelection = (courseId: number) => {
-        const currentCourses = data.linked_courses || [];
-        if (currentCourses.includes(courseId)) {
-            setData('linked_courses', currentCourses.filter(id => id !== courseId));
-        } else {
-            setData('linked_courses', [...currentCourses, courseId]);
-        }
+    const getSpecialtySuffix = (major: string) => {
+        const match = specialties.find(
+            s => s.name.toLowerCase() === major.toLowerCase() || 
+            (major.toLowerCase() === 'ti' && s.name.toLowerCase() === 'informática')
+        );
+        return match ? match.code.toUpperCase() : 'INF';
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (step < 3) {
-            if (step === 1 && !isStep1Valid) return;
-            setStep(prev => prev + 1);
-        } else {
-            onSubmit(e);
+    // Autogenerar código y nombre al cambiar semestre, sección o especialidad
+    useEffect(() => {
+        if (isOpen) {
+            const suffix = getSpecialtySuffix(data.major);
+            setData('code', `${selectedSemester}${selectedSection}-${suffix}`);
         }
-    };
+    }, [selectedSemester, selectedSection, data.major, isOpen, specialties]);
 
-    // Validar paso 1 (siempre es válido gracias a los selectores)
-    const isStep1Valid = data.code.trim() !== '' && data.name.trim() !== '';
+    useEffect(() => {
+        if (isOpen) {
+            const match = specialties.find(
+                s => s.name.toLowerCase() === data.major.toLowerCase() || 
+                (data.major.toLowerCase() === 'ti' && s.name.toLowerCase() === 'informática')
+            );
+            const displayMajor = match ? match.name : (data.major === 'TI' ? 'Informática' : data.major);
+            setData('name', `${selectedSemester}${selectedSection} ${displayMajor}`);
+        }
+    }, [selectedSemester, selectedSection, data.major, isOpen, specialties]);
 
-    // Filtrar materias por búsqueda
-    const filteredCourses = materiasList.filter(course => 
-        course.name.toLowerCase().includes(subjectSearch.toLowerCase()) ||
-        course.code.toLowerCase().includes(subjectSearch.toLowerCase())
-    );
+    const isFormValid = data.code.trim() !== '' && data.name.trim() !== '';
 
     return (
         <BaseModal
             isOpen={isOpen}
             onClose={onClose}
-            title={saveStatus !== 'idle' ? '' : mode === 'create' ? 'Crear Nuevo Grupo' : 'Editar Grupo'}
-            subtitle={saveStatus !== 'idle' ? '' : "Completa la configuración académica de este grupo"}
-            maxWidthClass="max-w-md"
-            onSubmit={handleSubmit}
-            confirmLabel={processing ? 'Guardando...' : mode === 'create' ? 'Crear Grupo' : 'Guardar'}
-            isConfirmDisabled={processing}
+            maxWidthClass="max-w-3xl"
+            onSubmit={onSubmit}
+            isConfirmDisabled={processing || !isFormValid}
             showFooter={false}
+            fullBleed={true}
         >
             {saveStatus === 'saving' && (
                 <div className="flex flex-col items-center justify-center py-10 space-y-4">
@@ -160,53 +158,49 @@ export default function GroupFormModal({
                     </div>
                     <h3 className="font-extrabold text-slate-800 text-base">Hubo un problema</h3>
                     <p className="text-xs text-rose-550 font-bold text-center max-w-[280px]">
-                        No se pudo guardar el grupo escolar. Por favor verifica los campos e intenta de nuevo.
+                        {errors.code || errors.name || 'No se pudo guardar el grupo escolar. Por favor verifica los campos e intenta de nuevo.'}
                     </p>
                 </div>
             )}
 
             {saveStatus === 'idle' && (
-                <>
-                    {/* Indicador de pasos visual */}
-                    <div className="flex items-center justify-between px-2 pb-6 mb-6 border-b border-slate-100 select-none">
-                        {[
-                            { num: 1, label: 'Datos' },
-                            { num: 2, label: 'Tutoría' },
-                            { num: 3, label: 'Materias' }
-                        ].map((s) => {
-                            const isActive = step === s.num;
-                            const isCompleted = step > s.num;
-                            return (
-                                <div key={s.num} className="flex items-center gap-2">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold transition-all duration-300 ${
-                                        isActive 
-                                            ? 'bg-[#1e88e5] text-white ring-4 ring-blue-50' 
-                                            : isCompleted 
-                                                ? 'bg-emerald-500 text-white' 
-                                                : 'bg-slate-100 text-slate-400'
-                                    }`}>
-                                        {isCompleted ? '✓' : s.num}
-                                    </div>
-                                    <span className={`text-[10px] font-extrabold transition-all duration-300 ${
-                                        isActive 
-                                            ? 'text-[#1e88e5]' 
-                                            : isCompleted 
-                                                ? 'text-emerald-600' 
-                                                : 'text-slate-400'
-                                    }`}>
-                                        {s.label}
-                                    </span>
-                                    {s.num < 3 && (
-                                        <div className="w-8 h-[1px] bg-slate-200 mx-1"></div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[300px] h-full text-left relative">
+                    {/* Windows Close button relative to the entire grid modal container */}
+                    <button 
+                        type="button" 
+                        onClick={onClose} 
+                        className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
+                    >
+                        <X size={16} className="stroke-[2.5]" />
+                    </button>
+
+                    {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
+                    <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
+                        <div className="space-y-6">
+                            <div>
+                                <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
+                                <h3 className="text-xl font-bold text-white leading-tight">
+                                    {mode === 'create' ? 'Registrar Nuevo Grupo' : 'Modificar Grupo'}
+                                </h3>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <p className="text-xs text-blue-100 leading-relaxed font-normal">
+                                    {mode === 'create' 
+                                        ? 'Genera un nuevo grupo para estructurar la carga de alumnos. Configura el semestre, sección, turno y bachillerato.'
+                                        : 'Modifica los datos principales del grupo académico.'}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
+                            Prepahid Campus Escolar
+                        </div>
                     </div>
 
-                    {/* Paso 1: Información Básica */}
-                    {step === 1 && (
-                        <div className="space-y-4 animate-in fade-in duration-200">
+                    {/* Right Form Panel (col-span-3) */}
+                    <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative">
+                        <div className="space-y-4 flex-1 pr-2">
                             <div className="grid grid-cols-2 gap-4 text-left">
                                 <div className="space-y-1.5">
                                     <FormLabel required>Semestre</FormLabel>
@@ -214,12 +208,12 @@ export default function GroupFormModal({
                                         value={selectedSemester}
                                         onChange={e => setSelectedSemester(e.target.value)}
                                     >
-                                        <option value="1">1° Semestre (1er Año)</option>
-                                        <option value="2">2° Semestre (1er Año)</option>
-                                        <option value="3">3° Semestre (2do Año)</option>
-                                        <option value="4">4° Semestre (2do Año)</option>
-                                        <option value="5">5° Semestre (3er Año)</option>
-                                        <option value="6">6° Semestre (3er Año)</option>
+                                        <option value="1">1° Semestre</option>
+                                        <option value="2">2° Semestre</option>
+                                        <option value="3">3° Semestre</option>
+                                        <option value="4">4° Semestre</option>
+                                        <option value="5">5° Semestre</option>
+                                        <option value="6">6° Semestre</option>
                                     </FormSelect>
                                 </div>
 
@@ -238,167 +232,128 @@ export default function GroupFormModal({
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-2 gap-4 text-left">
+                                <div className="space-y-1.5">
+                                    <FormLabel required>Especialidad</FormLabel>
+                                    <FormSelect
+                                        value={data.major === 'TI' ? 'Informática' : (data.major || (specialties[0]?.name || 'Informática'))}
+                                        onChange={e => setData('major', e.target.value)}
+                                    >
+                                        {specialties.map((s) => (
+                                            <option key={s.id} value={s.name}>
+                                                {s.name}
+                                            </option>
+                                        ))}
+                                    </FormSelect>
+                                    {errors.major && <span className="text-red-500 text-[10px] mt-1 block">{errors.major}</span>}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <FormLabel>Plan de Estudios</FormLabel>
+                                    <FormSelect
+                                        value={data.plan_id}
+                                        onChange={e => setData('plan_id', e.target.value)}
+                                    >
+                                        <option value="">Selecciona un plan</option>
+                                        {planes.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.nombre}
+                                            </option>
+                                        ))}
+                                    </FormSelect>
+                                    {errors.plan_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.plan_id}</span>}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 text-left">
+                                <div className="space-y-1.5">
+                                    <FormLabel required>Turno</FormLabel>
+                                    <FormSelect
+                                        value={data.turno_id}
+                                        onChange={e => {
+                                            const id = e.target.value;
+                                            setData('turno_id', id);
+                                            const matchedTurno = turnos.find(t => t.id.toString() === id.toString());
+                                            if (matchedTurno) {
+                                                setData('shift', matchedTurno.nombre);
+                                            } else {
+                                                setData('shift', 'Horario único');
+                                            }
+                                        }}
+                                    >
+                                        <option value="">Selecciona un turno</option>
+                                        {turnos.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.nombre}
+                                            </option>
+                                        ))}
+                                    </FormSelect>
+                                    {errors.turno_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.turno_id}</span>}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <FormLabel>Tutor / Profesor Titular</FormLabel>
+                                    <FormSelect
+                                        value={data.tutor_teacher_id}
+                                        onChange={e => setData('tutor_teacher_id', e.target.value)}
+                                    >
+                                        <option value="">Sin tutor asignado</option>
+                                        {profesores.map((p) => {
+                                            const assignedGroup = groupsList.find(
+                                                g => g.teacher_id === p.id && g.id !== group?.id
+                                            );
+                                            const suffix = assignedGroup ? ` (Ya es tutor de ${assignedGroup.name})` : '';
+                                            return (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.nombre_completo}{suffix}
+                                                </option>
+                                            );
+                                        })}
+                                    </FormSelect>
+                                    {errors.tutor_teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.tutor_teacher_id}</span>}
+                                </div>
+                            </div>
+
                             {/* Preview de Datos Autogenerados */}
-                            <div className="mt-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl text-left text-[11px] space-y-2">
-                                <span className="text-slate-400 font-bold uppercase tracking-wider block">
+                            <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-left text-[11px] space-y-2">
+                                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">
                                     Previsualización del Grupo
                                 </span>
                                 <div className="grid grid-cols-2 gap-2 mt-1">
                                     <div>
                                         <span className="text-[10px] text-slate-400 font-medium block">Código Generado</span>
                                         <span className="font-extrabold text-slate-700">{data.code}</span>
+                                        {errors.code && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.code}</span>}
                                     </div>
                                     <div>
                                         <span className="text-[10px] text-slate-400 font-medium block">Nombre del Grupo</span>
                                         <span className="font-extrabold text-slate-700">{data.name}</span>
+                                        {errors.name && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.name}</span>}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    {/* Paso 2: Horarios y Tutoría */}
-                    {step === 2 && (
-                        <div className="space-y-4 animate-in fade-in duration-200">
-                            <div className="grid grid-cols-2 gap-4 text-left">
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Turno</FormLabel>
-                                    <FormSelect
-                                        value={data.shift}
-                                        onChange={e => setData('shift', e.target.value)}
-                                    >
-                                        <option value="Horario único">Horario único</option>
-                                        <option value="Matutino">Matutino</option>
-                                        <option value="Vespertino">Vespertino</option>
-                                    </FormSelect>
-                                    {errors.shift && <span className="text-red-500 text-[10px] mt-1 block">{errors.shift}</span>}
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Especialidad</FormLabel>
-                                    <FormSelect
-                                        value={data.specialty}
-                                        onChange={e => setData('specialty', e.target.value)}
-                                    >
-                                        <option value="TI">TI</option>
-                                        <option value="Gastronomía">Gastronomía</option>
-                                        <option value="Biotecnología">Biotecnología</option>
-                                    </FormSelect>
-                                    {errors.specialty && <span className="text-red-500 text-[10px] mt-1 block">{errors.specialty}</span>}
-                                </div>
-                            </div>
-
-                            <div className="space-y-1.5 text-left">
-                                <FormLabel required>Profesor Titular / Tutor</FormLabel>
-                                <FormSelect
-                                    value={data.teacher_id}
-                                    onChange={e => setData('teacher_id', e.target.value ? Number(e.target.value) : '')}
-                                >
-                                    <option value="">Pendiente de Asignación</option>
-                                    {profesores.map((p) => (
-                                        <option key={p.id} value={p.id}>{p.nombre_completo}</option>
-                                    ))}
-                                </FormSelect>
-                                {errors.teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.teacher_id}</span>}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Paso 3: Carga Académica */}
-                    {step === 3 && (
-                        <div className="space-y-4 animate-in fade-in duration-200 text-left">
-                            <FormLabel>Vincular Materias (Asignaturas)</FormLabel>
-                            
-                            {/* Buscador */}
-                            <div className="mb-3 relative">
-                                <input
-                                    type="text"
-                                    placeholder="Buscar materia por nombre o código..."
-                                    value={subjectSearch}
-                                    onChange={(e) => setSubjectSearch(e.target.value)}
-                                    className="w-full px-3 py-2.5 text-[12px] font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-400 focus:outline-none transition-all placeholder-slate-400"
-                                />
-                            </div>
-
-                            {/* Listado Checklist */}
-                            {filteredCourses.length > 0 ? (
-                                <div className="border border-slate-100 rounded-2xl bg-slate-50/50 p-2 space-y-1 max-h-[160px] overflow-y-auto pr-1">
-                                    {filteredCourses.map((course) => {
-                                        const isChecked = data.linked_courses?.includes(course.id);
-                                        return (
-                                            <label 
-                                                key={course.id} 
-                                                className="flex items-center gap-3 px-3 py-2 bg-white rounded-xl border border-slate-100 hover:border-blue-100 cursor-pointer select-none transition-all"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={() => toggleCourseSelection(course.id)}
-                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-400 border-slate-200 cursor-pointer"
-                                                />
-                                                <div className="text-[11px]">
-                                                    <span className="font-extrabold text-slate-700 block">
-                                                        {course.name}
-                                                    </span>
-                                                    <span className="text-[9.5px] text-slate-400 font-bold">
-                                                        Código: {course.code}
-                                                    </span>
-                                                </div>
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 text-slate-400 text-[11px] font-bold">
-                                    {subjectSearch ? "No se encontraron materias." : "No hay materias registradas."}
-                                </div>
-                            )}
-                            {errors.linked_courses && <span className="text-red-500 text-[10px] mt-1 block">{errors.linked_courses}</span>}
-                        </div>
-                    )}
-
-                    {/* Footer de Navegación del Wizard */}
-                    <div className="flex justify-between items-center mt-8 pt-4 border-t border-slate-100">
-                        {step > 1 ? (
-                            <button
-                                type="button"
-                                onClick={() => setStep(prev => prev - 1)}
-                                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl text-xs font-extrabold text-slate-500 cursor-pointer"
-                            >
-                                Atrás
-                            </button>
-                        ) : (
+                        {/* Navigation Footer */}
+                        <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 transition-all rounded-xl text-xs font-extrabold text-slate-500 cursor-pointer"
+                                className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
                             >
                                 Cancelar
                             </button>
-                        )}
 
-                        <div className="flex gap-2">
-                            {step < 3 ? (
-                                <button
-                                    type="button"
-                                    disabled={step === 1 && !isStep1Valid}
-                                    onClick={() => setStep(prev => prev + 1)}
-                                    className="px-5 py-2.5 bg-[#1e88e5] text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-xl text-xs font-extrabold cursor-pointer"
-                                >
-                                    Siguiente
-                                </button>
-                            ) : (
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="px-5 py-2.5 bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-xl text-xs font-extrabold cursor-pointer"
-                                >
-                                    {processing ? 'Guardando...' : mode === 'create' ? 'Crear Grupo' : 'Guardar'}
-                                </button>
-                            )}
+                            <button
+                                type="submit"
+                                disabled={processing || !isFormValid}
+                                className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none active:scale-[0.98]"
+                            >
+                                {processing ? 'Guardando...' : mode === 'create' ? 'Crear Grupo' : 'Guardar'}
+                            </button>
                         </div>
                     </div>
-                </>
+                </div>
             )}
         </BaseModal>
     );
