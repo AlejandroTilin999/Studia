@@ -10,7 +10,10 @@ export interface Task {
     name: string;
     description?: string;
     deadline?: string;
+    dueTime?: string;
     points?: number;
+    type?: 'task' | 'material';
+    attachments?: { name: string; size: string; type: string }[];
     grades: Record<number, string>; // studentId → score
 }
 
