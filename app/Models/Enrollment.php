@@ -46,4 +46,12 @@ class Enrollment extends Model
     {
         return $this->belongsTo(AcademicGroup::class, 'academic_group_id');
     }
+
+    /**
+     * Relación con el Periodo Académico (Ciclo Escolar)
+     */
+    public function academicPeriod()
+    {
+        return $this->belongsTo(AcademicPeriod::class, 'academic_period_id');
+    }
 }

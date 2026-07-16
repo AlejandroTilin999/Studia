@@ -32,9 +32,25 @@ interface Subject {
 
 interface AlumnoDashboardProps {
     defaultView?: 'perfil' | 'tareas';
+    studentInfo?: {
+        name: string;
+        matricula: string;
+        groupName: string;
+        email: string;
+        registeredAt: string;
+        gpa: string;
+        tutor: string;
+        ciclo: string;
+        periodo: string;
+    };
+    taskList?: Task[];
 }
 
-export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashboardProps) {
+export default function AlumnoDashboard({ 
+    defaultView = 'perfil', 
+    studentInfo: propStudentInfo, 
+    taskList: propTaskList 
+}: AlumnoDashboardProps) {
     const { auth } = usePage().props as any;
     
     // Estados principales
@@ -51,8 +67,8 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
         setSelectedTask(null);
     }, [defaultView]);
 
-    // 1. Datos simulados del alumno
-    const studentInfo = {
+    // 1. Datos del alumno
+    const studentInfo = propStudentInfo || {
         name: auth?.user?.name || 'José Eduardo Gómez López',
         matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'PH2026-001',
         groupName: auth?.user?.alumnoGroups?.[0]?.groupName || '1°A',
@@ -74,7 +90,7 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
     }));
 
     // Listado general de tareas
-    const [taskList, setTaskList] = useState<Task[]>([
+    const [taskList, setTaskList] = useState<Task[]>(propTaskList || [
         { id: 1, subjectName: 'Desarrollo para dispositivos inteligentes', title: 'Diseño UX/UI de App Móvil', status: 'Pendiente', desc: 'Diseña la arquitectura de información, wireframes y mockup interactivo en Figma de una app móvil para control escolar. Debe incluir al menos vistas de login, perfil y tareas.', points: '100 puntos', deadline: '25 de Julio, 11:59 PM' },
         { id: 2, subjectName: 'Desarrollo para dispositivos inteligentes', title: 'Primera App en React Native', status: 'En progreso', desc: 'Configurar entorno de desarrollo local con Expo Go. Construir una interfaz móvil básica que renderice datos de perfil e integre al menos tres componentes básicos (<Text>, <View>, <Image>).', points: '100 puntos', deadline: '30 de Julio, 11:59 PM' },
         { id: 3, subjectName: 'Física I', title: 'Proyecto: Rampa Hidráulica', status: 'En progreso', desc: 'Desarrollar un prototipo a escala de una rampa hidráulica aplicando los principios fundamentales de la Ley de Pascal. Entregar reporte PDF del diseño físico construido.', points: '100 puntos', deadline: '24 de Julio, 11:59 PM' },
@@ -82,6 +98,13 @@ export default function AlumnoDashboard({ defaultView = 'perfil' }: AlumnoDashbo
         { id: 5, subjectName: 'Matemáticas I', title: 'Problemario de Álgebra Lineal', status: 'Pendiente', desc: 'Resolver los 15 ejercicios de matrices y sistemas de ecuaciones lineales adjuntos en el portal escolar.', points: '100 puntos', deadline: '26 de Julio, 11:59 PM' },
         { id: 6, subjectName: 'Matemáticas I', title: 'Práctica de Trigonometría', status: 'Entregado', desc: 'Completar el reporte de medición de alturas usando goniómetro casero y razones trigonométricas.', points: '50 puntos', deadline: 'Entregado hace 2 días' }
     ]);
+
+    // Actualizar tareas si cambian las props
+    useEffect(() => {
+        if (propTaskList) {
+            setTaskList(propTaskList);
+        }
+    }, [propTaskList]);
 
     // Estado persistente local de comentarios privados y archivos adjuntos
     const [taskComments, setTaskComments] = useState<Record<number, string[]>>({

@@ -20,32 +20,23 @@ interface Grade {
     teacher: string;
     score: string;
     approved: string;
+    details?: any;
 }
 
-export default function AlumnoCalificacionesIndex() {
-    const { auth } = usePage().props as any;
-
-    // Datos del alumno
-    const studentInfo = {
-        name: auth?.user?.name || 'Alejandro Bautista Beltrán',
-        matricula: 'P001',
-        groupName: '1°A',
-        tutor: 'Ing. Uriel Cambron',
-        ciclo: '2025-2026',
-        periodo: '(Enero-Abril 2026)'
+interface AlumnoCalificacionesIndexProps {
+    studentInfo: {
+        name: string;
+        matricula: string;
+        groupName: string;
+        tutor: string;
+        ciclo: string;
+        periodo: string;
     };
+    grades: Grade[];
+}
 
-    // Calificaciones de la mockup
-    const [grades] = useState<Grade[]>([
-        { id: 1, subject: 'Cálculo 1', teacher: 'Ing. Uriel Cambron', score: '10', approved: 'N/A' },
-        { id: 2, subject: 'Programación', teacher: 'DP. Ana Karen', score: '10', approved: 'N/A' },
-        { id: 3, subject: 'Programación', teacher: 'Chef Ana', score: '40', approved: 'N/A' },
-        { id: 4, subject: 'Cocina', teacher: 'Ing. Uriel Cambron', score: '30', approved: 'N/A' },
-        { id: 5, subject: 'Redes', teacher: 'DP. Ana Karen', score: '10', approved: 'N/A' },
-        { id: 6, subject: 'Pastelería', teacher: 'Chef Ana', score: '10', approved: 'N/A' },
-        { id: 7, subject: 'Matemáticas', teacher: 'Chef Ana', score: '10', approved: 'N/A' },
-        { id: 8, subject: 'Diseño móvil', teacher: 'Chef Ana', score: '10', approved: 'N/A' },
-    ]);
+export default function AlumnoCalificacionesIndex({ studentInfo, grades = [] }: AlumnoCalificacionesIndexProps) {
+    const { auth } = usePage().props as any;
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);

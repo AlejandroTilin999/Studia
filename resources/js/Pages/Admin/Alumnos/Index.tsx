@@ -30,8 +30,8 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         rawNombre: student.rawNombre || '',
         rawPaterno: student.rawPaterno || '',
         rawMaterno: student.rawMaterno || '',
-        grades: student.grades?.map((g: BackendGrade) => ({
-            subject: g.course?.name || 'Materia Desconocida',
+        grades: student.grades?.map((g: any) => ({
+            subject: g.subject || g.course?.name || 'Materia Desconocida',
             score: g.score,
             period: g.period || '2026-A'
         })) || []

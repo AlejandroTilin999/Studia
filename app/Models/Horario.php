@@ -9,7 +9,7 @@ class Horario extends Model
     protected $table = 'horarios';
     protected $fillable = ['carga_id', 'aula_id', 'dia_semana', 'hora_inicio', 'hora_fin'];
 
-    public function load()
+    public function academicLoad()
     {
         return $this->belongsTo(AcademicLoad::class, 'carga_id');
     }

@@ -6,6 +6,15 @@ interface Grade {
     teacher: string;
     score: string;
     approved: string;
+    details?: Record<number, {
+        configured: boolean;
+        criteria: {
+            name: string;
+            percentage: number;
+            score: number | null;
+        }[];
+        average: number | string;
+    }>;
 }
 
 interface GradeDetailsModalProps {
@@ -41,18 +50,24 @@ export default function GradeDetailsModal({
 
                 {/* Grades breakdown */}
                 <div className="space-y-3 pt-2">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-xs">
-                        <span className="font-semibold text-slate-500">Examen Parcial 1 (30%)</span>
-                        <span className="font-bold text-slate-800">9.5</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-xs">
-                        <span className="font-semibold text-slate-500">Examen Parcial 2 (30%)</span>
-                        <span className="font-bold text-slate-800">10.0</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-xs">
-                        <span className="font-semibold text-slate-500">Tareas y Proyectos (40%)</span>
-                        <span className="font-bold text-slate-800">{grade.score}</span>
-                    </div>
+                    {[1, 2, 3].map(num => {
+                        const pDetail = grade.details?.[num];
+                        const avg = pDetail ? pDetail.average : '—';
+                        return (
+                            <div key={num} className="border-b border-slate-100 pb-2">
+                                <div className="flex justify-between items-center text-xs font-bold text-slate-700 mb-1">
+                                    <span>Parcial {num}</span>
+                                    <span>{avg}</span>
+                                </div>
+                                {pDetail?.configured && pDetail.criteria.map((c: any, cIdx: number) => (
+                                    <div key={cIdx} className="flex justify-between items-center text-[11px] text-slate-400 pl-4">
+                                        <span>{c.name} ({c.percentage}%)</span>
+                                        <span>{c.score !== null ? c.score : '—'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
                     <div className="flex justify-between items-center pt-2 text-xs">
                         <span className="font-extrabold text-slate-700">Calificación Final</span>
                         <span className="font-black text-base text-[#5c54f2]">{grade.score}</span>

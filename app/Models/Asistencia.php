@@ -14,7 +14,7 @@ class Asistencia extends Model
         return $this->belongsTo(Student::class, 'alumno_id');
     }
 
-    public function load()
+    public function academicLoad()
     {
         return $this->belongsTo(AcademicLoad::class, 'carga_id');
     }

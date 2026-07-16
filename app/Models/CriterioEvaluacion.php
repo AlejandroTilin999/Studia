@@ -13,9 +13,4 @@ class CriterioEvaluacion extends Model
     {
         return $this->belongsTo(AcademicLoad::class, 'carga_id');
     }
-
-    public function grades()
-    {
-        return $this->hasMany(Grade::class, 'criterio_id');
-    }
 }

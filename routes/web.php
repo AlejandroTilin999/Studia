@@ -238,17 +238,110 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         Route::prefix('alumno')->group(function () {
             Route::get('/dashboard', function () {
-                return Inertia::render('Alumno/Dashboard');
+                $studentId = auth()->id();
+                $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
+                    ->where('status', 'active')
+                    ->with(['academicGroup.tutor', 'academicPeriod'])
+                    ->first();
+
+                $kardex = \App\Services\GradeService::getStudentKardex($studentId);
+                $sum = 0;
+                $count = 0;
+                foreach ($kardex as $k) {
+                    if ($k['score'] !== '—') {
+                        $sum += floatval($k['score']);
+                        $count++;
+                    }
+                }
+                $gpa = $count > 0 ? number_format($sum / $count, 1) : '10';
+
+                $studentInfo = [
+                    'name' => auth()->user()->name,
+                    'matricula' => $enrollment->student_code ?? 'ALU-' . $studentId,
+                    'groupName' => $enrollment->academicGroup->name ?? 'Sin grupo',
+                    'email' => auth()->user()->email,
+                    'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
+                    'gpa' => $gpa,
+                    'tutor' => $enrollment->academicGroup->tutor 
+                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}") 
+                        : 'Sin tutor',
+                    'ciclo' => $enrollment->academicPeriod->name ?? '2026',
+                    'periodo' => ''
+                ];
+
+                $taskList = \App\Services\GradeService::getStudentTasks($studentId);
+
+                return Inertia::render('Alumno/Dashboard', [
+                    'studentInfo' => $studentInfo,
+                    'taskList' => $taskList
+                ]);
             })->name('alumno.dashboard');
 
             Route::get('/tareas', function () {
+                $studentId = auth()->id();
+                $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
+                    ->where('status', 'active')
+                    ->with(['academicGroup.tutor', 'academicPeriod'])
+                    ->first();
+
+                $kardex = \App\Services\GradeService::getStudentKardex($studentId);
+                $sum = 0;
+                $count = 0;
+                foreach ($kardex as $k) {
+                    if ($k['score'] !== '—') {
+                        $sum += floatval($k['score']);
+                        $count++;
+                    }
+                }
+                $gpa = $count > 0 ? number_format($sum / $count, 1) : '10';
+
+                $studentInfo = [
+                    'name' => auth()->user()->name,
+                    'matricula' => $enrollment->student_code ?? 'ALU-' . $studentId,
+                    'groupName' => $enrollment->academicGroup->name ?? 'Sin grupo',
+                    'email' => auth()->user()->email,
+                    'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
+                    'gpa' => $gpa,
+                    'tutor' => $enrollment->academicGroup->tutor 
+                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}") 
+                        : 'Sin tutor',
+                    'ciclo' => $enrollment->academicPeriod->name ?? '2026',
+                    'periodo' => ''
+                ];
+
+                $taskList = \App\Services\GradeService::getStudentTasks($studentId);
+
                 return Inertia::render('Alumno/Dashboard', [
-                    'defaultView' => 'tareas'
+                    'defaultView' => 'tareas',
+                    'studentInfo' => $studentInfo,
+                    'taskList' => $taskList
                 ]);
             })->name('alumno.tareas.index');
 
             Route::get('/calificaciones', function () {
-                return Inertia::render('Alumno/Calificaciones/Index');
+                $studentId = auth()->id();
+                $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
+                    ->where('status', 'active')
+                    ->with(['academicGroup.tutor', 'academicPeriod'])
+                    ->first();
+
+                $studentInfo = [
+                    'name' => auth()->user()->name,
+                    'matricula' => $enrollment->student_code ?? 'ALU-' . $studentId,
+                    'groupName' => $enrollment->academicGroup->name ?? 'Sin grupo',
+                    'tutor' => $enrollment->academicGroup->tutor 
+                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}") 
+                        : 'Sin tutor',
+                    'ciclo' => $enrollment->academicPeriod->name ?? '2026',
+                    'periodo' => ''
+                ];
+
+                $grades = \App\Services\GradeService::getStudentKardex($studentId);
+
+                return Inertia::render('Alumno/Calificaciones/Index', [
+                    'studentInfo' => $studentInfo,
+                    'grades' => $grades
+                ]);
             })->name('alumno.calificaciones.index');
 
             Route::get('/documentos', function () {
