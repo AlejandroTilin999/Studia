@@ -1,4 +1,4 @@
-import { Palette, GalleryVerticalEnd, Users, BookOpen, CheckCircle2, FileText, GraduationCap, School } from 'lucide-react';
+import { Palette, Layers, Users, BookOpen, CheckCircle2, FileText, GraduationCap, School } from 'lucide-react';
 import { COLOR_THEMES } from '../../ColorThemes';
 
 interface GroupHeaderBannerProps {
@@ -76,7 +76,7 @@ export default function GroupHeaderBanner({
                 <div className="relative z-10 space-y-3 text-left">
                     {/* Pill superior */}
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg w-fit text-[11.5px] font-extrabold tracking-wide uppercase ${groupColors.badgeBg} ${groupColors.text}`}>
-                        <GalleryVerticalEnd size={12.5} className={groupColors.text} />
+                        <Layers size={12.5} className={groupColors.text} />
                         <span>Carga Docente</span>
                     </div>
 

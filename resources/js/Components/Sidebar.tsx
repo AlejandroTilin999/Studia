@@ -11,7 +11,7 @@ import {
   User,
   ClipboardList,
   BriefcaseBusiness,
-  GalleryVerticalEnd,
+  Layers,
   ChevronDown,
   ChevronRight,
   PanelLeft,
@@ -79,7 +79,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     },
     {
       name: "Grupos",
-      icon: GalleryVerticalEnd,
+      icon: Layers,
       path: role === "ADMIN" ? "/admin/grupos" : (user?.docenteGroups?.length > 0 ? `/docente/grupos/show?id=${user.docenteGroups[0].id}` : '/docente/dashboard'),
       roles: ["ADMIN", "DOCENTE"]
     },
@@ -196,7 +196,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                         : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold"
                     )}
                   >
-                    <GalleryVerticalEnd className={cn(
+                    <Layers className={cn(
                       "w-5 h-5 shrink-0 transition-colors",
                       isAnyGroupActive ? "text-[#1e88e5]" : "text-slate-400"
                     )} />
@@ -227,7 +227,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                           && !url.includes('tab=tasks');
                         return (
                           <button
-                            key={g.name}
+                            key={g.id}
                             onClick={() => {
                               router.visit(groupPath);
                               if (isSheet) setOpenMobile(false);
