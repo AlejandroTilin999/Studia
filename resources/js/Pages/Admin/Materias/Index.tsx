@@ -5,7 +5,7 @@ import SubjectTable from './components/SubjectTable';
 import SubjectTableControls from './components/SubjectTableControls';
 import SubjectFormModal from './components/SubjectFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
-import ConfirmActionModal from '@/Components/ConfirmActionModal';
+import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { subjectService } from './services/subjectService';
@@ -16,8 +16,10 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         id: course.id,
         code: course.codigo || 'S/C',
         name: course.nombre || 'Sin nombre',
+        semestre: course.semestre || 1,
         tipo: course.tipo || 'General',
         teacherName: course.profesor || 'Pendiente de Asignación',
+        teacher_id: course.teacher_id,
         linkedGroups: course.grupos || [],
         description: course.descripcion || 'Sin descripción disponible.',
         specialties: course.especialidades || []
@@ -30,25 +32,19 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
     const [groupFilter, setGroupFilter] = useState('all');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedSubject, setSelectedSubject] = useState<SubjectFormatted | null>(null);
-    
-    const { toastMessage, triggerToast } = useToast();
+
+    const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
-    
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-    const [subjectToDelete, setSubjectToDelete] = useState<{ id: number; name: string } | null>(null);
-    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     // Formulario de Inertia
     const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
         code: '',
         name: '',
+        semestre: 1 as number,
         description: '',
         tipo: 'General' as 'General' | 'Especialidad',
-        teacher_id: '' as string | number,
         linked_groups: [] as string[],
         specialty_ids: [] as number[]
     });
@@ -75,7 +71,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
     };
 
     const filteredSubjects = formattedSubjects.filter(subject => {
-        const matchesSearch = subject.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        const matchesSearch = subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             subject.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             subject.teacherName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesGroup = groupFilter === 'all' || subject.linkedGroups.includes(groupFilter);
@@ -94,9 +90,9 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         setData({
             code: subject.code,
             name: subject.name,
+            semestre: subject.semestre || 1,
             description: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
             tipo: subject.tipo || 'General',
-            teacher_id: '1', // ID referencial simulado para tu select de docentes
             linked_groups: subject.linkedGroups || [],
             specialty_ids: subject.specialties ? subject.specialties.map(s => s.id) : []
         });
@@ -105,31 +101,24 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setSaveStatus('saving');
+
+        SwalHelper.loading(
+            modalMode === 'create' ? 'Registrando materia...' : 'Actualizando datos...',
+            'Procesando en el servidor'
+        );
 
         const submitOptions = {
             onSuccess: () => {
-                setSaveStatus('success');
+                setIsModalOpen(false);
                 reset();
-                setTimeout(() => {
-                    setIsModalOpen(false);
-                    setSaveStatus('idle');
-                }, 2000);
+                SwalHelper.success(
+                    '¡Hecho!',
+                    modalMode === 'create' ? 'La materia ha sido creada correctamente.' : 'La materia ha sido actualizada.'
+                );
             },
-            onError: () => {
-                setSaveStatus('error');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                }, 2500);
-            },
-            onFinish: () => {
-                setSaveStatus(current => {
-                    if (current === 'saving') {
-                        setTimeout(() => setSaveStatus('idle'), 3000);
-                        return 'error';
-                    }
-                    return current;
-                });
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                SwalHelper.error('Error de validación', firstError || 'No se pudieron guardar los cambios.');
             }
         };
 
@@ -140,42 +129,26 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         }
     };
 
-    const triggerDeleteConfirm = (id: number, name: string) => {
-        setDeleteErrorMessage(null);
-        setSubjectToDelete({ id, name });
-        setIsDeleteModalOpen(true);
-    };
-
-    const confirmDeleteSubject = () => {
-        if (subjectToDelete) {
-            setDeleteStatus('saving');
-            subjectService.destroy(subjectToDelete.id, {
-                onSuccess: () => {
-                    setDeleteStatus('success');
-                    setTimeout(() => {
-                        setIsDeleteModalOpen(false);
-                        setDeleteStatus('idle');
-                        setSubjectToDelete(null);
-                    }, 2000);
-                },
-                onError: (err: any) => {
-                    setDeleteStatus('error');
-                    setDeleteErrorMessage(err.delete || "No se pudo realizar la acción.");
-                    setTimeout(() => {
-                        setDeleteStatus('idle');
-                    }, 4000);
-                },
-                onFinish: () => {
-                    setDeleteStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setDeleteStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
-        }
+    const handleDeleteSubject = (id: number, name: string) => {
+        SwalHelper.confirm(
+            '¿Eliminar Materia?',
+            `¿Estás seguro de que deseas eliminar "${name}"? Esta acción no se puede deshacer.`,
+            'Sí, Eliminar',
+            'Cancelar',
+            'error'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Eliminando...', 'Borrando materia del plan de estudios.');
+                subjectService.destroy(id, {
+                    onSuccess: () => {
+                        SwalHelper.success('¡Eliminada!', 'La materia ha sido removida del sistema.');
+                    },
+                    onError: (err: any) => {
+                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar la materia.');
+                    }
+                });
+            }
+        });
     };
 
     const totalSubjectsCount = formattedSubjects.length;
@@ -186,7 +159,6 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             title={`Gestión de materias (${totalSubjectsCount})`}
             subtitle="Consulta, edita y registra planes de estudio y materias del ciclo"
             breadcrumb="Materias"
-            toastMessage={toastMessage}
             metrics={[
                 { code: "T1", label: "Materias totales", value: totalSubjectsCount },
                 { code: "T3", label: "Activas en ciclo", value: totalSubjectsCount },
@@ -217,17 +189,13 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             <SubjectTable
                 subjects={filteredSubjects}
                 onOpenEditModal={openEditModal}
-                onDelete={triggerDeleteConfirm}
+                onDelete={handleDeleteSubject}
             />
 
             {/* Form Modal */}
             <SubjectFormModal
                 isOpen={isModalOpen}
-                onClose={() => {
-                    if (saveStatus === 'idle') {
-                        setIsModalOpen(false);
-                    }
-                }}
+                onClose={() => setIsModalOpen(false)}
                 mode={modalMode}
                 subject={selectedSubject}
                 data={data}
@@ -235,30 +203,10 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 errors={errors}
                 processing={processing}
                 onSubmit={handleSubmit}
-                saveStatus={saveStatus}
                 profesores={profesores}
                 grupos={grupos}
                 specialties={specialties}
                 existingCodes={formattedSubjects.map(s => s.code)}
-            />
-
-            {/* Delete Confirmation Modal */}
-            <ConfirmActionModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => {
-                    if (deleteStatus === 'idle') {
-                        setIsDeleteModalOpen(false);
-                        setSubjectToDelete(null);
-                    }
-                }}
-                onConfirm={confirmDeleteSubject}
-                title="¿Deseas eliminar esta materia?"
-                description={`La materia "${subjectToDelete?.name || ''}" se eliminará permanentemente del plan de estudios escolar y no se podrá recuperar.`}
-                confirmLabel="Eliminar materia"
-                saveStatus={deleteStatus}
-                processingLabel="Eliminando materia..."
-                successLabel="¡Materia eliminada!"
-                errorLabel={deleteErrorMessage || undefined}
             />
         </AdminPageLayout>
     );

@@ -30,6 +30,13 @@ export default function SubjectTable({
                     className: "text-slate-700 text-[13px] text-left leading-tight text-left font-normal",
                 },
                 {
+                    header: "Sem.",
+                    accessor: (row) => (
+                        <span className="text-slate-500 font-bold text-xs">{row.semestre}°</span>
+                    ),
+                    className: "text-center",
+                },
+                {
                     header: "Tipo",
                     accessor: (row) => (
                         <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-[12px] font-normal rounded-lg block w-fit text-left">

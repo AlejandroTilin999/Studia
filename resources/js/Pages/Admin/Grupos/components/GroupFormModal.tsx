@@ -15,7 +15,6 @@ interface GroupFormModalProps {
         shift: string;
         major: string;
         tutor_teacher_id: string | number;
-        plan_id: string | number;
         turno_id: string | number;
         activo: boolean;
     };
@@ -23,7 +22,6 @@ interface GroupFormModalProps {
     errors: Record<string, string>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
-    saveStatus?: 'idle' | 'saving' | 'success' | 'error';
     profesores?: any[];
     materiasList?: any[];
     specialties?: any[];
@@ -42,15 +40,13 @@ export default function GroupFormModal({
     errors,
     processing,
     onSubmit,
-    saveStatus = 'idle',
     specialties = [],
     profesores = [],
     groupsList = [],
-    planes = [],
     turnos = [],
 }: GroupFormModalProps) {
-    const [selectedSemester, setSelectedSemester] = useState('1');
-    const [selectedSection, setSelectedSection] = useState('A');
+    const [selectedSemester, setSelectedSemester] = useState('');
+    const [selectedSection, setSelectedSection] = useState('');
 
     // Sincronizar y parsear datos al abrir el modal
     useEffect(() => {
@@ -80,15 +76,16 @@ export default function GroupFormModal({
                     }
                 }
             } else {
-                setSelectedSemester('1');
-                setSelectedSection('A');
+                setSelectedSemester('');
+                setSelectedSection('');
             }
         }
     }, [isOpen, mode]);
 
     const getSpecialtySuffix = (major: string) => {
+        if (!major) return '';
         const match = specialties.find(
-            s => s.name.toLowerCase() === major.toLowerCase() || 
+            s => s.name.toLowerCase() === major.toLowerCase() ||
             (major.toLowerCase() === 'ti' && s.name.toLowerCase() === 'informática')
         );
         return match ? match.code.toUpperCase() : 'INF';
@@ -98,18 +95,27 @@ export default function GroupFormModal({
     useEffect(() => {
         if (isOpen) {
             const suffix = getSpecialtySuffix(data.major);
-            setData('code', `${selectedSemester}${selectedSection}-${suffix}`);
+            if (selectedSemester && selectedSection && suffix) {
+                setData('code', `${selectedSemester}${selectedSection}-${suffix}`);
+            } else {
+                setData('code', '');
+            }
         }
     }, [selectedSemester, selectedSection, data.major, isOpen, specialties]);
 
     useEffect(() => {
         if (isOpen) {
             const match = specialties.find(
-                s => s.name.toLowerCase() === data.major.toLowerCase() || 
+                s => s.name.toLowerCase() === data.major.toLowerCase() ||
                 (data.major.toLowerCase() === 'ti' && s.name.toLowerCase() === 'informática')
             );
             const displayMajor = match ? match.name : (data.major === 'TI' ? 'Informática' : data.major);
-            setData('name', `${selectedSemester}${selectedSection} ${displayMajor}`);
+
+            if (selectedSemester && selectedSection && displayMajor) {
+                setData('name', `${selectedSemester}${selectedSection} ${displayMajor}`);
+            } else {
+                setData('name', '');
+            }
         }
     }, [selectedSemester, selectedSection, data.major, isOpen, specialties]);
 
@@ -125,236 +131,185 @@ export default function GroupFormModal({
             showFooter={false}
             fullBleed={true}
         >
-            {saveStatus === 'saving' && (
-                <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                    <div className="w-12 h-12 rounded-full border-4 border-[#1e88e5]/20 border-t-[#1e88e5] animate-spin"></div>
-                    <p className="font-extrabold text-slate-800 text-sm">
-                        {mode === 'create' ? 'Creando grupo académico...' : 'Guardando cambios...'}
-                    </p>
-                    <p className="text-xs text-slate-400 font-bold">Por favor, espera un momento.</p>
-                </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[300px] h-full text-left relative">
+                {/* Windows Close button relative to the entire grid modal container */}
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
+                >
+                    <X size={16} className="stroke-[2.5]" />
+                </button>
 
-            {saveStatus === 'success' && (
-                <div className="flex flex-col items-center justify-center py-10 space-y-4 animate-in zoom-in duration-200">
-                    <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                        <svg className="w-8 h-8 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <h3 className="font-extrabold text-slate-800 text-base">¡Operación Exitosa!</h3>
-                    <p className="text-xs text-slate-500 font-medium text-center">
-                        {mode === 'create' ? 'El grupo académico ha sido creado.' : 'Los cambios han sido guardados correctamente.'}
-                    </p>
-                </div>
-            )}
-
-            {saveStatus === 'error' && (
-                <div className="flex flex-col items-center justify-center py-10 space-y-4 animate-in zoom-in duration-200">
-                    <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
-                        <svg className="w-8 h-8 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Hubo un problema</h3>
-                    <p className="text-xs text-rose-550 font-bold text-center max-w-[280px]">
-                        {errors.code || errors.name || 'No se pudo guardar el grupo escolar. Por favor verifica los campos e intenta de nuevo.'}
-                    </p>
-                </div>
-            )}
-
-            {saveStatus === 'idle' && (
-                <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[300px] h-full text-left relative">
-                    {/* Windows Close button relative to the entire grid modal container */}
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
-                        className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
-                    >
-                        <X size={16} className="stroke-[2.5]" />
-                    </button>
-
-                    {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
-                    <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
-                        <div className="space-y-6">
-                            <div>
-                                <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
-                                <h3 className="text-xl font-bold text-white leading-tight">
-                                    {mode === 'create' ? 'Registrar Nuevo Grupo' : 'Modificar Grupo'}
-                                </h3>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <p className="text-xs text-blue-100 leading-relaxed font-normal">
-                                    {mode === 'create' 
-                                        ? 'Genera un nuevo grupo para estructurar la carga de alumnos. Configura el semestre, sección, turno y bachillerato.'
-                                        : 'Modifica los datos principales del grupo académico.'}
-                                </p>
-                            </div>
+                {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
+                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
+                    <div className="space-y-6">
+                        <div>
+                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
+                            <h3 className="text-xl font-bold text-white leading-tight">
+                                {mode === 'create' ? 'Registrar Nuevo Grupo' : 'Modificar Grupo'}
+                            </h3>
                         </div>
-                        
-                        <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
-                            Prepahid Campus Escolar
+
+                        <div className="space-y-4">
+                            <p className="text-xs text-blue-100 leading-relaxed font-normal">
+                                {mode === 'create'
+                                    ? 'Genera un nuevo grupo para estructurar la carga de alumnos. Configura el semestre, sección, turno y bachillerato.'
+                                    : 'Modifica los datos principales del grupo académico.'}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Right Form Panel (col-span-3) */}
-                    <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative">
-                        <div className="space-y-4 flex-1 pr-2">
-                            <div className="grid grid-cols-2 gap-4 text-left">
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Semestre</FormLabel>
-                                    <FormSelect
-                                        value={selectedSemester}
-                                        onChange={e => setSelectedSemester(e.target.value)}
-                                    >
-                                        <option value="1">1° Semestre</option>
-                                        <option value="2">2° Semestre</option>
-                                        <option value="3">3° Semestre</option>
-                                        <option value="4">4° Semestre</option>
-                                        <option value="5">5° Semestre</option>
-                                        <option value="6">6° Semestre</option>
-                                    </FormSelect>
-                                </div>
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
+                        Prepahid Campus Escolar
+                    </div>
+                </div>
 
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Sección / Grupo</FormLabel>
-                                    <FormSelect
-                                        value={selectedSection}
-                                        onChange={e => setSelectedSection(e.target.value)}
-                                    >
-                                        <option value="A">Grupo A</option>
-                                        <option value="B">Grupo B</option>
-                                        <option value="C">Grupo C</option>
-                                        <option value="D">Grupo D</option>
-                                        <option value="E">Grupo E</option>
-                                    </FormSelect>
-                                </div>
+                {/* Right Form Panel (col-span-3) */}
+                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative">
+                    <div className="space-y-4 flex-1 pr-2">
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="space-y-1.5">
+                                <FormLabel required>Semestre</FormLabel>
+                                <FormSelect
+                                    value={selectedSemester}
+                                    onChange={e => setSelectedSemester(e.target.value)}
+                                    className="h-10 text-xs"
+                                >
+                                    <option value="">Seleccionar semestre...</option>
+                                    <option value="1">1° Semestre</option>
+                                    <option value="2">2° Semestre</option>
+                                    <option value="3">3° Semestre</option>
+                                    <option value="4">4° Semestre</option>
+                                    <option value="5">5° Semestre</option>
+                                    <option value="6">6° Semestre</option>
+                                </FormSelect>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 text-left">
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Especialidad</FormLabel>
-                                    <FormSelect
-                                        value={data.major === 'TI' ? 'Informática' : (data.major || (specialties[0]?.name || 'Informática'))}
-                                        onChange={e => setData('major', e.target.value)}
-                                    >
-                                        {specialties.map((s) => (
-                                            <option key={s.id} value={s.name}>
-                                                {s.name}
-                                            </option>
-                                        ))}
-                                    </FormSelect>
-                                    {errors.major && <span className="text-red-500 text-[10px] mt-1 block">{errors.major}</span>}
-                                </div>
+                            <div className="space-y-1.5">
+                                <FormLabel required>Sección / Grupo</FormLabel>
+                                <FormSelect
+                                    value={selectedSection}
+                                    onChange={e => setSelectedSection(e.target.value)}
+                                    className="h-10 text-xs"
+                                >
+                                    <option value="">Seleccionar sección...</option>
+                                    <option value="A">Grupo A</option>
+                                    <option value="B">Grupo B</option>
+                                    <option value="C">Grupo C</option>
+                                    <option value="D">Grupo D</option>
+                                    <option value="E">Grupo E</option>
+                                </FormSelect>
+                            </div>
+                        </div>
 
-                                <div className="space-y-1.5">
-                                    <FormLabel>Plan de Estudios</FormLabel>
-                                    <FormSelect
-                                        value={data.plan_id}
-                                        onChange={e => setData('plan_id', e.target.value)}
-                                    >
-                                        <option value="">Selecciona un plan</option>
-                                        {planes.map((p) => (
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="space-y-1.5">
+                                <FormLabel required>Especialidad</FormLabel>
+                                <FormSelect
+                                    value={data.major}
+                                    onChange={e => setData('major', e.target.value)}
+                                >
+                                    <option value="">Selecciona especialidad</option>
+                                    {specialties.map((s) => (
+                                        <option key={s.id} value={s.name}>
+                                            {s.name}
+                                        </option>
+                                    ))}
+                                </FormSelect>
+                                {errors.major && <span className="text-red-500 text-[10px] mt-1 block">{errors.major}</span>}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <FormLabel required>Turno</FormLabel>
+                                <FormSelect
+                                    value={data.turno_id}
+                                    onChange={e => {
+                                        const id = e.target.value;
+                                        setData('turno_id', id);
+                                        const matchedTurno = turnos.find(t => t.id.toString() === id.toString());
+                                        if (matchedTurno) {
+                                            setData('shift', matchedTurno.nombre);
+                                        } else {
+                                            setData('shift', '');
+                                        }
+                                    }}
+                                >
+                                    <option value="">Selecciona un turno</option>
+                                    {turnos.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.nombre}
+                                        </option>
+                                    ))}
+                                </FormSelect>
+                                {errors.turno_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.turno_id}</span>}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 text-left">
+                            <div className="space-y-1.5">
+                                <FormLabel>Tutor / Profesor Titular</FormLabel>
+                                <FormSelect
+                                    value={data.tutor_teacher_id}
+                                    onChange={e => setData('tutor_teacher_id', e.target.value)}
+                                >
+                                    <option value="">Sin tutor asignado</option>
+                                    {profesores.map((p) => {
+                                        const assignedGroup = groupsList?.find(
+                                            g => g.teacher_id === p.id && g.id !== group?.id
+                                        );
+                                        const suffix = assignedGroup ? ` (Ya es tutor de ${assignedGroup.name})` : '';
+                                        return (
                                             <option key={p.id} value={p.id}>
-                                                {p.nombre}
+                                                {p.nombre_completo}{suffix}
                                             </option>
-                                        ))}
-                                    </FormSelect>
-                                    {errors.plan_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.plan_id}</span>}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 text-left">
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Turno</FormLabel>
-                                    <FormSelect
-                                        value={data.turno_id}
-                                        onChange={e => {
-                                            const id = e.target.value;
-                                            setData('turno_id', id);
-                                            const matchedTurno = turnos.find(t => t.id.toString() === id.toString());
-                                            if (matchedTurno) {
-                                                setData('shift', matchedTurno.nombre);
-                                            } else {
-                                                setData('shift', 'Horario único');
-                                            }
-                                        }}
-                                    >
-                                        <option value="">Selecciona un turno</option>
-                                        {turnos.map((t) => (
-                                            <option key={t.id} value={t.id}>
-                                                {t.nombre}
-                                            </option>
-                                        ))}
-                                    </FormSelect>
-                                    {errors.turno_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.turno_id}</span>}
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <FormLabel>Tutor / Profesor Titular</FormLabel>
-                                    <FormSelect
-                                        value={data.tutor_teacher_id}
-                                        onChange={e => setData('tutor_teacher_id', e.target.value)}
-                                    >
-                                        <option value="">Sin tutor asignado</option>
-                                        {profesores.map((p) => {
-                                            const assignedGroup = groupsList.find(
-                                                g => g.teacher_id === p.id && g.id !== group?.id
-                                            );
-                                            const suffix = assignedGroup ? ` (Ya es tutor de ${assignedGroup.name})` : '';
-                                            return (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.nombre_completo}{suffix}
-                                                </option>
-                                            );
-                                        })}
-                                    </FormSelect>
-                                    {errors.tutor_teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.tutor_teacher_id}</span>}
-                                </div>
-                            </div>
-
-                            {/* Preview de Datos Autogenerados */}
-                            <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-left text-[11px] space-y-2">
-                                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                                    Previsualización del Grupo
-                                </span>
-                                <div className="grid grid-cols-2 gap-2 mt-1">
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 font-medium block">Código Generado</span>
-                                        <span className="font-extrabold text-slate-700">{data.code}</span>
-                                        {errors.code && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.code}</span>}
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 font-medium block">Nombre del Grupo</span>
-                                        <span className="font-extrabold text-slate-700">{data.name}</span>
-                                        {errors.name && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.name}</span>}
-                                    </div>
-                                </div>
+                                        );
+                                    })}
+                                </FormSelect>
+                                {errors.tutor_teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.tutor_teacher_id}</span>}
                             </div>
                         </div>
 
-                        {/* Navigation Footer */}
-                        <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
-                            >
-                                Cancelar
-                            </button>
-
-                            <button
-                                type="submit"
-                                disabled={processing || !isFormValid}
-                                className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none active:scale-[0.98]"
-                            >
-                                {processing ? 'Guardando...' : mode === 'create' ? 'Crear Grupo' : 'Guardar'}
-                            </button>
+                        {/* Preview de Datos Autogenerados */}
+                        <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-left text-[11px] space-y-2">
+                            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                                Previsualización del Grupo
+                            </span>
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                                <div>
+                                    <span className="text-[10px] text-slate-400 font-medium block">Código Generado</span>
+                                    <span className="font-extrabold text-slate-700">{data.code || '---'}</span>
+                                    {errors.code && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.code}</span>}
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-slate-400 font-medium block">Nombre del Grupo</span>
+                                    <span className="font-extrabold text-slate-700">{data.name || '---'}</span>
+                                    {errors.name && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.name}</span>}
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Navigation Footer */}
+                    <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                        >
+                            Cancelar
+                        </button>
+
+                        <button
+                            type="submit"
+                            disabled={processing || !isFormValid}
+                            className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none active:scale-[0.98]"
+                        >
+                            {processing ? 'Guardando...' : mode === 'create' ? 'Crear Grupo' : 'Guardar'}
+                        </button>
+                    </div>
                 </div>
-            )}
+            </div>
         </BaseModal>
     );
 }

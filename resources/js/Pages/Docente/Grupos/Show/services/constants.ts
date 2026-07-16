@@ -27,20 +27,18 @@ export interface StudentGrade {
     matricula: string;
     name: string;
     scores: Record<number, string>; // criterionId → score
+    consolidado?: {
+        p1: number | null;
+        p2: number | null;
+        p3: number | null;
+        final: number | null;
+        estatus: string;
+    } | null;
 }
 
-export const MOCK_STUDENTS: Omit<StudentGrade, 'scores'>[] = [
-    { id: 1, matricula: 'PC001001', name: 'Ana García López' },
-    { id: 2, matricula: 'PC001002', name: 'Carlos Martínez Ruiz' },
-    { id: 3, matricula: 'PC001003', name: 'María Fernández Torres' },
-    { id: 4, matricula: 'PC001004', name: 'José Hernández Soto' },
-    { id: 5, matricula: 'PC001005', name: 'Laura Gómez Díaz' },
-];
+export const MOCK_STUDENTS: Omit<StudentGrade, 'scores'>[] = [];
 
-export const DEFAULT_CRITERIA: Criterion[] = [
-    { id: 1, name: 'Examen', percentage: 60 },
-    { id: 2, name: 'Tareas', percentage: 40 },
-];
+export const DEFAULT_CRITERIA: Criterion[] = [];
 
 export const PARCIALES = [
     { num: 1, label: 'Primer Parcial' },

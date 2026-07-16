@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { SwalHelper } from "@/utils/SwalHelper";
 
 export type Role = 'ADMIN' | 'DOCENTE' | 'ALUMNO';
 
@@ -29,17 +30,20 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const { url } = usePage();
   const pathname = url.split('?')[0]; // Limpiar query params de la URL actual
 
-  // Determinar rol automáticamente basado en la URL
+  // Determinar rol automáticamente basado en la información del usuario o la URL
+  const { auth } = usePage().props as any;
+  const user = auth?.user;
+  const userRole = (user?.role || '').toUpperCase();
+
   let resolvedRole: Role = 'ADMIN';
-  if (url.startsWith('/docente')) {
+  if (userRole === 'DOCENTE' || url.startsWith('/docente')) {
     resolvedRole = 'DOCENTE';
-  } else if (url.startsWith('/alumno')) {
+  } else if (userRole === 'ALUMNO' || url.startsWith('/alumno')) {
     resolvedRole = 'ALUMNO';
   }
 
   const role = propRole || resolvedRole;
   const { expanded, setExpanded, openMobile, setOpenMobile, isMobile } = useSidebar();
-  const user = usePage().props.auth?.user as any;
 
   // Mapeamos los items de menú de tu diseño a las rutas correspondientes en Laravel
   const menuItems = [
@@ -111,8 +115,8 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const docenteGroups = user?.docenteGroups || [];
 
   const [gruposOpen, setGruposOpen] = useState(() => {
-    // Mantener abierto si la ruta actual es de grupos
-    return url.startsWith('/docente/grupos');
+    // Mantener abierto si la ruta actual es de grupos o si es un docente para ver su carga
+    return url.startsWith('/docente/grupos') || role === 'DOCENTE';
   });
 
   const SidebarInner = ({ isSheet = false }) => {
@@ -180,13 +184,6 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     onClick={() => {
                       if (isMenuExpanded) {
                         setGruposOpen(prev => !prev);
-                        const firstGroupId = docenteGroups.length > 0 ? docenteGroups[0].id : '';
-                        if (firstGroupId) {
-                          router.visit(`/docente/grupos/show?id=${firstGroupId}`);
-                        } else {
-                          router.visit('/docente/dashboard');
-                        }
-                        if (isSheet) setOpenMobile(false);
                       }
                     }}
                     className={cn(
@@ -225,7 +222,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
                       {docenteGroups.map((g: any) => {
                         const groupPath = `/docente/grupos/show?id=${g.id}`;
-                        const isGroupActive = pathname === '/docente/grupos/show' 
+                        const isGroupActive = pathname === '/docente/grupos/show'
                           && (url.includes(`id=${g.id}`) || (url.includes(`grupo=${g.name}`) && url.includes(encodeURIComponent(g.materia))))
                           && !url.includes('tab=tasks');
                         return (
@@ -293,7 +290,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   }}
                 >
                   <item.icon className={cn(
-                    "w-5 h-5 shrink-0 transition-colors", 
+                    "w-5 h-5 shrink-0 transition-colors",
                     isActive ? "text-[#1e88e5]" : "text-slate-400 group-hover:text-slate-650"
                   )} />
 
@@ -305,7 +302,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                       )}>
                         {item.name}
                       </span>
-                      
+
                       {/* Botón de flecha blanca para el activo */}
                       {isActive && (
                         <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm text-[#1e88e5] ml-auto shrink-0 transition-transform group-hover:translate-x-0.5">
@@ -363,7 +360,20 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 <div className="mx-3 border-t border-slate-100" />
                 <button
                   type="button"
-                  onClick={() => { router.post('/logout'); setUserMenuOpen(false); }}
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    SwalHelper.confirm(
+                      '¿Cerrar sesión?',
+                      '¿Estás seguro de que deseas salir del sistema?',
+                      'Sí, salir',
+                      'Cancelar',
+                      'warning'
+                    ).then((result) => {
+                      if (result.isConfirmed) {
+                        router.post('/logout');
+                      }
+                    });
+                  }}
                   className="w-full flex items-center gap-2.5 px-4 py-3 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-all text-left"
                 >
                   <LogOut size={14} className="text-rose-400" />
@@ -534,8 +544,8 @@ export const SidebarMenuButton = React.forwardRef<
       ref={ref}
       className={cn(
         "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
-        expanded 
-          ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" 
+        expanded
+          ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
           : "justify-center px-0 rounded-none w-full",
         isActive
           ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold animate-none"

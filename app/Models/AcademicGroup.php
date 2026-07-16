@@ -16,7 +16,7 @@ class AcademicGroup extends Model
 
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_group');
+        return $this->belongsToMany(Course::class, 'cargas_academicas', 'academic_group_id', 'course_id');
     }
 
     public function academicLoads()

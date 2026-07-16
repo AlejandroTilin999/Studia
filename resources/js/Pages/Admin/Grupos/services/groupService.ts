@@ -6,5 +6,8 @@ export const groupService = {
     },
     update(id: number, data: any, options = {}) {
         router.put(route('groups.update', id), data, options);
+    },
+    destroy(id: number, options = {}) {
+        router.delete(route('groups.destroy', id), options);
     }
 };

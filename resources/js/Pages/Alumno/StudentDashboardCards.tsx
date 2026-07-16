@@ -36,7 +36,8 @@ export default function StudentDashboardCards({
     onViewAllTasks,
 }: StudentDashboardCardsProps) {
     // Helper to split student full name into Nombre(s), Apellido Paterno, Apellido Materno
-    const nameParts = studentInfo.name.trim().split(/\s+/);
+    const fullName = studentInfo?.name || '';
+    const nameParts = fullName.trim().split(/\s+/);
     let firstName = studentInfo.name;
     let lastNamePaternal = '-';
     let lastNameMaternal = '-';
@@ -84,7 +85,7 @@ export default function StudentDashboardCards({
 
     return (
         <div className="w-full text-left select-none space-y-6">
-            
+
             {/* CARD 1: Información General & Rendimiento Académico */}
             <div className="bg-white rounded-none md:rounded-2xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100/80 space-y-6">
                 <div className="space-y-3">
@@ -101,7 +102,7 @@ export default function StudentDashboardCards({
                 {/* 3. Horizontal Light Gray Banner - fully contained, responsive and max-width bounded */}
                 <div className="bg-slate-50 rounded-xl p-5 md:p-6 border border-slate-100 select-none">
                     <div className="max-w-7xl mx-auto space-y-4">
-                        
+
                         {/* Top Profile Header: Grid of 5 items matching the bottom stats row (Symmetrical layout) */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 pb-4 border-b border-slate-200/50">
                             <div>
@@ -128,13 +129,13 @@ export default function StudentDashboardCards({
 
                         {/* Bottom Stats Grid: 5 columns aligned on large screens, wraps cleanly on smaller devices */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 text-left">
-                            
+
                             {/* Col 1: Promedio */}
                             <div className="space-y-1 min-w-0">
                                 <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Promedio</span>
                                 <span className="text-base font-bold text-slate-800 block leading-none mt-0.5">{studentInfo.gpa}</span>
                             </div>
-                            
+
                             {/* Col 2: Semestre / Grupo */}
                             <div className="space-y-1 min-w-0">
                                 <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Semestre / Grupo</span>
@@ -146,13 +147,13 @@ export default function StudentDashboardCards({
                                 <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Especialidad</span>
                                 <span className="text-xs font-bold text-slate-800 block leading-tight mt-0.5 truncate" title="Técnico en Informática">Técnico en Informática</span>
                             </div>
-                            
+
                             {/* Col 4: Tutor de Grupo */}
                             <div className="space-y-1 min-w-0">
                                 <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Tutor de Grupo</span>
                                 <span className="text-xs font-bold text-slate-800 block leading-tight mt-0.5 truncate" title={studentInfo.tutor}>{studentInfo.tutor}</span>
                             </div>
-                            
+
                             {/* Col 5: Ciclo Escolar */}
                             <div className="space-y-1 min-w-0">
                                 <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Ciclo Escolar</span>
@@ -181,12 +182,12 @@ export default function StudentDashboardCards({
                 <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 md:gap-4 py-4 w-full">
                     {/* Horizontal connection line behind circles (Visible only on desktop) */}
                     <div className="hidden md:block absolute left-12 right-12 top-[38px] h-0.5 bg-slate-100 z-0" />
-                    
+
                     {/* Vertical connection line behind circles (Visible only on mobile) */}
                     <div className="md:hidden absolute left-1/2 top-4 bottom-4 w-0.5 border-l border-dashed border-slate-200 z-0 -translate-x-1/2" />
 
                     {shortcuts.map((item, idx) => (
-                        <div 
+                        <div
                             key={idx}
                             onClick={() => router.visit(item.path)}
                             className="flex flex-col items-center text-center cursor-pointer group relative z-10 w-full md:w-40"
@@ -195,12 +196,12 @@ export default function StudentDashboardCards({
                             <div className="w-14 h-14 rounded-full bg-white border border-slate-250 group-hover:border-[#0266E0] group-hover:scale-105 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#0266E0] transition-all duration-300 relative z-10">
                                 <item.icon size={20} className="stroke-[2.2]" />
                             </div>
-                            
+
                             {/* Title text */}
                             <span className="text-xs font-black text-slate-750 mt-3 group-hover:text-[#0266E0] transition-colors leading-tight block">
                                 {item.title}
                             </span>
-                            
+
                             {/* Subtitle description */}
                             <span className="text-[10px] text-slate-400 font-semibold mt-1 leading-normal block max-w-[130px] md:max-w-none">
                                 {item.subtitle}

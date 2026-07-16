@@ -9,5 +9,8 @@ export const studentService = {
     },
     toggle(id: number, options = {}) {
         router.post(route('admin.alumnos.toggle', id), {}, options);
+    },
+    destroy(id: number, options = {}) {
+        router.delete(route('admin.alumnos.destroy', id), options);
     }
 };

@@ -4,6 +4,7 @@ import { Download, Layers, Plus, Search } from 'lucide-react';
 import SpecialtyTable from './components/SpecialtyTable';
 import SpecialtyFormModal from './components/SpecialtyFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
+import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { specialtyService } from './services/specialtyService';
@@ -14,9 +15,8 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
-    const { toastMessage, triggerToast } = useToast();
+    const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
 
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
@@ -41,7 +41,7 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
         );
     };
 
-    const filteredSpecialties = specialties.filter(s => 
+    const filteredSpecialties = specialties.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.code.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -64,30 +64,17 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setSaveStatus('saving');
+
+        SwalHelper.loading('Registrando especialidad...', 'Guardando datos en el servidor');
 
         post('/admin/especialidades', {
-            onSuccess: (page) => {
-                if (page.props.errors && Object.keys(page.props.errors).length > 0) {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                    return;
-                }
-                setSaveStatus('success');
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
                 reset();
-                setTimeout(() => {
-                    setIsCreateModalOpen(false);
-                    setSaveStatus('idle');
-                    triggerToast("Especialidad registrada con éxito.");
-                }, 2000);
+                SwalHelper.success('¡Hecho!', 'La especialidad ha sido registrada correctamente.');
             },
             onError: () => {
-                setSaveStatus('error');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                }, 2500);
+                SwalHelper.error('Error de validación', 'Por favor revisa los campos.');
             },
         });
     };
@@ -95,43 +82,40 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedSpecialty) {
-            setSaveStatus('saving');
+            SwalHelper.loading('Actualizando especialidad...', 'Procesando cambios');
 
             put(`/admin/especialidades/${selectedSpecialty.id}`, {
-                onSuccess: (page) => {
-                    if (page.props.errors && Object.keys(page.props.errors).length > 0) {
-                        setSaveStatus('error');
-                        setTimeout(() => {
-                            setSaveStatus('idle');
-                        }, 2500);
-                        return;
-                    }
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsEditModalOpen(false);
-                        setSaveStatus('idle');
-                        triggerToast("Especialidad actualizada con éxito.");
-                    }, 2000);
+                onSuccess: () => {
+                    setIsEditModalOpen(false);
+                    SwalHelper.success('¡Actualizado!', 'Los datos han sido guardados.');
                 },
                 onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
+                    SwalHelper.error('Error', 'No se pudieron guardar los cambios.');
                 },
             });
         }
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('¿Estás seguro de que deseas eliminar esta especialidad?')) {
-            specialtyService.destroy(id, {
-                onSuccess: () => {
-                    triggerToast("Especialidad eliminada con éxito.");
-                },
-            });
-        }
+    const handleDelete = (id: number, name: string) => {
+        SwalHelper.confirm(
+            '¿Eliminar Especialidad?',
+            `¿Estás seguro de que deseas eliminar "${name}"? Esta acción no se puede deshacer.`,
+            'Sí, Eliminar',
+            'Cancelar',
+            'error'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Eliminando...', 'Borrando registro del servidor');
+                specialtyService.destroy(id, {
+                    onSuccess: () => {
+                        SwalHelper.success('¡Eliminado!', 'La especialidad ha sido removida.');
+                    },
+                    onError: (err: any) => {
+                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar la especialidad.');
+                    }
+                });
+            }
+        });
     };
 
     const totalSpecialtiesCount = specialties.length;
@@ -142,7 +126,6 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
             title={`Gestión de Especialidades (${totalSpecialtiesCount})`}
             subtitle="Consulta, edita y registra especialidades y carreras técnicas"
             breadcrumb="Especialidades"
-            toastMessage={toastMessage}
             metrics={[
                 { code: "E1", label: "Especialidades", value: totalSpecialtiesCount }
             ]}
@@ -163,7 +146,7 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
                         className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#1e88e5] focus:outline-none focus:ring-0 shadow-sm text-slate-700 placeholder-slate-450 transition-colors"
                     />
                 </div>
-                <button 
+                <button
                     type="button"
                     onClick={openCreateModal}
                     className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg w-full md:w-auto text-sm transition-all shadow-none flex items-center justify-center gap-2"
@@ -184,10 +167,8 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
             <SpecialtyFormModal
                 isOpen={isCreateModalOpen}
                 onClose={() => {
-                    if (saveStatus === 'idle') {
-                        clearErrors();
-                        setIsCreateModalOpen(false);
-                    }
+                    clearErrors();
+                    setIsCreateModalOpen(false);
                 }}
                 mode="create"
                 data={data}
@@ -195,17 +176,14 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
                 errors={errors}
                 processing={processing}
                 onSubmit={handleCreateSubmit}
-                saveStatus={saveStatus}
             />
 
             {/* Edit Modal */}
             <SpecialtyFormModal
                 isOpen={isEditModalOpen}
                 onClose={() => {
-                    if (saveStatus === 'idle') {
-                        clearErrors();
-                        setIsEditModalOpen(false);
-                    }
+                    clearErrors();
+                    setIsEditModalOpen(false);
                 }}
                 mode="edit"
                 data={data}
@@ -213,7 +191,6 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
                 errors={errors}
                 processing={processing}
                 onSubmit={handleEditSubmit}
-                saveStatus={saveStatus}
             />
         </AdminPageLayout>
     );

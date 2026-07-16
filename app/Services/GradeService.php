@@ -36,7 +36,7 @@ class GradeService
 
             foreach ($loads as $load) {
                 $subjectName = $load->course->name ?? 'Materia Desconocida';
-                $teacherName = $load->teacher 
+                $teacherName = $load->teacher
                     ? trim("{$load->teacher->nombre} {$load->teacher->apellido_paterno} {$load->teacher->apellido_materno}")
                     : 'Sin docente';
 
@@ -138,6 +138,7 @@ class GradeService
                 $kardex[] = [
                     'id' => $load->id,
                     'subject' => $subjectName,
+                    'code' => $load->course->code ?? 'S/C',
                     'teacher' => $teacherName,
                     'score' => $finalScore,
                     'approved' => $approved,
@@ -187,8 +188,8 @@ class GradeService
                     }
                 }
 
-                $deadlineFormatted = $task->deadline 
-                    ? date('d \d\e F', strtotime($task->deadline)) 
+                $deadlineFormatted = $task->deadline
+                    ? date('d \d\e F', strtotime($task->deadline))
                     : 'Sin fecha';
 
                 $months = [

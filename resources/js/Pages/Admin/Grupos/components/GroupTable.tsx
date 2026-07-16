@@ -5,11 +5,13 @@ import { TableActions, TableActionButton } from '@/Components/TableActions';
 interface GroupTableProps {
     groups: GroupFormatted[];
     onOpenEditModal: (group: GroupFormatted) => void;
+    onDelete: (id: number, name: string) => void;
 }
 
 export default function GroupTable({
     groups,
     onOpenEditModal,
+    onDelete,
 }: GroupTableProps) {
     return (
         <AppTable
@@ -26,8 +28,8 @@ export default function GroupTable({
                     header: "Nombre del grupo",
                     accessor: (row) => (
                         <div className="leading-tight text-left">
-                            <span className="text-slate-700 text-[13px] block">{row.name}</span>
-                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{row.specialty} • {row.plan_nombre}</span>
+                            <span className="text-slate-700 text-[13px] block font-normal">{row.name}</span>
+                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{row.specialty}</span>
                         </div>
                     ),
                 },
@@ -49,6 +51,12 @@ export default function GroupTable({
                                 onClick={() => onOpenEditModal(row)}
                                 title="Editar Grupo"
                                 icon="edit"
+                            />
+                            <TableActionButton
+                                onClick={() => onDelete(row.id, row.name)}
+                                title="Eliminar Grupo"
+                                icon="delete"
+                                variant="danger"
                             />
                         </TableActions>
                     ),

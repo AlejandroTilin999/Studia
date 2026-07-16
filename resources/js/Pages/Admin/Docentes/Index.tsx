@@ -3,13 +3,13 @@ import { useForm, router } from '@inertiajs/react';
 import { Download, Layers, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { SwalHelper } from '@/utils/SwalHelper';
 import { teacherService } from './services/teacherService';
 import TeacherFormModal from './components/TeacherFormModal';
 import TeacherAssignmentsModal from './components/TeacherAssignmentsModal';
 import TeacherTableControls from "./components/TeacherTableControls";
 import TeacherTable from "./components/TeacherTable";
 import AdminPageLayout from '@/Components/AdminPageLayout';
-import ConfirmActionModal from '@/Components/ConfirmActionModal';
 import { DocentesIndexProps, TeacherFormatted, TeacherFromBackend } from './types';
 
 export default function DocentesIndex({ teachers: backendTeachers = [] }: DocentesIndexProps) {
@@ -41,15 +41,9 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
-    
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteStatus, setDeleteStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-    const [teacherToDelete, setTeacherToDelete] = useState<any>(null);
-    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     // FORMULARIO DE INERTIA CONECTADO AL BACKEND
     const { data, setData, reset, processing, errors } = useForm({
@@ -98,7 +92,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             t.phone,
             t.specialty
         ]);
-        
+
         exportToExcel(
             "Reporte de Docentes - PrepaHid",
             "Listado de Docentes",
@@ -109,8 +103,8 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         );
     };
 
-    const filteredTeachers = formattedTeachers.filter(teacher => 
-        teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const filteredTeachers = formattedTeachers.filter(teacher =>
+        teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.matricula.toLowerCase().includes(searchQuery.toLowerCase())
@@ -142,31 +136,26 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setSaveStatus('saving');
+
+        SwalHelper.loading(
+            modalMode === 'create' ? 'Registrando docente...' : 'Actualizando datos...',
+            'Estamos procesando la información del profesor.'
+        );
 
         const serviceCallback = {
             onSuccess: () => {
-                setSaveStatus('success');
+                setIsFormModalOpen(false);
                 reset();
-                setTimeout(() => {
-                    setIsFormModalOpen(false);
-                    setSaveStatus('idle');
-                }, 2000);
+                SwalHelper.success(
+                    '¡Operación Exitosa!',
+                    modalMode === 'create' ? 'El docente ha sido registrado correctamente.' : 'Los datos del docente han sido actualizados.'
+                );
             },
             onError: () => {
-                setSaveStatus('error');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                }, 2500);
-            },
-            onFinish: () => {
-                setSaveStatus(current => {
-                    if (current === 'saving') {
-                        setTimeout(() => setSaveStatus('idle'), 3000);
-                        return 'error';
-                    }
-                    return current;
-                });
+                SwalHelper.error(
+                    'Error de validación',
+                    'Por favor, revisa que todos los campos sean correctos.'
+                );
             }
         };
 
@@ -177,42 +166,27 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         }
     };
 
-    const triggerDeleteConfirm = (teacher: any) => {
-        setDeleteErrorMessage(null);
-        setTeacherToDelete(teacher);
-        setIsDeleteModalOpen(true);
-    };
+    const handleDeleteTeacher = (teacher: any) => {
+        SwalHelper.confirm(
+            '¿Eliminar Docente?',
+            `¿Estás seguro de que deseas eliminar a ${teacher.name}? Esta acción no se puede deshacer.`,
+            'Sí, Eliminar',
+            'Cancelar',
+            'error'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Eliminando...', 'Borrando expediente del servidor.');
 
-    const confirmDeleteTeacher = () => {
-        if (teacherToDelete) {
-            setDeleteStatus('saving');
-            teacherService.destroy(teacherToDelete.id, {
-                onSuccess: () => {
-                    setDeleteStatus('success');
-                    setTimeout(() => {
-                        setIsDeleteModalOpen(false);
-                        setDeleteStatus('idle');
-                        setTeacherToDelete(null);
-                    }, 2000);
-                },
-                onError: (err: any) => {
-                    setDeleteStatus('error');
-                    setDeleteErrorMessage(err.delete || "No se pudo realizar la acción.");
-                    setTimeout(() => {
-                        setDeleteStatus('idle');
-                    }, 4000);
-                },
-                onFinish: () => {
-                    setDeleteStatus(current => {
-                        if (current === 'saving') {
-                            setTimeout(() => setDeleteStatus('idle'), 3000);
-                            return 'error';
-                        }
-                        return current;
-                    });
-                }
-            });
-        }
+                teacherService.destroy(teacher.id, {
+                    onSuccess: () => {
+                        SwalHelper.success('¡Eliminado!', 'El docente ha sido removido del sistema.');
+                    },
+                    onError: (err: any) => {
+                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar al docente.');
+                    }
+                });
+            }
+        });
     };
 
     const openAssignmentsModal = (teacher: any) => {
@@ -255,7 +229,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             <TeacherTable
                 teachers={filteredTeachers}
                 onEdit={openEditModal}
-                onDelete={triggerDeleteConfirm}
+                onDelete={handleDeleteTeacher}
             />
 
             {/* Form Modal */}
@@ -266,42 +240,8 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 setData={setData}
                 errors={errors}
                 processing={processing}
-                onClose={() => {
-                    if (saveStatus === 'idle') {
-                        setIsFormModalOpen(false);
-                    }
-                }}
+                onClose={() => setIsFormModalOpen(false)}
                 onSubmit={handleSubmit}
-                saveStatus={saveStatus}
-            />
-
-            {/* Assignments Modal */}
-            <TeacherAssignmentsModal
-                open={isAssignmentsModalOpen}
-                onClose={() => setIsAssignmentsModalOpen(false)}
-                teacher={selectedTeacher}
-            />
-
-            {/* Delete Confirmation Modal */}
-            <ConfirmActionModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => {
-                    if (deleteStatus === 'idle') {
-                        setIsDeleteModalOpen(false);
-                        setTeacherToDelete(null);
-                    }
-                }}
-                onConfirm={confirmDeleteTeacher}
-                title="Eliminar Profesor del Sistema"
-                description={`Esta acción eliminará el expediente de ${teacherToDelete?.name || 'este profesor'} del sistema escolar de forma inmediata.`}
-                confirmText={teacherToDelete?.matricula || ''}
-                actionPhrase="eliminar profesor"
-                warningMessage="Al eliminar al profesor, este perderá acceso completo al portal escolar de PrepaHid y sus materias asignadas quedarán sin docente titular."
-                confirmLabel="Eliminar Profesor"
-                saveStatus={deleteStatus}
-                processingLabel="Eliminando profesor del sistema..."
-                successLabel="¡Profesor eliminado!"
-                errorLabel={deleteErrorMessage || undefined}
             />
         </AdminPageLayout>
     );

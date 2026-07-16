@@ -14,8 +14,8 @@ class GroupController extends Controller
 {
     public function index()
     {
-        // Traer grupos mapeados con sus nombres de columnas reales de la DB y planes
-        $groups = AcademicGroup::with(['tutor', 'plan'])->get()->map(function ($group) {
+        // Traer grupos mapeados con sus nombres de columnas reales de la DB
+        $groups = AcademicGroup::with(['tutor'])->get()->map(function ($group) {
             return [
                 'id' => $group->id,
                 'codigo' => $group->code,
@@ -23,11 +23,9 @@ class GroupController extends Controller
                 'turno' => $group->shift ?? 'Horario único',
                 'especialidad' => $group->major, // Mapeado de major
                 'tutor_teacher_id' => $group->tutor_teacher_id ?? '',
-                'profesor' => $group->tutor 
+                'profesor' => $group->tutor
                     ? trim("{$group->tutor->nombre} {$group->tutor->apellido_paterno}")
                     : 'Sin tutor asignado',
-                'plan_id' => $group->plan_id ?? '',
-                'plan_nombre' => $group->plan->nombre ?? 'Sin plan de estudios',
                 'turno_id' => $group->turno_id ?? '',
                 'activo' => (bool)($group->activo ?? true)
             ];
@@ -48,13 +46,6 @@ class GroupController extends Controller
             ];
         });
 
-        $planes = PlanEstudio::all()->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'nombre' => $p->nombre,
-            ];
-        });
-
         $turnos = Turno::all()->map(function ($t) {
             return [
                 'id' => $t->id,
@@ -66,7 +57,6 @@ class GroupController extends Controller
             'grupos' => $groups,
             'profesores' => $teachers,
             'especialidades' => $specialties,
-            'planes' => $planes,
             'turnos' => $turnos
         ]);
     }
@@ -79,7 +69,6 @@ class GroupController extends Controller
             'shift' => 'required|string',
             'major' => 'required|string',
             'tutor_teacher_id' => 'nullable',
-            'plan_id' => 'nullable|exists:planes_estudio,id',
             'turno_id' => 'nullable|exists:turnos,id',
             'activo' => 'nullable|boolean',
         ], [
@@ -88,8 +77,8 @@ class GroupController extends Controller
         ]);
 
         $validated['tutor_teacher_id'] = $validated['tutor_teacher_id'] ?: null;
-        $validated['plan_id'] = $validated['plan_id'] ?: null;
         $validated['turno_id'] = $validated['turno_id'] ?: null;
+        $validated['plan_id'] = null; // Plan eliminado por requerimiento de usuario
 
         AcademicGroup::create($validated);
 
@@ -99,14 +88,13 @@ class GroupController extends Controller
     public function update(Request $request, $id)
     {
         $group = AcademicGroup::findOrFail($id);
-        
+
         $validated = $request->validate([
             'code' => 'required|string|unique:grupos,code,' . $group->id,
-            'name' => 'required|string|unique:grupos,name,' . $group->id . '|max:20', 
+            'name' => 'required|string|unique:grupos,name,' . $group->id . '|max:20',
             'shift' => 'required|string',
             'major' => 'required|string',
             'tutor_teacher_id' => 'nullable',
-            'plan_id' => 'nullable|exists:planes_estudio,id',
             'turno_id' => 'nullable|exists:turnos,id',
             'activo' => 'nullable|boolean',
         ], [
@@ -115,11 +103,35 @@ class GroupController extends Controller
         ]);
 
         $validated['tutor_teacher_id'] = $validated['tutor_teacher_id'] ?: null;
-        $validated['plan_id'] = $validated['plan_id'] ?: null;
         $validated['turno_id'] = $validated['turno_id'] ?: null;
+        $validated['plan_id'] = null; // Plan eliminado por requerimiento de usuario
 
         $group->update($validated);
 
         return redirect()->back()->with('message', 'Grupo actualizado con éxito.');
+    }
+
+    public function destroy($id)
+    {
+        $group = AcademicGroup::findOrFail($id);
+
+        // 1. Verificar si tiene alumnos inscritos
+        $studentsCount = \App\Models\Enrollment::where('academic_group_id', $group->id)->count();
+        if ($studentsCount > 0) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar el grupo '{$group->name}' porque tiene {$studentsCount} alumnos inscritos actualmente."
+            ]);
+        }
+
+        // 2. Verificar si tiene cargas académicas (materias asignadas)
+        $loadsCount = \App\Models\AcademicLoad::where('academic_group_id', $group->id)->count();
+        if ($loadsCount > 0) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar el grupo '{$group->name}' porque tiene {$loadsCount} materias asignadas en el ciclo escolar."
+            ]);
+        }
+
+        $group->delete();
+        return redirect()->back();
     }
 }

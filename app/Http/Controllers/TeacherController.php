@@ -150,4 +150,37 @@ class TeacherController extends Controller
 
         return redirect()->route('admin.docentes.index');
     }
+
+    public function destroy($id)
+    {
+        $teacher = Teacher::findOrFail($id);
+
+        // 1. Verificar si tiene materias asignadas (Cargas Académicas)
+        $loadsCount = $teacher->academicLoads()->count();
+        if ($loadsCount > 0) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar al docente '{$teacher->nombre}' porque tiene {$loadsCount} materias asignadas actualmente."
+            ]);
+        }
+
+        // 2. Verificar si es tutor de algún grupo
+        $groupTutor = \App\Models\AcademicGroup::where('tutor_teacher_id', $teacher->id)->first();
+        if ($groupTutor) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar al docente '{$teacher->nombre}' porque es tutor titular del grupo '{$groupTutor->name}'."
+            ]);
+        }
+
+        DB::transaction(function () use ($teacher) {
+            // 1. Eliminar al usuario asociado si existe
+            if ($teacher->user) {
+                $teacher->user->delete();
+            }
+
+            // 2. Eliminar al docente
+            $teacher->delete();
+        });
+
+        return redirect()->route('admin.docentes.index');
+    }
 }

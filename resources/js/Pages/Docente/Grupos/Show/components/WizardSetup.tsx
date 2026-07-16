@@ -64,9 +64,16 @@ export default function WizardSetup({
                         </p>
 
                         {/* Indicador suma */}
-                        <div className={`flex items-center gap-2 text-xs font-extrabold mb-5 px-4 py-2.5 rounded-xl ${pctValid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
-                            <div className={`w-2 h-2 rounded-full ${pctValid ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-                            Total: {totalPct}% {pctValid ? '— ¡Perfecto!' : '— Debe sumar 100%'}
+                        <div className={`flex flex-col gap-1.5 mb-5 px-4 py-3 rounded-xl ${pctValid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
+                            <div className="flex items-center gap-2 text-xs font-extrabold">
+                                <div className={`w-2 h-2 rounded-full ${pctValid ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                                Total: {totalPct === 0 ? '' : `${totalPct}%`} {totalPct === 100 ? '— ¡Suma correcta!' : '— Debe sumar 100%'}
+                            </div>
+                            {!draftCriteria.some(c => c.syncTasks) && (
+                                <div className="text-[10px] font-bold ml-4 text-amber-600/80">
+                                    * Debes vincular al menos un criterio con la plataforma (clic en botón Plataforma).
+                                </div>
+                            )}
                         </div>
 
                         {/* Lista de criterios */}
@@ -92,9 +99,13 @@ export default function WizardSetup({
                                             type="number"
                                             min={0}
                                             max={100}
-                                            value={c.percentage}
-                                            onChange={e => updateCriterion(c.id, 'percentage', Number(e.target.value))}
+                                            value={c.percentage === 0 ? '' : c.percentage}
+                                            onChange={e => {
+                                                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                                updateCriterion(c.id, 'percentage', val);
+                                            }}
                                             className="w-16 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-extrabold text-slate-800 outline-none focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
+                                            placeholder="0"
                                         />
                                         <span className="text-xs font-extrabold text-slate-400">%</span>
                                     </div>
@@ -110,11 +121,11 @@ export default function WizardSetup({
                                     {/* Sincronizar con plataforma */}
                                     <button
                                         onClick={() => toggleSyncTasks(c.id)}
+                                        type="button"
                                         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border shrink-0 ${c.syncTasks
                                                 ? 'bg-blue-50 border-blue-200 text-[#1e88e5]'
                                                 : 'bg-white border-slate-200 text-slate-400 hover:text-slate-655 hover:bg-slate-50'
                                             }`}
-                                        title="Calcular automáticamente en base a las tareas creadas en la plataforma"
                                     >
                                         <Layers size={13} className={c.syncTasks ? 'text-[#1e88e5]' : 'text-slate-400'} />
                                         <span>Plataforma</span>
@@ -186,7 +197,9 @@ export default function WizardSetup({
                                         <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                             <div className="h-full bg-[#1e88e5] rounded-full" style={{ width: `${c.percentage}%` }} />
                                         </div>
-                                        <span className="text-sm font-extrabold text-slate-800 w-10 text-right">{c.percentage}%</span>
+                                        <span className="text-sm font-extrabold text-slate-800 w-10 text-right">
+                                            {c.percentage === 0 ? '' : `${c.percentage}%`}
+                                        </span>
                                     </div>
                                 </div>
                             ))}

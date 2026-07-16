@@ -49,11 +49,14 @@ class AcademicLoadController extends Controller
             ];
         });
 
-        $courses = Course::all()->map(function ($c) {
+        $courses = Course::with('specialties')->get()->map(function ($c) {
             return [
                 'id' => $c->id,
                 'name' => $c->name,
                 'code' => $c->code,
+                'tipo' => $c->tipo,
+                'semestre' => $c->semestre,
+                'specialty_names' => $c->specialties->pluck('name')->toArray(),
             ];
         });
 
@@ -61,6 +64,7 @@ class AcademicLoadController extends Controller
             return [
                 'id' => $t->id,
                 'nombre_completo' => trim("{$t->nombre} {$t->apellido_paterno} " . ($t->apellido_materno ?? '')),
+                'specialty' => $t->specialty, // Añadimos la especialidad del docente
             ];
         });
 

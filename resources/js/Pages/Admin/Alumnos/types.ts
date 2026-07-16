@@ -47,6 +47,7 @@ export interface StudentFormatted {
     rawMaterno?: string;
     grades: {
         subject: string;
+        code: string;
         score: number;
         period: string;
     }[];

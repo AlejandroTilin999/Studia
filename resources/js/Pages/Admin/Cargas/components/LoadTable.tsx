@@ -6,12 +6,14 @@ interface LoadTableProps {
     loads: AcademicLoadItem[];
     onOpenEditModal: (load: AcademicLoadItem) => void;
     onOpenDeleteModal: (load: AcademicLoadItem) => void;
+    activePeriodId?: number;
 }
 
 export default function LoadTable({
     loads,
     onOpenEditModal,
     onOpenDeleteModal,
+    activePeriodId,
 }: LoadTableProps) {
     return (
         <AppTable
@@ -21,8 +23,15 @@ export default function LoadTable({
             columns={[
                 {
                     header: 'Ciclo Escolar',
-                    accessor: (row) => row.period_name,
-                    className: "text-[13px] font-medium text-slate-700 leading-normal text-left",
+                    accessor: (row) => (
+                        <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-medium text-slate-700 leading-normal">{row.period_name}</span>
+                            {row.academic_period_id === activePeriodId && (
+                                <span className="text-[8px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-md border border-emerald-100 font-black uppercase tracking-tighter">Vigente</span>
+                            )}
+                        </div>
+                    ),
+                    className: "text-left",
                 },
                 {
                     header: 'Grupo',
@@ -54,21 +63,31 @@ export default function LoadTable({
                 },
                 {
                     header: 'Acciones',
-                    accessor: (row) => (
-                        <TableActions align="start">
-                            <TableActionButton
-                                onClick={() => onOpenEditModal(row)}
-                                title="Editar carga"
-                                icon="edit"
-                            />
-                            <TableActionButton
-                                onClick={() => onOpenDeleteModal(row)}
-                                title="Eliminar carga"
-                                icon="delete"
-                                variant="danger"
-                            />
-                        </TableActions>
-                    ),
+                    accessor: (row) => {
+                        const isHistorical = activePeriodId && row.academic_period_id !== activePeriodId;
+
+                        if (isHistorical) {
+                            return (
+                                <span className="text-[10px] text-slate-400 font-bold italic italic-select-none">Lectura únicamente</span>
+                            );
+                        }
+
+                        return (
+                            <TableActions align="start">
+                                <TableActionButton
+                                    onClick={() => onOpenEditModal(row)}
+                                    title="Editar carga"
+                                    icon="edit"
+                                />
+                                <TableActionButton
+                                    onClick={() => onOpenDeleteModal(row)}
+                                    title="Eliminar carga"
+                                    icon="delete"
+                                    variant="danger"
+                                />
+                            </TableActions>
+                        );
+                    },
                     className: "text-left",
                 }
             ]}

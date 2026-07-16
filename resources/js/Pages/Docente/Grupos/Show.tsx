@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { ChevronRight, Settings, RotateCcw, ArrowLeft, CheckCircle2, LockKeyhole, Vote } from 'lucide-react';
+import { ChevronRight, Settings, RotateCcw, ArrowLeft, CheckCircle2, LockKeyhole, Vote, BookOpen } from 'lucide-react';
 import { PARCIALES } from './Show/services/constants';
 import { useGroupClass } from './Show/hooks/useGroupClass';
 import GroupHeaderBanner from './Show/components/GroupHeaderBanner';
@@ -13,11 +13,27 @@ import GradesTab from './Show/components/GradesTab';
 import FinalGradesModal from './Show/components/FinalGradesModal';
 import TaskGradesModal from './Show/components/TaskGradesModal';
 
-export default function DocenteGruposShow() {
-    const { grupo, materia, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, saveTasks, activeTab, setActiveTab, studentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid } = useGroupClass();
+export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
+    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, saveTasks, activeTab, setActiveTab, students, studentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid } = useGroupClass();
 
     const parcialLabel = activeParcial ? PARCIALES.find(p => p.num === activeParcial)?.label : '';
     const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];
+
+    if (!grupo && !materia) {
+        return (
+            <AuthenticatedLayout>
+                <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-slate-400 space-y-4">
+                    <div className="p-6 bg-slate-50 rounded-full">
+                        <BookOpen size={48} className="text-slate-200" />
+                    </div>
+                    <div className="text-center">
+                        <h3 className="text-lg font-bold text-slate-600">Cargando información del grupo...</h3>
+                        <p className="text-sm">Si esto tarda mucho, por favor selecciona un grupo del menú lateral.</p>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
 
     return (
         <AuthenticatedLayout>
@@ -39,7 +55,20 @@ export default function DocenteGruposShow() {
                     </div>
                 )}
 
-                <GroupHeaderBanner grupo={grupo} materia={materia} themeKey={themeKey} showPaletteMenu={showPaletteMenu} setShowPaletteMenu={setShowPaletteMenu} handleThemeChange={handleThemeChange} studentGradesCount={studentGrades.length} parcialesCount={PARCIALES.length} configuredCount={Object.values(configs).filter(c => c.configured).length} setIsGradesModalOpen={setIsGradesModalOpen} />
+                <GroupHeaderBanner
+                    grupo={grupo}
+                    materia={materia}
+                    especialidad={especialidad}
+                    semestre={semestre}
+                    themeKey={themeKey}
+                    showPaletteMenu={showPaletteMenu}
+                    setShowPaletteMenu={setShowPaletteMenu}
+                    handleThemeChange={handleThemeChange}
+                    studentGradesCount={studentGrades.length || (classInfo && classInfo.students ? classInfo.students.length : 0)}
+                    parcialesCount={PARCIALES.length}
+                    configuredCount={Object.values(configs).filter(c => c.configured).length}
+                    setIsGradesModalOpen={setIsGradesModalOpen}
+                />
 
                 {screen === 'parciales' && (
                     <div className="flex flex-col flex-grow">
@@ -123,7 +152,15 @@ export default function DocenteGruposShow() {
                     </div>
                 )}
             </div>
-            <FinalGradesModal isOpen={isGradesModalOpen} onClose={() => setIsGradesModalOpen(false)} grupo={grupo} materia={materia} getParcialAverage={getParcialAverage} getFinalAverage={getFinalAverage} />
+            <FinalGradesModal
+                isOpen={isGradesModalOpen}
+                onClose={() => setIsGradesModalOpen(false)}
+                grupo={grupo}
+                materia={materia}
+                students={students}
+                getParcialAverage={getParcialAverage}
+                getFinalAverage={getFinalAverage}
+            />
         </AuthenticatedLayout>
     );
 }

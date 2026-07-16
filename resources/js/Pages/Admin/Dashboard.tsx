@@ -12,7 +12,7 @@ import { FormInput } from '@/Components/forms/FormInput';
 import { FormSelect } from '@/Components/forms/FormSelect';
 import ConfirmActionModal from '@/Components/ConfirmActionModal';
 import QuickSummaryWidget, { MetricItem } from '@/Components/QuickSummaryWidget';
-import { useToast } from '@/hooks/useToast';
+import { SwalHelper } from '@/utils/SwalHelper';
 import { cycleService } from '@/services/cycleService';
 import { TableActionButton } from '@/Components/TableActions';
 
@@ -62,8 +62,6 @@ export default function AdminDashboard() {
 
   const activeCycle = cycles.find((c: Cycle) => c.is_active);
 
-  const { toastMessage, triggerToast } = useToast();
-
   const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
     start_date: '',
@@ -73,40 +71,62 @@ export default function AdminDashboard() {
 
   const handleSubmitPeriod = (e: React.FormEvent) => {
     e.preventDefault();
+    SwalHelper.loading('Abriendo ciclo escolar...', 'Configurando periodos y fechas');
     cycleService.store(data, {
       onSuccess: () => {
         setIsPeriodModalOpen(false);
         reset();
-        triggerToast(`¡${data.name} creado y configurado con éxito!`);
+        SwalHelper.success('¡Operación Exitosa!', `El ${data.name} ha sido configurado correctamente.`);
       },
       onError: () => {
-        triggerToast("Hubo un problema al crear el ciclo escolar.");
+        SwalHelper.error('Error', 'Hubo un problema al crear el ciclo escolar.');
       }
     });
   };
 
   const handleCloseActiveCycle = () => {
     if (activeCycle) {
-      cycleService.close(activeCycle.id, {
-        onSuccess: () => {
-          setIsCloseCycleModalOpen(false);
-          triggerToast(`¡${activeCycle.name} concluido y archivado correctamente!`);
-        },
-        onError: () => {
-          triggerToast("Hubo un problema al concluir el ciclo escolar.");
+      SwalHelper.confirm(
+        '¿Concluir Ciclo Escolar?',
+        `Esta acción archivará el "${activeCycle.name}" y bloqueará nuevas calificaciones.`,
+        'Sí, Concluir y Archivar',
+        'Cancelar',
+        'warning'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          SwalHelper.loading('Concluyendo ciclo...', 'Archivando expedientes históricos');
+          cycleService.close(activeCycle.id, {
+            onSuccess: () => {
+              setIsCloseCycleModalOpen(false);
+              SwalHelper.success('¡Ciclo Concluido!', 'El periodo ha sido archivado correctamente.');
+            },
+            onError: () => {
+              SwalHelper.error('Error', 'No se pudo cerrar el ciclo escolar.');
+            }
+          });
         }
       });
     }
   };
 
   const handleActivateCycle = (id: number) => {
-    cycleService.activate(id, {
-      onSuccess: () => {
-        setIsHistoryModalOpen(false);
-        triggerToast("Ciclo escolar cambiado correctamente.");
-      },
-      onError: () => {
-        triggerToast("Hubo un problema al cambiar el ciclo escolar.");
+    SwalHelper.confirm(
+      '¿Cambiar Ciclo Activo?',
+      'Se cambiará el periodo vigente del sistema escolar.',
+      'Sí, Cambiar',
+      'No, Mantener actual'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        SwalHelper.loading('Cambiando ciclo...', 'Actualizando vigencia escolar');
+        cycleService.activate(id, {
+          onSuccess: () => {
+            setIsHistoryModalOpen(false);
+            SwalHelper.success('¡Ciclo Cambiado!', 'El sistema ahora opera bajo el nuevo periodo.');
+          },
+          onError: () => {
+            SwalHelper.error('Error', 'No se pudo cambiar el ciclo escolar.');
+          }
+        });
       }
     });
   };
@@ -121,7 +141,7 @@ export default function AdminDashboard() {
 
   const handleDeleteActivity = (id: number) => {
     setActivitiesList(prev => prev.filter(act => act.id !== id));
-    triggerToast("Registro de actividad eliminado correctamente.");
+    SwalHelper.toast('Registro eliminado', 'info');
   };
 
   const metrics: MetricItem[] = [
@@ -324,16 +344,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Toast Alerta */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-sm select-none animate-in fade-in slide-in-from-bottom-5 duration-200">
-          <div className="bg-[#1e88e5] p-1 rounded-full text-white">
-            <Check size={12} />
-          </div>
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* Modal de Apertura de Nuevo Ciclo */}
       <BaseModal
         isOpen={isPeriodModalOpen}
@@ -447,17 +457,7 @@ export default function AdminDashboard() {
       </BaseModal>
 
       {/* Modal de Confirmar Conclusión de Ciclo */}
-      <ConfirmActionModal
-        isOpen={isCloseCycleModalOpen}
-        onClose={() => setIsCloseCycleModalOpen(false)}
-        onConfirm={handleCloseActiveCycle}
-        title="Concluir Ciclo Escolar Activo"
-        description={`Esta acción dará por finalizado el "${activeCycle?.name || ''}". Las asignaciones y calificaciones quedarán bloqueadas de forma permanente.`}
-        confirmText={activeCycle?.name || ''}
-        actionPhrase="concluir ciclo"
-        warningMessage="¡Atención! Una vez concluido el ciclo, los profesores no podrán ingresar nuevas calificaciones ni modificar las existentes."
-        confirmLabel="Concluir y Archivar"
-      />
+      {/* Ya no es necesario el ConfirmActionModal manual aquí porque usamos SwalHelper.confirm */}
     </AuthenticatedLayout>
   );
 }

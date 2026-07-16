@@ -9,13 +9,15 @@ interface StudentTableProps {
     onOpenEditModal: (student: StudentFormatted) => void;
     onOpenBajaModal: (student: StudentFormatted) => void;
     onOpenKardexModal: (student: StudentFormatted) => void;
+    onDelete: (id: number, name: string) => void;
 }
 
 export default function StudentTable({
     students,
     onOpenEditModal,
     onOpenBajaModal,
-    onOpenKardexModal
+    onOpenKardexModal,
+    onDelete,
 }: StudentTableProps) {
     const columns: AppTableColumn<StudentFormatted>[] = [
         {
@@ -71,6 +73,12 @@ export default function StudentTable({
                         title={student.status === 'active' ? "Dar de Baja" : "Dar de Alta"}
                         icon={student.status === 'active' ? 'delete' : 'activate'}
                         variant={student.status === 'active' ? 'danger' : 'success'}
+                    />
+                    <TableActionButton
+                        onClick={() => onDelete(student.id, student.name)}
+                        title="Eliminar Expediente"
+                        icon="delete"
+                        variant="danger"
                     />
                 </TableActions>
             )

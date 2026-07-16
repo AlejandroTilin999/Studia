@@ -58,8 +58,24 @@ class SpecialtyController extends Controller
     public function destroy($id)
     {
         $specialty = Specialty::findOrFail($id);
-        $specialty->delete();
 
-        return redirect()->back()->with('message', 'Especialidad eliminada con éxito.');
+        // 1. Verificar si hay planes de estudio vinculados
+        $planesCount = \App\Models\PlanEstudio::where('especialidad_id', $specialty->id)->count();
+        if ($planesCount > 0) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar la especialidad '{$specialty->name}' porque tiene {$planesCount} planes de estudio asociados."
+            ]);
+        }
+
+        // 2. Verificar si hay materias vinculadas
+        $coursesCount = $specialty->courses()->count();
+        if ($coursesCount > 0) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar la especialidad '{$specialty->name}' porque tiene {$coursesCount} materias vinculadas directamente."
+            ]);
+        }
+
+        $specialty->delete();
+        return redirect()->back();
     }
 }

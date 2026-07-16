@@ -51,11 +51,24 @@ class DocenteClassroomController extends Controller
                     ->first();
                 $studentScores[$c['id']] = $grade ? $grade->score : '';
             }
+
+            // [OPTIMIZACIÓN] Obtener promedios ya consolidados
+            $consolidado = \App\Models\ConsolidadoCalificacion::where('user_id', $enrollment->user_id)
+                ->where('carga_id', $load->id)
+                ->first();
+
             $gradesData[] = [
                 'id' => $enrollment->user_id,
                 'name' => $enrollment->user->name ?? 'Sin nombre',
                 'matricula' => $enrollment->student_code ?? 'N/A',
                 'scores' => $studentScores,
+                'consolidado' => $consolidado ? [
+                    'p1' => $consolidado->p1,
+                    'p2' => $consolidado->p2,
+                    'p3' => $consolidado->p3,
+                    'final' => $consolidado->final,
+                    'estatus' => $consolidado->estatus,
+                ] : null
             ];
         }
 
@@ -72,7 +85,7 @@ class DocenteClassroomController extends Controller
     public function saveCriterios(Request $request, $uuid)
     {
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
-        
+
         $request->validate([
             'parcial' => 'required|integer',
             'criteria' => 'required|array',
@@ -141,6 +154,9 @@ class DocenteClassroomController extends Controller
                     ]
                 );
             }
+
+            // [OPTIMIZACIÓN] Consolidar promedios en la tabla caché para reportes rápidos
+            \App\Services\GradeConsolidator::consolidate($userId, $load->id);
         }
 
         return response()->json([

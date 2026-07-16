@@ -16,6 +16,7 @@ class PlanEstudio extends Model
 
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'plan_materias', 'plan_id', 'materia_id');
+        // La tabla plan_materias fue eliminada.
+        return $this->belongsToMany(Course::class, 'cargas_academicas', 'id', 'course_id');
     }
 }

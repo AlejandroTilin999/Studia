@@ -4,7 +4,7 @@ import { useForm, router } from '@inertiajs/react';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import AdminPageLayout from '@/Components/AdminPageLayout';
-import ConfirmActionModal from '@/Components/ConfirmActionModal';
+import { SwalHelper } from '@/utils/SwalHelper';
 import { studentService } from './services/studentService';
 import StudentTable from './components/StudentTable';
 import StudentTableControls from './components/StudentTableControls';
@@ -32,6 +32,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         rawMaterno: student.rawMaterno || '',
         grades: student.grades?.map((g: any) => ({
             subject: g.subject || g.course?.name || 'Materia Desconocida',
+            code: g.code || g.course?.code || 'S/C',
             score: g.score,
             period: g.period || '2026-A'
         })) || []
@@ -44,13 +45,9 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
-    const [isConfirmBajaOpen, setIsConfirmBajaOpen] = useState(false);
-    const [bajaStatus, setBajaStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-    const [studentToBaja, setStudentToBaja] = useState<any>(null);
 
     // FORMULARIO INTEGRADO A LAS TABLAS USERS Y ENROLLMENTS
     const { data, setData, reset, processing, errors } = useForm({
@@ -83,11 +80,11 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 const groupCode = groupSelected ? groupSelected.id : '00';
                 const currentYear = new Date().getFullYear();
                 const generatedMatricula = `${initials}${groupCode}${currentYear}`;
-                
+
                 let firstNamePart = data.nombre.trim().split(/\s+/)[0]?.toLowerCase() || '';
                 let paternalPart = data.apellido_paterno.trim().split(/\s+/)[0]?.toLowerCase() || '';
                 let emailBase = `${firstNamePart}.${paternalPart}`.trim();
-                emailBase = emailBase.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
+                emailBase = emailBase.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 const generatedEmail = emailBase && emailBase !== '.' ? `${emailBase}@prepahid.edu.mx` : '';
 
                 if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
@@ -109,7 +106,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             s.groupName,
             s.status === 'active' ? 'Activo' : 'Inactivo'
         ]);
-        
+
         exportToExcel(
             "Reporte de Alumnos - PrepaHid",
             "Listado de Alumnos",
@@ -157,35 +154,28 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setSaveStatus('saving');
-        
+
+        SwalHelper.loading(
+            modalMode === 'create' ? 'Inscribiendo alumno...' : 'Actualizando datos...',
+            'Estamos procesando la información en el servidor.'
+        );
+
         const serviceCallback = {
             onSuccess: () => {
-                setSaveStatus('success');
+                setIsFormModalOpen(false);
                 reset();
-                setTimeout(() => {
-                    setIsFormModalOpen(false);
-                    setSaveStatus('idle');
-                }, 2000);
+                SwalHelper.success(
+                    '¡Operación Exitosa!',
+                    modalMode === 'create' ? 'El alumno ha sido registrado y matriculado correctamente.' : 'Los datos del alumno han sido actualizados.'
+                );
             },
-            onError: () => {
-                setSaveStatus('error');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                }, 2500);
-            },
-            onFinish: () => {
-                setSaveStatus(current => {
-                    if (current === 'saving') {
-                        setTimeout(() => setSaveStatus('idle'), 3000);
-                        return 'error';
-                    }
-                    return current;
-                });
+            onError: (errors: any) => {
+                SwalHelper.error(
+                    'Error de validación',
+                    'Por favor, revisa los campos marcados en rojo.'
+                );
             }
         };
-
-        
 
         if (modalMode === 'create') {
             studentService.store(data, serviceCallback);
@@ -194,32 +184,51 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         }
     };
 
-    const toggleStatus = (student: any) => {
-        setBajaStatus('saving');
-        studentService.toggle(student.id, {
-            onSuccess: () => {
-                setBajaStatus('success');
-                setTimeout(() => {
-                    setIsConfirmBajaOpen(false);
-                    setBajaStatus('idle');
-                    setStudentToBaja(null);
-                }, 2000);
-            },
-            onError: () => {
-                setBajaStatus('error');
-                setTimeout(() => {
-                    setBajaStatus('idle');
-                }, 2500);
-            },
-            onFinish: () => {
-                setBajaStatus(current => {
-                    if (current === 'saving') {
-                        setTimeout(() => {
-                            setBajaStatus('idle');
-                        }, 3000);
-                        return 'error';
+    const handleToggleStatus = (student: any) => {
+        const isActivating = student.status !== 'active';
+
+        SwalHelper.confirm(
+            isActivating ? '¿Reactivar Alumno?' : '¿Suspender Alumno?',
+            `¿Estás seguro de que deseas ${isActivating ? 'activar' : 'dar de baja'} a ${student.name}?`,
+            isActivating ? 'Sí, Continuar' : 'Sí, Dar de Baja',
+            'Cancelar',
+            isActivating ? 'info' : 'warning'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Procesando...', 'Cambiando el estado de la matrícula.');
+
+                studentService.toggle(student.id, {
+                    onSuccess: () => {
+                        SwalHelper.success(
+                            isActivating ? '¡Alumno Reactivado!' : '¡Alumno Suspendido!',
+                            `El alumno ha sido ${isActivating ? 'reactivado' : 'dado de baja'} correctamente.`
+                        );
+                    },
+                    onError: () => {
+                        SwalHelper.error('Error', 'No se pudo cambiar el estado del alumno.');
                     }
-                    return current;
+                });
+            }
+        });
+    };
+
+    const handleDeleteStudent = (id: number, name: string) => {
+        SwalHelper.confirm(
+            '¿Eliminar Expediente?',
+            `¿Estás seguro de que deseas eliminar permanentemente a ${name}? Esta acción no se puede deshacer.`,
+            'Sí, Eliminar Todo',
+            'Cancelar',
+            'error'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Eliminando...', 'Borrando expediente y cuenta de usuario');
+                studentService.destroy(id, {
+                    onSuccess: () => {
+                        SwalHelper.success('¡Eliminado!', 'El alumno ha sido removido del sistema.');
+                    },
+                    onError: (err: any) => {
+                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar el alumno (podría tener historial académico).');
+                    }
                 });
             }
         });
@@ -269,21 +278,15 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             <StudentTable
                 students={filteredStudents}
                 onOpenEditModal={openEditModal}
-                onOpenBajaModal={(student) => {
-                    setStudentToBaja(student);
-                    setIsConfirmBajaOpen(true);
-                }}
+                onOpenBajaModal={handleToggleStatus}
                 onOpenKardexModal={openKardexModal}
+                onDelete={handleDeleteStudent}
             />
 
             {/* Modal: Add/Edit student */}
             <StudentFormModal
                 isOpen={isFormModalOpen}
-                onClose={() => {
-                    if (saveStatus === 'idle') {
-                        setIsFormModalOpen(false);
-                    }
-                }}
+                onClose={() => setIsFormModalOpen(false)}
                 mode={modalMode}
                 student={selectedStudent}
                 groups={groups}
@@ -292,7 +295,6 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 errors={errors}
                 processing={processing}
                 onSubmit={handleFormSubmit}
-                saveStatus={saveStatus}
             />
 
             {/* Modal: Kardex View */}
@@ -303,36 +305,6 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 onDownloadKardex={(student) => {
                     triggerToast(`Descargando Kardex oficial de ${student.name}...`);
                 }}
-            />
-
-            {/* Modal de confirmación de Baja / Alta */}
-            <ConfirmActionModal
-                isOpen={isConfirmBajaOpen}
-                onClose={() => {
-                    if (bajaStatus === 'idle') {
-                        setIsConfirmBajaOpen(false);
-                        setStudentToBaja(null);
-                    }
-                }}
-                onConfirm={() => toggleStatus(studentToBaja)}
-                title={studentToBaja?.status === 'active' ? "Suspender Alumno del Sistema" : "Reactivar Alumno en el Sistema"}
-                description={
-                    studentToBaja?.status === 'active'
-                        ? `Esta acción cambiará el estado de la matrícula de ${studentToBaja?.name || 'este alumno'} a 'Baja' (inactivo) de forma inmediata.`
-                        : `Esta acción reactivará la matrícula de ${studentToBaja?.name || 'este alumno'} a 'Activo' de forma inmediata.`
-                }
-                confirmText={studentToBaja?.matricula || ''}
-                actionPhrase={studentToBaja?.status === 'active' ? "dar de baja" : "dar de alta"}
-                warningMessage={
-                    studentToBaja?.status === 'active'
-                        ? "Al dar de baja al alumno, este perderá acceso completo al portal escolar de PrepaHid y sus expedientes se pausarán."
-                        : "Al dar de alta al alumno, este recuperará su acceso completo al portal escolar y sus expedientes se reactivarán."
-                }
-                confirmLabel={studentToBaja?.status === 'active' ? "Dar de Baja" : "Dar de Alta"}
-                confirmButtonVariant={studentToBaja?.status === 'active' ? 'danger' : 'primary'}
-                saveStatus={bajaStatus}
-                processingLabel={studentToBaja?.status === 'active' ? "Dando de baja al alumno..." : "Dando de alta al alumno..."}
-                successLabel={studentToBaja?.status === 'active' ? "¡Alumno dado de baja!" : "¡Alumno reactivado!"}
             />
         </AdminPageLayout>
     );

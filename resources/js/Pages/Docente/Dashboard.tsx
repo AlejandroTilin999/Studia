@@ -1,8 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { 
-    Users, 
-    Clock, 
+import {
+    Users,
+    Clock,
     ArrowRight
 } from 'lucide-react';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
@@ -34,32 +34,13 @@ export default function DocenteDashboard({
 }: DocenteDashboardProps) {
     // 1. Datos del docente
     const teacherInfo = propTeacherInfo || {
-        name: 'Mtro. Francisco Javier Hernández',
-        specialty: 'General',
-        email: 'f.martinez@prepahidalgo.edu.mx'
+        name: 'Docente',
+        specialty: '',
+        email: ''
     };
 
     // Materias y grupos asignados para el ciclo activo
-    const assignedLoad = propAssignedLoad || [
-        { 
-            id: 'ODU0NTA3NzkzNjM5', 
-            code: 'MAT-101', 
-            subject: 'Matemáticas I', 
-            groupName: '1-A', 
-            studentsCount: 22, 
-            schedule: 'Lunes y Miércoles 07:00 - 08:40',
-            status: 'completed'
-        },
-        { 
-            id: 'ODU0NTA5MDk2Nzgx', 
-            code: 'FIS-101', 
-            subject: 'Física I', 
-            groupName: '2-B', 
-            studentsCount: 18, 
-            schedule: 'Martes y Jueves 08:40 - 10:20',
-            status: 'pending'
-        }
-    ];
+    const assignedLoad = propAssignedLoad || [];
 
     const upcomingTasks = [
         { id: 1, title: 'Límite de captura del Primer Parcial', date: 'En 3 días', urgent: true },
@@ -73,12 +54,12 @@ export default function DocenteDashboard({
 
             {/* Layout de Dos Columnas */}
             <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
-                
+
                 {/* Columna Izquierda: Panel Principal */}
                 <div className="flex-1 p-6 md:p-8 space-y-6 min-w-0 lg:overflow-y-auto lg:h-full">
-                    
+
                     {/* Banner de Bienvenida */}
-                    <DashboardWelcomeBanner 
+                    <DashboardWelcomeBanner
                         greeting={`Hola ${teacherInfo.name}`}
                         subtitle="Portal Docente"
                         wrapperClassName="pb-2"
@@ -86,9 +67,9 @@ export default function DocenteDashboard({
 
                     {/* Contenedor Unificado (Cuadro Principal) */}
                     <div className="bg-white rounded-none md:rounded-2xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100 space-y-8">
-                        
+
                         {/* Ficha Resumen del Profesor */}
-                        <TeacherInfoCard 
+                        <TeacherInfoCard
                             name={teacherInfo.name}
                             specialty={teacherInfo.specialty}
                             email={teacherInfo.email}
@@ -97,16 +78,16 @@ export default function DocenteDashboard({
                         {/* Carga Académica Asignada */}
                         <div className="space-y-4 text-left">
                             <h4 className="text-sm font-bold text-slate-700">Grupos y Materias Asignadas</h4>
-                            
+
                             <div className="grid grid-cols-1 gap-4">
-                                {assignedLoad.map((load) => (
+                                {assignedLoad.length > 0 ? assignedLoad.map((load) => (
                                     <div key={load.id} className="bg-slate-50 border border-slate-150 hover:border-[#1e88e5]/40 hover:bg-slate-50/80 transition-all duration-300 rounded-xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-mono text-[10px] font-bold text-slate-400">{load.code}</span>
                                                 <span className={`inline-flex px-2 py-0.5 text-[9px] font-extrabold rounded-md ${
-                                                    load.status === 'completed' 
-                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                                                    load.status === 'completed'
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                                         : 'bg-amber-50 text-amber-700 border border-amber-100'
                                                 }`}>
                                                     {load.status === 'completed' ? 'Notas Cargadas' : 'Notas Pendientes'}
@@ -140,7 +121,7 @@ export default function DocenteDashboard({
                                             </div>
 
                                             {/* Acción Capturar */}
-                                            <Link 
+                                            <Link
                                                 href={`/docente/grupos/show?id=${load.id}`}
                                                 className="h-10 w-10 bg-slate-100 hover:bg-[#1e88e5] text-slate-650 hover:text-white rounded-xl flex items-center justify-center transition-all border border-slate-150 shadow-sm"
                                             >
@@ -148,7 +129,11 @@ export default function DocenteDashboard({
                                             </Link>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="p-10 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                        <p className="text-sm text-slate-400 font-semibold italic">No tienes grupos o materias asignadas para este ciclo escolar.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

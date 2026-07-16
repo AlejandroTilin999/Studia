@@ -46,19 +46,6 @@ export default function LoadTableControls({
                     Registrar Asignación
                 </button>
 
-                {/* Filtro Ciclo */}
-                <select
-                    value={periodFilter}
-                    onChange={(e) => setPeriodFilter(e.target.value)}
-                    className="h-12 border border-slate-200 bg-white text-slate-600 font-bold pl-4 pr-10 rounded-xl text-xs focus:outline-none focus:border-[#0266E0] transition-all min-w-[185px] appearance-none cursor-pointer flex-1 xl:flex-initial"
-                    style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em 1.2em', backgroundRepeat: 'no-repeat' }}
-                >
-                    <option value="all">Todos los ciclos</option>
-                    {periods.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                </select>
-
                 {/* Filtro Grupo */}
                 <select
                     value={groupFilter}

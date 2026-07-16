@@ -5,22 +5,27 @@ import GroupTable from './components/GroupTable';
 import GroupTableControls from './components/GroupTableControls';
 import GroupFormModal from './components/GroupFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
+import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { groupService } from './services/groupService';
 import { GruposIndexProps, GroupFormatted } from './types';
 
-export default function GruposIndex({ grupos = [], profesores = [], materias = [], especialidades = [], planes = [], turnos = [] }: GruposIndexProps) {
-    const formattedGroups: GroupFormatted[] = grupos.map(g => ({
+export default function GruposIndex({
+    grupos = [],
+    profesores = [],
+    materias = [],
+    especialidades = [],
+    turnos = []
+}: GruposIndexProps) {
+    const formattedGroups: GroupFormatted[] = (grupos || []).map(g => ({
         id: g.id,
         code: g.codigo || 'S/C',
         name: g.nombre || 'Sin nombre',
         shift: g.turno || 'Horario único',
         teacherName: g.profesor || 'Pendiente de Asignación',
         teacher_id: g.tutor_teacher_id,
-        specialty: g.especialidad === 'TI' ? 'Informática' : (g.especialidad || (especialidades[0]?.name || 'Informática')),
-        plan_id: g.plan_id ?? '',
-        plan_nombre: g.plan_nombre || 'Sin plan de estudios',
+        specialty: g.especialidad === 'TI' ? 'Informática' : (g.especialidad || 'General'),
         turno_id: g.turno_id ?? '',
         activo: g.activo ?? true
     }));
@@ -29,22 +34,20 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
     const [specialtyFilter, setSpecialtyFilter] = useState('all');
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<GroupFormatted | null>(null);
-    
-    const { toastMessage, triggerToast } = useToast();
+
+    const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
 
     // Formulario reactivo de Inertia
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
         code: '',
         name: '',
-        shift: 'Horario único',
-        major: especialidades[0]?.name || 'Informática',
+        shift: 'Matutino',
+        major: '',
         tutor_teacher_id: '' as string | number,
         linked_courses: [] as number[],
-        plan_id: '' as string | number,
         turno_id: '' as string | number,
         activo: true
     });
@@ -81,8 +84,8 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
     }
 
     const openCreateModal = () => {
-        reset();
         clearErrors();
+        reset();
         setIsCreateModalOpen(true);
     };
 
@@ -97,38 +100,47 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
             major: group.specialty,
             tutor_teacher_id: group.teacher_id ?? '',
             linked_courses: rawGroup?.linked_courses || [],
-            plan_id: group.plan_id ?? '',
             turno_id: group.turno_id ?? '',
             activo: group.activo ?? true
-        });
+        } as any);
         setIsEditModalOpen(true);
+    };
+
+    const handleDeleteGroup = (id: number, name: string) => {
+        SwalHelper.confirm(
+            '¿Eliminar Grupo?',
+            `¿Estás seguro de que deseas eliminar el grupo "${name}"? Esta acción no se puede deshacer.`,
+            'Sí, Eliminar',
+            'Cancelar',
+            'error'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Eliminando...', 'Borrando grupo del sistema escolar');
+                groupService.destroy(id, {
+                    onSuccess: () => {
+                        SwalHelper.success('¡Eliminado!', 'El grupo ha sido removido correctamente.');
+                    },
+                    onError: (err: any) => {
+                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar el grupo (podría tener alumnos inscritos).');
+                    }
+                });
+            }
+        });
     };
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setSaveStatus('saving');
+
+        SwalHelper.loading('Registrando grupo...', 'Guardando datos en el servidor');
 
         post('/admin/grupos', {
-            onSuccess: (page) => {
-                if (page.props.errors && Object.keys(page.props.errors).length > 0) {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
-                    return;
-                }
-                setSaveStatus('success');
+            onSuccess: () => {
+                setIsCreateModalOpen(false);
                 reset();
-                setTimeout(() => {
-                    setIsCreateModalOpen(false);
-                    setSaveStatus('idle');
-                }, 2000);
+                SwalHelper.success('¡Hecho!', 'El grupo ha sido registrado correctamente.');
             },
             onError: () => {
-                setSaveStatus('error');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                }, 2500);
+                SwalHelper.error('Error de validación', 'Por favor revisa los campos.');
             },
         });
     };
@@ -136,28 +148,15 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedGroup) {
-            setSaveStatus('saving');
+            SwalHelper.loading('Actualizando grupo...', 'Procesando cambios');
+
             put(`/admin/grupos/${selectedGroup.id}`, {
-                onSuccess: (page) => {
-                    if (page.props.errors && Object.keys(page.props.errors).length > 0) {
-                        setSaveStatus('error');
-                        setTimeout(() => {
-                            setSaveStatus('idle');
-                        }, 2500);
-                        return;
-                    }
-                    setSaveStatus('success');
-                    reset();
-                    setTimeout(() => {
-                        setIsEditModalOpen(false);
-                        setSaveStatus('idle');
-                    }, 2000);
+                onSuccess: () => {
+                    setIsEditModalOpen(false);
+                    SwalHelper.success('¡Actualizado!', 'Los datos del grupo han sido guardados.');
                 },
                 onError: () => {
-                    setSaveStatus('error');
-                    setTimeout(() => {
-                        setSaveStatus('idle');
-                    }, 2500);
+                    SwalHelper.error('Error', 'No se pudieron guardar los cambios.');
                 },
             });
         }
@@ -172,7 +171,6 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
             title={`Gestión de grupos (${totalGroupsCount})`}
             subtitle="Consulta, edita y registra grupos académicos y tutores"
             breadcrumb="Grupos"
-            toastMessage={toastMessage}
             metrics={[
                 { code: "T1", label: "Grupos totales", value: totalGroupsCount },
                 { code: "T3", label: "Turnos", value: shiftCount },
@@ -203,16 +201,15 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
             <GroupTable
                 groups={filteredGroups}
                 onOpenEditModal={openEditModal}
+                onDelete={handleDeleteGroup}
             />
 
             {/* Create Modal */}
             <GroupFormModal
                 isOpen={isCreateModalOpen}
                 onClose={() => {
-                    if (saveStatus === 'idle') {
-                        clearErrors();
-                        setIsCreateModalOpen(false);
-                    }
+                    clearErrors();
+                    setIsCreateModalOpen(false);
                 }}
                 mode="create"
                 group={null}
@@ -220,24 +217,19 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 materiasList={materias}
                 specialties={especialidades}
                 groupsList={formattedGroups}
-                planes={planes}
                 turnos={turnos}
                 data={data}
                 setData={setData}
                 errors={errors}
                 processing={processing}
                 onSubmit={handleCreateSubmit}
-                saveStatus={saveStatus}
             />
 
             {/* Edit Modal */}
             <GroupFormModal
                 isOpen={isEditModalOpen}
                 onClose={() => {
-                    if (saveStatus === 'idle') {
-                        clearErrors();
-                        setIsEditModalOpen(false);
-                    }
+                    setIsEditModalOpen(false);
                 }}
                 mode="edit"
                 group={selectedGroup}
@@ -245,14 +237,12 @@ export default function GruposIndex({ grupos = [], profesores = [], materias = [
                 materiasList={materias}
                 specialties={especialidades}
                 groupsList={formattedGroups}
-                planes={planes}
                 turnos={turnos}
                 data={data}
                 setData={setData}
                 errors={errors}
                 processing={processing}
                 onSubmit={handleEditSubmit}
-                saveStatus={saveStatus}
             />
         </AdminPageLayout>
     );

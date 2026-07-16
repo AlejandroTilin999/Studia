@@ -37,8 +37,10 @@ export interface SubjectFormatted {
     id: number;
     code: string;
     name: string;
+    semestre: number;
     tipo: 'General' | 'Especialidad';
     teacherName: string;
+    teacher_id?: number | null;
     linkedGroups: string[];
     description: string;
     specialties: { id: number; name: string }[];

@@ -6,7 +6,7 @@ import { TableActions, TableActionButton } from '@/Components/TableActions';
 interface SpecialtyTableProps {
     specialties: Specialty[];
     onOpenEditModal: (specialty: Specialty) => void;
-    onDelete: (id: number) => void;
+    onDelete: (id: number, name: string) => void;
 }
 
 export default function SpecialtyTable({
@@ -43,7 +43,7 @@ export default function SpecialtyTable({
                                 icon="edit"
                             />
                             <TableActionButton
-                                onClick={() => onDelete(row.id)}
+                                onClick={() => onDelete(row.id, row.name)}
                                 title="Eliminar Especialidad"
                                 icon="delete"
                                 variant="danger"

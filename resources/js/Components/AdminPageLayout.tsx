@@ -10,7 +10,7 @@ import DonutChartWidget from '@/Components/DonutChartWidget';
 interface MetricItem {
     code: string;
     label: string;
-    value: number;
+    value: string | number;
 }
 
 interface ActionItem {
@@ -56,12 +56,12 @@ export default function AdminPageLayout({
     useEffect(() => {
         const mainEl = document.querySelector('main');
         if (!mainEl) return;
-        
+
         const originalOverflow = mainEl.style.overflow;
         const originalPadding = mainEl.style.padding;
-        
+
         mainEl.style.padding = '0';
-        
+
         const handleResize = () => {
             if (window.innerWidth >= 1024) {
                 mainEl.style.overflow = 'hidden';
@@ -69,10 +69,10 @@ export default function AdminPageLayout({
                 mainEl.style.overflow = originalOverflow || 'auto';
             }
         };
-        
+
         handleResize();
         window.addEventListener('resize', handleResize);
-        
+
         return () => {
             mainEl.style.overflow = originalOverflow;
             mainEl.style.padding = originalPadding;
@@ -96,12 +96,12 @@ export default function AdminPageLayout({
 
             {/* Layout split container */}
             <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body">
-                
+
                 {/* Left Side: Banner + Workspace */}
                 <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
-                    
+
                     {/* Header Banner */}
-                    <PageHeaderBanner 
+                    <PageHeaderBanner
                         title={title}
                         subtitle={subtitle}
                         breadcrumb={breadcrumb}
@@ -120,7 +120,7 @@ export default function AdminPageLayout({
                     <QuickSummaryWidget metrics={metrics} />
                     <QuickActionsWidget actions={quickActions} />
                     {donutChartSegments && donutChartLabel && (
-                        <DonutChartWidget 
+                        <DonutChartWidget
                             title={donutChartTitle}
                             centerLabel={donutChartLabel}
                             segments={donutChartSegments}

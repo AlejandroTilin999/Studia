@@ -89,7 +89,7 @@ class StudentController extends Controller
             $user = User::create([
                 'name'     => $fullName,
                 'email'    => $request->email,
-                'password' => Hash::make('Prepahid2026'), 
+                'password' => Hash::make('Prepahid2026'),
                 'role'     => 'alumno',
             ]);
 
@@ -122,7 +122,7 @@ class StudentController extends Controller
     public function update(Request $request, $id)
     {
         $student = Student::findOrFail($id);
-        
+
         $request->validate([
             'nombre'            => 'required|string|max:255',
             'apellido_paterno'  => 'required|string|max:255',
@@ -198,6 +198,36 @@ class StudentController extends Controller
             $newStatus = $student->enrollment->status === 'active' ? 'suspended' : 'active';
             $student->enrollment->update(['status' => $newStatus]);
         }
+        return redirect()->route('admin.alumnos.index');
+    }
+
+    public function destroy($id)
+    {
+        $student = Student::findOrFail($id);
+
+        // Verificar si tiene historial de calificaciones
+        $gradesCount = \App\Models\Grade::where('user_id', $student->user_id)->count();
+        if ($gradesCount > 0) {
+            return redirect()->back()->withErrors([
+                'delete' => "No se puede eliminar el expediente de '{$student->nombre}' porque ya cuenta con {$gradesCount} calificaciones asentadas en su historial."
+            ]);
+        }
+
+        DB::transaction(function () use ($student) {
+            // 1. Eliminar inscripciones
+            if ($student->enrollment) {
+                $student->enrollment->delete();
+            }
+
+            // 2. Eliminar usuario asociado
+            if ($student->user) {
+                $student->user->delete();
+            }
+
+            // 3. Eliminar alumno
+            $student->delete();
+        });
+
         return redirect()->route('admin.alumnos.index');
     }
 }

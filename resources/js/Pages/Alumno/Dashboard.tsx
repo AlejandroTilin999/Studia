@@ -5,6 +5,7 @@ import { Calendar, Check } from 'lucide-react';
 import StudentRightSidebar from '@/Components/StudentRightSidebar';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import StudentDashboardCards from './StudentDashboardCards';
+import { SwalHelper } from '@/utils/SwalHelper';
 
 // Componentes modulares (Organizados en carpetas correspondientes)
 import SubjectCard from './Tareas/SubjectCard';
@@ -46,13 +47,13 @@ interface AlumnoDashboardProps {
     taskList?: Task[];
 }
 
-export default function AlumnoDashboard({ 
-    defaultView = 'perfil', 
-    studentInfo: propStudentInfo, 
-    taskList: propTaskList 
+export default function AlumnoDashboard({
+    defaultView = 'perfil',
+    studentInfo: propStudentInfo,
+    taskList: propTaskList
 }: AlumnoDashboardProps) {
     const { auth } = usePage().props as any;
-    
+
     // Estados principales
     const [currentView, setCurrentView] = useState<'perfil' | 'tareas'>(defaultView);
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -114,17 +115,11 @@ export default function AlumnoDashboard({
         ]
     });
     const [attachedFiles, setAttachedFiles] = useState<Record<number, File | null>>({});
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-    const triggerToast = (msg: string) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 3000);
-    };
 
     // Acciones de entrega de tareas
     const handleDeliverTask = (taskId: number) => {
         setTaskList(taskList.map(t => t.id === taskId ? { ...t, status: 'Entregado' } : t));
-        triggerToast(`¡Tarea entregada correctamente!`);
+        SwalHelper.success('¡Tarea Entregada!', 'Tu trabajo ha sido enviado correctamente.');
         if (selectedTask && selectedTask.id === taskId) {
             setSelectedTask({ ...selectedTask, status: 'Entregado' });
         }
@@ -132,7 +127,7 @@ export default function AlumnoDashboard({
 
     const handleCancelDeliverTask = (taskId: number) => {
         setTaskList(taskList.map(t => t.id === taskId ? { ...t, status: 'Pendiente' } : t));
-        triggerToast(`Entrega anulada.`);
+        SwalHelper.toast('Entrega anulada', 'info');
         if (selectedTask && selectedTask.id === taskId) {
             setSelectedTask({ ...selectedTask, status: 'Pendiente' });
         }
@@ -153,8 +148,8 @@ export default function AlumnoDashboard({
     ];
 
     const currentSubjectTasks = taskList.filter(t => selectedSubject && t.subjectName === selectedSubject.name);
-    const otherTasksOfSubject = selectedTask 
-        ? currentSubjectTasks.filter(t => t.id !== selectedTask.id) 
+    const otherTasksOfSubject = selectedTask
+        ? currentSubjectTasks.filter(t => t.id !== selectedTask.id)
         : [];
 
     return (
@@ -162,20 +157,20 @@ export default function AlumnoDashboard({
             <Head title={currentView === 'tareas' ? "Mis Tareas" : "Mi Perfil Escolar"} />
 
             <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full">
-                
+
                 {/* Columna Izquierda: Panel Principal */}
                 <div className="flex-1 flex flex-col min-w-0 lg:overflow-y-auto lg:h-full">
                     {currentView === 'perfil' ? (
                         // 🏡 VISTA 1: MI PERFIL / RESUMEN
                         <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-200">
-                            <DashboardWelcomeBanner 
+                            <DashboardWelcomeBanner
                                 greeting={`Hola ${studentInfo.name}`}
                                 subtitle="Portal del Alumno"
                                 wrapperClassName="pb-2"
                             />
 
                             <div className="space-y-6">
-                                <StudentDashboardCards 
+                                <StudentDashboardCards
                                     studentInfo={studentInfo}
                                     taskList={taskList}
                                     onOpenTaskModal={(task) => {
@@ -193,7 +188,7 @@ export default function AlumnoDashboard({
                         // 📚 VISTA 2: MIS TAREAS / MODULO CLASSROOM
                         <div className="flex flex-col animate-in fade-in duration-200 h-full bg-white">
                             {/* Cabecera / Selector de Materia (Visible siempre en tareas) */}
-                            <SubjectHeader 
+                            <SubjectHeader
                                 subject={selectedSubject}
                                 task={selectedTask}
                                 activeTab={activeSubjectTab}
@@ -216,10 +211,10 @@ export default function AlumnoDashboard({
                             {/* Contenedor Principal de Actividades */}
                             <div className="p-6 md:p-8">
                                 <div className="min-h-[400px]">
-                                    
+
                                     {/* Caso A: Muestra las materias en tarjetas si no se ha seleccionado ninguna */}
                                     {!selectedSubject && (
-                                        <SubjectCard 
+                                        <SubjectCard
                                             subjects={subjects}
                                             onSelectSubject={(sub) => {
                                                 setSelectedSubject(sub);
@@ -232,14 +227,14 @@ export default function AlumnoDashboard({
                                     {selectedSubject && !selectedTask && (
                                         <>
                                             {activeSubjectTab === 'novedades' ? (
-                                                <SubjectStream 
+                                                <SubjectStream
                                                     subjectName={selectedSubject.name}
                                                     teacherName={selectedSubject.teacher}
                                                     tasks={currentSubjectTasks}
                                                     onSelectTask={setSelectedTask}
                                                 />
                                             ) : (
-                                                <SubjectClasswork 
+                                                <SubjectClasswork
                                                     tasks={currentSubjectTasks}
                                                     onSelectTask={setSelectedTask}
                                                 />
@@ -249,7 +244,7 @@ export default function AlumnoDashboard({
 
                                     {/* Caso C: Muestra la entrega detallada estilo "Ver Tarea" */}
                                     {selectedSubject && selectedTask && (
-                                        <SubjectAssignment 
+                                        <SubjectAssignment
                                             task={selectedTask}
                                             otherTasks={otherTasksOfSubject}
                                             onBack={() => setSelectedTask(null)}
@@ -297,16 +292,6 @@ export default function AlumnoDashboard({
                 >
                     <Calendar size={18} className={isSidebarExpanded ? "text-[#1e88e5]" : "text-slate-500"} />
                 </button>
-            )}
-
-            {/* Toast Alerta */}
-            {toastMessage && (
-                <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-sm select-none animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="bg-emerald-500 p-1 rounded-full text-white">
-                        <Check size={12} />
-                    </div>
-                    <span className="font-semibold">{toastMessage}</span>
-                </div>
             )}
         </AuthenticatedLayout>
     );

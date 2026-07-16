@@ -15,11 +15,15 @@ export interface CourseCatalogItem {
     id: number;
     name: string;
     code: string;
+    tipo: 'General' | 'Especialidad';
+    semestre: number;
+    specialty_names?: string[];
 }
 
 export interface TeacherCatalogItem {
     id: number;
     nombre_completo: string;
+    specialty: string;
 }
 
 export interface AcademicLoadItem {

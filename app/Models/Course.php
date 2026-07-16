@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Course extends Model
 {
     protected $table = 'materias';
-    protected $fillable = ['code', 'name', 'description', 'teacher_id', 'tipo'];
+    protected $fillable = ['code', 'name', 'semestre', 'description', 'teacher_id', 'tipo'];
 
     public function teacher()
     {
@@ -16,17 +16,13 @@ class Course extends Model
 
     public function academicGroups()
     {
-        return $this->belongsToMany(AcademicGroup::class, 'course_group');
+        // Usamos la tabla de cargas_academicas como pivote para saber en qué grupos está la materia
+        return $this->belongsToMany(AcademicGroup::class, 'cargas_academicas', 'course_id', 'academic_group_id');
     }
 
     public function groups()
     {
         return $this->academicGroups();
-    }
-
-    public function academicLoads()
-    {
-        return $this->hasMany(AcademicLoad::class, 'course_id');
     }
 
     public function specialties()

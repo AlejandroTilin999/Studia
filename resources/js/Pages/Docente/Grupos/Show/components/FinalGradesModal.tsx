@@ -11,6 +11,7 @@ interface FinalGradesModalProps {
     onClose: () => void;
     grupo: string;
     materia: string;
+    students: any[];
     getParcialAverage: (studentId: number, num: number) => number | string;
     getFinalAverage: (studentId: number) => number | string;
 }
@@ -20,14 +21,15 @@ export default function FinalGradesModal({
     onClose,
     grupo,
     materia,
+    students = [],
     getParcialAverage,
     getFinalAverage
 }: FinalGradesModalProps) {
     if (!isOpen) return null;
 
-    const totalStudents = MOCK_STUDENTS.length;
-    const passedCount = MOCK_STUDENTS.filter(s => {
-        const finalAvg = getFinalAverage(s.id);
+    const totalStudents = students.length;
+    const passedCount = students.filter(s => {
+        const finalAvg = s.consolidado?.final ?? getFinalAverage(s.id);
         return typeof finalAvg === 'number' && finalAvg >= MINIMUM_PASSING_GRADE;
     }).length;
     const passPercentage = totalStudents > 0 ? Math.round((passedCount / totalStudents) * 100) : 0;
@@ -56,7 +58,7 @@ export default function FinalGradesModal({
         },
         {
             header: "P1",
-            accessor: (student: any) => getParcialAverage(student.id, 1),
+            accessor: (student: any) => student.consolidado?.p1 ?? getParcialAverage(student.id, 1),
             align: "center" as const,
             sortable: false,
             headerClassName: "text-center w-12 min-w-[48px]",
@@ -64,7 +66,7 @@ export default function FinalGradesModal({
         },
         {
             header: "P2",
-            accessor: (student: any) => getParcialAverage(student.id, 2),
+            accessor: (student: any) => student.consolidado?.p2 ?? getParcialAverage(student.id, 2),
             align: "center" as const,
             sortable: false,
             headerClassName: "text-center w-12 min-w-[48px]",
@@ -72,7 +74,7 @@ export default function FinalGradesModal({
         },
         {
             header: "P3",
-            accessor: (student: any) => getParcialAverage(student.id, 3),
+            accessor: (student: any) => student.consolidado?.p3 ?? getParcialAverage(student.id, 3),
             align: "center" as const,
             sortable: false,
             headerClassName: "text-center w-12 min-w-[48px]",
@@ -81,10 +83,10 @@ export default function FinalGradesModal({
         {
             header: "Final",
             accessor: (student: any) => {
-                const avg = getFinalAverage(student.id);
+                const avg = student.consolidado?.final ?? getFinalAverage(student.id);
                 return (
                     <span className="font-black text-slate-800 text-xs">
-                        {avg}
+                        {avg ?? '—'}
                     </span>
                 );
             },
@@ -96,10 +98,10 @@ export default function FinalGradesModal({
         {
             header: "Estatus",
             accessor: (student: any) => {
-                const finalAvg = getFinalAverage(student.id);
+                const finalAvg = student.consolidado?.final ?? getFinalAverage(student.id);
                 const hasPassed = typeof finalAvg === 'number' && finalAvg >= MINIMUM_PASSING_GRADE;
 
-                if (finalAvg === '—') {
+                if (!finalAvg || finalAvg === '—') {
                     return (
                         <span className="text-[9px] font-black text-slate-350 bg-slate-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
                             Sin Nota
@@ -209,7 +211,7 @@ export default function FinalGradesModal({
                             <FormLabel>Registro Final de Calificaciones</FormLabel>
                             <AppTable
                                 columns={columns}
-                                data={MOCK_STUDENTS}
+                                data={students}
                                 keyExtractor={(student: any) => student.id.toString()}
                                 emptyMessage="Sin estudiantes asignados a esta clase."
                                 className="border border-slate-100 rounded-xl overflow-hidden shadow-none max-h-[220px] overflow-y-auto text-xs"
@@ -229,7 +231,7 @@ export default function FinalGradesModal({
                         </button>
                         <button
                             type="submit"
-                            className="bg-[#1e88e5] hover:bg-blue-700 text-white font-extrabold h-10 px-6 rounded-lg text-[12.5px] transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-100/50 outline-none min-w-[150px]"
+                            className="bg-[#0266E0] hover:bg-blue-700 text-white font-extrabold h-10 px-6 rounded-lg text-[12.5px] transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-100/50 outline-none min-w-[150px]"
                         >
                             <FileText size={14} />
                             Imprimir Acta

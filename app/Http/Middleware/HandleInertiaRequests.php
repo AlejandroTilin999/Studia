@@ -37,19 +37,26 @@ class HandleInertiaRequests extends Middleware
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
                     'role' => strtoupper($request->user()->role),
-                    // Cargas para el docente
                     'docenteGroups' => function () use ($request) {
                         if (!$request->user() || $request->user()->role !== 'docente') {
                             return [];
                         }
-                        return \App\Models\AcademicLoad::where('teacher_id', function ($query) use ($request) {
-                            $query->select('id')->from('docentes')->where('user_id', $request->user()->id)->limit(1);
-                        })->with(['academicGroup', 'course'])->get()->map(function ($load) {
+
+                        $teacher = \App\Models\Teacher::where('user_id', $request->user()->id)->first();
+                        if (!$teacher) {
+                            return [];
+                        }
+
+                        $loads = \App\Models\AcademicLoad::where('teacher_id', $teacher->id)
+                            ->with(['academicGroup', 'course'])
+                            ->get();
+
+                        return $loads->map(function ($load) {
                             return [
                                 'id' => $load->uuid,
-                                'name' => $load->academicGroup->name ?? 'N/A',
-                                'materia' => $load->course->name ?? 'N/A',
-                                'code' => $load->course->code ?? 'N/A'
+                                'name' => $load->academicGroup->name ?? 'Grup. s/n',
+                                'materia' => $load->course->name ?? 'Mat. s/n',
+                                'code' => $load->course->code ?? 'S/C'
                             ];
                         })->toArray();
                     },
@@ -58,17 +65,28 @@ class HandleInertiaRequests extends Middleware
                         if (!$request->user() || $request->user()->role !== 'alumno') {
                             return [];
                         }
-                        return \App\Models\AcademicLoad::where('academic_group_id', function ($query) use ($request) {
-                            $query->select('academic_group_id')->from('inscripciones')->where('user_id', $request->user()->id)->where('status', 'active')->limit(1);
-                        })->with(['course', 'teacher', 'academicGroup'])->get()->map(function ($load) {
-                            return [
-                                'id' => $load->uuid,
-                                'name' => $load->course->name ?? 'N/A',
-                                'teacher' => $load->teacher ? ($load->teacher->nombre . ' ' . $load->teacher->apellido_paterno) : 'Sin docente',
-                                'description' => $load->course->description ?? 'Sin descripción',
-                                'groupName' => $load->academicGroup->name ?? 'N/A'
-                            ];
-                        })->toArray();
+
+                        $enrollment = \App\Models\Enrollment::where('user_id', $request->user()->id)
+                            ->where('status', 'active')
+                            ->first();
+
+                        if (!$enrollment) {
+                            return [];
+                        }
+
+                        return \App\Models\AcademicLoad::where('academic_group_id', $enrollment->academic_group_id)
+                            ->where('academic_period_id', $enrollment->academic_period_id)
+                            ->with(['course', 'teacher', 'academicGroup'])
+                            ->get()
+                            ->map(function ($load) {
+                                return [
+                                    'id' => $load->uuid,
+                                    'name' => $load->course->name ?? 'N/A',
+                                    'teacher' => $load->teacher ? ($load->teacher->nombre . ' ' . $load->teacher->apellido_paterno) : 'Sin docente',
+                                    'description' => $load->course->description ?? 'Sin descripción',
+                                    'groupName' => $load->academicGroup->name ?? 'N/A'
+                                ];
+                            })->toArray();
                     },
                 ] : null,
             ],

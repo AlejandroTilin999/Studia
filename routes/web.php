@@ -7,6 +7,7 @@ use App\Http\Controllers\GroupController;
 use App\Http\Controllers\AcademicLoadController;
 use App\Http\Controllers\AcademicPeriodController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\PasswordChangeController; // 👈 Controlador para cambio obligatorio
@@ -51,13 +52,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', function (Request $request) {
             $user = $request->user();
             $role = $user->role ?? 'admin'; // Si no está definido el rol en BD, fallback a admin
-            
+
             if ($role === 'docente') {
                 return redirect()->route('docente.dashboard');
             } elseif ($role === 'alumno') {
                 return redirect()->route('alumno.dashboard');
             }
-            
+
             return redirect()->route('admin.dashboard');
         })->name('dashboard');
 
@@ -115,6 +116,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
             Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
             Route::put('/alumnos/{id}', [StudentController::class, 'update'])->name('admin.alumnos.update');
+            Route::delete('/alumnos/{id}', [StudentController::class, 'destroy'])->name('admin.alumnos.destroy');
             Route::post('/alumnos/{id}/toggle', [StudentController::class, 'toggleStatus'])->name('admin.alumnos.toggle');
 
             // Docentes asociados al panel de Administración
@@ -127,6 +129,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/grupos', [GroupController::class, 'index'])->name('groups.index');
             Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
             Route::put('/grupos/{id}', [GroupController::class, 'update'])->name('groups.update');
+            Route::delete('/grupos/{id}', [GroupController::class, 'destroy'])->name('groups.destroy');
 
             // Asignaciones de Materias (Cargas Académicas)
             Route::get('/asignaciones', [AcademicLoadController::class, 'index'])->name('admin.loads.index');
@@ -146,9 +149,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/especialidades/{id}', [SpecialtyController::class, 'update'])->name('admin.especialidades.update');
             Route::delete('/especialidades/{id}', [SpecialtyController::class, 'destroy'])->name('admin.especialidades.destroy');
 
-            Route::get('/reportes', function () {
-                return Inertia::render('Admin/Reportes/Index');
-            })->name('admin.reportes.index');
+            Route::get('/reportes', [ReportController::class, 'index'])->name('admin.reportes.index');
         });
 
         // ------------------------------------------
@@ -158,7 +159,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/dashboard', function () {
                 $user = auth()->user();
                 $teacher = \App\Models\Teacher::where('user_id', $user->id)->first();
-                
+
                 $loads = [];
                 if ($teacher) {
                     $loads = \App\Models\AcademicLoad::where('teacher_id', $teacher->id)
@@ -198,7 +199,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $load = \App\Models\AcademicLoad::where('uuid', $uuid)
                     ->with(['academicGroup', 'course'])
                     ->first();
-                
+
                 $students = [];
                 if ($load) {
                     $students = \App\Models\Enrollment::where('academic_group_id', $load->academic_group_id)
@@ -220,6 +221,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'groupName' => $load->academicGroup->name ?? 'N/A',
                         'subject' => $load->course->name ?? 'N/A',
                         'code' => $load->course->code ?? 'N/A',
+                        'major' => $load->academicGroup->major ?? 'N/A',
+                        'semester' => $load->course->semestre ?? (isset($load->academicGroup->code[0]) ? $load->academicGroup->code[0] : '1'),
                         'students' => $students,
                     ] : null
                 ]);
@@ -257,15 +260,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
-                    'matricula' => $enrollment->student_code ?? 'ALU-' . $studentId,
-                    'groupName' => $enrollment->academicGroup->name ?? 'Sin grupo',
+                    'matricula' => $enrollment ? $enrollment->student_code : 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup?->name ?? 'Sin grupo',
                     'email' => auth()->user()->email,
                     'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => $gpa,
-                    'tutor' => $enrollment->academicGroup->tutor 
-                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}") 
+                    'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
+                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
                         : 'Sin tutor',
-                    'ciclo' => $enrollment->academicPeriod->name ?? '2026',
+                    'ciclo' => $enrollment?->academicPeriod?->name ?? '2026',
                     'periodo' => ''
                 ];
 
@@ -297,15 +300,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
-                    'matricula' => $enrollment->student_code ?? 'ALU-' . $studentId,
-                    'groupName' => $enrollment->academicGroup->name ?? 'Sin grupo',
+                    'matricula' => $enrollment ? $enrollment->student_code : 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup?->name ?? 'Sin grupo',
                     'email' => auth()->user()->email,
                     'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => $gpa,
-                    'tutor' => $enrollment->academicGroup->tutor 
-                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}") 
+                    'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
+                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
                         : 'Sin tutor',
-                    'ciclo' => $enrollment->academicPeriod->name ?? '2026',
+                    'ciclo' => $enrollment?->academicPeriod?->name ?? '2026',
                     'periodo' => ''
                 ];
 
@@ -327,12 +330,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
-                    'matricula' => $enrollment->student_code ?? 'ALU-' . $studentId,
-                    'groupName' => $enrollment->academicGroup->name ?? 'Sin grupo',
-                    'tutor' => $enrollment->academicGroup->tutor 
-                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}") 
+                    'matricula' => $enrollment ? $enrollment->student_code : 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup?->name ?? 'Sin grupo',
+                    'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
+                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
                         : 'Sin tutor',
-                    'ciclo' => $enrollment->academicPeriod->name ?? '2026',
+                    'ciclo' => $enrollment?->academicPeriod?->name ?? '2026',
                     'periodo' => ''
                 ];
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, Calendar, FileText, ChevronRight, Paperclip, Download, Bell, Upload, Clock, Pencil } from 'lucide-react';
 import { Task } from '../services/constants';
+import { SwalHelper } from '@/utils/SwalHelper';
 
 interface ActivityFormProps {
     editingTask: Task | null;
@@ -190,7 +191,7 @@ function ActivityForm({ editingTask, onSave, onCancelEdit }: ActivityFormProps) 
                 {/* Archivos adjuntos */}
                 <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Adjuntar Material de Apoyo (PDF / Archivo)</label>
-                    <div 
+                    <div
                         onClick={() => fileInputRef.current?.click()}
                         className="border-2 border-dashed border-slate-250 hover:border-[#1e88e5] hover:bg-slate-50/40 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all select-none"
                     >
@@ -350,7 +351,7 @@ function ActivityCard({ task, index, onEdit, onDelete, onSelectTask }: ActivityC
                                     </div>
                                 </div>
                                 <button
-                                    type="button" 
+                                    type="button"
                                     onClick={() => alert(`Simulación: Descargando ${file.name}`)}
                                     className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-[#1e88e5] hover:border-blue-200 transition-all shadow-sm"
                                     title="Descargar archivo"
@@ -422,6 +423,7 @@ export default function ActivitiesTab({
             });
             saveTasks(updatedTasks);
             setEditingTaskId(null);
+            SwalHelper.success('¡Actualizado!', 'La publicación ha sido actualizada correctamente.');
         } else {
             const nextId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
             const newTask: Task = {
@@ -430,23 +432,33 @@ export default function ActivitiesTab({
                 grades: {}
             };
             saveTasks([...tasks, newTask]);
+            SwalHelper.success('¡Publicado!', `Se ha creado la ${taskData.type === 'task' ? 'tarea' : 'publicación'} con éxito.`);
         }
     };
 
     const handleDeleteTask = (id: number) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este elemento? Se perderán las notas asociadas si es una tarea.')) {
-            saveTasks(tasks.filter(t => t.id !== id));
-            if (editingTaskId === id) {
-                setEditingTaskId(null);
+        SwalHelper.confirm(
+            '¿Eliminar publicación?',
+            'Se perderán las notas asociadas si es una tarea. Esta acción no se puede deshacer.',
+            'Sí, eliminar',
+            'Cancelar',
+            'warning'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                saveTasks(tasks.filter(t => t.id !== id));
+                if (editingTaskId === id) {
+                    setEditingTaskId(null);
+                }
+                SwalHelper.success('¡Eliminado!', 'La publicación ha sido removida.');
             }
-        }
+        });
     };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
             {/* Formulario (4 cols) */}
             <div className="lg:col-span-4 h-fit">
-                <ActivityForm 
+                <ActivityForm
                     editingTask={editingTask}
                     onSave={handleSaveTask}
                     onCancelEdit={() => setEditingTaskId(null)}
