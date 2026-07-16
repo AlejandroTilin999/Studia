@@ -20,6 +20,7 @@ interface StudentInfo {
     tutor: string;
     ciclo: string;
     periodo: string;
+    subjectsCount?: number;
 }
 
 interface StudentDashboardCardsProps {
@@ -84,92 +85,76 @@ export default function StudentDashboardCards({
     ];
 
     return (
-        <div className="w-full text-left select-none space-y-6">
+        <div className="w-full text-left select-none space-y-8">
 
-            {/* CARD 1: Información General & Rendimiento Académico */}
-            <div className="bg-white rounded-none md:rounded-2xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100/80 space-y-6">
-                <div className="space-y-3">
-                    <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-9 w-auto object-contain" />
-                    <div className="space-y-1">
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Expediente Alumno</h3>
-                        <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-snug">Rendimiento Académico y Datos Escolares</h2>
-                        <p className="text-xs md:text-[13px] text-slate-500 font-semibold leading-relaxed max-w-2xl mt-1.5">
-                            Consulta en tiempo real el estado general de tu promedio, información de tu tutor asignado y ciclo escolar actual.
-                        </p>
+            {/* SECCIÓN 1: Información General (Diseño unificado con Docente) */}
+            <div className="bg-slate-50 rounded-[32px] p-6 md:p-8 border border-slate-100 select-none transition-all duration-300 hover:shadow-sm">
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="flex flex-col sm:flex-row items-center gap-5 pb-5 border-b border-slate-200/50">
+                        <div className="text-center sm:text-left space-y-1.5 flex-1">
+                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Expediente del Alumno</span>
+                            <h2 className="text-xl font-medium text-slate-800 leading-none tracking-tight">Rendimiento Académico y Datos Escolares</h2>
+                            <p className="text-xs text-slate-500 font-semibold">{studentInfo.email}</p>
+                        </div>
+
+                        <div className="hidden lg:flex flex-col items-start gap-1 shrink-0">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Institución</span>
+                            <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-7 w-auto grayscale opacity-70" />
+                        </div>
                     </div>
-                </div>
 
-                {/* 3. Horizontal Light Gray Banner - fully contained, responsive and max-width bounded */}
-                <div className="bg-slate-50 rounded-xl p-5 md:p-6 border border-slate-100 select-none">
-                    <div className="max-w-7xl mx-auto space-y-4">
-
-                        {/* Top Profile Header: Grid of 5 items matching the bottom stats row (Symmetrical layout) */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 pb-4 border-b border-slate-200/50">
-                            <div>
-                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Matrícula</span>
-                                <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{studentInfo.matricula}</h3>
-                            </div>
-                            <div>
-                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Nombre(s)</span>
-                                <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{firstName}</h3>
-                            </div>
-                            <div>
-                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Apellido Paterno</span>
-                                <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{lastNamePaternal}</h3>
-                            </div>
-                            <div>
-                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Apellido Materno</span>
-                                <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5">{lastNameMaternal}</h3>
-                            </div>
-                            <div className="min-w-0">
-                                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Correo Electrónico</span>
-                                <h3 className="text-xs font-bold text-slate-800 leading-tight mt-0.5 truncate" title={studentInfo.email}>{studentInfo.email}</h3>
-                            </div>
+                    {/* Perfil Header: Grid de datos detallados */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 pt-1">
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Matrícula</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.matricula}</h3>
                         </div>
-
-                        {/* Bottom Stats Grid: 5 columns aligned on large screens, wraps cleanly on smaller devices */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 text-left">
-
-                            {/* Col 1: Promedio */}
-                            <div className="space-y-1 min-w-0">
-                                <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Promedio</span>
-                                <span className="text-base font-bold text-slate-800 block leading-none mt-0.5">{studentInfo.gpa}</span>
-                            </div>
-
-                            {/* Col 2: Semestre / Grupo */}
-                            <div className="space-y-1 min-w-0">
-                                <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Semestre / Grupo</span>
-                                <span className="text-xs font-bold text-slate-800 block leading-tight mt-0.5 truncate">{studentInfo.groupName}</span>
-                            </div>
-
-                            {/* Col 3: Especialidad */}
-                            <div className="space-y-1 min-w-0">
-                                <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Especialidad</span>
-                                <span className="text-xs font-bold text-slate-800 block leading-tight mt-0.5 truncate" title="Técnico en Informática">Técnico en Informática</span>
-                            </div>
-
-                            {/* Col 4: Tutor de Grupo */}
-                            <div className="space-y-1 min-w-0">
-                                <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Tutor de Grupo</span>
-                                <span className="text-xs font-bold text-slate-800 block leading-tight mt-0.5 truncate" title={studentInfo.tutor}>{studentInfo.tutor}</span>
-                            </div>
-
-                            {/* Col 5: Ciclo Escolar */}
-                            <div className="space-y-1 min-w-0">
-                                <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Ciclo Escolar</span>
-                                <div className="leading-tight mt-0.5">
-                                    <span className="text-xs font-bold text-slate-800 block truncate">{studentInfo.ciclo}</span>
-                                    <span className="text-slate-450 font-semibold text-[8px] block mt-0.5">{studentInfo.periodo}</span>
-                                </div>
-                            </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Nombre(s)</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{firstName}</h3>
                         </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Paterno</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNamePaternal}</h3>
+                        </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Materno</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNameMaternal}</h3>
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Ciclo Escolar</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1 truncate">{studentInfo.ciclo}</h3>
+                        </div>
+                    </div>
 
+                    {/* Grid de Estatus Secundario */}
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 pt-4 border-t border-slate-100/50">
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Semestre / Grupo</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.groupName}</h3>
+                        </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Especialidad</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1 truncate" title="Técnico en Informática">Técnico en Informática</h3>
+                        </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Tutor de Grupo</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.tutor}</h3>
+                        </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Promedio</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.gpa}</h3>
+                        </div>
+                        <div>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Materias</span>
+                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.subjectsCount || 0} inscritas</h3>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* CARD 2: Accesos Rápidos & Wizard Stepper */}
-            <div className="bg-white rounded-none md:rounded-2xl p-6 md:p-8 shadow-sm border-none md:border md:border-slate-100/80 space-y-6">
+            <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-sm border border-slate-100 space-y-8">
                 <div className="space-y-1">
                     <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Accesos Rápidos</h3>
                     <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-snug">Trámites y Rutas del Alumno</h2>

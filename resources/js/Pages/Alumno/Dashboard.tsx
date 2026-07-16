@@ -68,20 +68,7 @@ export default function AlumnoDashboard({
         setSelectedTask(null);
     }, [defaultView]);
 
-    // 1. Datos del alumno
-    const studentInfo = propStudentInfo || {
-        name: auth?.user?.name || 'José Eduardo Gómez López',
-        matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'PH2026-001',
-        groupName: auth?.user?.alumnoGroups?.[0]?.groupName || '1°A',
-        email: auth?.user?.email || 'jose.gomez@alumno.prepahidalgo.edu.mx',
-        registeredAt: 'Agosto 2025',
-        gpa: '10',
-        tutor: 'Ing. Uriel Cambron',
-        ciclo: '2025-2026',
-        periodo: '(Enero-Abril 2026)'
-    };
-
-    // Catálogo de materias leídas dinámicamente
+    // 1. Catálogo de materias leídas dinámicamente
     const subjects = (auth?.user?.alumnoGroups || []).map((group: any) => ({
         id: group.id,
         name: group.name,
@@ -89,6 +76,20 @@ export default function AlumnoDashboard({
         teacher: group.teacher,
         description: group.description
     }));
+
+    // 2. Datos del alumno con lógica de GPA dinámica
+    const studentInfo = propStudentInfo || {
+        name: auth?.user?.name || 'Alumno',
+        matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'S/M',
+        groupName: auth?.user?.alumnoGroups?.[0]?.groupName || 'Sin grupo',
+        email: auth?.user?.email || '',
+        registeredAt: 'Agosto 2025',
+        gpa: subjects.length > 0 ? '0.0' : '—', // Si no hay materias, no hay promedio
+        tutor: 'Pendiente',
+        ciclo: '2026-A',
+        periodo: '(Enero-Julio 2026)',
+        subjectsCount: subjects.length
+    };
 
     // Listado general de tareas
     const [taskList, setTaskList] = useState<Task[]>(propTaskList || [

@@ -256,7 +256,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         $count++;
                     }
                 }
-                $gpa = $count > 0 ? number_format($sum / $count, 1) : '10';
+                $gpa = $count > 0 ? number_format($sum / $count, 1) : '—';
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
@@ -296,7 +296,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         $count++;
                     }
                 }
-                $gpa = $count > 0 ? number_format($sum / $count, 1) : '10';
+                $gpa = $count > 0 ? number_format($sum / $count, 1) : '—';
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
