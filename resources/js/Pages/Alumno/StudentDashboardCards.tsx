@@ -65,7 +65,7 @@ export default function StudentDashboardCards({
             title: "Tareas Escolares",
             subtitle: "Consulta tus trabajos y sube entregas",
             icon: ClipboardList,
-            path: "/alumno/tareas",
+            path: "/alumno/materias",
         },
         {
             title: "Boleta Escolar",
@@ -170,11 +170,12 @@ export default function StudentDashboardCards({
                     {kardex.length > 0 ? kardex.map((item) => (
                         <div
                             key={item.id}
-                            className="group flex flex-col p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none"
+                            onClick={() => router.visit(`/alumno/materias?id=${item.uuid}`)}
+                            className="group flex flex-col p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none cursor-pointer"
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <div className="min-w-0 text-left">
-                                    <h4 className="text-sm font-medium text-slate-900 truncate leading-tight">
+                                    <h4 className="text-sm font-medium text-slate-900 truncate leading-tight group-hover:text-[#1e88e5] transition-colors">
                                         {item.subject}
                                     </h4>
                                     <div className="flex items-center gap-2 mt-1">
@@ -210,7 +211,10 @@ export default function StudentDashboardCards({
 
                             <div className="flex justify-end mt-4">
                                 <button
-                                    onClick={() => router.visit('/alumno/calificaciones')}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.visit(`/alumno/materias?id=${item.uuid}`);
+                                    }}
                                     className="flex items-center gap-1 text-[10px] font-normal text-[#1e88e5] uppercase tracking-widest hover:text-blue-700 transition-colors"
                                 >
                                     Ver Detalle completo

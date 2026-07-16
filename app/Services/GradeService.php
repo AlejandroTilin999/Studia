@@ -12,6 +12,18 @@ use App\Models\EntregaTarea;
 class GradeService
 {
     /**
+     * Aplica la lógica de redondeo global: .6 sube, .5 baja.
+     * Devuelve un entero o un guion si no hay valor.
+     */
+    public static function formatGrade($value)
+    {
+        if ($value === null || $value === '—') return '—';
+        $val = floatval($value);
+        // Lógica: .6 sube, .5 baja (floor con offset 0.4)
+        return (int) floor($val + 0.4);
+    }
+
+    /**
      * Calcula las calificaciones detalladas y promedios de un alumno.
      */
     public static function getStudentKardex($userId)
@@ -109,7 +121,7 @@ class GradeService
                         $criteriaData[] = [
                             'name' => $criterion->nombre,
                             'percentage' => $criterion->porcentaje,
-                            'score' => $score !== null ? round($score, 1) : null
+                            'score' => self::formatGrade($score)
                         ];
                     }
 
@@ -118,7 +130,7 @@ class GradeService
                     $parcialDetails[$parcial] = [
                         'configured' => true,
                         'criteria' => $criteriaData,
-                        'average' => $parcialAverage !== null ? $parcialAverage : '—'
+                        'average' => self::formatGrade($parcialAverage)
                     ];
                 }
 
@@ -133,14 +145,16 @@ class GradeService
                 }
 
                 $finalScore = $count === 0 ? '—' : round($sum / $count, 1);
-                $approved = ($finalScore !== '—') ? ($finalScore >= 6.0 ? 'Sí' : 'No') : '—';
+                $finalScoreFormatted = self::formatGrade($finalScore);
+                $approved = ($finalScoreFormatted !== '—') ? ($finalScoreFormatted >= 6 ? 'Sí' : 'No') : '—';
 
                 $kardex[] = [
                     'id' => $load->id,
+                    'uuid' => $load->uuid,
                     'subject' => $subjectName,
                     'code' => $load->course->code ?? 'S/C',
                     'teacher' => $teacherName,
-                    'score' => $finalScore,
+                    'score' => $finalScoreFormatted,
                     'approved' => $approved,
                     'period' => $periodName,
                     'details' => $parcialDetails
@@ -205,6 +219,7 @@ class GradeService
                 $tasksList[] = [
                     'id' => $task->id,
                     'subjectName' => $load->course->name ?? 'Materia Desconocida',
+                    'parcial' => $task->parcial,
                     'title' => $task->name,
                     'status' => $status,
                     'desc' => $task->description ?? 'Sin descripción',

@@ -256,7 +256,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         $count++;
                     }
                 }
-                $gpa = $count > 0 ? number_format($sum / $count, 1) : '—';
+                $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
@@ -274,14 +274,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $taskList = \App\Services\GradeService::getStudentTasks($studentId);
 
+                // Preparar la lista de materias para el frontend
+                $alumnoGroups = array_map(function($item) {
+                    return [
+                        'id' => $item['uuid'],
+                        'name' => $item['subject'],
+                        'teacher' => $item['teacher'],
+                        'description' => 'Materia inscrita en el ciclo actual.'
+                    ];
+                }, $kardex);
+
                 return Inertia::render('Alumno/Dashboard', [
                     'studentInfo' => $studentInfo,
                     'taskList' => $taskList,
-                    'kardex' => $kardex
+                    'kardex' => $kardex,
+                    'alumnoGroups' => $alumnoGroups
                 ]);
             })->name('alumno.dashboard');
 
-            Route::get('/tareas', function () {
+            Route::get('/materias', function () {
                 $studentId = auth()->id();
                 $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
                     ->where('status', 'active')
@@ -297,7 +308,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         $count++;
                     }
                 }
-                $gpa = $count > 0 ? number_format($sum / $count, 1) : '—';
+                $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
 
                 $studentInfo = [
                     'name' => auth()->user()->name,
@@ -315,12 +326,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $taskList = \App\Services\GradeService::getStudentTasks($studentId);
 
+                // Preparar la lista de materias para el frontend
+                $alumnoGroups = array_map(function($item) {
+                    return [
+                        'id' => $item['uuid'],
+                        'name' => $item['subject'],
+                        'teacher' => $item['teacher'],
+                        'description' => 'Materia inscrita en el ciclo actual.'
+                    ];
+                }, $kardex);
+
                 return Inertia::render('Alumno/Dashboard', [
                     'defaultView' => 'tareas',
                     'studentInfo' => $studentInfo,
-                    'taskList' => $taskList
+                    'taskList' => $taskList,
+                    'kardex' => $kardex,
+                    'alumnoGroups' => $alumnoGroups
                 ]);
-            })->name('alumno.tareas.index');
+            })->name('alumno.materias.index');
 
             Route::get('/calificaciones', function () {
                 $studentId = auth()->id();

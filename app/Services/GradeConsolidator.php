@@ -43,7 +43,7 @@ class GradeConsolidator
                 'p1' => $averages[1],
                 'p2' => $averages[2],
                 'p3' => $averages[3],
-                'final' => $finalAverage !== null ? round($finalAverage, 1) : null,
+                'final' => $finalAverage !== null ? \App\Services\GradeService::formatGrade($finalAverage) : null,
                 'estatus' => $estatus
             ]
         );
@@ -87,7 +87,7 @@ class GradeConsolidator
             $totalWeightedScore += ($score * ($criterion->porcentaje / 100));
         }
 
-        return $allCriteriaFilled ? round($totalWeightedScore, 1) : null;
+        return $allCriteriaFilled ? \App\Services\GradeService::formatGrade($totalWeightedScore) : null;
     }
 
     /**

@@ -1,11 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
-import { Calendar, Check } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Calendar, Check, BookOpen, ChevronRight, ChevronLeft } from 'lucide-react';
 import StudentRightSidebar from '@/Components/StudentRightSidebar';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import StudentDashboardCards from './StudentDashboardCards';
 import { SwalHelper } from '@/utils/SwalHelper';
+import { formatGrade } from '@/utils/gradeHelper';
 
 // Componentes modulares (Organizados en carpetas correspondientes)
 import SubjectCard from './Tareas/SubjectCard';
@@ -17,6 +18,7 @@ import SubjectAssignment from './Tareas/SubjectAssignment';
 interface Task {
     id: number;
     subjectName?: string;
+    parcial?: number;
     title: string;
     status: string;
     desc: string;
@@ -46,38 +48,82 @@ interface AlumnoDashboardProps {
     };
     taskList?: Task[];
     kardex?: any[];
+    alumnoGroups?: any[];
 }
 
 export default function AlumnoDashboard({
     defaultView = 'perfil',
     studentInfo: propStudentInfo,
     taskList: propTaskList,
-    kardex = []
+    kardex = [],
+    alumnoGroups: propAlumnoGroups = []
 }: AlumnoDashboardProps) {
     const { auth } = usePage().props as any;
+    const { url: currentUrl } = usePage();
 
     // Estados principales
     const [currentView, setCurrentView] = useState<'perfil' | 'tareas'>(defaultView);
-    const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+    const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [selectedParcial, setSelectedParcial] = useState<number | null>(null);
     const [activeSubjectTab, setActiveSubjectTab] = useState<'novedades' | 'trabajo'>('novedades');
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-    // Sincronizar al navegar en la barra lateral
-    useEffect(() => {
-        setCurrentView(defaultView);
-        setSelectedSubject(null);
-        setSelectedTask(null);
-    }, [defaultView]);
-
-    // 1. Catálogo de materias leídas dinámicamente
-    const subjects = (auth?.user?.alumnoGroups || []).map((group: any) => ({
+    // 1. Catálogo de materias leídas dinámicamente desde las props
+    const subjects = useMemo(() => propAlumnoGroups.map((group: any) => ({
         id: group.id,
         name: group.name,
         iconName: 'compass',
         teacher: group.teacher,
         description: group.description
-    }));
+    })), [propAlumnoGroups]);
+
+    // Sincronizar al navegar en la barra lateral o por URL params
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const subjectId = urlParams.get('id');
+        const viewParam = urlParams.get('view');
+        const parcialParam = urlParams.get('parcial');
+
+        if (subjectId && subjects.length > 0) {
+            const sub = subjects.find((s: any) => s.id.toString() === subjectId.toString());
+            if (sub) {
+                setCurrentView('tareas');
+                setSelectedSubject(sub);
+
+                if (parcialParam) {
+                    setSelectedParcial(parseInt(parcialParam));
+                } else {
+                    setSelectedParcial(null);
+                }
+
+                if (viewParam !== 'tareas') setSelectedTask(null);
+                return;
+            }
+        }
+
+        // Redirección automática si estamos en /materias sin ID
+        if (currentUrl.includes('/materias') && !subjectId) {
+            setCurrentView('perfil');
+            setSelectedSubject(null);
+            return;
+        }
+
+        if (viewParam === 'tareas') {
+            setCurrentView('tareas');
+            setSelectedSubject(null);
+            setSelectedTask(null);
+            return;
+        }
+
+        if (defaultView === 'perfil') {
+            setCurrentView('perfil');
+            setSelectedSubject(null);
+            setSelectedTask(null);
+            setSelectedParcial(null);
+        } else {
+            setCurrentView(defaultView);
+        }
+    }, [currentUrl, subjects, defaultView]);
 
     // 2. Datos del alumno con lógica de GPA dinámica
     const baseStudentInfo = propStudentInfo || {
@@ -86,7 +132,7 @@ export default function AlumnoDashboard({
         groupName: auth?.user?.alumnoGroups?.[0]?.groupName || 'Sin grupo',
         email: auth?.user?.email || '',
         registeredAt: 'Agosto 2025',
-        gpa: subjects.length > 0 ? '0.0' : '—', // Si no hay materias, no hay promedio
+        gpa: subjects.length > 0 ? '0.0' : '—',
         tutor: 'Pendiente',
         ciclo: '2026-A',
         periodo: '(Enero-Julio 2026)'
@@ -97,15 +143,24 @@ export default function AlumnoDashboard({
         subjectsCount: subjects.length
     };
 
+    // Determinar el parcial activo
+    const activeParcialNum = useMemo(() => {
+        if (!kardex || kardex.length === 0) return 1;
+        const first = kardex[0];
+        if (!first.details) return 1;
+        if (first.details[1]?.average === '—') return 1;
+        if (first.details[2]?.average === '—') return 2;
+        if (first.details[3]?.average === '—') return 3;
+        return 1;
+    }, [kardex]);
+
     // Listado general de tareas
-    const [taskList, setTaskList] = useState<Task[]>(propTaskList || [
-        { id: 1, subjectName: 'Desarrollo para dispositivos inteligentes', title: 'Diseño UX/UI de App Móvil', status: 'Pendiente', desc: 'Diseña la arquitectura de información, wireframes y mockup interactivo en Figma de una app móvil para control escolar. Debe incluir al menos vistas de login, perfil y tareas.', points: '100 puntos', deadline: '25 de Julio, 11:59 PM' },
-        { id: 2, subjectName: 'Desarrollo para dispositivos inteligentes', title: 'Primera App en React Native', status: 'En progreso', desc: 'Configurar entorno de desarrollo local con Expo Go. Construir una interfaz móvil básica que renderice datos de perfil e integre al menos tres componentes básicos (<Text>, <View>, <Image>).', points: '100 puntos', deadline: '30 de Julio, 11:59 PM' },
-        { id: 3, subjectName: 'Física I', title: 'Proyecto: Rampa Hidráulica', status: 'En progreso', desc: 'Desarrollar un prototipo a escala de una rampa hidráulica aplicando los principios fundamentales de la Ley de Pascal. Entregar reporte PDF del diseño físico construido.', points: '100 puntos', deadline: '24 de Julio, 11:59 PM' },
-        { id: 4, subjectName: 'Física I', title: 'Cálculos de Presión - Física', status: 'Pendiente', desc: 'Preparar informe técnico detallando los cálculos de presión, área de pisones y fuerza de empuje medidos en las pruebas de carga.', points: '50 puntos', deadline: '28 de Julio, 11:59 PM' },
-        { id: 5, subjectName: 'Matemáticas I', title: 'Problemario de Álgebra Lineal', status: 'Pendiente', desc: 'Resolver los 15 ejercicios de matrices y sistemas de ecuaciones lineales adjuntos en el portal escolar.', points: '100 puntos', deadline: '26 de Julio, 11:59 PM' },
-        { id: 6, subjectName: 'Matemáticas I', title: 'Práctica de Trigonometría', status: 'Entregado', desc: 'Completar el reporte de medición de alturas usando goniómetro casero y razones trigonométricas.', points: '50 puntos', deadline: 'Entregado hace 2 días' }
-    ]);
+    const [taskList, setTaskList] = useState<Task[]>(propTaskList || []);
+
+    // Tareas filtradas para el dashboard principal (solo parcial activo)
+    const activeParcialTasks = useMemo(() => {
+        return taskList.filter(t => !t.parcial || t.parcial === activeParcialNum);
+    }, [taskList, activeParcialNum]);
 
     // Actualizar tareas si cambian las props
     useEffect(() => {
@@ -115,12 +170,7 @@ export default function AlumnoDashboard({
     }, [propTaskList]);
 
     // Estado persistente local de comentarios privados y archivos adjuntos
-    const [taskComments, setTaskComments] = useState<Record<number, string[]>>({
-        1: [
-            'Dra. Ana Karen, ¿puedo utilizar Figma para diseñar los Mockups?',
-            'Sí Eduardo, de hecho es la herramienta recomendada. No olvides adjuntar el link del proyecto en tu reporte.'
-        ]
-    });
+    const [taskComments, setTaskComments] = useState<Record<number, string[]>>({});
     const [attachedFiles, setAttachedFiles] = useState<Record<number, File | null>>({});
 
     // Acciones de entrega de tareas
@@ -148,12 +198,6 @@ export default function AlumnoDashboard({
         });
     };
 
-    // Materias destacadas e información general del dashboard
-    const featuredSubjects = [
-        { name: 'Matemáticas I', progress: 85, teacher: 'Ing. Uriel Cambron' },
-        { name: 'Desarrollo para dispositivos inteligentes', progress: 95, teacher: 'Dra. Ana Karen Camacho' }
-    ];
-
     const currentSubjectTasks = taskList.filter(t => selectedSubject && t.subjectName === selectedSubject.name);
     const otherTasksOfSubject = selectedTask
         ? currentSubjectTasks.filter(t => t.id !== selectedTask.id)
@@ -168,7 +212,6 @@ export default function AlumnoDashboard({
                 {/* Columna Izquierda: Panel Principal */}
                 <div className="flex-1 flex flex-col min-w-0 lg:overflow-y-auto lg:h-full">
                     {currentView === 'perfil' ? (
-                        // 🏡 VISTA 1: MI PERFIL / RESUMEN
                         <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-200">
                             <DashboardWelcomeBanner
                                 greeting={`Hola ${studentInfo.name}`}
@@ -179,7 +222,7 @@ export default function AlumnoDashboard({
                             <div className="space-y-6">
                                 <StudentDashboardCards
                                     studentInfo={studentInfo}
-                                    taskList={taskList}
+                                    taskList={activeParcialTasks}
                                     kardex={kardex}
                                     onOpenTaskModal={(task) => {
                                         const sub = subjects.find((s: any) => s.name === task.subjectName);
@@ -187,15 +230,14 @@ export default function AlumnoDashboard({
                                             setCurrentView('tareas');
                                             setSelectedSubject(sub);
                                             setSelectedTask(task);
+                                            if (task.parcial) setSelectedParcial(task.parcial);
                                         }
                                     }}
                                 />
                             </div>
                         </div>
                     ) : (
-                        // 📚 VISTA 2: MIS TAREAS / MODULO CLASSROOM
                         <div className="flex flex-col animate-in fade-in duration-200 h-full bg-white">
-                            {/* Cabecera / Selector de Materia (Visible siempre en tareas) */}
                             <SubjectHeader
                                 subject={selectedSubject}
                                 task={selectedTask}
@@ -216,41 +258,130 @@ export default function AlumnoDashboard({
                                 }}
                             />
 
-                            {/* Contenedor Principal de Actividades */}
                             <div className="p-6 md:p-8">
                                 <div className="min-h-[400px]">
 
-                                    {/* Caso A: Muestra las materias en tarjetas si no se ha seleccionado ninguna */}
                                     {!selectedSubject && (
-                                        <SubjectCard
-                                            subjects={subjects}
-                                            onSelectSubject={(sub) => {
-                                                setSelectedSubject(sub);
-                                                setActiveSubjectTab('novedades');
-                                            }}
-                                        />
+                                        <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e88e5] mb-4"></div>
+                                            <p className="font-medium text-sm">Cargando portal de materia...</p>
+                                        </div>
                                     )}
 
-                                    {/* Caso B: Muestra la materia seleccionada */}
                                     {selectedSubject && !selectedTask && (
                                         <>
-                                            {activeSubjectTab === 'novedades' ? (
-                                                <SubjectStream
-                                                    subjectName={selectedSubject.name}
-                                                    teacherName={selectedSubject.teacher}
-                                                    tasks={currentSubjectTasks}
-                                                    onSelectTask={setSelectedTask}
-                                                />
-                                            ) : (
-                                                <SubjectClasswork
-                                                    tasks={currentSubjectTasks}
-                                                    onSelectTask={setSelectedTask}
-                                                />
+                                            {activeSubjectTab === 'novedades' && (
+                                                <div className="space-y-8 text-left pt-2 animate-in fade-in duration-300">
+
+                                                    {/* Vista A: Lista de Parciales */}
+                                                    {!selectedParcial ? (
+                                                        <>
+                                                            <div>
+                                                                <h4 className="text-sm font-bold text-slate-700">Mi Historial de Calificaciones</h4>
+                                                                <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Resumen de promedios por periodo de evaluación</p>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                                                {[1, 2, 3].map((num) => {
+                                                                    const subjectKardex = kardex.find(k => k.subject === selectedSubject.name);
+                                                                    const pData = subjectKardex?.details?.[num];
+                                                                    const done = pData?.configured;
+                                                                    const avg = pData?.average ?? '—';
+                                                                    const criteria = pData?.criteria || [];
+
+                                                                    return (
+                                                                        <div
+                                                                            key={num}
+                                                                            onClick={() => setSelectedParcial(num)}
+                                                                            className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col h-full hover:border-blue-100 hover:bg-slate-50/30 transition-all group shadow-none cursor-pointer relative"
+                                                                        >
+                                                                            <div className="mb-4">
+                                                                                <div className="text-4xl font-normal text-slate-900 opacity-20 group-hover:opacity-100 group-hover:text-[#1e88e5] transition-all">0{num}</div>
+                                                                                <h3 className="text-base font-medium text-slate-800">Parcial {num}</h3>
+                                                                            </div>
+
+                                                                            <div className="flex-grow space-y-4">
+                                                                                {done ? (
+                                                                                    <>
+                                                                                        <div className="space-y-3">
+                                                                                            <div className="flex justify-between items-end">
+                                                                                                <span className="text-[10px] font-normal text-slate-400 uppercase tracking-widest">Promedio Parcial</span>
+                                                                                                <span className="text-2xl font-normal text-slate-800">{avg}</span>
+                                                                                            </div>
+                                                                                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                                                                <div
+                                                                                                    className="h-full bg-[#1e88e5] rounded-full transition-all duration-1000"
+                                                                                                    style={{ width: avg !== '—' ? `${parseFloat(avg) * 10}%` : '0%' }}
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {/* Desglose de Criterios */}
+                                                                                {criteria.length > 0 && (
+                                                                                    <div className="pt-4 border-t border-slate-50 space-y-2.5">
+                                                                                        <span className="text-[9px] font-normal text-slate-400 uppercase tracking-widest block mb-1">Desglose de evaluación</span>
+                                                                                        {criteria.map((c: any, cIdx: number) => {
+                                                                                            const roundedScore = formatGrade(c.score);
+                                                                                            const isPassing = roundedScore !== '—' && Number(roundedScore) >= 6;
+
+                                                                                            return (
+                                                                                                <div key={cIdx} className="flex items-center justify-between text-xs">
+                                                                                                    <div className="flex flex-col">
+                                                                                                        <span className="font-medium text-slate-700">{c.name}</span>
+                                                                                                        <span className="text-[10px] text-slate-400 font-normal">{c.percentage}% del total</span>
+                                                                                                    </div>
+                                                                                                    <span className={`font-bold ${isPassing ? 'text-slate-800' : 'text-[#1e88e5]'}`}>
+                                                                                                        {roundedScore}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                )}
+
+                                                                                        <div className="pt-4 border-t border-slate-50">
+                                                                                            <span className="text-[10px] font-bold text-[#1e88e5] flex items-center gap-1">
+                                                                                                Ver tareas asignadas
+                                                                                                <ChevronRight size={12} />
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <p className="text-xs text-slate-400 font-medium italic">Evaluación no disponible.</p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        /* Vista B: Tareas del Parcial Seleccionado */
+                                                        <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
+                                                            <div className="flex items-center justify-between">
+                                                                <button
+                                                                    onClick={() => setSelectedParcial(null)}
+                                                                    className="flex items-center gap-2 text-slate-400 hover:text-slate-800 transition-colors text-xs font-bold uppercase tracking-widest"
+                                                                >
+                                                                    <ChevronLeft size={16} />
+                                                                    Volver a parciales
+                                                                </button>
+                                                                <div className="px-4 py-1 bg-[#1e88e5]/10 text-[#1e88e5] rounded-full text-xs font-black uppercase tracking-widest border border-[#1e88e5]/20">
+                                                                    Tareas Parcial 0{selectedParcial}
+                                                                </div>
+                                                            </div>
+
+                                                            <SubjectClasswork
+                                                                tasks={currentSubjectTasks.filter(t => t.parcial === selectedParcial)}
+                                                                onSelectTask={setSelectedTask}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </>
                                     )}
 
-                                    {/* Caso C: Muestra la entrega detallada estilo "Ver Tarea" */}
                                     {selectedSubject && selectedTask && (
                                         <SubjectAssignment
                                             task={selectedTask}
@@ -278,15 +409,12 @@ export default function AlumnoDashboard({
                     )}
                 </div>
 
-                {/* Barra lateral de avisos y calendario (Fija en escritorio, oculta en móvil si no se requiere) */}
                 {currentView === 'perfil' && (
                     <div className="hidden lg:block w-[380px] shrink-0 bg-white border-l border-slate-100 h-full overflow-hidden">
                         <StudentRightSidebar />
                     </div>
                 )}
             </div>
-
-            {/* Eliminado el botón flotante de colapsar para mantener la sección siempre visible como solicitaste */}
         </AuthenticatedLayout>
     );
 }

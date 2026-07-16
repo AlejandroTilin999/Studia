@@ -1,13 +1,13 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { 
-    ChevronLeft, 
-    FileText, 
-    Award, 
-    Send, 
-    Check, 
-    Upload, 
-    Paperclip, 
+import {
+    ChevronLeft,
+    FileText,
+    Award,
+    Send,
+    Check,
+    Upload,
+    Paperclip,
     X,
     Calendar,
     MessageCircle,
@@ -90,13 +90,24 @@ export default function SubjectAssignment({
 
     return (
         <div className="space-y-8 text-left animate-in fade-in duration-200 pt-2 bg-white">
-            
+
+            {/* Back Button */}
+            <div className="pb-2">
+                <button
+                    onClick={onBack}
+                    className="flex items-center gap-2 text-slate-400 hover:text-slate-800 transition-colors text-xs font-bold uppercase tracking-widest"
+                >
+                    <ChevronLeft size={16} />
+                    Volver a la lista
+                </button>
+            </div>
+
             {/* Modern Layout (Unified grid to align right column at the same height as left column title) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                
+
                 {/* Left Side: Title, Metadata, Instructions and private chat (8 columns) */}
                 <div className="lg:col-span-8 space-y-8 min-w-0">
-                    
+
                     {/* Title & Metadata (Clean and without box containers) */}
                     <div className="space-y-4">
                         <div className="space-y-1">
@@ -136,7 +147,7 @@ export default function SubjectAssignment({
                                 Foro de Mensajes Privados
                             </h4>
                         </div>
-                        
+
                         <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-2">
                             {comments.length === 0 ? (
                                 <span className="text-xs text-slate-400 font-semibold block">
@@ -177,7 +188,7 @@ export default function SubjectAssignment({
 
                 {/* Right Side: Delivery Details & Actions (4 columns) - Completely borderless */}
                 <div className="lg:col-span-4 space-y-6">
-                    
+
                     {/* Delivery Status and Upload space (Flat, clean, borderless) */}
                     <div className="space-y-5 text-left bg-white">
                         <div className="space-y-1">
@@ -231,10 +242,10 @@ export default function SubjectAssignment({
 
                         {/* Dynamic Button Area (No dashed boxes, pure interactive button states) */}
                         <div className="space-y-3 pt-2">
-                            <input 
-                                type="file" 
+                            <input
+                                type="file"
                                 id="asymmetric-file-input"
-                                className="hidden" 
+                                className="hidden"
                                 onChange={onFileChange}
                             />
 

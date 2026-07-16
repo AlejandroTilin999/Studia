@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { ChevronRight, ChevronLeft, GraduationCap } from 'lucide-react';
+import { ChevronRight, GraduationCap, Layers, Palette, ArrowLeft } from 'lucide-react';
+import { COLOR_THEMES } from '@/Pages/Docente/Grupos/ColorThemes';
 
 interface Subject {
+    id?: string | number;
     name: string;
     iconName: string;
     teacher: string;
@@ -27,107 +29,89 @@ interface SubjectHeaderProps {
     onBackToSubject?: () => void;
 }
 
-export default function SubjectHeader({ 
-    subject, 
+export default function SubjectHeader({
+    subject,
     task,
-    activeTab, 
-    setActiveTab, 
+    activeTab,
+    setActiveTab,
     onBack,
     onBackToSubject
 }: SubjectHeaderProps) {
+    // Definimos un tema por defecto para el alumno (por ejemplo azul) o basado en el índice si lo tuviéramos.
+    // Para simplificar usamos el azul institucional.
+    const themeKey = 'blue';
+    const groupColors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
+
     return (
-        <div className="bg-white border-b border-slate-200/80 w-full select-none">
-            {/* Top breadcrumb & navigation bar */}
-            <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                
-                {/* Navigation path */}
-                <div className="flex items-center gap-3">
+        <div className="w-full select-none space-y-4">
+            {/* Banner de la Materia (Estilo Docente) */}
+            {subject && !task && (
+                <div className="px-6 md:px-8 pt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Banner Principal */}
+                        <div className={`relative overflow-hidden rounded-[32px] border p-8 sm:p-10 flex flex-col justify-center min-h-[220px] shadow-none lg:col-span-2 ${groupColors.bg} ${groupColors.border}`}>
+                            {/* Decoración geométrica */}
+                            <div className="absolute left-0 top-0 bottom-0 w-48 overflow-hidden pointer-events-none z-0">
+                                <svg className="absolute -left-6 top-1 w-44 h-48 opacity-20" viewBox="0 0 120 140" fill="none">
+                                    <path d="M10 10 Q50 60 20 100 T100 120" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                                <div className="absolute left-10 top-4 w-14 h-14 bg-[#4db6ac] rotate-12 opacity-20" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
+                                <div className="absolute -left-8 top-12 w-24 h-12 bg-[#ab47bc] rotate-45 opacity-15 rounded-md" />
+                                <div className="absolute left-8 top-28 w-12 h-12 bg-[#1e88e5] rounded-full opacity-20" />
+                            </div>
 
-                    {/* Well-made breadcrumbs list */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-slate-400">
-                        {subject ? (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={onBack}
-                                    className="hover:text-[#0266E0] transition-colors text-sm font-bold text-slate-400"
-                                >
-                                    Mis Materias
-                                </button>
-                                
-                                <ChevronRight size={14} className="text-slate-300" />
-                                
-                                {task ? (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={onBackToSubject}
-                                            className="hover:text-[#0266E0] transition-colors text-left truncate max-w-[120px] sm:max-w-[200px] text-sm font-bold text-slate-400"
-                                        >
-                                            {subject.name}
-                                        </button>
-                                        <ChevronRight size={14} className="text-slate-300" />
-                                        <span className="text-[#0f172a] font-black text-sm block truncate max-w-[150px] sm:max-w-[250px]">
-                                            {task.title}
-                                        </span>
-                                    </>
-                                ) : (
-                                    <span className="text-[#0f172a] font-black text-sm block truncate max-w-[200px] sm:max-w-xs md:max-w-md">
+                            {/* Grid overlay sutil */}
+                            <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e88e505_1px,transparent_1px),linear-gradient(to_bottom,#1e88e505_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0" />
+
+                            <div className="relative z-10 space-y-4 text-left">
+                                {/* Pill superior */}
+                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg w-fit text-[11px] font-black tracking-widest uppercase ${groupColors.badgeBg} ${groupColors.text}`}>
+                                    <Layers size={13} className={groupColors.text} />
+                                    <span>Portal de Asignatura</span>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-none">
                                         {subject.name}
-                                    </span>
-                                )}
-                            </>
-                        ) : (
-                            <span className="text-[#0f172a] font-black text-sm block">
-                                Mis Materias
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                {/* Subtext info (Teacher card - shown when subject is selected) */}
-                {subject && (
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/60 px-3 py-1.5 rounded-full shrink-0 self-start sm:self-center shadow-none">
-                        <div className="bg-[#0266E0]/10 text-[#0266E0] p-1 rounded-full">
-                            <GraduationCap size={14} className="stroke-[2.5]" />
+                                    </h1>
+                                    <p className="text-sm md:text-base font-medium text-slate-500 leading-relaxed max-w-2xl">
+                                        {subject.description}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <span className="text-[10px] md:text-xs font-bold text-slate-600">
-                            Docente: {subject.teacher}
-                        </span>
-                    </div>
-                )}
 
-            </div>
+                        {/* Widget de Información Rápida (Estilo Docente) */}
+                        <div className="bg-slate-50 border border-slate-100 rounded-[32px] p-6 sm:p-8 flex flex-col justify-between h-full select-none text-left">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Información Académica</h3>
 
-            {/* Pill Tabs selector (only shown when a subject is active, no task is active, and tabs states are provided) */}
-            {subject && !task && activeTab && setActiveTab && (
-                <div className="max-w-7xl mx-auto px-6 pb-px flex">
-                    <div className="flex bg-slate-100 rounded-xl overflow-hidden mb-3.5 w-fit border border-slate-200/30 shadow-none">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('novedades')}
-                            className={`px-5 py-2 text-xs font-bold transition-all outline-none ${
-                                activeTab === 'novedades'
-                                    ? 'bg-[#0266E0] text-white font-extrabold'
-                                    : 'bg-transparent text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            Inicio Materia
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('trabajo')}
-                            className={`px-5 py-2 text-xs font-bold transition-all outline-none ${
-                                activeTab === 'trabajo'
-                                    ? 'bg-[#0266E0] text-white font-extrabold'
-                                    : 'bg-transparent text-slate-500 hover:text-slate-800'
-                                }`}
-                        >
-                            Tareas Asignadas
-                        </button>
+                            <div className="flex-1 flex flex-col justify-center gap-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <GraduationCap size={15} className="text-slate-800 shrink-0" />
+                                        <span className="text-xs font-semibold text-slate-600">Docente titular</span>
+                                    </div>
+                                    <span className="text-xs font-extrabold text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-slate-100 truncate max-w-[120px]" title={subject.teacher}>{subject.teacher}</span>
+                                </div>
+
+                                <div className="h-px bg-slate-200/50 w-full" />
+
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <Palette size={15} className="text-slate-800 shrink-0" />
+                                        <span className="text-xs font-semibold text-slate-600">Estado</span>
+                                    </div>
+                                    <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">Activa</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
+
+            <div className="bg-white border-b border-slate-200/80 w-full">
+
+            </div>
         </div>
     );
 }

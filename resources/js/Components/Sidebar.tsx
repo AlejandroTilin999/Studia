@@ -31,7 +31,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const pathname = url.split('?')[0]; // Limpiar query params de la URL actual
 
   // Determinar rol automáticamente basado en la información del usuario o la URL
-  const { auth } = usePage().props as any;
+  const { auth, alumnoGroups: propAlumnoGroups } = usePage().props as any;
   const user = auth?.user;
   const userRole = (user?.role || '').toUpperCase();
 
@@ -68,7 +68,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Materias",
       icon: BookOpen,
-      path: role === "ADMIN" ? "/admin/materias" : "/alumno/calificaciones",
+      path: role === "ADMIN" ? "/admin/materias" : "/alumno/dashboard",
       roles: ["ADMIN", "ALUMNO"]
     },
     {
@@ -107,7 +107,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
   // Datos de los grupos/materias (leídos dinámicamente)
   const docenteGroups = user?.docenteGroups || [];
-  const alumnoGroups = user?.alumnoGroups || [];
+  const alumnoGroups = propAlumnoGroups || user?.alumnoGroups || [];
 
   const [gruposOpen, setGruposOpen] = useState(() => {
     // Mantener abierto si la ruta actual es de grupos o si es un docente para ver su carga
@@ -176,7 +176,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
             // ─── Bloque especial: "Materias" para ALUMNO ───────────────────
             if (role === 'ALUMNO' && item.name === 'Materias') {
-              const isAnySubjectActive = pathname.startsWith('/alumno/calificaciones') || (pathname.startsWith('/alumno/dashboard') && url.includes('tab='));
+              const isAnySubjectActive = pathname.startsWith('/alumno/calificaciones') || pathname.startsWith('/alumno/materias');
               return (
                 <SidebarMenuItem key={item.path} className="mb-1.5">
                   {/* Cabecera colapsable de Materias */}
@@ -228,7 +228,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                           <button
                             key={s.id}
                             onClick={() => {
-                              router.visit('/alumno/tareas');
+                              router.visit(`/alumno/materias?id=${s.id}`);
                               if (isSheet) setOpenMobile(false);
                             }}
                             className={cn(
