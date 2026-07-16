@@ -1,15 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import {
-    ChevronRight,
-    Settings,
-    RotateCcw,
-    ArrowLeft,
-    CheckCircle2,
-} from 'lucide-react';
+import { ChevronRight, Settings, RotateCcw, ArrowLeft, CheckCircle2, LockKeyhole, Vote } from 'lucide-react';
 import { PARCIALES } from './Show/services/constants';
-
-// Modulares refactorizados
 import { useGroupClass } from './Show/hooks/useGroupClass';
 import GroupHeaderBanner from './Show/components/GroupHeaderBanner';
 import CriteriaGrid from './Show/components/CriteriaGrid';
@@ -22,55 +14,7 @@ import FinalGradesModal from './Show/components/FinalGradesModal';
 import TaskGradesModal from './Show/components/TaskGradesModal';
 
 export default function DocenteGruposShow() {
-    const {
-        grupo,
-        materia,
-        themeKey,
-        showPaletteMenu,
-        setShowPaletteMenu,
-        handleThemeChange,
-        screen,
-        setScreen,
-        activeParcial,
-        setActiveParcial,
-        configs,
-        wizardStep,
-        setWizardStep,
-        draftCriteria,
-        tasks,
-        saveTasks,
-        activeTab,
-        setActiveTab,
-        studentGrades,
-        getStudentTasksAverage,
-        openParcial,
-        saveWizardConfig,
-        resetConfig,
-        updateCriterion,
-        toggleSyncTasks,
-        addCriterion,
-        removeCriterion,
-        resetParcial,
-        setScore,
-        handleAsentarCalificaciones,
-        selectedTaskId,
-        setSelectedTaskId,
-        selectedStudentId,
-        setSelectedStudentId,
-        chatInputText,
-        setChatInputText,
-        isPdfModalOpen,
-        setIsPdfModalOpen,
-        isGradesModalOpen,
-        setIsGradesModalOpen,
-        privateMessages,
-        sendPrivateMessage,
-        getParcialAverage,
-        getFinalAverage,
-        isParcialClosed,
-        totalPct,
-        pctValid
-    } = useGroupClass();
+    const { grupo, materia, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, saveTasks, activeTab, setActiveTab, studentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid } = useGroupClass();
 
     const parcialLabel = activeParcial ? PARCIALES.find(p => p.num === activeParcial)?.label : '';
     const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];
@@ -78,14 +22,12 @@ export default function DocenteGruposShow() {
     return (
         <AuthenticatedLayout>
             <Head title={`${grupo} — ${materia}`} />
-            <div className="space-y-6">
+            {/* Contenedor principal ajustado para ocupar el alto total disponible */}
+            <div className="flex flex-col h-full min-h-[calc(100vh-100px)] p-4 md:p-6 space-y-4">
 
-                {/* Contexto de ubicación (solo en wizard/grades) */}
                 {screen !== 'parciales' && (
-                    <div className="flex items-center gap-2 mb-4 text-xs text-slate-400 font-semibold">
-                        <button onClick={() => { setScreen('parciales'); setActiveParcial(null); }} className="hover:text-[#1e88e5] transition-colors">
-                            Parciales
-                        </button>
+                    <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
+                        <button onClick={() => { setScreen('parciales'); setActiveParcial(null); }} className="hover:text-[#1e88e5] transition-colors">Parciales</button>
                         <ChevronRight size={12} className="text-slate-300" />
                         <span className="text-slate-600">{parcialLabel}</span>
                         {screen === 'wizard' && (
@@ -97,110 +39,55 @@ export default function DocenteGruposShow() {
                     </div>
                 )}
 
-                {/* ══════ BANNER SUPERIOR DEL GRUPO + CARDS AL LADO ══════ */}
-                <GroupHeaderBanner
-                    grupo={grupo}
-                    materia={materia}
-                    themeKey={themeKey}
-                    showPaletteMenu={showPaletteMenu}
-                    setShowPaletteMenu={setShowPaletteMenu}
-                    handleThemeChange={handleThemeChange}
-                    studentGradesCount={studentGrades.length}
-                    parcialesCount={PARCIALES.length}
-                    configuredCount={Object.values(configs).filter(c => c.configured).length}
-                    setIsGradesModalOpen={setIsGradesModalOpen}
-                />
+                <GroupHeaderBanner grupo={grupo} materia={materia} themeKey={themeKey} showPaletteMenu={showPaletteMenu} setShowPaletteMenu={setShowPaletteMenu} handleThemeChange={handleThemeChange} studentGradesCount={studentGrades.length} parcialesCount={PARCIALES.length} configuredCount={Object.values(configs).filter(c => c.configured).length} setIsGradesModalOpen={setIsGradesModalOpen} />
 
-                {/* ══════ PANTALLA: PARCIALES ══════ */}
                 {screen === 'parciales' && (
-                    <div className="text-left">
+                    <div className="flex flex-col flex-grow">
                         <p className="text-xs text-slate-400 font-semibold mb-4 uppercase tracking-wider">Selecciona un parcial</p>
-
-                        {/* Cards de parciales */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Grid responsivo que se estira al tamaño de la pantalla */}
+                        <div className="grid flex-grow grid-cols-1 sm:grid-cols-3 gap-6 auto-rows-fr">
                             {PARCIALES.map(({ num, label }) => {
                                 const cfg = configs[num];
                                 const done = cfg?.configured;
-                                const isLocked = num === 2 
-                                    ? !isParcialClosed(1) 
-                                    : num === 3 
-                                    ? (!isParcialClosed(1) || !isParcialClosed(2)) 
-                                    : false;
+                                const isLocked = num === 2 ? !isParcialClosed(1) : num === 3 ? (!isParcialClosed(1) || !isParcialClosed(2)) : false;
 
                                 return (
-                                    <div
-                                        key={num}
-                                        className={`bg-white border rounded-2xl p-6 flex flex-col gap-4 shadow-sm transition-all text-left ${
-                                            isLocked 
-                                                ? 'opacity-60 border-slate-100 cursor-not-allowed select-none' 
-                                                : 'border-slate-100 hover:shadow-md hover:border-blue-100 cursor-pointer group'
-                                        }`}
-                                        onClick={() => openParcial(num)}
-                                    >
-                                        {/* Badge estado */}
-                                        <div className="flex items-center justify-between">
+                                    <div key={num} onClick={() => !isLocked && openParcial(num)} className={`flex flex-col h-full bg-white border rounded-2xl p-6 shadow-sm transition-all ${isLocked ? 'opacity-60 border-slate-100 cursor-not-allowed' : 'border-slate-100 hover:shadow-lg hover:border-blue-200 cursor-pointer'}`}>
+                                        <div className="flex items-center justify-between mb-4">
                                             {isLocked ? (
-                                                <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 flex items-center gap-1">
-                                                    🔒 Bloqueado
-                                                </span>
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold uppercase"><LockKeyhole size={14}/> Bloqueado</span>
                                             ) : (
-                                                <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full ${done ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
-                                                    {done ? '✓ Configurado' : 'Pendiente'}
-                                                </span>
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase ${done ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}><Vote size={14}/> {done ? 'Configurado':'Pendiente'}</span>
                                             )}
                                             {done && !isLocked && (
-                                                <button
-                                                    onClick={e => { e.stopPropagation(); resetParcial(num); }}
-                                                    className="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-300 hover:text-slate-500 transition-all"
-                                                    title="Reconfigurar"
-                                                >
-                                                    <RotateCcw size={13} />
-                                                </button>
+                                                <button onClick={(e)=>{ e.stopPropagation(); resetParcial(num); }} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400"><RotateCcw size={14}/></button>
                                             )}
                                         </div>
 
-                                        {/* Número y label */}
-                                        <div>
-                                            <div className="text-4xl font-black text-slate-900 leading-none mb-1 transition-colors">
-                                                0{num}
-                                            </div>
-                                            <h3 className="text-base font-extrabold text-slate-800">{label}</h3>
+                                        <div className="mb-4">
+                                            <div className="text-5xl font-black text-slate-900">0{num}</div>
+                                            <h3 className="text-lg font-extrabold text-slate-800">{label}</h3>
                                         </div>
 
-                                        {/* Criterios o prompt */}
-                                        {done ? (
-                                            <div className="space-y-1.5">
-                                                {cfg.criteria.map(c => (
-                                                    <div key={c.id} className="flex items-center justify-between text-xs">
-                                                        <span className="text-slate-500 font-semibold truncate">{c.name}</span>
-                                                        <span className="font-extrabold text-slate-700 ml-2">{c.percentage}%</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-xs text-slate-400 font-semibold leading-relaxed">
-                                                {isLocked 
-                                                    ? 'Se desbloqueará al concluir y calificar el parcial anterior.' 
-                                                    : 'Configura los criterios de evaluación para este parcial.'}
-                                            </p>
-                                        )}
-
-                                        {/* CTA */}
-                                        <div className="mt-auto pt-2">
-                                            {isLocked ? (
-                                                <div className="h-9 px-5 bg-slate-100 text-slate-400 rounded-t-full rounded-bl-full rounded-br-none flex items-center justify-center gap-1.5 text-[11px] font-black w-full select-none">
-                                                    Bloqueado
-                                                </div>
-                                            ) : done ? (
-                                                <div className="h-9 px-5 bg-[#0066CC] text-white rounded-t-full rounded-bl-full rounded-br-none flex items-center justify-center gap-1.5 text-[11px] font-black hover:bg-[#0055aa] transition-all hover:scale-[1.02] active:scale-[0.98] w-full">
-                                                    <CheckCircle2 size={13} />
-                                                    Ver calificaciones
+                                        <div className="flex-grow overflow-y-auto mb-6">
+                                            {done ? (
+                                                <div className="space-y-2">
+                                                    {cfg.criteria.map((c)=>(
+                                                        <div key={c.id} className="flex justify-between text-sm"><span className="text-slate-500 truncate">{c.name}</span><span className="font-bold">{c.percentage}%</span></div>
+                                                    ))}
                                                 </div>
                                             ) : (
-                                                <div className="h-9 px-5 bg-transparent border border-amber-300 text-amber-500 rounded-t-full rounded-bl-full rounded-br-none flex items-center justify-center gap-1.5 text-[11px] font-black hover:bg-amber-50/40 transition-all hover:scale-[1.02] active:scale-[0.98] w-full">
-                                                    <Settings size={13} />
-                                                    Configurar
-                                                </div>
+                                                <p className="text-sm text-slate-400 leading-relaxed">{isLocked ? 'Se desbloqueará al concluir y calificar el parcial anterior.' : 'Configura los criterios de evaluación para este parcial.'}</p>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-auto">
+                                            {isLocked ? (
+                                                <div className="h-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 font-bold">Bloqueado</div>
+                                            ) : done ? (
+                                                <div className="h-10 flex items-center justify-center gap-2 rounded-full bg-[#0066CC] text-white font-bold"><CheckCircle2 size={15}/> Ver calificaciones</div>
+                                            ) : (
+                                                <div className="h-10 flex items-center justify-center gap-2 rounded-full border border-amber-300 text-amber-500 font-bold"><Settings size={15}/> Configurar</div>
                                             )}
                                         </div>
                                     </div>
@@ -210,118 +97,33 @@ export default function DocenteGruposShow() {
                     </div>
                 )}
 
-                {/* ══════ PANTALLA: WIZARD ══════ */}
                 {screen === 'wizard' && (
-                    <WizardSetup
-                        wizardStep={wizardStep}
-                        setWizardStep={setWizardStep}
-                        draftCriteria={draftCriteria}
-                        parcialLabel={parcialLabel || ''}
-                        grupo={grupo}
-                        materia={materia}
-                        pctValid={pctValid}
-                        totalPct={totalPct}
-                        updateCriterion={updateCriterion}
-                        toggleSyncTasks={toggleSyncTasks}
-                        removeCriterion={removeCriterion}
-                        addCriterion={addCriterion}
-                        finishWizard={saveWizardConfig}
-                    />
+                    <WizardSetup wizardStep={wizardStep} setWizardStep={setWizardStep} draftCriteria={draftCriteria} parcialLabel={parcialLabel || ''} grupo={grupo} materia={materia} pctValid={pctValid} totalPct={totalPct} updateCriterion={updateCriterion} toggleSyncTasks={toggleSyncTasks} removeCriterion={removeCriterion} addCriterion={addCriterion} finishWizard={saveWizardConfig} />
                 )}
 
-                {/* ══════ PANTALLA: CALIFICACIONES (GRADES) ══════ */}
                 {screen === 'grades' && (
-                    <div className="space-y-6">
-                        {/* Botón Volver y Reconfigurar */}
+                    <div className="flex flex-col flex-grow space-y-4">
                         <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => { setScreen('parciales'); setActiveParcial(null); }}
-                                    className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 hover:border-slate-300 px-3 py-2 rounded-xl transition-all"
-                                >
-                                    <ArrowLeft size={13} />
-                                    Volver a Parciales
-                                </button>
-                            </div>
-                            <button
-                                onClick={resetConfig}
-                                className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-655 border border-slate-200 hover:border-slate-300 px-3 py-2 rounded-xl transition-all"
-                            >
-                                <Settings size={13} />
-                                Reconfigurar criterios
-                            </button>
+                            <button onClick={() => { setScreen('parciales'); setActiveParcial(null); }} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 px-3 py-2 rounded-xl"><ArrowLeft size={13} /> Volver</button>
+                            <button onClick={resetConfig} className="flex items-center gap-1.5 text-xs font-bold text-slate-400 border border-slate-200 px-3 py-2 rounded-xl"><Settings size={13} /> Reconfigurar</button>
                         </div>
-
-                        {/* Chips de criterios (Grid cuadrado a todo el ancho) */}
                         <CriteriaGrid activeCriteria={activeCriteria} />
-
-                        {/* Pestañas (Tabs) */}
                         <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
-                        {/* Pestaña: Registro General de Calificaciones */}
-                        {activeTab === 'grades' && (
-                            <GradesTab
-                                studentGrades={studentGrades}
-                                activeCriteria={activeCriteria}
-                                getStudentTasksAverage={getStudentTasksAverage}
-                                setScore={setScore}
-                                handleAsentarCalificaciones={handleAsentarCalificaciones}
-                            />
-                        )}
-
-                        {/* Pestaña: Calificar Actividades */}
-                        {activeTab === 'tasks' && (
-                            <TasksTab
-                                tasks={tasks}
-                                studentGrades={studentGrades}
-                                getStudentTasksAverage={getStudentTasksAverage}
-                                saveTasks={saveTasks}
-                            />
-                        )}
-
-                        {/* Pestaña: Crear y Ver Actividades */}
-                        {activeTab === 'activities' && (
-                            <div>
-                                {selectedTaskId !== null ? (
-                                    <TaskGradesModal
-                                        selectedTaskId={selectedTaskId}
-                                        setSelectedTaskId={setSelectedTaskId}
-                                        tasks={tasks}
-                                        studentGrades={studentGrades}
-                                        selectedStudentId={selectedStudentId}
-                                        setSelectedStudentId={setSelectedStudentId}
-                                        privateMessages={privateMessages}
-                                        chatInputText={chatInputText}
-                                        setChatInputText={setChatInputText}
-                                        sendPrivateMessage={sendPrivateMessage}
-                                        isPdfModalOpen={isPdfModalOpen}
-                                        setIsPdfModalOpen={setIsPdfModalOpen}
-                                        saveTasks={saveTasks}
-                                    />
+                        <div className="flex-grow">
+                            {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} />}
+                            {activeTab === 'tasks' && <TasksTab tasks={tasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} />}
+                            {activeTab === 'activities' && (
+                                selectedTaskId !== null ? (
+                                    <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} />
                                 ) : (
-                                    <ActivitiesTab
-                                        tasks={tasks}
-                                        saveTasks={saveTasks}
-                                        setSelectedTaskId={setSelectedTaskId}
-                                        grupo={grupo}
-                                        materia={materia}
-                                    />
-                                )}
-                            </div>
-                        )}
+                                    <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} />
+                                )
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
-
-            {/* Modal Libreta de Calificaciones Finales del Curso */}
-            <FinalGradesModal
-                isOpen={isGradesModalOpen}
-                onClose={() => setIsGradesModalOpen(false)}
-                grupo={grupo}
-                materia={materia}
-                getParcialAverage={getParcialAverage}
-                getFinalAverage={getFinalAverage}
-            />
+            <FinalGradesModal isOpen={isGradesModalOpen} onClose={() => setIsGradesModalOpen(false)} grupo={grupo} materia={materia} getParcialAverage={getParcialAverage} getFinalAverage={getFinalAverage} />
         </AuthenticatedLayout>
     );
 }

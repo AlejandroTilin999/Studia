@@ -461,7 +461,7 @@ export default function ActivitiesTab({
                 </h3>
 
                 {tasks.length === 0 ? (
-                    <div className="bg-white border border-slate-100 p-12 text-center text-slate-455 font-semibold text-sm rounded-2xl">
+                    <div className="bg-white border border-slate-100 p-12 text-center text-slate-455 font-normal text-sm rounded-2xl">
                         No hay actividades publicadas para este parcial. ¡Usa el formulario de la izquierda para publicar la primera!
                     </div>
                 ) : (

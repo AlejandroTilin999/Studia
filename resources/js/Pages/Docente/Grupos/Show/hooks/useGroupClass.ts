@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePage } from '@inertiajs/react';
+import axios from 'axios';
 import { 
     Criterion, 
     Task, 
@@ -109,7 +110,7 @@ export function useGroupClass() {
     const [activeParcial, setActiveParcial] = useState<number | null>(null);
     const [configs, setConfigs] = useState<Record<number, ParcialConfig>>({});
 
-    // Sincronizar configuraciones al cambiar grupo/materia
+    // Sincronizar configuraciones al cambiar grupo/materia (Conectado a Supabase)
     useEffect(() => {
         const fresh: Record<number, ParcialConfig> = {};
         PARCIALES.forEach(({ num }) => {
@@ -117,7 +118,23 @@ export function useGroupClass() {
             if (c) fresh[num] = c;
         });
         setConfigs(fresh);
-    }, [grupo, materia]);
+
+        if (loadId) {
+            PARCIALES.forEach(({ num }) => {
+                axios.get(`/docente/clases/${loadId}/config?parcial=${num}`)
+                    .then(res => {
+                        const { configured, criteria } = res.data;
+                        if (configured) {
+                            setConfigs(prev => ({
+                                ...prev,
+                                [num]: { configured, criteria }
+                            }));
+                        }
+                    })
+                    .catch(err => console.error("Error al cargar config de parcial:", num, err));
+            });
+        }
+    }, [grupo, materia, loadId]);
 
     // 4. Asistente (Wizard) de Criterios
     const [wizardStep, setWizardStep] = useState(1);
@@ -153,9 +170,34 @@ export function useGroupClass() {
             configured: true,
             criteria: draftCriteria
         };
-        saveConfig(grupo, materia, activeParcial!, newConfig);
-        setConfigs(prev => ({ ...prev, [activeParcial!]: newConfig }));
-        setScreen('grades');
+
+        if (loadId && activeParcial) {
+            axios.post(`/docente/clases/${loadId}/criterios`, {
+                parcial: activeParcial,
+                criteria: draftCriteria
+            })
+            .then(res => {
+                const freshCriteria = res.data.criteria;
+                setConfigs(prev => ({
+                    ...prev,
+                    [activeParcial!]: { configured: true, criteria: freshCriteria }
+                }));
+                // Recargar calificaciones correspondientes a los nuevos criterios
+                axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
+                    .then(r => setStudentGrades(r.data.grades))
+                    .catch(err => console.error("Error al refrescar notas:", err));
+
+                setScreen('grades');
+            })
+            .catch(err => {
+                console.error("Error al guardar criterios en Supabase:", err);
+                alert("Hubo un error al guardar la configuración en la base de datos.");
+            });
+        } else {
+            saveConfig(grupo, materia, activeParcial!, newConfig);
+            setConfigs(prev => ({ ...prev, [activeParcial!]: newConfig }));
+            setScreen('grades');
+        }
     }
 
     function resetConfig() {
@@ -179,12 +221,30 @@ export function useGroupClass() {
     }
 
     function resetParcial(num: number) {
-        localStorage.removeItem(storageKey(grupo, materia, num));
-        setConfigs(prev => {
-            const next = { ...prev };
-            delete next[num];
-            return next;
-        });
+        if (loadId) {
+            axios.post(`/docente/clases/${loadId}/criterios`, {
+                parcial: num,
+                criteria: []
+            })
+            .then(() => {
+                setConfigs(prev => {
+                    const next = { ...prev };
+                    delete next[num];
+                    return next;
+                });
+            })
+            .catch(err => {
+                console.error("Error al reiniciar parcial en Supabase:", err);
+                alert("Error al reiniciar el parcial.");
+            });
+        } else {
+            localStorage.removeItem(storageKey(grupo, materia, num));
+            setConfigs(prev => {
+                const next = { ...prev };
+                delete next[num];
+                return next;
+            });
+        }
     }
 
     // 5. Tareas y Pestaña Activa
@@ -194,47 +254,87 @@ export function useGroupClass() {
 
     useEffect(() => {
         if (activeParcial) {
-            // Cargar calificaciones
-            const storedGrades = localStorage.getItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:grades`);
-            if (storedGrades) {
-                setStudentGrades(JSON.parse(storedGrades) as StudentGrade[]);
-            } else {
-                setStudentGrades(students.map(s => ({ ...s, scores: {} })));
-            }
+            if (loadId) {
+                // Cargar criterios y calificaciones del parcial activo desde Supabase
+                axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
+                    .then(res => {
+                        const { configured, criteria, grades } = res.data;
+                        setConfigs(prev => ({
+                            ...prev,
+                            [activeParcial]: { configured, criteria }
+                        }));
+                        setStudentGrades(grades);
+                    })
+                    .catch(err => {
+                        console.error("Error al cargar config desde Supabase:", err);
+                        setStudentGrades(students.map(s => ({ ...s, scores: {} })));
+                    });
 
-            // Cargar tareas
-            const storedTasks = localStorage.getItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`);
-            if (storedTasks) {
-                setTasks(JSON.parse(storedTasks) as Task[]);
+                // Cargar tareas del parcial activo desde Supabase
+                axios.get(`/docente/clases/${loadId}/tareas?parcial=${activeParcial}`)
+                    .then(res => {
+                        setTasks(res.data.tasks);
+                    })
+                    .catch(err => {
+                        console.error("Error al cargar tareas desde Supabase:", err);
+                        setTasks([]);
+                    });
             } else {
-                const defaultTasks: Task[] = [
-                    {
-                        id: 1,
-                        name: "Actividad 1: Conceptos Básicos",
-                        description: "Lee el capítulo 1 del libro de álgebra y elabora un mapa conceptual con los conceptos principales de polinomios, monomios y grados.",
-                        deadline: "2026-07-20",
-                        points: 10,
-                        grades: { 1: "9", 2: "8", 3: "10", 4: "7", 5: "9" }
-                    },
-                    {
-                        id: 2,
-                        name: "Actividad 2: Práctica del Libro",
-                        description: "Resuelve los ejercicios del 1 al 15 de la página 45. Entrega el archivo en formato PDF con los procedimientos detallados de cada ejercicio.",
-                        deadline: "2026-07-24",
-                        points: 10,
-                        grades: { 1: "8", 2: "9", 3: "9", 4: "8", 5: "10" }
-                    }
-                ];
-                setTasks(defaultTasks);
-                localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`, JSON.stringify(defaultTasks));
+                // Cargar calificaciones locales
+                const storedGrades = localStorage.getItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:grades`);
+                if (storedGrades) {
+                    setStudentGrades(JSON.parse(storedGrades) as StudentGrade[]);
+                } else {
+                    setStudentGrades(students.map(s => ({ ...s, scores: {} })));
+                }
+
+                // Cargar tareas locales
+                const storedTasks = localStorage.getItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`);
+                if (storedTasks) {
+                    setTasks(JSON.parse(storedTasks) as Task[]);
+                } else {
+                    const defaultTasks: Task[] = [
+                        {
+                            id: 1,
+                            name: "Actividad 1: Conceptos Básicos",
+                            description: "Lee el capítulo 1 del libro de álgebra y elabora un mapa conceptual con los conceptos principales de polinomios, monomios y grados.",
+                            deadline: "2026-07-20",
+                            points: 10,
+                            grades: {}
+                        },
+                        {
+                            id: 2,
+                            name: "Actividad 2: Práctica del Libro",
+                            description: "Resuelve los ejercicios del 1 al 15 de la página 45. Entrega el archivo en formato PDF con los procedimientos detallados de cada ejercicio.",
+                            deadline: "2026-07-24",
+                            points: 10,
+                            grades: {}
+                        }
+                    ];
+                    setTasks(defaultTasks);
+                    localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`, JSON.stringify(defaultTasks));
+                }
             }
         }
-    }, [activeParcial, grupo, materia, students]);
+    }, [activeParcial, grupo, materia, students, loadId]);
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
-        if (activeParcial) {
-            localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`, JSON.stringify(newTasks));
+        if (loadId && activeParcial) {
+            axios.post(`/docente/clases/${loadId}/tareas`, {
+                parcial: activeParcial,
+                tasks: newTasks
+            })
+            .then(res => {
+                setTasks(res.data.tasks);
+            })
+            .catch(err => {
+                console.error("Error al guardar tareas en Supabase:", err);
+            });
+        } else {
+            if (activeParcial) {
+                localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`, JSON.stringify(newTasks));
+            }
         }
     }
 
@@ -295,10 +395,25 @@ export function useGroupClass() {
             return { ...s, scores };
         });
         setStudentGrades(updatedGrades);
-        if (activeParcial) {
-            localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:grades`, JSON.stringify(updatedGrades));
+
+        if (loadId && activeParcial) {
+            axios.post(`/docente/clases/${loadId}/calificaciones`, {
+                parcial: activeParcial,
+                grades: updatedGrades
+            })
+            .then(() => {
+                alert('¡Calificaciones del parcial asentadas y guardadas correctamente en Supabase!');
+            })
+            .catch(err => {
+                console.error("Error al guardar calificaciones en Supabase:", err);
+                alert("Hubo un error al guardar las calificaciones en la base de datos.");
+            });
+        } else {
+            if (activeParcial) {
+                localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:grades`, JSON.stringify(updatedGrades));
+            }
+            alert('¡Calificaciones del parcial asentadas correctamente (Local)!');
         }
-        alert('¡Calificaciones del parcial asentadas correctamente!');
     }
 
     // 6. Modales y Estado de Chat/Selección

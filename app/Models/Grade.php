@@ -12,25 +12,24 @@ class Grade extends Model
     protected $table = 'calificaciones';
 
     protected $fillable = [
-        'enrollment_id',
-        'course_id',
+        'criterio_id',
+        'user_id',
         'score',
-        'period',
     ];
 
     /**
-     * Relación inversa con el Alumno Inscrito
+     * Relación con el Criterio de Evaluación
      */
-    public function enrollment()
+    public function criterio()
     {
-        return $this->belongsTo(Enrollment::class, 'enrollment_id');
+        return $this->belongsTo(CriterioEvaluacion::class, 'criterio_id');
     }
 
     /**
-     * Relación con la Materia (Course)
+     * Relación con el Usuario (Alumno)
      */
-    public function course()
+    public function user()
     {
-        return $this->belongsTo(Course::class, 'course_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

@@ -198,4 +198,63 @@ class StudentController extends Controller
         }
         return redirect()->route('admin.alumnos.index');
     }
+
+    /**
+     * API: Kardex del alumno - retorna calificaciones finales desde Supabase
+     */
+    public function kardex($userId)
+    {
+        // Buscar todas las cargas académicas del grupo del alumno
+        $enrollment = \App\Models\Enrollment::where('user_id', $userId)
+            ->where('status', 'active')
+            ->with('academicGroup')
+            ->first();
+
+        if (!$enrollment) {
+            return response()->json(['grades' => []]);
+        }
+
+        // Obtener todas las cargas del grupo del alumno
+        $loads = \App\Models\AcademicLoad::where('academic_group_id', $enrollment->academic_group_id)
+            ->with(['course', 'academicPeriod'])
+            ->get();
+
+        $grades = [];
+        foreach ($loads as $load) {
+            for ($parcial = 1; $parcial <= 3; $parcial++) {
+                $criteria = \App\Models\CriterioEvaluacion::where('carga_id', $load->id)
+                    ->where('parcial', $parcial)
+                    ->get();
+
+                if ($criteria->isEmpty()) continue;
+
+                // Calcular el promedio del parcial para este alumno
+                $totalScore = 0;
+                $hasAllScores = true;
+
+                foreach ($criteria as $criterion) {
+                    $grade = \App\Models\Grade::where('criterio_id', $criterion->id)
+                        ->where('user_id', $userId)
+                        ->first();
+
+                    if (!$grade || $grade->score === '') {
+                        $hasAllScores = false;
+                        break;
+                    }
+
+                    $totalScore += (float)$grade->score * ($criterion->porcentaje / 100);
+                }
+
+                if ($hasAllScores) {
+                    $grades[] = [
+                        'subject' => $load->course->name ?? 'N/A',
+                        'score' => round($totalScore, 1),
+                        'period' => "Parcial {$parcial} - " . ($load->academicPeriod->name ?? 'Ciclo Actual'),
+                    ];
+                }
+            }
+        }
+
+        return response()->json(['grades' => $grades]);
+    }
 }

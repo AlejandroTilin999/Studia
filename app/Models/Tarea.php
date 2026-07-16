@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Tarea extends Model
 {
     protected $table = 'tareas';
-    protected $fillable = ['carga_id', 'titulo', 'descripcion', 'fecha_entrega', 'porcentaje'];
+    protected $fillable = ['carga_id', 'parcial', 'name', 'description', 'deadline', 'points'];
 
-    public function load()
+    public function academicLoad()
     {
         return $this->belongsTo(AcademicLoad::class, 'carga_id');
     }

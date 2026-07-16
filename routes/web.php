@@ -224,6 +224,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ] : null
                 ]);
             })->name('docente.grupos.show');
+
+            // APIs de persistencia del Classroom en Supabase
+            Route::get('/clases/{uuid}/config', [App\Http\Controllers\DocenteClassroomController::class, 'getConfig']);
+            Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
+            Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
+            Route::get('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'getTareas']);
+            Route::post('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'saveTareas']);
         });
 
         // ------------------------------------------

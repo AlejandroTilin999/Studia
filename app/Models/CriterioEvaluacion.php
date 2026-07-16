@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class CriterioEvaluacion extends Model
 {
     protected $table = 'criterios_evaluacion';
-    protected $fillable = ['carga_id', 'nombre', 'porcentaje'];
+    protected $fillable = ['carga_id', 'parcial', 'nombre', 'porcentaje', 'sync_tasks'];
 
-    public function load()
+    public function academicLoad()
     {
         return $this->belongsTo(AcademicLoad::class, 'carga_id');
+    }
+
+    public function grades()
+    {
+        return $this->hasMany(Grade::class, 'criterio_id');
     }
 }

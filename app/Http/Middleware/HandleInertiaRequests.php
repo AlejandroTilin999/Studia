@@ -38,8 +38,11 @@ class HandleInertiaRequests extends Middleware
                     'email' => $request->user()->email,
                     'role' => strtoupper($request->user()->role),
                     // Cargas para el docente
-                    'docenteGroups' => $request->user()->role === 'docente' 
-                        ? \App\Models\AcademicLoad::where('teacher_id', function ($query) use ($request) {
+                    'docenteGroups' => function () use ($request) {
+                        if (!$request->user() || $request->user()->role !== 'docente') {
+                            return [];
+                        }
+                        return \App\Models\AcademicLoad::where('teacher_id', function ($query) use ($request) {
                             $query->select('id')->from('docentes')->where('user_id', $request->user()->id)->limit(1);
                         })->with(['academicGroup', 'course'])->get()->map(function ($load) {
                             return [
@@ -48,11 +51,14 @@ class HandleInertiaRequests extends Middleware
                                 'materia' => $load->course->name ?? 'N/A',
                                 'code' => $load->course->code ?? 'N/A'
                             ];
-                        })->toArray()
-                        : [],
+                        })->toArray();
+                    },
                     // Cargas para el alumno
-                    'alumnoGroups' => $request->user()->role === 'alumno'
-                        ? \App\Models\AcademicLoad::where('academic_group_id', function ($query) use ($request) {
+                    'alumnoGroups' => function () use ($request) {
+                        if (!$request->user() || $request->user()->role !== 'alumno') {
+                            return [];
+                        }
+                        return \App\Models\AcademicLoad::where('academic_group_id', function ($query) use ($request) {
                             $query->select('academic_group_id')->from('inscripciones')->where('user_id', $request->user()->id)->where('status', 'active')->limit(1);
                         })->with(['course', 'teacher', 'academicGroup'])->get()->map(function ($load) {
                             return [
@@ -62,8 +68,8 @@ class HandleInertiaRequests extends Middleware
                                 'description' => $load->course->description ?? 'Sin descripción',
                                 'groupName' => $load->academicGroup->name ?? 'N/A'
                             ];
-                        })->toArray()
-                        : [],
+                        })->toArray();
+                    },
                 ] : null,
             ],
         ];

@@ -7,15 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class EntregaTarea extends Model
 {
     protected $table = 'entregas_tareas';
-    protected $fillable = ['tarea_id', 'alumno_id', 'fecha_entrega', 'archivo', 'calificacion'];
+    protected $fillable = ['tarea_id', 'user_id', 'score', 'status'];
 
     public function assignment()
     {
         return $this->belongsTo(Tarea::class, 'tarea_id');
     }
 
-    public function student()
+    public function user()
     {
-        return $this->belongsTo(Student::class, 'alumno_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
