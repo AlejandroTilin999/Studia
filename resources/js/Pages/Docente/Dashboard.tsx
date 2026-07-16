@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import {
     Users,
     Clock,
-    ArrowRight,
+    ChevronRight,
     Layers,
     BookOpen
 } from 'lucide-react';
@@ -71,85 +71,57 @@ export default function DocenteDashboard({
                         name={teacherInfo.name}
                         specialty={teacherInfo.specialty}
                         email={teacherInfo.email}
+                        groupsCount={assignedLoad.length}
                     />
 
                     {/* Carga Académica Asignada */}
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between px-2">
-                            <h4 className="text-sm font-black text-slate-800 uppercase tracking-[0.15em] flex items-center gap-2.5 text-left">
-                                <div className="w-1.5 h-6 bg-[#1e88e5] rounded-full" />
-                                Grupos y Materias Asignadas
-                            </h4>
-                            <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/50 uppercase tracking-wider">
-                                Ciclo Escolar 2026-A
-                            </span>
+                        <div className="space-y-1 text-left px-2">
+                            <h3 className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Carga Académica</h3>
+                            <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-snug">Grupos y Materias Asignadas</h2>
+                            <p className="text-xs md:text-[13px] text-slate-500 font-semibold leading-relaxed max-w-2xl mt-1.5">
+                                Gestiona tus clases vigentes, configura criterios de evaluación y realiza la captura de calificaciones de tus alumnos de forma organizada.
+                            </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {assignedLoad.length > 0 ? assignedLoad.map((load) => (
                                 <Link
                                     key={load.id}
                                     href={`/docente/grupos/show?id=${load.id}`}
-                                    className="group relative bg-white border border-slate-100 hover:border-blue-200 hover:shadow-[0_20px_50px_rgba(30,136,229,0.08)] transition-all duration-500 rounded-[32px] p-7 flex flex-col justify-between overflow-hidden"
+                                    className="group flex items-center justify-between p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none"
                                 >
-                                    {/* Decoración de fondo */}
-                                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-50/30 rounded-full group-hover:scale-110 transition-transform duration-700" />
-
-                                    <div className="absolute right-6 top-6 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                                        <div className="w-10 h-10 rounded-2xl bg-[#0266E0] text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                                            <ArrowRight size={20} strokeWidth={2.5} />
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className="min-w-0 text-left">
+                                            <h4 className="text-sm font-bold text-slate-900 truncate leading-tight">
+                                                {load.subject}
+                                            </h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                    Grupo {load.groupName}
+                                                </span>
+                                                <span className="text-slate-300">•</span>
+                                                <span className="text-[10px] font-bold text-slate-400">
+                                                    {load.studentsCount} alumnos
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="relative z-10 space-y-5 text-left">
-                                        <div className="space-y-2">
-                                            <span className="inline-block font-mono text-[10px] font-black text-[#1e88e5] bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100/50 uppercase text-left">
-                                                ID: {load.code}
-                                            </span>
-                                            <h4 className="font-black text-slate-800 text-xl leading-tight tracking-tight group-hover:text-[#0266E0] transition-colors pr-8 text-left">
-                                                {load.subject}
-                                            </h4>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <span className={`inline-flex px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl ${
-                                                load.status === 'completed'
-                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                    : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                            }`}>
-                                                {load.status === 'completed' ? 'Notas Cargadas' : 'Notas Pendientes'}
-                                            </span>
-                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold">
-                                                <Clock size={14} className="text-slate-300" />
-                                                {load.schedule || 'Sin horario definido'}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 pt-5 border-t border-slate-50">
-                                            <div className="bg-slate-50/50 rounded-2xl p-4 border border-transparent hover:border-slate-100 transition-colors text-left">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alumnos</span>
-                                                <div className="flex items-center gap-2">
-                                                    <Users size={16} className="text-[#1e88e5]" />
-                                                    <span className="text-lg font-black text-slate-700">{load.studentsCount}</span>
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50/50 rounded-2xl p-4 border border-transparent hover:border-slate-100 transition-colors text-left">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Aula / Grupo</span>
-                                                <div className="flex items-center gap-2">
-                                                    <BookOpen size={16} className="text-purple-500" />
-                                                    <span className="text-lg font-black text-slate-700 truncate">{load.groupName}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                                        <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md border ${
+                                            load.status === 'completed'
+                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                : 'bg-amber-50 text-amber-600 border-amber-100'
+                                        }`}>
+                                            {load.status === 'completed' ? 'Cargado' : 'Pendiente'}
+                                        </span>
+                                        <ChevronRight size={16} className="text-slate-300 group-hover:text-[#1e88e5] group-hover:translate-x-0.5 transition-all" />
                                     </div>
                                 </Link>
                             )) : (
-                                <div className="md:col-span-2 p-20 text-center bg-slate-50/30 rounded-[40px] border-2 border-dashed border-slate-200">
-                                    <div className="w-20 h-20 bg-white rounded-[28px] shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-5 text-slate-200 text-left">
-                                        <Layers size={40} />
-                                    </div>
-                                    <p className="text-xl text-slate-500 font-black tracking-tight text-left">Carga académica vacía</p>
-                                    <p className="text-sm text-slate-400 font-medium mt-1 text-left">Aún no tienes grupos asignados para este ciclo.</p>
+                                <div className="md:col-span-2 p-12 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
+                                    <p className="text-sm text-slate-400 font-bold">Sin grupos asignados actualmente.</p>
                                 </div>
                             )}
                         </div>
