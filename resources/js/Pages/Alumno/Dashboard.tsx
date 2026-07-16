@@ -45,12 +45,14 @@ interface AlumnoDashboardProps {
         periodo: string;
     };
     taskList?: Task[];
+    kardex?: any[];
 }
 
 export default function AlumnoDashboard({
     defaultView = 'perfil',
     studentInfo: propStudentInfo,
-    taskList: propTaskList
+    taskList: propTaskList,
+    kardex = []
 }: AlumnoDashboardProps) {
     const { auth } = usePage().props as any;
 
@@ -78,7 +80,7 @@ export default function AlumnoDashboard({
     }));
 
     // 2. Datos del alumno con lógica de GPA dinámica
-    const studentInfo = propStudentInfo || {
+    const baseStudentInfo = propStudentInfo || {
         name: auth?.user?.name || 'Alumno',
         matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'S/M',
         groupName: auth?.user?.alumnoGroups?.[0]?.groupName || 'Sin grupo',
@@ -87,7 +89,11 @@ export default function AlumnoDashboard({
         gpa: subjects.length > 0 ? '0.0' : '—', // Si no hay materias, no hay promedio
         tutor: 'Pendiente',
         ciclo: '2026-A',
-        periodo: '(Enero-Julio 2026)',
+        periodo: '(Enero-Julio 2026)'
+    };
+
+    const studentInfo = {
+        ...baseStudentInfo,
         subjectsCount: subjects.length
     };
 
@@ -174,6 +180,7 @@ export default function AlumnoDashboard({
                                 <StudentDashboardCards
                                     studentInfo={studentInfo}
                                     taskList={taskList}
+                                    kardex={kardex}
                                     onOpenTaskModal={(task) => {
                                         const sub = subjects.find((s: any) => s.name === task.subjectName);
                                         if (sub) {
@@ -271,29 +278,15 @@ export default function AlumnoDashboard({
                     )}
                 </div>
 
-                {/* Barra lateral de avisos y calendario (solo en Inicio y colapsable) */}
+                {/* Barra lateral de avisos y calendario (Fija en escritorio, oculta en móvil si no se requiere) */}
                 {currentView === 'perfil' && (
-                    <div className={`transition-all duration-300 ease-in-out shrink-0 overflow-hidden bg-white ${
-                        isSidebarExpanded ? 'w-full lg:w-80 border-l border-slate-100' : 'w-0'
-                    }`}>
-                        <div className="w-full lg:w-80 h-full">
-                            <StudentRightSidebar />
-                        </div>
+                    <div className="hidden lg:block w-[380px] shrink-0 bg-white border-l border-slate-100 h-full overflow-hidden">
+                        <StudentRightSidebar />
                     </div>
                 )}
             </div>
 
-            {/* Botón flotante para alternar Barra Lateral (Solo en Inicio) */}
-            {currentView === 'perfil' && (
-                <button
-                    type="button"
-                    onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                    className="fixed bottom-6 right-6 lg:bottom-auto lg:top-[76px] lg:right-6 z-40 p-3 bg-white border border-slate-200 rounded-full shadow-lg text-slate-655 hover:text-slate-800 hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center"
-                    title={isSidebarExpanded ? "Ocultar calendario" : "Mostrar calendario"}
-                >
-                    <Calendar size={18} className={isSidebarExpanded ? "text-[#1e88e5]" : "text-slate-500"} />
-                </button>
-            )}
+            {/* Eliminado el botón flotante de colapsar para mantener la sección siempre visible como solicitaste */}
         </AuthenticatedLayout>
     );
 }

@@ -1,5 +1,6 @@
 import { PropsWithChildren, ReactNode } from 'react';
-import Sidebar, { SidebarProvider } from '@/Components/Sidebar';
+import Sidebar, { SidebarProvider, useSidebar } from '@/Components/Sidebar';
+import { PanelLeft } from 'lucide-react';
 
 interface AuthenticatedProps {
     header?: ReactNode;
@@ -11,9 +12,27 @@ function LayoutContent({
     noPadding = false,
     children,
 }: PropsWithChildren<AuthenticatedProps>) {
+    const { isMobile, setOpenMobile } = useSidebar();
+
     return (
-        <div className="h-screen w-full flex bg-white overflow-hidden">
-            {/* Sidebar (Alto total a la izquierda) */}
+        <div className="h-screen w-full flex bg-white overflow-hidden relative flex-col md:flex-row">
+            {/* Top Bar for Mobile */}
+            {isMobile && (
+                <div className="sticky top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shrink-0">
+                    <button
+                        onClick={() => setOpenMobile(true)}
+                        className="p-2 -ml-2 rounded-xl text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
+                    >
+                        <PanelLeft size={20} />
+                    </button>
+
+                    <div className="flex-1 flex justify-center pr-8">
+                        <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-7 w-auto object-contain" />
+                    </div>
+                </div>
+            )}
+
+            {/* Sidebar (Alto total a la izquierda en desktop) */}
             <Sidebar />
 
             {/* Contenedor derecho */}

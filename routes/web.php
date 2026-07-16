@@ -276,7 +276,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 return Inertia::render('Alumno/Dashboard', [
                     'studentInfo' => $studentInfo,
-                    'taskList' => $taskList
+                    'taskList' => $taskList,
+                    'kardex' => $kardex
                 ]);
             })->name('alumno.dashboard');
 

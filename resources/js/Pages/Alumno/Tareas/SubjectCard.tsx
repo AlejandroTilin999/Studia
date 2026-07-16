@@ -18,18 +18,18 @@ export default function SubjectCard({ subjects, onSelectSubject }: SubjectCardPr
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
             {subjects.map((sub, idx) => {
-                
+
                 // Definición de colores por tema
-                const themeColor = idx === 0 
-                    ? '#0266E0' 
-                    : idx === 1 
-                    ? '#9333ea' 
+                const themeColor = idx === 0
+                    ? '#0266E0'
+                    : idx === 1
+                    ? '#9333ea'
                     : '#d97706';
 
                 return (
-                    <div 
-                        key={idx} 
-                        className="relative overflow-hidden bg-white border border-slate-200 rounded-[32px] p-8 flex flex-col justify-between min-h-[310px] text-left group"
+                    <div
+                        key={idx}
+                        className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-8 flex flex-col justify-between min-h-[310px] text-left group"
                     >
                         {/* Top layout */}
                         <div className="space-y-4">
@@ -57,7 +57,7 @@ export default function SubjectCard({ subjects, onSelectSubject }: SubjectCardPr
                                 <span>Docente:</span>
                                 <span className="text-slate-700 font-black">{sub.teacher}</span>
                             </div>
-                            
+
                             {/* Asymmetrical Login style Access Button */}
                             <button
                                 type="button"

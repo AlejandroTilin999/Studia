@@ -48,14 +48,18 @@ export default function TeacherInfoCard({ name, specialty, email, groupsCount = 
                 </div>
 
                 {/* Grid of Detailed Data */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 pt-1 text-left">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 pt-1 text-left">
                     <div>
                         <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Nombre(s)</span>
                         <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{firstName}</h3>
                     </div>
                     <div>
-                        <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellidos</span>
-                        <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNamePaternal} {lastNameMaternal}</h3>
+                        <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Paterno</span>
+                        <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNamePaternal}</h3>
+                    </div>
+                    <div>
+                        <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Materno</span>
+                        <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNameMaternal}</h3>
                     </div>
                     <div>
                         <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Especialidad</span>

@@ -1,6 +1,7 @@
 import React from 'react';
-import { ClipboardList, BookOpen, FileText, User } from 'lucide-react';
+import { ClipboardList, BookOpen, FileText, User, ChevronRight, Star, Clock } from 'lucide-react';
 import { router } from '@inertiajs/react';
+import { cn } from '@/lib/utils';
 
 interface Task {
     id: number;
@@ -26,6 +27,7 @@ interface StudentInfo {
 interface StudentDashboardCardsProps {
     studentInfo: StudentInfo;
     taskList: Task[];
+    kardex?: any[];
     onOpenTaskModal: (task: Task) => void;
     onViewAllTasks?: () => void;
 }
@@ -33,6 +35,7 @@ interface StudentDashboardCardsProps {
 export default function StudentDashboardCards({
     studentInfo,
     taskList,
+    kardex = [],
     onOpenTaskModal,
     onViewAllTasks,
 }: StudentDashboardCardsProps) {
@@ -107,23 +110,23 @@ export default function StudentDashboardCards({
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 pt-1">
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Matrícula</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.matricula}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.matricula}</h3>
                         </div>
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Nombre(s)</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{firstName}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{firstName}</h3>
                         </div>
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Paterno</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNamePaternal}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{lastNamePaternal}</h3>
                         </div>
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Materno</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{lastNameMaternal}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{lastNameMaternal}</h3>
                         </div>
                         <div className="min-w-0">
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Ciclo Escolar</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1 truncate">{studentInfo.ciclo}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1 truncate">{studentInfo.ciclo}</h3>
                         </div>
                     </div>
 
@@ -131,25 +134,95 @@ export default function StudentDashboardCards({
                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 pt-4 border-t border-slate-100/50">
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Semestre / Grupo</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.groupName}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.groupName}</h3>
                         </div>
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Especialidad</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1 truncate" title="Técnico en Informática">Técnico en Informática</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1 truncate" title="Técnico en Informática">Técnico en Informática</h3>
                         </div>
                         <div>
                             <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Tutor de Grupo</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.tutor}</h3>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.tutor}</h3>
                         </div>
                         <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Promedio</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.gpa}</h3>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Promedio Gral.</span>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.gpa}</h3>
                         </div>
                         <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Materias</span>
-                            <h3 className="text-[13px] font-bold text-slate-700 leading-tight mt-1">{studentInfo.subjectsCount || 0} inscritas</h3>
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Materias Inscritas</span>
+                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.subjectsCount || 0} materias</h3>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* SECCIÓN 2: Mis Materias e Información de Parciales (Estilo Docente unificado) */}
+            <div className="space-y-6">
+                <div className="space-y-1 text-left px-2">
+                    <h3 className="text-[11px] font-normal uppercase text-slate-400 tracking-[0.2em] mb-1">Tu Carga Académica</h3>
+                    <h2 className="text-lg md:text-xl font-medium text-slate-800 tracking-tight leading-snug">Mis Materias e Información de Parciales</h2>
+                    <p className="text-xs md:text-[13px] text-slate-500 font-normal leading-relaxed max-w-2xl mt-1.5">
+                        Consulta el desglose de tus calificaciones por parcial y el promedio general de tus materias inscritas en tiempo real.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {kardex.length > 0 ? kardex.map((item) => (
+                        <div
+                            key={item.id}
+                            className="group flex flex-col p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="min-w-0 text-left">
+                                    <h4 className="text-sm font-medium text-slate-900 truncate leading-tight">
+                                        {item.subject}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[10px] font-normal text-slate-500 uppercase tracking-wider">
+                                            {item.teacher}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-normal text-[#1e88e5] uppercase tracking-wider bg-blue-50 px-2 py-1 rounded-lg">
+                                        PROM: {item.score}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
+                                {[1, 2, 3].map((p) => {
+                                    const pData = item.details?.[p];
+                                    const avg = pData?.average ?? '—';
+                                    return (
+                                        <div key={p} className="flex flex-col items-center p-2 rounded-xl bg-slate-50/50 group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
+                                            <span className="text-[9px] font-normal text-slate-400 uppercase tracking-widest mb-1">Parcial {p}</span>
+                                            <span className={cn(
+                                                "text-xs font-medium",
+                                                avg === '—' ? "text-slate-300" : "text-slate-700"
+                                            )}>
+                                                {avg}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex justify-end mt-4">
+                                <button
+                                    onClick={() => router.visit('/alumno/calificaciones')}
+                                    className="flex items-center gap-1 text-[10px] font-normal text-[#1e88e5] uppercase tracking-widest hover:text-blue-700 transition-colors"
+                                >
+                                    Ver Detalle completo
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="md:col-span-2 p-12 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
+                            <p className="text-sm text-slate-400 font-normal">No tienes materias inscritas actualmente.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

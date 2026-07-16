@@ -54,12 +54,6 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       roles: ["ADMIN", "DOCENTE", "ALUMNO"]
     },
     {
-      name: "Tareas",
-      icon: ClipboardList,
-      path: "/alumno/tareas",
-      roles: ["ALUMNO"]
-    },
-    {
       name: "Alumnos",
       icon: GraduationCap,
       path: "/admin/alumnos",
@@ -111,12 +105,18 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
   const filteredItems = menuItems.filter(item => item.roles.includes(role));
 
-  // Datos de los grupos del docente (leídos dinámicamente)
+  // Datos de los grupos/materias (leídos dinámicamente)
   const docenteGroups = user?.docenteGroups || [];
+  const alumnoGroups = user?.alumnoGroups || [];
 
   const [gruposOpen, setGruposOpen] = useState(() => {
     // Mantener abierto si la ruta actual es de grupos o si es un docente para ver su carga
     return url.startsWith('/docente/grupos') || role === 'DOCENTE';
+  });
+
+  const [materiasOpen, setMateriasOpen] = useState(() => {
+    // Mantener abierto si es un alumno para ver sus materias
+    return url.startsWith('/alumno/dashboard') && url.includes('tab=tasks') || role === 'ALUMNO';
   });
 
   const SidebarInner = ({ isSheet = false }) => {
@@ -173,6 +173,95 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
           {filteredItems.map((item) => {
             const itemPathname = item.path.split('?')[0];
             const isMenuExpanded = expanded || isSheet;
+
+            // ─── Bloque especial: "Materias" para ALUMNO ───────────────────
+            if (role === 'ALUMNO' && item.name === 'Materias') {
+              const isAnySubjectActive = pathname.startsWith('/alumno/calificaciones') || (pathname.startsWith('/alumno/dashboard') && url.includes('tab='));
+              return (
+                <SidebarMenuItem key={item.path} className="mb-1.5">
+                  {/* Cabecera colapsable de Materias */}
+                  <button
+                    onClick={() => {
+                      if (isMenuExpanded) {
+                        setMateriasOpen(prev => !prev);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
+                      isMenuExpanded
+                        ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
+                        : "justify-center px-0 rounded-none w-full",
+                      isAnySubjectActive
+                        ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold"
+                        : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold"
+                    )}
+                  >
+                    <BookOpen className={cn(
+                      "w-5 h-5 shrink-0 transition-colors",
+                      isAnySubjectActive ? "text-[#1e88e5]" : "text-slate-400"
+                    )} />
+
+                    {isMenuExpanded && (
+                      <>
+                        <span className={cn(
+                          "text-[14px] ml-1 flex-1 text-left",
+                          isAnySubjectActive ? "text-[#1e88e5] font-extrabold" : "text-slate-450 font-bold"
+                        )}>
+                          Materias
+                        </span>
+                        {materiasOpen
+                          ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                          : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                        }
+                      </>
+                    )}
+                  </button>
+
+                  {/* Sub-ítems de cada materia */}
+                  {isMenuExpanded && materiasOpen && (
+                    <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
+                      {alumnoGroups.map((s: any) => {
+                        // Simulamos que al dar clic nos lleva al dashboard filtrado por materia
+                        // o a una vista de detalle si existiera. Por ahora al dashboard de tareas.
+                        const isSubjectActive = false; // Implementar lógica de activo si es necesario
+                        return (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              router.visit('/alumno/tareas');
+                              if (isSheet) setOpenMobile(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-4 py-2 rounded-xl text-left transition-all",
+                              isSubjectActive
+                                ? "bg-[#e8f2ff] text-[#1e88e5]"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                            )}
+                          >
+                            <span className={cn(
+                              "w-1.5 h-1.5 rounded-full shrink-0",
+                              isSubjectActive ? "bg-[#1e88e5]" : "bg-slate-300"
+                            )} />
+                            <div className="min-w-0">
+                              <span className={cn(
+                                "block text-[13px] leading-tight",
+                                isSubjectActive ? "font-extrabold" : "font-bold"
+                              )}>
+                                {s.name}
+                              </span>
+                              <span className="block text-[10px] text-slate-400 font-semibold truncate mt-0.5">
+                                {s.teacher}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </SidebarMenuItem>
+              );
+            }
+            // ──────────────────────────────────────────────────────────────
 
             // ─── Bloque especial: "Grupos" para DOCENTE ───────────────────
             if (role === 'DOCENTE' && item.name === 'Grupos') {
@@ -269,6 +358,14 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             if (role === 'DOCENTE') {
               if (item.name === 'Tareas') {
                 isActive = pathname === '/docente/grupos/show' && url.includes('tab=tasks');
+              } else if (item.name === 'Inicio') {
+                isActive = pathname === itemPathname; // Estricto para Inicio
+              } else {
+                isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
+              }
+            } else if (role === 'ALUMNO') {
+              if (item.name === 'Inicio') {
+                isActive = pathname === itemPathname && !url.includes('tab='); // No activo si hay pestaña de materia
               } else {
                 isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
               }
