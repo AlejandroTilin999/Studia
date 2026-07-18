@@ -50,7 +50,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Inicio",
       icon: Home,
-      path: role === "ADMIN" ? "/admin" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/dashboard",
+      path: role === "ADMIN" ? "/admin" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno",
       roles: ["ADMIN", "DOCENTE", "ALUMNO"]
     },
     {
@@ -92,8 +92,8 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Reportes",
       icon: FileText,
-      path: role === "ADMIN" ? "/admin/reportes" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/documentos",
-      roles: ["ADMIN", "ALUMNO"]
+      path: "/admin/reportes",
+      roles: ["ADMIN"]
     },
     {
       name: "Usuarios",
@@ -116,7 +116,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
   const [materiasOpen, setMateriasOpen] = useState(() => {
     // Mantener abierto si es un alumno para ver sus materias
-    return url.startsWith('/alumno/dashboard') && url.includes('tab=tasks') || role === 'ALUMNO';
+    return url.startsWith('/alumno') && url.includes('tab=tasks') || role === 'ALUMNO';
   });
 
   const SidebarInner = ({ isSheet = false }) => {
@@ -176,7 +176,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
             // ─── Bloque especial: "Materias" para ALUMNO ───────────────────
             if (role === 'ALUMNO' && item.name === 'Materias') {
-              const isAnySubjectActive = pathname.startsWith('/alumno/calificaciones') || pathname.startsWith('/alumno/materias');
+              const isAnySubjectActive = pathname.startsWith('/alumno/materias');
               return (
                 <SidebarMenuItem key={item.path} className="mb-1.5">
                   {/* Cabecera colapsable de Materias */}
@@ -505,7 +505,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 Docente
               </Link>
               <Link
-                href="/alumno/dashboard"
+                href="/alumno"
                 className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'ALUMNO' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
               >
                 Alumno

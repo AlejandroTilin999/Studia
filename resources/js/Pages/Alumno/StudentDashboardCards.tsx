@@ -13,6 +13,9 @@ interface Task {
 
 interface StudentInfo {
     name: string;
+    firstName?: string;
+    lastNamePaternal?: string;
+    lastNameMaternal?: string;
     matricula: string;
     groupName: string;
     email: string;
@@ -39,26 +42,10 @@ export default function StudentDashboardCards({
     onOpenTaskModal,
     onViewAllTasks,
 }: StudentDashboardCardsProps) {
-    // Helper to split student full name into Nombre(s), Apellido Paterno, Apellido Materno
-    const fullName = studentInfo?.name || '';
-    const nameParts = fullName.trim().split(/\s+/);
-    let firstName = studentInfo.name;
-    let lastNamePaternal = '-';
-    let lastNameMaternal = '-';
-
-    if (nameParts.length >= 4) {
-        firstName = nameParts.slice(0, nameParts.length - 2).join(' ');
-        lastNamePaternal = nameParts[nameParts.length - 2];
-        lastNameMaternal = nameParts[nameParts.length - 1];
-    } else if (nameParts.length === 3) {
-        firstName = nameParts[0];
-        lastNamePaternal = nameParts[1];
-        lastNameMaternal = nameParts[2];
-    } else if (nameParts.length === 2) {
-        firstName = nameParts[0];
-        lastNamePaternal = nameParts[1];
-        lastNameMaternal = '-';
-    }
+    // Usar los campos directos si existen
+    const displayFirstName = studentInfo.firstName || studentInfo.name || '—';
+    const displayPaternal = (studentInfo.lastNamePaternal !== null && studentInfo.lastNamePaternal !== '') ? studentInfo.lastNamePaternal : '—';
+    const displayMaternal = (studentInfo.lastNameMaternal !== null && studentInfo.lastNameMaternal !== '') ? studentInfo.lastNameMaternal : '—';
 
     const shortcuts = [
         {
@@ -66,18 +53,6 @@ export default function StudentDashboardCards({
             subtitle: "Consulta tus trabajos y sube entregas",
             icon: ClipboardList,
             path: "/alumno/materias",
-        },
-        {
-            title: "Boleta Escolar",
-            subtitle: "Revisa tus calificaciones parciales",
-            icon: BookOpen,
-            path: "/alumno/calificaciones",
-        },
-        {
-            title: "Kárdex y Reportes",
-            subtitle: "Descarga documentos académicos oficiales",
-            icon: FileText,
-            path: "/alumno/documentos",
         },
         {
             title: "Mi Perfil",
@@ -90,67 +65,69 @@ export default function StudentDashboardCards({
     return (
         <div className="w-full text-left select-none space-y-8">
 
-            {/* SECCIÓN 1: Información General (Diseño unificado con Docente) */}
-            <div className="bg-slate-50 rounded-[32px] p-6 md:p-8 border border-slate-100 select-none transition-all duration-300 hover:shadow-sm">
-                <div className="max-w-7xl mx-auto space-y-6">
-                    <div className="flex flex-col sm:flex-row items-center gap-5 pb-5 border-b border-slate-200/50">
-                        <div className="text-center sm:text-left space-y-1.5 flex-1">
-                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Expediente del Alumno</span>
-                            <h2 className="text-xl font-medium text-slate-800 leading-none tracking-tight">Rendimiento Académico y Datos Escolares</h2>
-                            <p className="text-xs text-slate-500 font-semibold">{studentInfo.email}</p>
+            {/* SECCIÓN 1: Información General (Expediente del Alumno) */}
+            <div className="bg-[#f8fafc] rounded-2xl p-6 md:p-10 border border-slate-200/60 select-none shadow-sm shadow-slate-100/50">
+                <div className="max-w-7xl mx-auto space-y-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-5 pb-6 border-b border-slate-100">
+                        <div className="text-left space-y-1">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Expediente del Alumno</span>
+                            <h2 className="text-lg md:text-xl font-black text-slate-800 leading-tight tracking-tight">Rendimiento Académico y Datos Escolares</h2>
+                            <p className="text-sm font-bold text-blue-500/70">{studentInfo.email}</p>
                         </div>
 
-                        <div className="hidden lg:flex flex-col items-start gap-1 shrink-0">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Institución</span>
-                            <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-7 w-auto grayscale opacity-70" />
+                        <div className="hidden lg:flex flex-col items-end gap-1 shrink-0">
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Institución</span>
+                            <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-8 w-auto grayscale opacity-60" />
                         </div>
                     </div>
 
-                    {/* Perfil Header: Grid de datos detallados */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 pt-1">
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Matrícula</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.matricula}</h3>
+                    {/* Perfil Header: Grid de datos detallados (Fila 1) */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pt-2">
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Matrícula</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{studentInfo.matricula}</h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Nombre(s)</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{firstName}</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Nombre(s)</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{displayFirstName}</h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Paterno</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{lastNamePaternal}</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Apellido Paterno</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{displayPaternal}</h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Apellido Materno</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{lastNameMaternal}</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Apellido Materno</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{displayMaternal}</h3>
                         </div>
-                        <div className="min-w-0">
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Ciclo Escolar</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1 truncate">{studentInfo.ciclo}</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Ciclo Escolar</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight truncate">{studentInfo.ciclo}</h3>
                         </div>
                     </div>
 
-                    {/* Grid de Estatus Secundario */}
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 pt-4 border-t border-slate-100/50">
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Semestre / Grupo</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.groupName}</h3>
+                    {/* Perfil Header: Grid de datos detallados (Fila 2) */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pt-4 border-t border-slate-50">
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Semestre / Grupo</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{studentInfo.groupName}</h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Especialidad</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1 truncate" title="Técnico en Informática">Técnico en Informática</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Especialidad</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight truncate" title={studentInfo.specialty || "General"}>
+                                {studentInfo.specialty || "Técnico en Informática"}
+                            </h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Tutor de Grupo</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.tutor}</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Tutor de Grupo</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight truncate">{studentInfo.tutor}</h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Promedio Gral.</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.gpa}</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Promedio Gral.</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{studentInfo.gpa}</h3>
                         </div>
-                        <div>
-                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em] block">Materias Inscritas</span>
-                            <h3 className="text-[13px] font-bold text-slate-900 leading-tight mt-1">{studentInfo.subjectsCount || 0} materias</h3>
+                        <div className="space-y-1">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none block">Materias Inscritas</span>
+                            <h3 className="text-[14px] font-extrabold text-slate-800 leading-tight">{studentInfo.subjectsCount || 0} materias</h3>
                         </div>
                     </div>
                 </div>

@@ -37,6 +37,9 @@ interface AlumnoDashboardProps {
     defaultView?: 'perfil' | 'tareas';
     studentInfo?: {
         name: string;
+        firstName?: string;
+        lastNamePaternal?: string;
+        lastNameMaternal?: string;
         matricula: string;
         groupName: string;
         email: string;
@@ -127,7 +130,10 @@ export default function AlumnoDashboard({
 
     // 2. Datos del alumno con lógica de GPA dinámica
     const baseStudentInfo = propStudentInfo || {
-        name: auth?.user?.nombre || 'Alumno',
+        name: auth?.user?.nombre_completo || 'Alumno',
+        firstName: auth?.user?.nombre || '',
+        lastNamePaternal: auth?.user?.apellido_paterno || '',
+        lastNameMaternal: auth?.user?.apellido_materno || '',
         matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'S/M',
         groupName: auth?.user?.alumnoGroups?.[0]?.nombre_grupo || 'Sin grupo',
         email: auth?.user?.email || '',
@@ -135,7 +141,8 @@ export default function AlumnoDashboard({
         gpa: subjects.length > 0 ? '0.0' : '—',
         tutor: 'Pendiente',
         ciclo: '2026-A',
-        periodo: '(Enero-Julio 2026)'
+        periodo: '(Enero-Julio 2026)',
+        specialty: 'Técnico en Informática'
     };
 
     const studentInfo = {

@@ -220,7 +220,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Módulo de Alumno
         // ------------------------------------------
         Route::prefix('alumno')->group(function () {
-            Route::get('/dashboard', function () {
+            Route::get('/', function () {
                 $studentId = auth()->id();
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
                     ->where('estatus', 'active')
@@ -238,16 +238,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
 
                 $studentInfo = [
-                    'name' => auth()->user()->nombre,
+                    'name' => auth()->user()->nombre_completo,
+                    'firstName' => auth()->user()->nombre,
+                    'lastNamePaternal' => auth()->user()->apellido_paterno,
+                    'lastNameMaternal' => auth()->user()->apellido_materno,
                     'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup?->nombre ?? 'Sin grupo',
+                    'groupName' => ($enrollment && $enrollment->academicGroup)
+                        ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre)
+                        : 'Sin grupo',
+                    'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
                     'email' => auth()->user()->email,
                     'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => $gpa,
                     'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
-                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
+                        ? $enrollment->academicGroup->tutor->user->nombre_completo
                         : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->nombre ?? '2026',
+                    'ciclo' => $enrollment?->academicPeriod ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
                 ];
 
                 $taskList = \App\Services\GradeService::getStudentTasks($studentId);
@@ -287,16 +293,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
 
                 $studentInfo = [
-                    'name' => auth()->user()->nombre,
+                    'name' => auth()->user()->nombre_completo,
+                    'firstName' => auth()->user()->nombre,
+                    'lastNamePaternal' => auth()->user()->apellido_paterno,
+                    'lastNameMaternal' => auth()->user()->apellido_materno,
                     'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup?->nombre ?? 'Sin grupo',
+                    'groupName' => ($enrollment && $enrollment->academicGroup)
+                        ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre)
+                        : 'Sin grupo',
+                    'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
                     'email' => auth()->user()->email,
                     'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => $gpa,
                     'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
-                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
+                        ? $enrollment->academicGroup->tutor->user->nombre_completo
                         : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->nombre ?? '2026',
+                    'ciclo' => $enrollment?->academicPeriod ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
                 ];
 
                 $taskList = \App\Services\GradeService::getStudentTasks($studentId);
@@ -318,35 +330,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'alumnoGroups' => $alumnoGroups
                 ]);
             })->name('alumno.materias.index');
-
-            Route::get('/calificaciones', function () {
-                $studentId = auth()->id();
-                $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
-                    ->where('estatus', 'active')
-                    ->with(['academicGroup.tutor', 'academicPeriod'])
-                    ->first();
-
-                $studentInfo = [
-                    'name' => auth()->user()->nombre,
-                    'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup?->nombre ?? 'Sin grupo',
-                    'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
-                        ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
-                        : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->nombre ?? '2026',
-                ];
-
-                $grades = \App\Services\GradeService::getStudentKardex($studentId);
-
-                return Inertia::render('Alumno/Calificaciones/Index', [
-                    'studentInfo' => $studentInfo,
-                    'grades' => $grades
-                ]);
-            })->name('alumno.calificaciones.index');
-
-            Route::get('/documentos', function () {
-                return Inertia::render('Alumno/Documentos/Index');
-            })->name('alumno.documentos.index');
         });
 
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
