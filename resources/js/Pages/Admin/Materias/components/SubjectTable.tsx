@@ -49,7 +49,14 @@ export default function SubjectTable({
                     header: "Especialidad",
                     accessor: (row) => {
                         if (row.tipo === 'General') {
-                            return <span className="text-slate-500 font-medium text-xs">Todas las Carreras</span>;
+                            return (
+                                <div className="leading-tight text-left">
+                                    <span className="text-slate-500 font-medium text-xs block">Todas las Carreras</span>
+                                    {(row as any).area && (
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Área: {(row as any).area}</span>
+                                    )}
+                                </div>
+                            );
                         }
                         if (!row.specialties || row.specialties.length === 0) {
                             return <span className="text-slate-500 font-semibold text-xs">Sin asignar</span>;

@@ -16,6 +16,7 @@ export interface CourseCatalogItem {
     nombre: string;
     codigo: string;
     tipo: 'General' | 'Especialidad';
+    area?: string;
     semestre: number;
     especialidades?: string[];
 }
@@ -24,6 +25,7 @@ export interface TeacherCatalogItem {
     id: number;
     nombre_completo: string;
     especialidad: string;
+    area?: string;
 }
 
 export interface AcademicLoadItem {
@@ -38,6 +40,8 @@ export interface AcademicLoadItem {
     codigo_materia: string;
     docente_id: number;
     nombre_docente: string;
+    area_docente?: string;
+    area_materia?: string;
 }
 
 export interface CargasIndexProps {

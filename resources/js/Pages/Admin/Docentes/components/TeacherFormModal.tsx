@@ -5,6 +5,7 @@ import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
 import { FormSelect } from '@/Components/forms/FormSelect';
 import { SpecialtySelect } from '@/Components/SpecialtySelect';
+import { GENERAL_AREAS } from '../../Alumnos/constants';
 
 interface TeacherFormModalProps {
     open: boolean;
@@ -17,6 +18,7 @@ interface TeacherFormModalProps {
         apellido_materno: string;
         telefono: string;
         especialidad: string;
+        area: string;
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -159,12 +161,32 @@ export default function TeacherFormModal({
                                     <SpecialtySelect
                                         required
                                         value={data.especialidad}
-                                        onChange={e => setData('especialidad', e.target.value)}
+                                        onChange={e => {
+                                            setData('especialidad', e.target.value);
+                                            if (e.target.value.toLowerCase() !== 'general') setData('area', '');
+                                        }}
                                         className="h-9 text-xs"
                                     />
                                     {errors.especialidad && <span className="text-red-500 text-[10px] mt-1 block">{errors.especialidad}</span>}
                                 </div>
                             </div>
+
+                            {data.especialidad.toLowerCase() === 'general' && (
+                                <div className="space-y-1.5 text-left animate-in slide-in-from-top-1 duration-200">
+                                    <FormLabel required>Área de Conocimiento (Docente General)</FormLabel>
+                                    <FormSelect
+                                        value={data.area}
+                                        onChange={e => setData('area', e.target.value)}
+                                        className="h-9 text-xs"
+                                    >
+                                        <option value="">Seleccionar área...</option>
+                                        {GENERAL_AREAS.map(area => (
+                                            <option key={area} value={area}>{area}</option>
+                                        ))}
+                                    </FormSelect>
+                                    {errors.area && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.area}</span>}
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-8 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none bg-white md:bg-transparent sticky bottom-0 md:relative">

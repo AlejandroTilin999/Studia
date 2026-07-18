@@ -11,7 +11,8 @@ class Teacher extends Model
     protected $fillable = [
         'usuario_id',
         'codigo_empleado',
-        'especialidad'
+        'especialidad',
+        'area'
     ];
 
     public function user()
@@ -44,7 +45,9 @@ class Teacher extends Model
 
     public function getNameAttribute()
     {
-        return $this->user ? $this->user->nombre_completo : 'Sin nombre';
+        if (!$this->user) return $this->codigo_empleado ?: 'Sin docente';
+
+        return $this->user->nombre_completo;
     }
 
     // Relación Uno a Muchos con Cursos (Materias) mediante la columna docente_id

@@ -26,6 +26,7 @@ class TeacherController extends Controller
                 'apellido_paterno'  => $t->user->apellido_paterno ?? '',
                 'apellido_materno'  => $t->user->apellido_materno ?? '',
                 'especialidad'      => $t->especialidad,
+                'area'              => $t->area ?? '',
                 'telefono'          => $t->user->telefono ?? '',
                 'usuario'           => $t->user ? ['email' => $t->user->email] : null,
                 'materias'          => $t->academicLoads->map(fn($l) => [
@@ -49,6 +50,7 @@ class TeacherController extends Controller
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
             'especialidad'     => 'required|string|max:255',
+            'area'             => 'nullable|string|max:100',
             'telefono'         => 'required|numeric|digits:10',
         ], [
             'nombre.required'           => 'El nombre es obligatorio.',
@@ -103,6 +105,7 @@ class TeacherController extends Controller
                 'usuario_id'       => $user->id,
                 'codigo_empleado'  => $employeeCode,
                 'especialidad'     => $request->especialidad,
+                'area'             => $request->area ?? null,
             ]);
         });
 
@@ -118,6 +121,7 @@ class TeacherController extends Controller
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
             'especialidad'     => 'required|string|max:255',
+            'area'             => 'nullable|string|max:100',
             'telefono'         => 'required|numeric|digits:10',
         ], [
             'nombre.required'           => 'El nombre es obligatorio.',
@@ -143,6 +147,7 @@ class TeacherController extends Controller
             // 2. Actualizar docente
             $teacher->update([
                 'especialidad'     => $request->especialidad,
+                'area'             => $request->area ?? null,
             ]);
         });
 

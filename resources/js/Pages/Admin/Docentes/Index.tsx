@@ -30,6 +30,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             email: correoDocente,
             phone: t.telefono || 'Sin teléfono',
             specialty: t.especialidad || 'General',
+            area: t.area || '',
             assignments: t.materias?.map(m => ({
                 subject: m.nombre,
                 groupName: m.nombre_group || m.nombre_grupo || 'Asignado'
@@ -54,7 +55,8 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         apellido_paterno: '',
         apellido_materno: '',
         telefono: '',
-        especialidad: ''
+        especialidad: '',
+        area: '',
     });
 
     // Auto-generar matrícula y correo
@@ -132,7 +134,8 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             apellido_paterno: teacher.rawPaterno,
             apellido_materno: teacher.rawMaterno ?? '',
             telefono: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
-            especialidad: teacher.specialty
+            especialidad: teacher.specialty,
+            area: teacher.area || '',
         });
         setIsFormModalOpen(true);
     };

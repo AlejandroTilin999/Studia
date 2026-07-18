@@ -46,8 +46,15 @@ export default function LoadTable({
                 },
                 {
                     header: 'Profesor / Docente',
-                    accessor: (row) => row.nombre_docente,
-                    className: "text-[13px] font-medium text-slate-600 leading-normal text-left",
+                    accessor: (row) => (
+                        <div className="leading-tight text-left">
+                            <span className="text-[13px] font-medium text-slate-600 block">{row.nombre_docente}</span>
+                            {row.area_docente && (
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Área: {row.area_docente}</span>
+                            )}
+                        </div>
+                    ),
+                    className: "text-left",
                 },
                 {
                     header: 'Acciones',

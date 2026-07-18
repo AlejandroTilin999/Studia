@@ -28,6 +28,8 @@ class AcademicLoadController extends Controller
                 'codigo_materia' => $l->course->codigo ?? 'N/A',
                 'docente_id' => $l->docente_id,
                 'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
+                'area_docente' => $l->teacher->area ?? '',
+                'area_materia' => $l->course->area ?? '',
             ];
         });
 
@@ -55,22 +57,40 @@ class AcademicLoadController extends Controller
                 'nombre' => $c->nombre,
                 'codigo' => $c->codigo,
                 'tipo' => $c->tipo,
+                'area' => $c->area ?? '',
                 'semestre' => $c->semestre,
                 'especialidades' => $c->specialties->pluck('nombre')->toArray(),
             ];
         });
 
-        $teachers = Teacher::whereHas('user')
+        $teachers = Teacher::whereHas('user', function($query) {
+                $query->whereNotNull('nombre')
+                      ->where('nombre', '!=', '')
+                      ->where('nombre', '!=', 'Sin nombre')
+                      ->where('nombre', '!=', 'Sin nombre registrado');
+            })
             ->with('user')
             ->get()
-            ->filter(fn($t) => !empty(trim($t->user->nombre))) // Solo docentes con nombre real
             ->map(function ($t) {
                 return [
                     'id' => $t->id,
                     'nombre_completo' => $t->user->nombre_completo,
                     'especialidad' => $t->especialidad,
+                    'area' => $t->area ?? '',
                 ];
-            })->values();
+            })
+            // Si después de filtrar no hay nadie, permitimos ver a todos usando su correo como nombre
+            ->whenEmpty(function() {
+                return Teacher::with('user')->get()->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'nombre_completo' => $t->user->nombre_completo,
+                        'especialidad' => $t->especialidad,
+                        'area' => $t->area ?? '',
+                    ];
+                });
+            })
+            ->values();
 
         return Inertia::render('Admin/Cargas/Index', [
             'loads' => $loads,
@@ -83,6 +103,33 @@ class AcademicLoadController extends Controller
 
     public function store(Request $request)
     {
+        // Soporte para asignación masiva (batch)
+        if ($request->has('assignments') && is_array($request->assignments)) {
+            $request->validate([
+                'ciclo_id' => 'required|exists:ciclos_escolares,id',
+                'grupo_id' => 'required|exists:grupos,id',
+                'assignments' => 'required|array',
+                'assignments.*.materia_id' => 'required|exists:materias,id',
+                'assignments.*.docente_id' => 'required|exists:docentes,id',
+            ]);
+
+            DB::transaction(function () use ($request) {
+                foreach ($request->assignments as $assign) {
+                    AcademicLoad::updateOrCreate(
+                        [
+                            'ciclo_id' => $request->ciclo_id,
+                            'grupo_id' => $request->grupo_id,
+                            'materia_id' => $assign['materia_id'],
+                        ],
+                        ['docente_id' => $assign['docente_id']]
+                    );
+                }
+            });
+
+            return redirect()->back()->with('message', 'Asignaciones procesadas con éxito.');
+        }
+
+        // Asignación individual (legacy support)
         $request->validate([
             'ciclo_id' => 'required|exists:ciclos_escolares,id',
             'grupo_id' => 'required|exists:grupos,id',

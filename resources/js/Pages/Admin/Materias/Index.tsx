@@ -11,7 +11,7 @@ import { useExportExcel } from '@/hooks/useExportExcel';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
-export default function MateriasIndex({ materias = [], profesores = [], grupos = [], specialties = [] }: MateriasIndexProps) {
+export default function MateriasIndex({ materias = [], profesores = [], grupos = [], especialidades = [] }: MateriasIndexProps) {
     const formattedSubjects: SubjectFormatted[] = materias.map(course => ({
         id: course.id,
         code: course.codigo || 'S/C',
@@ -44,16 +44,18 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         semestre: 1 as number,
         descripcion: '',
         tipo: 'General' as 'General' | 'Especialidad',
+        area: '',
         linked_groups: [] as string[],
         specialty_ids: [] as number[]
     });
 
     const handleExportExcel = () => {
-        const headers = ["Código", "Nombre de la Materia", "Tipo", "Especialidades", "Profesor Asignado", "Grupos Vinculados"];
+        const headers = ["Código", "Nombre de la Materia", "Tipo", "Área", "Especialidades", "Profesor Asignado", "Grupos Vinculados"];
         const rows = filteredSubjects.map(s => [
             s.code,
             s.name,
             s.tipo,
+            s.area || 'N/A',
             s.tipo === 'General' ? 'Todas' : s.specialties.map(sp => sp.name).join(', '),
             s.teacherName,
             s.linkedGroups.join(', ') || 'Sin grupos'
@@ -92,6 +94,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             semestre: subject.semestre || 1,
             descripcion: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
             tipo: subject.tipo || 'General',
+            area: (subject as any).area || '',
             linked_groups: subject.linkedGroups || [],
             specialty_ids: subject.specialties ? subject.specialties.map(s => s.id) : []
         });
@@ -198,7 +201,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 onSubmit={handleSubmit}
                 profesores={profesores}
                 grupos={grupos}
-                specialties={specialties}
+                specialties={especialidades}
                 existingCodes={formattedSubjects.map(s => s.code)}
             />
         </AdminPageLayout>

@@ -25,6 +25,7 @@ class CourseController extends Controller
                 'semestre' => $course->semestre ?? 1,
                 'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
                 'tipo' => $course->tipo ?? 'General',
+                'area' => $course->area ?? '',
                 'docente_id' => $course->docente_id,
                 'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
                 'grupos' => $course->groups ? $course->groups->pluck('codigo')->unique()->toArray() : [],
@@ -69,6 +70,7 @@ class CourseController extends Controller
             'semestre' => 'required|integer|min:1|max:6',
             'descripcion' => 'nullable|string',
             'tipo' => 'required|string|in:General,Especialidad',
+            'area' => 'nullable|string|max:100',
             'linked_groups' => 'nullable|array',
             'specialty_ids' => 'nullable|array',
             'specialty_ids.*' => 'exists:especialidades,id',
@@ -81,6 +83,7 @@ class CourseController extends Controller
                 'semestre' => $validated['semestre'],
                 'descripcion' => $validated['descripcion'],
                 'tipo' => $validated['tipo'],
+                'area' => $validated['area'] ?? null,
             ]);
 
             if ($validated['tipo'] === 'Especialidad') {
@@ -101,6 +104,7 @@ class CourseController extends Controller
             'semestre' => 'required|integer|min:1|max:6',
             'descripcion' => 'nullable|string',
             'tipo' => 'required|string|in:General,Especialidad',
+            'area' => 'nullable|string|max:100',
             'linked_groups' => 'nullable|array',
             'specialty_ids' => 'nullable|array',
             'specialty_ids.*' => 'exists:especialidades,id',
@@ -112,6 +116,7 @@ class CourseController extends Controller
                 'semestre' => $validated['semestre'],
                 'descripcion' => $validated['descripcion'],
                 'tipo' => $validated['tipo'],
+                'area' => $validated['area'] ?? null,
             ]);
 
             if ($validated['tipo'] === 'Especialidad') {

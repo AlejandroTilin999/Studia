@@ -6,6 +6,9 @@ import { FormInput } from '@/Components/forms/FormInput';
 import { FormTextarea } from '@/Components/forms/FormTextarea';
 import { FormSelect } from '@/Components/forms/FormSelect';
 
+import { AcademicGroupProp } from '../../Alumnos/types';
+import { GENERAL_AREAS } from '../../Alumnos/constants';
+
 interface SubjectFormModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -17,6 +20,7 @@ interface SubjectFormModalProps {
         semestre: number;
         descripcion: string;
         tipo: 'General' | 'Especialidad';
+        area: string;
         linked_groups: string[];
         specialty_ids: number[];
     };
@@ -180,20 +184,40 @@ export default function SubjectFormModal({
                             {errors.descripcion && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.descripcion}</span>}
                         </div>
 
-                        <div className="space-y-1.5 text-left">
-                            <FormLabel required>Tipo de Materia</FormLabel>
-                            <FormSelect
-                                value={data.tipo}
-                                onChange={e => {
-                                    const val = e.target.value as 'General' | 'Especialidad';
-                                    setData('tipo', val);
-                                    if (val === 'General') setData('specialty_ids', []);
-                                }}
-                                className="h-9 text-xs"
-                            >
-                                <option value="General">General</option>
-                                <option value="Especialidad">Especialidad</option>
-                            </FormSelect>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5 text-left">
+                                <FormLabel required>Tipo de Materia</FormLabel>
+                                <FormSelect
+                                    value={data.tipo}
+                                    onChange={e => {
+                                        const val = e.target.value as 'General' | 'Especialidad';
+                                        setData('tipo', val);
+                                        if (val === 'General') setData('specialty_ids', []);
+                                        else setData('area', '');
+                                    }}
+                                    className="h-9 text-xs"
+                                >
+                                    <option value="General">General</option>
+                                    <option value="Especialidad">Especialidad</option>
+                                </FormSelect>
+                            </div>
+
+                            {data.tipo === 'General' && (
+                                <div className="space-y-1.5 text-left animate-in slide-in-from-top-1 duration-200">
+                                    <FormLabel required>Área de Conocimiento</FormLabel>
+                                    <FormSelect
+                                        value={data.area}
+                                        onChange={e => setData('area', e.target.value)}
+                                        className="h-9 text-xs"
+                                    >
+                                        <option value="">Seleccionar área...</option>
+                                        {GENERAL_AREAS.map(area => (
+                                            <option key={area} value={area}>{area}</option>
+                                        ))}
+                                    </FormSelect>
+                                    {errors.area && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.area}</span>}
+                                </div>
+                            )}
                         </div>
 
                         {data.tipo === 'Especialidad' && (
@@ -213,7 +237,7 @@ export default function SubjectFormModal({
                                                     }}
                                                     className="rounded-md border-slate-300 text-[#1e88e5] focus:ring-[#1e88e5] h-4 w-4 transition-all"
                                                 />
-                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 truncate">{spec.name}</span>
+                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 truncate">{spec.nombre}</span>
                                             </label>
                                         );
                                     })}

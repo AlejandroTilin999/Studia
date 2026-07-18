@@ -44,6 +44,7 @@ export default function CargasIndex({
         grupo_id: '' as string | number,
         materia_id: '' as string | number,
         docente_id: '' as string | number,
+        assignments: [] as { materia_id: number | string, docente_id: number | string }[],
     });
 
     const filteredLoads = useMemo(() => {
@@ -99,6 +100,7 @@ export default function CargasIndex({
             grupo_id: load.grupo_id,
             materia_id: load.materia_id,
             docente_id: load.docente_id,
+            assignments: [], // Mantener estructura para evitar errores de renderizado
         });
         setIsEditModalOpen(true);
     };

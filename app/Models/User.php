@@ -28,7 +28,13 @@ class User extends Authenticatable
     public function getNombreCompletoAttribute()
     {
         $fullName = trim("{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}");
-        return $fullName ?: 'Sin nombre registrado';
+
+        // Si el nombre está vacío o es el texto genérico "Sin nombre", usamos el email
+        if (empty($fullName) || strtolower($fullName) === 'sin nombre' || strtolower($this->nombre) === 'sin nombre') {
+            return $this->email ?: 'Perfil incompleto';
+        }
+
+        return $fullName;
     }
 
     protected $hidden = [

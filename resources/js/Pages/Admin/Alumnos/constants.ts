@@ -15,3 +15,12 @@ export const MONTHS = [
     { value: '11', label: 'Noviembre' },
     { value: '12', label: 'Diciembre' },
 ];
+
+export const GENERAL_AREAS = [
+    'Matemáticas',
+    'Ciencias Experimentales',
+    'Ciencias Sociales',
+    'Comunicación',
+    'Humanidades',
+    'Desarrollo Humano',
+];
