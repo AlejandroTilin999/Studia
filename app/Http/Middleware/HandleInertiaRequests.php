@@ -34,8 +34,16 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $partial = $request->header('X-Inertia-Partial-Data');
 
+        // Obtener ciclo activo globalmente
+        $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
+
         return [
             ...parent::share($request),
+            'activePeriod' => $activePeriod ? [
+                'id' => $activePeriod->id,
+                'nombre' => $activePeriod->nombre,
+                'es_nones' => $activePeriod->fecha_inicio ? (\Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month == 1) : true,
+            ] : null,
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,

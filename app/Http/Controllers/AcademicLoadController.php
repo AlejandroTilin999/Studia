@@ -8,6 +8,7 @@ use App\Models\AcademicGroup;
 use App\Models\Course;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class AcademicLoadController extends Controller
@@ -39,6 +40,7 @@ class AcademicLoadController extends Controller
                     'id' => $p->id,
                     'nombre' => $p->nombre,
                     'activo' => (bool)$p->activo,
+                    'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
                 ];
             }),
             'groups' => AcademicGroup::all()->map(function ($g) {
@@ -100,6 +102,11 @@ class AcademicLoadController extends Controller
                 'assignments' => 'required|array',
                 'assignments.*.materia_id' => 'required|exists:materias,id',
                 'assignments.*.docente_id' => 'required|exists:docentes,id',
+            ], [
+                'assignments.*.docente_id.required' => 'Es obligatorio asignar un docente a cada materia.',
+                'assignments.*.materia_id.required' => 'El ID de la materia es requerido.',
+                'ciclo_id.required' => 'El ciclo escolar es obligatorio.',
+                'grupo_id.required' => 'El grupo es obligatorio.',
             ]);
 
             DB::transaction(function () use ($request) {

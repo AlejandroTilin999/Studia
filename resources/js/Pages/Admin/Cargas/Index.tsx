@@ -87,6 +87,19 @@ export default function CargasIndex({
     };
 
     const openCreateModal = () => {
+        if (!groups || groups.length === 0) {
+            SwalHelper.alert('Faltan Grupos', 'No hay grupos registrados. Crea uno antes de realizar asignaciones.', 'warning');
+            return;
+        }
+        if (!courses || courses.length === 0) {
+            SwalHelper.alert('Faltan Materias', 'No hay materias registradas en el catálogo. Crea materias primero.', 'warning');
+            return;
+        }
+        if (!teachers || teachers.length === 0) {
+            SwalHelper.alert('Faltan Profesores', 'No hay docentes registrados. Da de alta profesores primero.', 'warning');
+            return;
+        }
+
         reset();
         if (activePeriod) {
             setData('ciclo_id', activePeriod.id);

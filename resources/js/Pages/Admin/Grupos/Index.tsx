@@ -82,6 +82,14 @@ export default function GruposIndex({
     }
 
     const openCreateModal = () => {
+        if (!especialidades || especialidades.length === 0) {
+            SwalHelper.alert(
+                'Sin Especialidades',
+                'No puedes registrar un grupo porque no hay especialidades o carreras técnicas registradas en el sistema. Por favor, agrega al menos una primero.',
+                'warning'
+            );
+            return;
+        }
         clearErrors();
         reset();
         setIsCreateModalOpen(true);

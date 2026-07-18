@@ -142,6 +142,14 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const totalCount = formattedStudents.length;
 
     const openCreateModal = () => {
+        if (!groups || groups.length === 0) {
+            SwalHelper.alert(
+                'Sin Grupos Académicos',
+                'No puedes inscribir un alumno porque no existen grupos registrados en el sistema. Por favor, crea un grupo primero.',
+                'warning'
+            );
+            return;
+        }
         setModalMode('create');
         setRandomSuffix(Math.random().toString(36).substring(2, 6).toUpperCase());
         reset();

@@ -32,6 +32,7 @@ interface SubjectFormModalProps {
     grupos: any[];
     specialties: any[];
     existingCodes?: string[];
+    activePeriod?: any;
 }
 
 export default function SubjectFormModal({
@@ -45,6 +46,7 @@ export default function SubjectFormModal({
     onSubmit,
     specialties = [],
     existingCodes = [],
+    activePeriod,
 }: SubjectFormModalProps) {
 
     const generateSubjectCode = (name: string) => {
@@ -154,7 +156,7 @@ export default function SubjectFormModal({
                                     onChange={e => setData('semestre', Number(e.target.value))}
                                     className="h-9 text-xs"
                                 >
-                                    {[1,2,3,4,5,6].map(s => <option key={s} value={s}>{s}° Semestre</option>)}
+                                    {[1, 2, 3, 4, 5, 6].map(s => <option key={s} value={s}>{s}° Semestre</option>)}
                                 </FormSelect>
                                 {errors.semestre && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.semestre}</span>}
                             </div>

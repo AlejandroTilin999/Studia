@@ -73,17 +73,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ];
                 });
 
-                $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
-                $activePeriodId = $activePeriod ? $activePeriod->id : null;
-
-                if ($activePeriodId) {
-                    $studentsCount = \App\Models\Enrollment::where('ciclo_id', $activePeriodId)->count();
-                    $teachersCount = \App\Models\AcademicLoad::where('ciclo_id', $activePeriodId)->distinct('docente_id')->count('docente_id');
-                    $groupsCount = \App\Models\AcademicLoad::where('ciclo_id', $activePeriodId)->distinct('grupo_id')->count('grupo_id');
-                    $coursesCount = \App\Models\AcademicLoad::where('ciclo_id', $activePeriodId)->distinct('materia_id')->count('materia_id');
-                } else {
-                    $studentsCount = 0; $teachersCount = 0; $groupsCount = 0; $coursesCount = 0;
-                }
+                // Contadores Globales - Consultas Directas
+                $studentsCount = \DB::table('alumnos')->where('estatus', 'active')->count();
+                $teachersCount = \DB::table('docentes')->count();
+                $groupsCount   = \DB::table('grupos')->count();
+                $coursesCount  = \DB::table('materias')->count();
 
                 return Inertia::render('Admin/Dashboard', [
                     'cycles' => $cycles,

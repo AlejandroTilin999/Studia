@@ -8,6 +8,8 @@ interface SubjectTableControlsProps {
     setGroupFilter: (group: string) => void;
     groupsList: string[];
     onOpenCreateModal: () => void;
+    parityFilter: 'all' | 'current';
+    setParityFilter: (filter: 'all' | 'current') => void;
 }
 
 export default function SubjectTableControls({
@@ -17,36 +19,39 @@ export default function SubjectTableControls({
     setGroupFilter,
     groupsList,
     onOpenCreateModal,
+    parityFilter,
+    setParityFilter,
 }: SubjectTableControlsProps) {
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
     return (
-        <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
+        <div className="flex flex-col lg:flex-row items-center gap-4 mb-8 shrink-0">
             <div className="relative flex-1 w-full text-left">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
                     type="text"
-                    placeholder="Buscar materia por código, nombre o docente..."
+                    placeholder="Buscar materia por código o nombre..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#0266E0] focus:outline-none focus:ring-0 shadow-sm text-slate-700 placeholder-slate-450 transition-colors"
+                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#0266E0] focus:outline-none focus:ring-0 shadow-sm text-slate-700 placeholder-slate-450 transition-colors font-medium"
                 />
             </div>
-            <div className="flex items-center gap-3 w-full md:w-auto relative">
+
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                 <button
                     type="button"
                     onClick={onOpenCreateModal}
-                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
+                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg text-sm transition-all flex items-center justify-center gap-2 grow lg:grow-0"
                 >
                     <Plus className="w-4 h-4" />
                     Registrar Materia
                 </button>
 
-                <div className="relative flex-1 md:flex-initial">
+                <div className="relative grow lg:grow-0">
                     <button
                         type="button"
                         onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
-                        className="h-12 border border-slate-200 text-slate-500 font-bold rounded-lg w-full md:w-auto gap-2 px-6 text-sm hover:bg-slate-50 transition-all flex items-center justify-center"
+                        className="h-12 border border-slate-200 text-slate-500 font-bold rounded-lg w-full gap-2 px-6 text-sm hover:bg-slate-50 transition-all flex items-center justify-center"
                     >
                         <Filter className="w-4 h-4" />
                         Filtros
@@ -70,6 +75,32 @@ export default function SubjectTableControls({
                             </select>
                         </div>
                     )}
+                </div>
+
+                {/* Segmented Control Toggle (Matching Login Style) */}
+                <div className="flex bg-slate-100 rounded-lg overflow-hidden w-full lg:w-64 h-12 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setParityFilter('all')}
+                        className={`flex-1 py-3 text-[14px] font-bold transition-all flex items-center justify-center outline-none ${
+                            parityFilter === "all"
+                                ? "bg-[#0266E0] text-white shadow-sm"
+                                : "bg-transparent text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        Todas
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setParityFilter('current')}
+                        className={`flex-1 py-3 text-[14px] font-bold transition-all flex items-center justify-center outline-none ${
+                            parityFilter === "current"
+                                ? "bg-[#0266E0] text-white shadow-sm"
+                                : "bg-transparent text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        Ciclo Actual
+                    </button>
                 </div>
             </div>
         </div>

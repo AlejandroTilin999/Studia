@@ -12,24 +12,26 @@ import { useExportExcel } from '@/hooks/useExportExcel';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
-export default function MateriasIndex({ materias = [], profesores = [], grupos = [], especialidades = [] }: MateriasIndexProps) {
-    const formattedSubjects: SubjectFormatted[] = materias.map(course => ({
+export default function MateriasIndex({ materias = [], profesores = [], grupos = [], especialidades = [], activePeriod }: any) {
+    const formattedSubjects: SubjectFormatted[] = materias.map((course: any) => ({
         id: course.id,
         code: course.codigo || 'S/C',
         name: course.nombre || 'Sin nombre',
         semestre: course.semestre || 1,
         tipo: course.tipo || 'General',
+        area: course.area || '',
         teacherName: course.profesor || 'Pendiente de Asignación',
         teacher_id: course.docente_id,
         linkedGroups: course.grupos || [],
         description: course.descripcion || 'Sin descripción disponible.',
-        specialties: course.especialidades?.map(e => ({ id: e.id, name: e.nombre })) || []
+        specialties: course.especialidades?.map((e: any) => ({ id: e.id, name: e.nombre })) || []
     }));
 
-    const groupsList = grupos.map(g => g.codigo);
+    const groupsList = grupos.map((g: any) => g.codigo);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [groupFilter, setGroupFilter] = useState('all');
+    const [parityFilter, setParityFilter] = useState<'all' | 'current' | 'other'>('all');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -42,7 +44,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
     const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
         codigo: '',
         nombre: '',
-        semestre: 1 as number,
+        semestre: (activePeriod?.es_nones ? 1 : 2) as number,
         descripcion: '',
         tipo: 'General' as 'General' | 'Especialidad',
         area: '',
@@ -77,12 +79,21 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             subject.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             subject.teacherName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesGroup = groupFilter === 'all' || subject.linkedGroups.includes(groupFilter);
-        return matchesSearch && matchesGroup;
+
+        let matchesParity = true;
+        if (parityFilter === 'current' && activePeriod) {
+            matchesParity = activePeriod.es_nones ? subject.semestre % 2 !== 0 : subject.semestre % 2 === 0;
+        } else if (parityFilter === 'other' && activePeriod) {
+            matchesParity = activePeriod.es_nones ? subject.semestre % 2 === 0 : subject.semestre % 2 !== 0;
+        }
+
+        return matchesSearch && matchesGroup && matchesParity;
     });
 
     const openCreateModal = () => {
         setModalMode('create');
         reset();
+        if (activePeriod) setData('semestre', activePeriod.es_nones ? 1 : 2);
         setIsModalOpen(true);
     };
 
@@ -97,7 +108,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             tipo: subject.tipo || 'General',
             area: (subject as any).area || '',
             linked_groups: subject.linkedGroups || [],
-            specialty_ids: subject.specialties ? subject.specialties.map(s => s.id) : []
+            specialty_ids: subject.specialties ? subject.specialties.map((s:any) => s.id) : []
         });
         setIsModalOpen(true);
     };
@@ -159,11 +170,11 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         <AdminPageLayout
             headTitle="Gestión de Materias"
             title={`Gestión de materias (${totalSubjectsCount})`}
-            subtitle="Consulta, edita y registra planes de estudio y materias del ciclo"
+            subtitle={activePeriod ? `Ciclo Activo: ${activePeriod.nombre} (${activePeriod.es_nones ? 'Semestres Nones' : 'Semestres Pares'})` : "Consulta, edita y registra planes de estudio"}
             breadcrumb="Materias"
             metrics={[
                 { code: "T1", label: "Materias totales", value: totalSubjectsCount },
-                { code: "T3", label: "Activas en ciclo", value: totalSubjectsCount },
+                { code: "T3", label: "En ciclo actual", value: formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length },
                 { code: "T4", label: "Sin docente", value: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length }
             ]}
             quickActions={[
@@ -184,6 +195,8 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 groupFilter={groupFilter}
                 setGroupFilter={setGroupFilter}
                 groupsList={groupsList}
+                parityFilter={parityFilter === 'all' ? 'all' : 'current'}
+                setParityFilter={(val) => setParityFilter(val as any)}
             />
 
             <Deferred data="materias" fallback={
@@ -213,6 +226,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 grupos={grupos}
                 specialties={especialidades}
                 existingCodes={formattedSubjects.map(s => s.code)}
+                activePeriod={activePeriod}
             />
         </AdminPageLayout>
     );

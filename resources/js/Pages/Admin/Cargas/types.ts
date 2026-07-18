@@ -2,6 +2,7 @@ export interface CatalogItem {
     id: number;
     nombre: string;
     activo?: boolean;
+    mes_inicio?: number | null;
 }
 
 export interface GroupCatalogItem {
