@@ -32,7 +32,6 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $partial = $request->header('X-Inertia-Partial-Data');
 
         // Obtener ciclo activo globalmente
         $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
@@ -53,11 +52,9 @@ class HandleInertiaRequests extends Middleware
                     'nombre_completo' => $user->nombre_completo,
                     'email' => $user->email,
                     'rol' => strtoupper($user->rol),
-                    // Cargamos esto solo si se solicita explícitamente para no alentar la navegación simple
-                    'docenteGroups' => $partial && str_contains($partial, 'docenteGroups')
-                        ? $this->getDocenteGroups($user) : [],
-                    'alumnoGroups' => $partial && str_contains($partial, 'alumnoGroups')
-                        ? $this->getAlumnoGroups($user) : [],
+                    // Cargamos esto siempre para la Sidebar (Consultas rápidas)
+                    'docenteGroups' => $this->getDocenteGroups($user),
+                    'alumnoGroups' => $this->getAlumnoGroups($user),
                 ] : null,
             ],
         ];

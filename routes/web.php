@@ -261,8 +261,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $alumnoGroups = array_map(function($item) {
                     return [
                         'id' => $item['uuid'],
-                        'name' => $item['subject'],
-                        'teacher' => $item['teacher'],
+                        'nombre' => $item['subject'],
+                        'docente' => $item['teacher'],
                         'description' => 'Materia inscrita en el ciclo actual.'
                     ];
                 }, $kardex);
@@ -316,8 +316,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $alumnoGroups = array_map(function($item) {
                     return [
                         'id' => $item['uuid'],
-                        'name' => $item['subject'],
-                        'teacher' => $item['teacher'],
+                        'nombre' => $item['subject'],
+                        'docente' => $item['teacher'],
                         'description' => 'Materia inscrita en el ciclo actual.'
                     ];
                 }, $kardex);
