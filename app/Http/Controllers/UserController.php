@@ -14,19 +14,19 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::orderBy('created_at', 'desc')->get()->map(function ($u) {
-            return [
-                'id' => $u->id,
-                'nombre' => $u->nombre_completo,
-                'email' => $u->email,
-                'rol' => $u->rol ?? 'admin',
-                'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
-                'telefono' => $u->telefono ?? '',
-            ];
-        });
-
         return Inertia::render('Admin/Usuarios/Index', [
-            'dbUsers' => $users
+            'dbUsers' => Inertia::defer(function () {
+                return User::orderBy('created_at', 'desc')->get()->map(function ($u) {
+                    return [
+                        'id' => $u->id,
+                        'nombre' => $u->nombre_completo,
+                        'email' => $u->email,
+                        'rol' => $u->rol ?? 'admin',
+                        'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
+                        'telefono' => $u->telefono ?? '',
+                    ];
+                });
+            })
         ]);
     }
 

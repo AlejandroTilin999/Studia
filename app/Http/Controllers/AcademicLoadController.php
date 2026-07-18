@@ -14,90 +14,79 @@ class AcademicLoadController extends Controller
 {
     public function index()
     {
-        // 1. Obtener todas las cargas académicas (asignaciones)
-        $loads = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user'])->get()->map(function ($l) {
-            return [
-                'id' => $l->id,
-                'ciclo_id' => $l->ciclo_id,
-                'nombre_ciclo' => $l->academicPeriod->nombre ?? 'N/A',
-                'grupo_id' => $l->grupo_id,
-                'nombre_grupo' => $l->academicGroup->nombre ?? 'N/A',
-                'codigo_grupo' => $l->academicGroup->codigo ?? 'N/A',
-                'materia_id' => $l->materia_id,
-                'nombre_materia' => $l->course->nombre ?? 'N/A',
-                'codigo_materia' => $l->course->codigo ?? 'N/A',
-                'docente_id' => $l->docente_id,
-                'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
-                'area_docente' => $l->teacher->area ?? '',
-                'area_materia' => $l->course->area ?? '',
-            ];
-        });
-
-        // 2. Obtener catálogos
-        $periods = AcademicPeriod::all()->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'nombre' => $p->nombre,
-                'activo' => (bool)$p->activo,
-            ];
-        });
-
-        $groups = AcademicGroup::all()->map(function ($g) {
-            return [
-                'id' => $g->id,
-                'nombre' => $g->nombre,
-                'codigo' => $g->codigo,
-                'especialidad' => $g->especialidad,
-            ];
-        });
-
-        $courses = Course::with('specialties')->get()->map(function ($c) {
-            return [
-                'id' => $c->id,
-                'nombre' => $c->nombre,
-                'codigo' => $c->codigo,
-                'tipo' => $c->tipo,
-                'area' => $c->area ?? '',
-                'semestre' => $c->semestre,
-                'especialidades' => $c->specialties->pluck('nombre')->toArray(),
-            ];
-        });
-
-        $teachers = Teacher::whereHas('user', function($query) {
-                $query->whereNotNull('nombre')
-                      ->where('nombre', '!=', '')
-                      ->where('nombre', '!=', 'Sin nombre')
-                      ->where('nombre', '!=', 'Sin nombre registrado');
-            })
-            ->with('user')
-            ->get()
-            ->map(function ($t) {
+        return Inertia::render('Admin/Cargas/Index', [
+            'loads' => Inertia::defer(function () {
+                return AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user'])->get()->map(function ($l) {
+                    return [
+                        'id' => $l->id,
+                        'ciclo_id' => $l->ciclo_id,
+                        'nombre_ciclo' => $l->academicPeriod->nombre ?? 'N/A',
+                        'grupo_id' => $l->grupo_id,
+                        'nombre_grupo' => $l->academicGroup->nombre ?? 'N/A',
+                        'codigo_grupo' => $l->academicGroup->codigo ?? 'N/A',
+                        'materia_id' => $l->materia_id,
+                        'nombre_materia' => $l->course->nombre ?? 'N/A',
+                        'codigo_materia' => $l->course->codigo ?? 'N/A',
+                        'docente_id' => $l->docente_id,
+                        'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
+                        'area_docente' => $l->teacher->area ?? '',
+                        'area_materia' => $l->course->area ?? '',
+                    ];
+                });
+            }),
+            'periods' => AcademicPeriod::all()->map(function ($p) {
                 return [
-                    'id' => $t->id,
-                    'nombre_completo' => $t->user->nombre_completo,
-                    'especialidad' => $t->especialidad,
-                    'area' => $t->area ?? '',
+                    'id' => $p->id,
+                    'nombre' => $p->nombre,
+                    'activo' => (bool)$p->activo,
                 ];
-            })
-            // Si después de filtrar no hay nadie, permitimos ver a todos usando su correo como nombre
-            ->whenEmpty(function() {
-                return Teacher::with('user')->get()->map(function($t) {
+            }),
+            'groups' => AcademicGroup::all()->map(function ($g) {
+                return [
+                    'id' => $g->id,
+                    'nombre' => $g->nombre,
+                    'codigo' => $g->codigo,
+                    'especialidad' => $g->especialidad,
+                ];
+            }),
+            'courses' => Course::with('specialties')->get()->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'nombre' => $c->nombre,
+                    'codigo' => $c->codigo,
+                    'tipo' => $c->tipo,
+                    'area' => $c->area ?? '',
+                    'semestre' => $c->semestre,
+                    'especialidades' => $c->specialties->pluck('nombre')->toArray(),
+                ];
+            }),
+            'teachers' => Teacher::whereHas('user', function($query) {
+                    $query->whereNotNull('nombre')
+                          ->where('nombre', '!=', '')
+                          ->where('nombre', '!=', 'Sin nombre')
+                          ->where('nombre', '!=', 'Sin nombre registrado');
+                })
+                ->with('user')
+                ->get()
+                ->map(function ($t) {
                     return [
                         'id' => $t->id,
                         'nombre_completo' => $t->user->nombre_completo,
                         'especialidad' => $t->especialidad,
                         'area' => $t->area ?? '',
                     ];
-                });
-            })
-            ->values();
-
-        return Inertia::render('Admin/Cargas/Index', [
-            'loads' => $loads,
-            'periods' => $periods,
-            'groups' => $groups,
-            'courses' => $courses,
-            'teachers' => $teachers,
+                })
+                ->whenEmpty(function() {
+                    return Teacher::with('user')->get()->map(function($t) {
+                        return [
+                            'id' => $t->id,
+                            'nombre_completo' => $t->user->nombre_completo,
+                            'especialidad' => $t->especialidad,
+                            'area' => $t->area ?? '',
+                        ];
+                    });
+                })
+                ->values()
         ]);
     }
 

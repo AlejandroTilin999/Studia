@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Deferred } from '@inertiajs/react';
 import { Download, Layers, Users } from 'lucide-react';
+import DotsLoader from '@/Components/ui/DotsLoader';
 import GroupTable from './components/GroupTable';
 import GroupTableControls from './components/GroupTableControls';
 import GroupFormModal from './components/GroupFormModal';
@@ -180,16 +181,23 @@ export default function GruposIndex({
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 specialtyFilter={specialtyFilter}
-                setSpecialtyFilter={setSpecialtyFilter}
+                setGroupFilter={setSpecialtyFilter}
                 onOpenCreateModal={openCreateModal}
                 specialties={especialidades}
             />
 
-            <GroupTable
-                groups={filteredGroups}
-                onOpenEditModal={openEditModal}
-                onDelete={handleDeleteGroup}
-            />
+            <Deferred data="grupos" fallback={
+                <DotsLoader
+                    label="Cargando grupos"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <GroupTable
+                    groups={filteredGroups}
+                    onOpenEditModal={openEditModal}
+                    onDelete={handleDeleteGroup}
+                />
+            </Deferred>
 
             <GroupFormModal
                 isOpen={isCreateModalOpen}

@@ -13,33 +13,32 @@ class TeacherController extends Controller
 {
     public function index()
     {
-        // Traemos los docentes con sus cargas académicas y su usuario vinculado (solo registros válidos)
-        $teachers = Teacher::whereHas('user')
-            ->with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])
-            ->get();
-
-        $teachers = $teachers->map(function ($t) {
-            return [
-                'id'                => $t->id,
-                'codigo_empleado'   => $t->codigo_empleado,
-                'nombre'            => $t->user->nombre ?? '',
-                'apellido_paterno'  => $t->user->apellido_paterno ?? '',
-                'apellido_materno'  => $t->user->apellido_materno ?? '',
-                'especialidad'      => $t->especialidad,
-                'area'              => $t->area ?? '',
-                'telefono'          => $t->user->telefono ?? '',
-                'usuario'           => $t->user ? ['email' => $t->user->email] : null,
-                'materias'          => $t->academicLoads->map(fn($l) => [
-                    'id'             => $l->course->id ?? null,
-                    'nombre'         => $l->course->nombre ?? 'N/A',
-                    'codigo'         => $l->course->codigo ?? '',
-                    'nombre_grupo'   => $l->academicGroup->nombre ?? 'N/A',
-                ])->values()->toArray(),
-            ];
-        });
-
         return Inertia::render('Admin/Docentes/Index', [
-            'teachers' => $teachers
+            'teachers' => Inertia::defer(function () {
+                // Esta consulta pesada se ejecutará DESPUÉS de que la página abra
+                return Teacher::whereHas('user')
+                    ->with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])
+                    ->get()
+                    ->map(function ($t) {
+                        return [
+                            'id'                => $t->id,
+                            'codigo_empleado'   => $t->codigo_empleado,
+                            'nombre'            => $t->user->nombre ?? '',
+                            'apellido_paterno'  => $t->user->apellido_paterno ?? '',
+                            'apellido_materno'  => $t->user->apellido_materno ?? '',
+                            'especialidad'      => $t->especialidad,
+                            'area'              => $t->area ?? '',
+                            'telefono'          => $t->user->telefono ?? '',
+                            'usuario'           => $t->user ? ['email' => $t->user->email] : null,
+                            'materias'          => $t->academicLoads->map(fn($l) => [
+                                'id'             => $l->course->id ?? null,
+                                'nombre'         => $l->course->nombre ?? 'N/A',
+                                'codigo'         => $l->course->codigo ?? '',
+                                'nombre_grupo'   => $l->academicGroup->nombre ?? 'N/A',
+                            ])->values()->toArray(),
+                        ];
+                    });
+            })
         ]);
     }
 

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, Deferred } from '@inertiajs/react';
 import { GraduationCap, Users, FileText } from 'lucide-react';
 import UserTable, { MockUser } from './UserTable';
 import UserTableControls from './UserTableControls';
 import UserFormModal from './UserFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 interface UsersIndexProps {
     dbUsers?: MockUser[];
@@ -161,12 +162,20 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 setRoleFilter={setRoleFilter}
                 onOpenCreateModal={openCreateModal}
             />
-            <UserTable
-                users={filteredUsers}
-                onToggleStatus={toggleStatus}
-                onResetPassword={handleResetPassword}
-                onOpenEditModal={openEditModal}
-            />
+
+            <Deferred data="dbUsers" fallback={
+                <DotsLoader
+                    label="Cargando usuarios"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <UserTable
+                    users={filteredUsers}
+                    onToggleStatus={toggleStatus}
+                    onResetPassword={handleResetPassword}
+                    onOpenEditModal={openEditModal}
+                />
+            </Deferred>
             <UserFormModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

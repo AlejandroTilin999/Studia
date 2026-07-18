@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { Deferred } from '@inertiajs/react';
 import ReportSelector from './ReportSelector';
 import ReportParams from './ReportParams';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { Download, FileText } from 'lucide-react';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 interface StudentItem {
     matricula: string;
@@ -119,28 +121,35 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
         >
             <h3 className="font-extrabold text-slate-800 text-lg mb-6 tracking-tight text-left">Panel de Reportes Oficiales</h3>
 
-            {/* Dashboard Control Box */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-8 flex-1 min-h-0">
-                <ReportSelector
-                    selectedReport={selectedReport}
-                    setSelectedReport={setSelectedReport}
+            <Deferred data={["groups", "students", "periods"]} fallback={
+                <DotsLoader
+                    label="Cargando reportes"
+                    sublabel="Por favor espera un momento..."
                 />
+            }>
+                {/* Dashboard Control Box */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-8 flex-1 min-h-0">
+                    <ReportSelector
+                        selectedReport={selectedReport}
+                        setSelectedReport={setSelectedReport}
+                    />
 
-                <ReportParams
-                    selectedReport={selectedReport}
-                    groupFilter={groupFilter}
-                    onGroupChange={handleGroupChange}
-                    selectedStudentMatricula={selectedStudentMatricula}
-                    setSelectedStudentMatricula={setSelectedStudentMatricula}
-                    periodFilter={periodFilter}
-                    setPeriodFilter={setPeriodFilter}
-                    filteredStudents={filteredStudents}
-                    groups={groups}
-                    periods={periods}
-                    onDownload={handleDownloadReport}
-                    onReset={handleReset}
-                />
-            </div>
+                    <ReportParams
+                        selectedReport={selectedReport}
+                        groupFilter={groupFilter}
+                        onGroupChange={handleGroupChange}
+                        selectedStudentMatricula={selectedStudentMatricula}
+                        setSelectedStudentMatricula={setSelectedStudentMatricula}
+                        periodFilter={periodFilter}
+                        setPeriodFilter={setPeriodFilter}
+                        filteredStudents={filteredStudents}
+                        groups={groups}
+                        periods={periods}
+                        onDownload={handleDownloadReport}
+                        onReset={handleReset}
+                    />
+                </div>
+            </Deferred>
         </AdminPageLayout>
     );
 }

@@ -50,7 +50,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Inicio",
       icon: Home,
-      path: role === "ADMIN" ? "/admin/dashboard" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/dashboard",
+      path: role === "ADMIN" ? "/admin" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno/dashboard",
       roles: ["ADMIN", "DOCENTE", "ALUMNO"]
     },
     {
@@ -370,21 +370,27 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
               }
             } else {
-              isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
+              if (item.name === 'Inicio') {
+                isActive = pathname === itemPathname; // Estricto para Inicio Admin (/admin)
+              } else {
+                isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
+              }
             }
             return (
               <SidebarMenuItem key={item.path} className="mb-1.5">
-                <SidebarMenuButton
-                  isActive={isActive}
-                  expanded={isMenuExpanded}
-                  onClick={() => {
-                    if (pathname === itemPathname && itemPathname !== '/docente/grupos/show') {
-                      if (isSheet) setOpenMobile(false);
-                      return;
-                    }
-                    router.visit(item.path);
-                    if (isSheet) setOpenMobile(false);
-                  }}
+                <Link
+                  href={item.path}
+                  prefetch="hover"
+                  cacheFor="1m"
+                  className={cn(
+                    "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
+                    isMenuExpanded
+                      ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
+                      : "justify-center px-0 rounded-none w-full",
+                    isActive
+                      ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold"
+                      : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold"
+                  )}
                 >
                   <item.icon className={cn(
                     "w-5 h-5 shrink-0 transition-colors",
@@ -410,7 +416,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                       )}
                     </>
                   )}
-                </SidebarMenuButton>
+                </Link>
               </SidebarMenuItem>
             );
           })}
@@ -487,7 +493,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             <span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-widest text-center">Simulador de Rol</span>
             <div className="grid grid-cols-3 gap-1">
               <Link
-                href="/admin/dashboard"
+                href="/admin"
                 className={`text-[10px] text-center py-1.5 rounded-md font-bold transition-all ${role === 'ADMIN' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
               >
                 Admin

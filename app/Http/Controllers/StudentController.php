@@ -15,45 +15,40 @@ class StudentController extends Controller
 {
     public function index()
     {
-        // Jalamos solo los alumnos que tengan un usuario vinculado (evita registros huérfanos)
-        $alumnos = Student::whereHas('user')
-            ->with(['user', 'enrollment.academicGroup'])
-            ->get()
-            ->map(function ($student) {
-            $grades = $student->usuario_id ? \App\Services\GradeService::getStudentKardex($student->usuario_id) : [];
-            return [
-                'id' => $student->id,
-                'usuario_id' => $student->usuario_id,
-                'nombre' => $student->user ? $student->user->nombre_completo : 'Sin nombre',
-                'rawNombre' => $student->user->nombre ?? '',
-                'rawPaterno' => $student->user->apellido_paterno ?? '',
-                'rawMaterno' => $student->user->apellido_materno ?? '',
-                'email' => $student->user->email ?? 'Sin correo',
-                'matricula' => $student->matricula,
-                'telefono' => $student->user->telefono ?? '',
-                'fecha_nacimiento' => $student->fecha_nacimiento ?? '',
-                'grupo' => $student->enrollment && $student->enrollment->academicGroup ? [
-                    'id' => $student->enrollment->academicGroup->id,
-                    'nombre' => $student->enrollment->academicGroup->nombre,
-                ] : null,
-                'estatus' => $student->enrollment->estatus ?? 'active',
-                'calificaciones' => $grades,
-            ];
-        });
-
-        // Catálogo de grupos para el selector del formulario
-        $groups = AcademicGroup::all()->map(function ($g) {
-            return [
-                'id' => $g->id,
-                'nombre' => $g->nombre,
-                'codigo' => $g->codigo,
-                'especialidad' => $g->especialidad,
-            ];
-        });
-
         return Inertia::render('Admin/Alumnos/Index', [
-            'alumnos' => $alumnos,
-            'groups' => $groups
+            'alumnos' => Inertia::defer(function () {
+                return Student::whereHas('user')
+                    ->with(['user', 'enrollment.academicGroup'])
+                    ->get()
+                    ->map(function ($student) {
+                        return [
+                            'id' => $student->id,
+                            'usuario_id' => $student->usuario_id,
+                            'nombre' => $student->user ? $student->user->nombre_completo : 'Sin nombre',
+                            'rawNombre' => $student->user->nombre ?? '',
+                            'rawPaterno' => $student->user->apellido_paterno ?? '',
+                            'rawMaterno' => $student->user->apellido_materno ?? '',
+                            'email' => $student->user->email ?? 'Sin correo',
+                            'matricula' => $student->matricula,
+                            'telefono' => $student->user->telefono ?? '',
+                            'fecha_nacimiento' => $student->fecha_nacimiento ?? '',
+                            'grupo' => $student->enrollment && $student->enrollment->academicGroup ? [
+                                'id' => $student->enrollment->academicGroup->id,
+                                'nombre' => $student->enrollment->academicGroup->nombre,
+                            ] : null,
+                            'estatus' => $student->enrollment->estatus ?? 'active',
+                            'calificaciones' => [],
+                        ];
+                    });
+            }),
+            'groups' => AcademicGroup::all()->map(function ($g) {
+                return [
+                    'id' => $g->id,
+                    'nombre' => $g->nombre,
+                    'codigo' => $g->codigo,
+                    'especialidad' => $g->especialidad,
+                ];
+            })
         ]);
     }
 
@@ -219,6 +214,19 @@ class StudentController extends Controller
             $student->enrollment->update(['estatus' => $newStatus]);
         }
         return redirect()->route('admin.alumnos.index');
+    }
+
+    /**
+     * Obtiene el Kardex detallado de un alumno (Carga bajo demanda para velocidad)
+     */
+    public function getKardex($id)
+    {
+        $student = Student::findOrFail($id);
+        $kardex = \App\Services\GradeService::getStudentKardex($student->usuario_id);
+
+        return response()->json([
+            'kardex' => $kardex
+        ]);
     }
 
     public function destroy($id)

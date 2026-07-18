@@ -10,16 +10,16 @@ class SpecialtyController extends Controller
 {
     public function index()
     {
-        $specialties = Specialty::all()->map(function ($s) {
-            return [
-                'id' => $s->id,
-                'nombre' => $s->nombre,
-                'codigo' => $s->codigo,
-            ];
-        });
-
         return Inertia::render('Admin/Especialidades/Index', [
-            'especialidades' => $specialties
+            'especialidades' => Inertia::defer(function () {
+                return Specialty::all()->map(function ($s) {
+                    return [
+                        'id' => $s->id,
+                        'nombre' => $s->nombre,
+                        'codigo' => $s->codigo,
+                    ];
+                });
+            })
         ]);
     }
 

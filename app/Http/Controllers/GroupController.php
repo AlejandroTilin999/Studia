@@ -12,41 +12,36 @@ class GroupController extends Controller
 {
     public function index()
     {
-        // Traer grupos mapeados con sus nombres de columnas reales de la DB (Español)
-        $groups = AcademicGroup::with(['tutor'])->get()->map(function ($group) {
-            return [
-                'id' => $group->id,
-                'codigo' => $group->codigo,
-                'nombre' => $group->nombre,
-                'turno' => $group->turno ?? 'Matutino',
-                'especialidad' => $group->especialidad,
-                'docente_tutor_id' => $group->docente_tutor_id ?? '',
-                'profesor' => $group->tutor
-                    ? trim("{$group->tutor->nombre} {$group->tutor->apellido_paterno}")
-                    : 'Sin tutor asignado',
-                'activo' => (bool)($group->activo ?? true)
-            ];
-        });
-
-        $teachers = Teacher::all()->map(function ($t) {
-            return [
-                'id' => $t->id,
-                'nombre_completo' => trim("{$t->nombre} {$t->apellido_paterno} " . ($t->apellido_materno ?? ''))
-            ];
-        });
-
-        $specialties = Specialty::all()->map(function ($s) {
-            return [
-                'id' => $s->id,
-                'nombre' => $s->nombre,
-                'codigo' => $s->codigo,
-            ];
-        });
-
         return Inertia::render('Admin/Grupos/Index', [
-            'grupos' => $groups,
-            'profesores' => $teachers,
-            'especialidades' => $specialties
+            'grupos' => Inertia::defer(function () {
+                return AcademicGroup::with(['tutor'])->get()->map(function ($group) {
+                    return [
+                        'id' => $group->id,
+                        'codigo' => $group->codigo,
+                        'nombre' => $group->nombre,
+                        'turno' => $group->turno ?? 'Matutino',
+                        'especialidad' => $group->especialidad,
+                        'docente_tutor_id' => $group->docente_tutor_id ?? '',
+                        'profesor' => $group->tutor
+                            ? trim("{$group->tutor->nombre} {$group->tutor->apellido_paterno}")
+                            : 'Sin tutor asignado',
+                        'activo' => (bool)($group->activo ?? true)
+                    ];
+                });
+            }),
+            'profesores' => Teacher::all()->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'nombre_completo' => trim("{$t->nombre} {$t->apellido_paterno} " . ($t->apellido_materno ?? ''))
+                ];
+            }),
+            'especialidades' => Specialty::all()->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'nombre' => $s->nombre,
+                    'codigo' => $s->codigo,
+                ];
+            })
         ]);
     }
 

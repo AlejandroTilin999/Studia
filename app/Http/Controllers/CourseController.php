@@ -14,51 +14,42 @@ class CourseController extends Controller
 {
     public function index()
     {
-        // Cargamos profesor, grupos y especialidades (ahora restaurado)
-        $coursesRaw = Course::with(['teacher', 'groups', 'specialties'])->get();
-
-        $materiasFormateadas = $coursesRaw->map(function ($course) {
-            return [
-                'id' => $course->id,
-                'codigo' => $course->codigo,
-                'nombre' => $course->nombre,
-                'semestre' => $course->semestre ?? 1,
-                'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
-                'tipo' => $course->tipo ?? 'General',
-                'area' => $course->area ?? '',
-                'docente_id' => $course->docente_id,
-                'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
-                'grupos' => $course->groups ? $course->groups->pluck('codigo')->unique()->toArray() : [],
-                'especialidades' => $course->specialties ? $course->specialties->map(fn($s) => [
-                    'id' => $s->id,
-                    'nombre' => $s->nombre,
-                ])->toArray() : [],
-            ];
-        });
-
-        // Obtenemos profesores y grupos para los selectores
-        $profesores = \App\Models\Teacher::all()->map(fn($t) => [
-            'id' => $t->id,
-            'nombre_completo' => $t->name,
-        ]);
-
-        $grupos = AcademicGroup::all()->map(fn($g) => [
-            'id' => $g->id,
-            'codigo' => $g->codigo,
-            'nombre' => $g->nombre,
-        ]);
-
-        $especialidades = Specialty::all()->map(fn($s) => [
-            'id' => $s->id,
-            'nombre' => $s->nombre,
-            'codigo' => $s->codigo,
-        ]);
-
         return Inertia::render('Admin/Materias/Index', [
-            'materias' => $materiasFormateadas,
-            'profesores' => $profesores,
-            'grupos' => $grupos,
-            'especialidades' => $especialidades,
+            'materias' => Inertia::defer(function () {
+                $coursesRaw = Course::with(['teacher', 'groups', 'specialties'])->get();
+                return $coursesRaw->map(function ($course) {
+                    return [
+                        'id' => $course->id,
+                        'codigo' => $course->codigo,
+                        'nombre' => $course->nombre,
+                        'semestre' => $course->semestre ?? 1,
+                        'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
+                        'tipo' => $course->tipo ?? 'General',
+                        'area' => $course->area ?? '',
+                        'docente_id' => $course->docente_id,
+                        'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
+                        'grupos' => $course->groups ? $course->groups->pluck('codigo')->unique()->toArray() : [],
+                        'especialidades' => $course->specialties ? $course->specialties->map(fn($s) => [
+                            'id' => $s->id,
+                            'nombre' => $s->nombre,
+                        ])->toArray() : [],
+                    ];
+                });
+            }),
+            'profesores' => \App\Models\Teacher::all()->map(fn($t) => [
+                'id' => $t->id,
+                'nombre_completo' => $t->name,
+            ]),
+            'grupos' => AcademicGroup::all()->map(fn($g) => [
+                'id' => $g->id,
+                'codigo' => $g->codigo,
+                'nombre' => $g->nombre,
+            ]),
+            'especialidades' => Specialty::all()->map(fn($s) => [
+                'id' => $s->id,
+                'nombre' => $s->nombre,
+                'codigo' => $s->codigo,
+            ]),
         ]);
     }
 

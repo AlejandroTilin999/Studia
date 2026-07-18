@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, Deferred } from '@inertiajs/react';
 import { Download } from 'lucide-react';
 import LoadFormModal from './components/LoadFormModal';
 import LoadTable from './components/LoadTable';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { loadService } from './services/loadService';
 import { CargasIndexProps, AcademicLoadItem } from './types';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 export default function CargasIndex({
     loads = [],
@@ -189,12 +190,19 @@ export default function CargasIndex({
                 onOpenCreateModal={openCreateModal}
             />
 
-            <LoadTable
-                loads={filteredLoads}
-                onOpenEditModal={openEditModal}
-                onOpenDeleteModal={handleDeleteLoad}
-                activePeriodId={activePeriod?.id}
-            />
+            <Deferred data="loads" fallback={
+                <DotsLoader
+                    label="Cargando asignaciones"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <LoadTable
+                    loads={filteredLoads}
+                    onOpenEditModal={openEditModal}
+                    onOpenDeleteModal={handleDeleteLoad}
+                    activePeriodId={activePeriod?.id}
+                />
+            </Deferred>
 
             <LoadFormModal
                 isOpen={isCreateModalOpen || isEditModalOpen}

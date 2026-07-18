@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Deferred } from '@inertiajs/react';
 import { Download, Layers, FileText } from 'lucide-react';
+import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { SwalHelper } from '@/utils/SwalHelper';
@@ -222,11 +223,20 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
             />
-            <TeacherTable
-                teachers={filteredTeachers}
-                onEdit={openEditModal}
-                onDelete={handleDeleteTeacher}
-            />
+
+            <Deferred data="teachers" fallback={
+                <DotsLoader
+                    label="Cargando profesores"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <TeacherTable
+                    teachers={filteredTeachers}
+                    onEdit={openEditModal}
+                    onDelete={handleDeleteTeacher}
+                />
+            </Deferred>
+
             <TeacherFormModal
                 open={isFormModalOpen}
                 mode={modalMode}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Layers, FileText } from "lucide-react";
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Deferred } from '@inertiajs/react';
+import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import AdminPageLayout from '@/Components/AdminPageLayout';
@@ -246,9 +247,28 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         });
     };
 
-    const openKardexModal = (student: any) => {
+    const openKardexModal = async (student: any) => {
         setSelectedStudent(student);
         setIsKardexModalOpen(true);
+
+        // Cargar Kardex real desde el servidor solo cuando se abre el modal
+        try {
+            const response = await fetch(`/admin/alumnos/${student.id}/kardex`);
+            const result = await response.json();
+            if (result.kardex) {
+                setSelectedStudent((prev: any) => ({
+                    ...prev,
+                    grades: result.kardex.map((g: any) => ({
+                        subject: g.subject,
+                        code: g.code,
+                        score: g.score,
+                        period: g.period
+                    }))
+                }));
+            }
+        } catch (error) {
+            console.error("Error al cargar el kardex:", error);
+        }
     };
 
     return (
@@ -286,14 +306,20 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 setShowFiltersDropdown={setShowFiltersDropdown}
             />
 
-            {/* Table */}
-            <StudentTable
-                students={filteredStudents}
-                onOpenEditModal={openEditModal}
-                onOpenBajaModal={handleToggleStatus}
-                onOpenKardexModal={openKardexModal}
-                onDelete={handleDeleteStudent}
-            />
+            <Deferred data="alumnos" fallback={
+                <DotsLoader
+                    label="Cargando alumnos"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <StudentTable
+                    students={filteredStudents}
+                    onOpenEditModal={openEditModal}
+                    onOpenBajaModal={handleToggleStatus}
+                    onOpenKardexModal={openKardexModal}
+                    onDelete={handleDeleteStudent}
+                />
+            </Deferred>
 
             {/* Modal: Add/Edit student */}
             <StudentFormModal

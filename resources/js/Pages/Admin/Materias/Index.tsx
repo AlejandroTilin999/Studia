@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Deferred } from '@inertiajs/react';
 import { Download, Layers, Users } from 'lucide-react';
+import DotsLoader from '@/Components/ui/DotsLoader';
 import SubjectTable from './components/SubjectTable';
 import SubjectTableControls from './components/SubjectTableControls';
 import SubjectFormModal from './components/SubjectFormModal';
@@ -184,11 +185,20 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 setGroupFilter={setGroupFilter}
                 groupsList={groupsList}
             />
-            <SubjectTable
-                subjects={filteredSubjects}
-                onOpenEditModal={openEditModal}
-                onDelete={handleDeleteSubject}
-            />
+
+            <Deferred data="materias" fallback={
+                <DotsLoader
+                    label="Cargando materias"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <SubjectTable
+                    subjects={filteredSubjects}
+                    onOpenEditModal={openEditModal}
+                    onDelete={handleDeleteSubject}
+                />
+            </Deferred>
+
             <SubjectFormModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

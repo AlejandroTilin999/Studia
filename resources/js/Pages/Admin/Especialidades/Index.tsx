@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm, router } from '@inertiajs/react';
+import { useForm, router, Deferred } from '@inertiajs/react';
 import { Download, Layers, Plus, Search } from 'lucide-react';
 import SpecialtyTable from './components/SpecialtyTable';
 import SpecialtyFormModal from './components/SpecialtyFormModal';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { specialtyService } from './services/specialtyService';
 import { SpecialtiesIndexProps, Specialty } from './types';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesIndexProps) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -157,11 +158,18 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
             </div>
 
             {/* Table */}
-            <SpecialtyTable
-                specialties={filteredSpecialties}
-                onOpenEditModal={openEditModal}
-                onDelete={handleDelete}
-            />
+            <Deferred data="especialidades" fallback={
+                <DotsLoader
+                    label="Cargando especialidades"
+                    sublabel="Por favor espera un momento..."
+                />
+            }>
+                <SpecialtyTable
+                    specialties={filteredSpecialties}
+                    onOpenEditModal={openEditModal}
+                    onDelete={handleDelete}
+                />
+            </Deferred>
 
             {/* Create Modal */}
             <SpecialtyFormModal

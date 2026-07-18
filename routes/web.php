@@ -62,7 +62,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Módulo de Administración (Admin)
         // ------------------------------------------
         Route::prefix('admin')->group(function () {
-            Route::get('/dashboard', function () {
+            Route::get('/', function () {
                 $cycles = \App\Models\AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
                     return [
                         'id' => $p->id,
@@ -105,6 +105,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/usuarios/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset_password');
 
             Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
+            Route::get('/alumnos/{id}/kardex', [StudentController::class, 'getKardex'])->name('admin.alumnos.kardex');
             Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
             Route::put('/alumnos/{id}', [StudentController::class, 'update'])->name('admin.alumnos.update');
             Route::delete('/alumnos/{id}', [StudentController::class, 'destroy'])->name('admin.alumnos.destroy');
