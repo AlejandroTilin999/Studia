@@ -61,7 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         // Módulo de Administración (Admin)
         // ------------------------------------------
-        Route::prefix('admin')->group(function () {
+        Route::prefix('admin')->middleware('role:admin')->group(function () {
             Route::get('/', function () {
                 $cycles = \App\Models\AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
                     return [
@@ -136,7 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         // Módulo de Docente
         // ------------------------------------------
-        Route::prefix('docente')->group(function () {
+        Route::prefix('docente')->middleware('role:docente')->group(function () {
             Route::get('/dashboard', function () {
                 $user = auth()->user();
                 $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
@@ -219,7 +219,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         // Módulo de Alumno
         // ------------------------------------------
-        Route::prefix('alumno')->group(function () {
+        Route::prefix('alumno')->middleware('role:alumno')->group(function () {
             Route::get('/', function () {
                 $studentId = auth()->id();
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
