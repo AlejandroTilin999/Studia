@@ -10,7 +10,7 @@ import { useExportExcel } from '@/hooks/useExportExcel';
 import { specialtyService } from './services/specialtyService';
 import { SpecialtiesIndexProps, Specialty } from './types';
 
-export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexProps) {
+export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesIndexProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -20,15 +20,15 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
     const { exportToExcel } = useExportExcel();
 
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
-        name: '',
-        code: '',
+        nombre: '',
+        codigo: '',
     });
 
     const handleExportExcel = () => {
         const headers = ["Código / Abreviación", "Nombre de la Especialidad"];
         const rows = filteredSpecialties.map(s => [
-            s.code,
-            s.name
+            s.codigo,
+            s.nombre
         ]);
 
         exportToExcel(
@@ -41,9 +41,9 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
         );
     };
 
-    const filteredSpecialties = specialties.filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.code.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredSpecialties = (especialidades || []).filter(s =>
+        (s.nombre?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (s.codigo?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
 
     const openCreateModal = () => {
@@ -56,8 +56,8 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
         clearErrors();
         setSelectedSpecialty(specialty);
         setData({
-            name: specialty.name,
-            code: specialty.code,
+            nombre: specialty.nombre,
+            codigo: specialty.codigo,
         });
         setIsEditModalOpen(true);
     };
@@ -118,7 +118,7 @@ export default function SpecialtiesIndex({ specialties = [] }: SpecialtiesIndexP
         });
     };
 
-    const totalSpecialtiesCount = specialties.length;
+    const totalSpecialtiesCount = especialidades.length;
 
     return (
         <AdminPageLayout

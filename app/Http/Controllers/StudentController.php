@@ -15,30 +15,29 @@ class StudentController extends Controller
 {
     public function index()
     {
-        // Jalamos los alumnos trayendo el nombre, email de users e inscripción con grupo
-        $alumnos = Student::with(['user', 'enrollment.academicGroup'])->get()->map(function ($student) {
-            $nombreCompleto = trim("{$student->nombre} {$student->apellido_paterno} " . ($student->apellido_materno ?? ''));
-            if (empty($nombreCompleto) && $student->user) {
-                $nombreCompleto = $student->user->name;
-            }
-            $grades = $student->user_id ? \App\Services\GradeService::getStudentKardex($student->user_id) : [];
+        // Jalamos solo los alumnos que tengan un usuario vinculado (evita registros huérfanos)
+        $alumnos = Student::whereHas('user')
+            ->with(['user', 'enrollment.academicGroup'])
+            ->get()
+            ->map(function ($student) {
+            $grades = $student->usuario_id ? \App\Services\GradeService::getStudentKardex($student->usuario_id) : [];
             return [
                 'id' => $student->id,
-                'user_id' => $student->user_id,
-                'name' => $nombreCompleto ?: 'Sin nombre',
-                'rawNombre' => $student->nombre ?? '',
-                'rawPaterno' => $student->apellido_paterno ?? '',
-                'rawMaterno' => $student->apellido_materno ?? '',
+                'usuario_id' => $student->usuario_id,
+                'nombre' => $student->user ? $student->user->nombre_completo : 'Sin nombre',
+                'rawNombre' => $student->user->nombre ?? '',
+                'rawPaterno' => $student->user->apellido_paterno ?? '',
+                'rawMaterno' => $student->user->apellido_materno ?? '',
                 'email' => $student->user->email ?? 'Sin correo',
                 'matricula' => $student->matricula,
-                'telefono' => $student->telefono ?? '',
+                'telefono' => $student->user->telefono ?? '',
                 'fecha_nacimiento' => $student->fecha_nacimiento ?? '',
-                'academic_group' => $student->enrollment && $student->enrollment->academicGroup ? [
+                'grupo' => $student->enrollment && $student->enrollment->academicGroup ? [
                     'id' => $student->enrollment->academicGroup->id,
-                    'name' => $student->enrollment->academicGroup->name,
+                    'nombre' => $student->enrollment->academicGroup->nombre,
                 ] : null,
-                'status' => $student->enrollment->status ?? 'active',
-                'grades' => $grades,
+                'estatus' => $student->enrollment->estatus ?? 'active',
+                'calificaciones' => $grades,
             ];
         });
 
@@ -46,9 +45,9 @@ class StudentController extends Controller
         $groups = AcademicGroup::all()->map(function ($g) {
             return [
                 'id' => $g->id,
-                'name' => $g->name,
-                'code' => $g->code,
-                'major' => $g->major,
+                'nombre' => $g->nombre,
+                'codigo' => $g->codigo,
+                'especialidad' => $g->especialidad,
             ];
         });
 
@@ -63,56 +62,79 @@ class StudentController extends Controller
         $request->validate([
             'nombre'            => 'required|string|max:255',
             'apellido_paterno'  => 'required|string|max:255',
-            'apellido_materno'  => 'required|string|max:255',
-            'email'             => 'required|string|email|max:255|unique:users,email',
-            'matricula'         => 'required|string|max:50|unique:alumnos,matricula',
+            'apellido_materno'  => 'nullable|string|max:255',
+            'email'             => 'nullable|string|email|max:255',
+            'matricula'         => 'required|string|max:50',
             'telefono'          => 'required|string|max:20',
             'fecha_nacimiento'  => 'required|date',
-            'academic_group_id' => 'required|exists:grupos,id',
+            'grupo_id'          => 'required|exists:grupos,id',
         ]);
 
         // Validar cupo del grupo (límite: 22 estudiantes por grupo)
-        $activeEnrollmentsCount = Enrollment::where('academic_group_id', $request->academic_group_id)
-            ->where('status', 'active')
+        $activeEnrollmentsCount = Enrollment::where('grupo_id', $request->grupo_id)
+            ->where('estatus', 'active')
             ->whereNull('fecha_baja')
             ->count();
 
         if ($activeEnrollmentsCount >= 22) {
             return redirect()->back()->withErrors([
-                'academic_group_id' => 'El grupo seleccionado ya está lleno (máximo 22 alumnos por salón).'
+                'grupo_id' => 'El grupo seleccionado ya está lleno (máximo 22 alumnos por salón).'
             ]);
         }
 
-        DB::transaction(function () use ($request) {
-            // 1. Crear primero las credenciales de acceso en users
-            $fullName = trim("{$request->nombre} {$request->apellido_paterno} " . ($request->apellido_materno ?? ''));
-            $user = User::create([
-                'name'     => $fullName,
-                'email'    => $request->email,
-                'password' => Hash::make('Prepahid2026'),
-                'role'     => 'alumno',
-            ]);
+        // --- GENERACIÓN DE CORREO ÚNICO ---
+        $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
+        $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
+        // Limpiar acentos y caracteres especiales
+        $firstNamePart  = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $firstNamePart));
+        $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
 
-            Student::create([
-                'user_id'          => $user->id,
-                'matricula'        => $request->matricula,
+        $emailBase      = "{$firstNamePart}.{$paternoPart}";
+        $generatedEmail = "{$emailBase}@prepahidalgo.edu.mx";
+
+        while (User::where('email', $generatedEmail)->exists()) {
+            $randomSuffix = strtoupper(substr(md5(uniqid()), 0, 4));
+            $generatedEmail = "{$emailBase}.{$randomSuffix}@prepahidalgo.edu.mx";
+        }
+
+        // --- GARANTIZAR MATRÍCULA ÚNICA ---
+        $matriculaBase = $request->matricula;
+        $finalMatricula = $matriculaBase;
+        $counter = 1;
+        while (Student::where('matricula', $finalMatricula)->exists()) {
+            $finalMatricula = $matriculaBase . chr(64 + $counter); // Agrega A, B, C...
+            $counter++;
+        }
+
+        DB::transaction(function () use ($request, $generatedEmail, $finalMatricula) {
+            // 1. Crear el usuario correspondiente
+            $user = User::create([
                 'nombre'           => $request->nombre,
                 'apellido_paterno' => $request->apellido_paterno,
                 'apellido_materno' => $request->apellido_materno,
                 'telefono'         => $request->telefono,
+                'email'            => $generatedEmail,
+                'password'         => Hash::make('Prepahid2026'),
+                'rol'              => 'alumno',
+            ]);
+
+            // 2. Crear el perfil de estudiante
+            Student::create([
+                'usuario_id'       => $user->id,
+                'matricula'        => $finalMatricula,
                 'fecha_nacimiento' => $request->fecha_nacimiento,
             ]);
 
             // 3. Registrar su inscripción en el grupo
-            $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+            $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
             $periodId = $activePeriod ? $activePeriod->id : null;
 
             Enrollment::create([
-                'user_id'           => $user->id,
-                'academic_group_id' => $request->academic_group_id,
-                'academic_period_id'=> $periodId,
-                'student_code'      => $request->matricula,
-                'status'            => 'active',
+                'usuario_id'    => $user->id,
+                'grupo_id'      => $request->grupo_id,
+                'ciclo_id'      => $periodId,
+                'codigo_alumno' => $finalMatricula,
+                'estatus'       => 'active',
             ]);
         });
 
@@ -126,64 +148,62 @@ class StudentController extends Controller
         $request->validate([
             'nombre'            => 'required|string|max:255',
             'apellido_paterno'  => 'required|string|max:255',
-            'apellido_materno'  => 'required|string|max:255',
-            'email'             => "required|string|email|max:255|unique:users,email,{$student->user_id}",
+            'apellido_materno'  => 'nullable|string|max:255',
+            'email'             => "required|string|email|max:255|unique:users,email,{$student->usuario_id}",
             'matricula'         => "required|string|max:50|unique:alumnos,matricula,{$student->id}",
             'telefono'          => 'required|string|max:20',
             'fecha_nacimiento'  => 'required|date',
-            'academic_group_id' => 'required|exists:grupos,id',
+            'grupo_id'          => 'required|exists:grupos,id',
         ]);
 
         // Validar cupo del grupo si cambió de grupo
-        $currentGroupId = $student->enrollment ? $student->enrollment->academic_group_id : null;
-        if ($currentGroupId != $request->academic_group_id) {
-            $activeEnrollmentsCount = Enrollment::where('academic_group_id', $request->academic_group_id)
-                ->where('status', 'active')
+        $currentGroupId = $student->enrollment ? $student->enrollment->grupo_id : null;
+        if ($currentGroupId != $request->grupo_id) {
+            $activeEnrollmentsCount = Enrollment::where('grupo_id', $request->grupo_id)
+                ->where('estatus', 'active')
                 ->whereNull('fecha_baja')
                 ->count();
 
             if ($activeEnrollmentsCount >= 22) {
                 return redirect()->back()->withErrors([
-                    'academic_group_id' => 'El grupo seleccionado ya está lleno (máximo 22 alumnos por salón).'
+                    'grupo_id' => 'El grupo seleccionado ya está lleno (máximo 22 alumnos por salón).'
                 ]);
             }
         }
 
         DB::transaction(function () use ($request, $student) {
             // 1. Actualizar datos en la tabla general de usuarios
-            $fullName = trim("{$request->nombre} {$request->apellido_paterno} " . ($request->apellido_materno ?? ''));
             $student->user->update([
-                'name'  => $fullName,
-                'email' => $request->email,
+                'nombre'           => $request->nombre,
+                'apellido_paterno' => $request->apellido_paterno,
+                'apellido_materno' => $request->apellido_materno,
+                'telefono'         => $request->telefono,
+                'email'            => $request->email,
             ]);
 
             // 2. Actualizar datos específicos de la tabla estudiantes
             $student->update([
                 'matricula'        => $request->matricula,
-                'nombre'           => $request->nombre,
-                'apellido_paterno' => $request->apellido_paterno,
-                'apellido_materno' => $request->apellido_materno,
-                'telefono'         => $request->telefono,
                 'fecha_nacimiento' => $request->fecha_nacimiento,
             ]);
 
             // 3. Actualizar inscripción (traslado con historial o asignación inicial)
-            $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+            $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
             $periodId = $activePeriod ? $activePeriod->id : null;
 
             if ($student->enrollment) {
                 $student->enrollment->update([
-                    'academic_group_id' => $request->academic_group_id,
-                    'student_code'      => $request->matricula,
-                    'status'            => $request->status ?? $student->enrollment->status,
+                    'grupo_id'      => $request->grupo_id,
+                    'codigo_alumno' => $request->matricula,
+                    'estatus'       => $request->estatus ?? $student->enrollment->estatus,
                 ]);
             } else {
                 Enrollment::create([
-                    'user_id'           => $student->user_id,
-                    'academic_group_id' => $request->academic_group_id,
-                    'academic_period_id'=> $periodId,
-                    'student_code'      => $request->matricula,
-                    'status'            => $request->status ?? 'active',
+                    'usuario_id'    => $student->usuario_id,
+                    'grupo_id'      => $request->grupo_id,
+                    'ciclo_id'      => $periodId,
+                    'codigo_alumno' => $request->matricula,
+                    'estatus'       => $request->estatus ?? 'active',
                 ]);
             }
         });
@@ -195,8 +215,8 @@ class StudentController extends Controller
     {
         $student = Student::findOrFail($id);
         if ($student->enrollment) {
-            $newStatus = $student->enrollment->status === 'active' ? 'suspended' : 'active';
-            $student->enrollment->update(['status' => $newStatus]);
+            $newStatus = $student->enrollment->estatus === 'active' ? 'suspended' : 'active';
+            $student->enrollment->update(['estatus' => $newStatus]);
         }
         return redirect()->route('admin.alumnos.index');
     }
@@ -206,7 +226,7 @@ class StudentController extends Controller
         $student = Student::findOrFail($id);
 
         // Verificar si tiene historial de calificaciones
-        $gradesCount = \App\Models\Grade::where('user_id', $student->user_id)->count();
+        $gradesCount = \App\Models\Grade::where('usuario_id', $student->usuario_id)->count();
         if ($gradesCount > 0) {
             return redirect()->back()->withErrors([
                 'delete' => "No se puede eliminar el expediente de '{$student->nombre}' porque ya cuenta con {$gradesCount} calificaciones asentadas en su historial."

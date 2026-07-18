@@ -19,14 +19,13 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         semestre: course.semestre || 1,
         tipo: course.tipo || 'General',
         teacherName: course.profesor || 'Pendiente de Asignación',
-        teacher_id: course.teacher_id,
+        teacher_id: course.docente_id,
         linkedGroups: course.grupos || [],
         description: course.descripcion || 'Sin descripción disponible.',
-        specialties: course.especialidades || []
+        specialties: course.especialidades?.map(e => ({ id: e.id, name: e.nombre })) || []
     }));
 
-    // Cargamos los grupos directamente desde la base de datos
-    const groupsList = grupos.map(g => g.code);
+    const groupsList = grupos.map(g => g.codigo);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [groupFilter, setGroupFilter] = useState('all');
@@ -38,12 +37,12 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
     const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
 
-    // Formulario de Inertia
+    // Formulario de Inertia (Campos en Español)
     const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
-        code: '',
-        name: '',
+        codigo: '',
+        nombre: '',
         semestre: 1 as number,
-        description: '',
+        descripcion: '',
         tipo: 'General' as 'General' | 'Especialidad',
         linked_groups: [] as string[],
         specialty_ids: [] as number[]
@@ -62,7 +61,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
 
         exportToExcel(
             "Reporte de Materias - PrepaHid",
-            "Plan de Estudios",
+            "Catálogo Académico",
             headers,
             rows,
             "reporte_materias",
@@ -88,10 +87,10 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         setModalMode('edit');
         setSelectedSubject(subject);
         setData({
-            code: subject.code,
-            name: subject.name,
+            codigo: subject.code,
+            nombre: subject.name,
             semestre: subject.semestre || 1,
-            description: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
+            descripcion: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
             tipo: subject.tipo || 'General',
             linked_groups: subject.linkedGroups || [],
             specialty_ids: subject.specialties ? subject.specialties.map(s => s.id) : []
@@ -101,7 +100,6 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
         SwalHelper.loading(
             modalMode === 'create' ? 'Registrando materia...' : 'Actualizando datos...',
             'Procesando en el servidor'
@@ -116,8 +114,8 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                     modalMode === 'create' ? 'La materia ha sido creada correctamente.' : 'La materia ha sido actualizada.'
                 );
             },
-            onError: (errors) => {
-                const firstError = Object.values(errors)[0];
+            onError: (errors: any) => {
+                const firstError = Object.values(errors)[0] as string;
                 SwalHelper.error('Error de validación', firstError || 'No se pudieron guardar los cambios.');
             }
         };
@@ -138,7 +136,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando materia del plan de estudios.');
+                SwalHelper.loading('Eliminando...', 'Borrando materia del catálogo.');
                 subjectService.destroy(id, {
                     onSuccess: () => {
                         SwalHelper.success('¡Eliminada!', 'La materia ha sido removida del sistema.');
@@ -175,7 +173,6 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 { name: "Sin docente", count: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
-            {/* Controls */}
             <SubjectTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -184,15 +181,11 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 setGroupFilter={setGroupFilter}
                 groupsList={groupsList}
             />
-
-            {/* Table */}
             <SubjectTable
                 subjects={filteredSubjects}
                 onOpenEditModal={openEditModal}
                 onDelete={handleDeleteSubject}
             />
-
-            {/* Form Modal */}
             <SubjectFormModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

@@ -1,8 +1,14 @@
 export interface User {
     id: number;
-    name: string;
+    nombre: string;
+    nombre_completo: string;
     email: string;
+    rol: string;
+    activo: boolean;
+    telefono?: string;
     email_verified_at?: string;
+    docenteGroups?: any[];
+    alumnoGroups?: any[];
 }
 
 export type PageProps<

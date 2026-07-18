@@ -1,43 +1,43 @@
 export interface CatalogItem {
     id: number;
-    name: string;
-    is_active?: boolean;
+    nombre: string;
+    activo?: boolean;
 }
 
 export interface GroupCatalogItem {
     id: number;
-    name: string;
-    code: string;
-    major: string;
+    nombre: string;
+    codigo: string;
+    especialidad: string;
 }
 
 export interface CourseCatalogItem {
     id: number;
-    name: string;
-    code: string;
+    nombre: string;
+    codigo: string;
     tipo: 'General' | 'Especialidad';
     semestre: number;
-    specialty_names?: string[];
+    especialidades?: string[];
 }
 
 export interface TeacherCatalogItem {
     id: number;
     nombre_completo: string;
-    specialty: string;
+    especialidad: string;
 }
 
 export interface AcademicLoadItem {
     id: number;
-    academic_period_id: number;
-    period_name: string;
-    academic_group_id: number;
-    group_name: string;
-    group_code: string;
-    course_id: number;
-    course_name: string;
-    course_code: string;
-    teacher_id: number;
-    teacher_name: string;
+    ciclo_id: number;
+    nombre_ciclo: string;
+    grupo_id: number;
+    nombre_grupo: string;
+    codigo_grupo: string;
+    materia_id: number;
+    nombre_materia: string;
+    codigo_materia: string;
+    docente_id: number;
+    nombre_docente: string;
 }
 
 export interface CargasIndexProps {

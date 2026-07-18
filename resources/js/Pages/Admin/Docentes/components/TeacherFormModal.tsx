@@ -15,8 +15,8 @@ interface TeacherFormModalProps {
         nombre: string;
         apellido_paterno: string;
         apellido_materno: string;
-        phone: string;
-        specialty: string;
+        telefono: string;
+        especialidad: string;
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -45,45 +45,39 @@ export default function TeacherFormModal({
             showFooter={false}
             fullBleed={true}
         >
-            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[380px] h-full text-left relative">
-                {/* Windows Close button relative to the entire grid modal container */}
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[380px] max-h-[90vh] md:max-h-none overflow-y-auto md:overflow-visible h-full text-left relative">
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
+                    className="fixed md:absolute top-4 right-4 z-50 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
                 >
                     <X size={16} className="stroke-[2.5]" />
                 </button>
 
-                {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
-                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
+                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none shrink-0">
                     <div className="space-y-6">
                         <div>
-                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
-                            <h3 className="text-xl font-bold text-white leading-tight">
+                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-8 md:h-10 w-auto object-contain mb-4 md:mb-6" />
+                            <h3 className="text-lg md:text-xl font-bold text-white leading-tight">
                                 {mode === "create" ? "Registrar Nuevo Docente" : "Modificar Información del Docente"}
                             </h3>
                         </div>
-
                         <div className="space-y-4">
-                            <p className="text-xs text-blue-100 leading-relaxed font-normal">
+                            <p className="text-[11px] md:text-xs text-blue-100 leading-relaxed font-normal">
                                 {mode === 'create'
                                     ? 'Al registrar al docente, se generará automáticamente su matrícula y correo institucional de acceso al portal.'
-                                    : 'Modifica la información básica o el área de especialidad del docente. La matrícula y correo no pueden editarse.'}
+                                    : 'Modifica la información básica o el área de especialidad del docente.'}
                             </p>
                         </div>
                     </div>
-
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 shrink-0 hidden md:block">
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 shrink-0 hidden md:block mt-6">
                         Prepahid Campus Escolar
                     </div>
                 </div>
 
-                {/* Right Form Panel (col-span-3) */}
-                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[420px] relative">
-                    <div className="space-y-4 flex-1">
-                        {/* Credenciales Auto-generadas */}
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                <div className="col-span-1 md:col-span-3 p-5 md:p-6 flex flex-col justify-between min-h-0 md:min-h-[420px] relative bg-white rounded-b-[10px] md:rounded-r-[10px] md:rounded-bl-none">
+                    <div className="space-y-5 flex-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel>Matrícula</FormLabel>
                                 <FormInput
@@ -117,8 +111,7 @@ export default function TeacherFormModal({
                                 />
                                 {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <FormLabel required>Apellido Paterno</FormLabel>
                                     <FormInput
@@ -130,7 +123,6 @@ export default function TeacherFormModal({
                                     />
                                     {errors.apellido_paterno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_paterno}</span>}
                                 </div>
-
                                 <div className="space-y-1.5">
                                     <FormLabel required>Apellido Materno</FormLabel>
                                     <FormInput
@@ -143,8 +135,7 @@ export default function TeacherFormModal({
                                     {errors.apellido_materno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_materno}</span>}
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                                 <div className="space-y-1.5">
                                     <FormLabel required>Teléfono</FormLabel>
                                     <FormInput
@@ -152,33 +143,31 @@ export default function TeacherFormModal({
                                         required
                                         maxLength={10}
                                         pattern="[0-9]{10}"
-                                        value={data.phone}
+                                        value={data.telefono}
                                         onChange={(e) => {
                                             const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                            setData('phone', val);
+                                            setData('telefono', val);
                                         }}
                                         placeholder="Ej: 7711234567"
                                         icon={<Phone size={14} />}
                                         className="h-9 text-xs"
                                     />
-                                    {errors.phone && <span className="text-red-500 text-[10px] mt-1 block">{errors.phone}</span>}
+                                    {errors.telefono && <span className="text-red-500 text-[10px] mt-1 block">{errors.telefono}</span>}
                                 </div>
-
                                 <div className="space-y-1.5">
                                     <FormLabel required>Área de Especialidad</FormLabel>
                                     <SpecialtySelect
                                         required
-                                        value={data.specialty}
-                                        onChange={e => setData('specialty', e.target.value)}
+                                        value={data.especialidad}
+                                        onChange={e => setData('especialidad', e.target.value)}
                                         className="h-9 text-xs"
                                     />
-                                    {errors.specialty && <span className="text-red-500 text-[10px] mt-1 block">{errors.specialty}</span>}
+                                    {errors.especialidad && <span className="text-red-500 text-[10px] mt-1 block">{errors.especialidad}</span>}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Footer de Navegación Aligned Right */}
-                        <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
+                        <div className="mt-8 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none bg-white md:bg-transparent sticky bottom-0 md:relative">
                             <button
                                 type="button"
                                 onClick={onClose}

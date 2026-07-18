@@ -1,8 +1,3 @@
-export interface TurnoSelect {
-    id: number;
-    nombre: string;
-}
-
 export interface GrupoBackend {
     id: number;
     codigo: string;
@@ -12,7 +7,6 @@ export interface GrupoBackend {
     tutor_teacher_id: number | null;
     profesor: string;
     linked_courses?: number[];
-    turno_id?: number | string;
     activo?: boolean;
 }
 
@@ -38,7 +32,6 @@ export interface GruposIndexProps {
     profesores?: ProfesorSelect[];
     materias?: MateriaSelect[];
     especialidades?: SpecialtySelect[];
-    turnos?: TurnoSelect[];
 }
 
 export interface GroupFormatted {
@@ -49,6 +42,5 @@ export interface GroupFormatted {
     teacherName: string;
     teacher_id: number | null;
     specialty: string;
-    turno_id?: number | string;
     activo?: boolean;
 }

@@ -1,20 +1,20 @@
 export interface TeacherFromBackend {
     id: number;
-    employee_code: string;
+    codigo_empleado: string;
     nombre: string;
     apellido_paterno: string;
     apellido_materno: string | null;
-    specialty: string;
-    phone: string | null;
+    especialidad: string;
+    telefono: string | null;
     email?: string;
-    user?: {
+    usuario?: {
         email: string;
     };
-    courses?: {
+    materias?: {
         id: number;
-        name: string;
-        code: string;
-        groupName?: string;
+        nombre: string;
+        codigo: string;
+        nombre_grupo?: string;
     }[];
 }
 

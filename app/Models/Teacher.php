@@ -9,42 +9,59 @@ class Teacher extends Model
     protected $table = 'docentes';
 
     protected $fillable = [
-        'user_id',
-        'employee_code', 
-        'nombre', 
-        'apellido_paterno', 
-        'apellido_materno', 
-        'specialty', 
-        'phone',
-        'activo'
+        'usuario_id',
+        'codigo_empleado',
+        'especialidad'
     ];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 
-    // Accessor to get full name as ->name attribute
+    /**
+     * Accessor para obtener el nombre completo desde el usuario vinculado.
+     */
+    public function getNombreAttribute()
+    {
+        return $this->user ? $this->user->nombre : '';
+    }
+
+    public function getApellidoPaternoAttribute()
+    {
+        return $this->user ? $this->user->apellido_paterno : '';
+    }
+
+    public function getApellidoMaternoAttribute()
+    {
+        return $this->user ? $this->user->apellido_materno : '';
+    }
+
+    public function getTelefonoAttribute()
+    {
+        return $this->user ? $this->user->telefono : '';
+    }
+
     public function getNameAttribute()
     {
-        return trim("{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}");
+        return $this->user ? $this->user->nombre_completo : 'Sin nombre';
     }
 
-    // Relación Uno a Muchos con Cursos (Materias) mediante la columna teacher_id
+    // Relación Uno a Muchos con Cursos (Materias) mediante la columna docente_id
     public function courses()
     {
-        return $this->hasMany(Course::class, 'teacher_id');
+        return $this->hasMany(Course::class, 'docente_id');
     }
 
-    // Relación con los grupos tutoreados usando el foreign key correcto (tutor_teacher_id)
+    // Relación con los grupos tutoreados usando el foreign key correcto (docente_tutor_id)
     public function tutoredGroups()
     {
-        return $this->hasMany(AcademicGroup::class, 'tutor_teacher_id');
+        return $this->hasMany(AcademicGroup::class, 'docente_tutor_id');
     }
 
     // Relación con las cargas académicas
     public function academicLoads()
     {
-        return $this->hasMany(AcademicLoad::class, 'teacher_id');
+        return $this->hasMany(AcademicLoad::class, 'docente_id');
     }
 }

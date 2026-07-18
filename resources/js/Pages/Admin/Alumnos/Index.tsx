@@ -20,19 +20,19 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const formattedStudents: StudentFormatted[] = alumnos.map((student: BackendStudent) => ({
         id: student.id,
         matricula: student.matricula || 'S/M',
-        name: student.name || 'Sin nombre asignado',
+        name: student.nombre || 'Sin nombre asignado',
         email: student.email || 'sin-correo@prepahidalgo.edu.mx',
-        groupId: student.academic_group?.id || 0,
-        groupName: student.academic_group?.name || 'Sin grupo',
-        status: student.status || 'active',
+        groupId: student.grupo?.id || 0,
+        groupName: student.grupo?.nombre || 'Sin grupo',
+        status: student.estatus || 'active',
         telefono: student.telefono || '',
         fecha_nacimiento: student.fecha_nacimiento || '',
         rawNombre: student.rawNombre || '',
         rawPaterno: student.rawPaterno || '',
         rawMaterno: student.rawMaterno || '',
-        grades: student.grades?.map((g: any) => ({
-            subject: g.subject || g.course?.name || 'Materia Desconocida',
-            code: g.code || g.course?.code || 'S/C',
+        grades: student.calificaciones?.map((g: any) => ({
+            subject: g.subject || g.course?.nombre || 'Materia Desconocida',
+            code: g.code || g.course?.codigo || 'S/C',
             score: g.score,
             period: g.period || '2026-A'
         })) || []
@@ -48,6 +48,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    const [randomSuffix, setRandomSuffix] = useState('');
 
     // FORMULARIO INTEGRADO A LAS TABLAS USERS Y ENROLLMENTS
     const { data, setData, reset, processing, errors } = useForm({
@@ -58,45 +59,55 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         email: '',
         telefono: '',
         fecha_nacimiento: '',
-        academic_group_id: '',
-        status: 'active' as 'active' | 'inactive' | 'suspended'
+        grupo_id: '',
+        estatus: 'active' as 'active' | 'inactive' | 'suspended'
     });
     useEffect(() => {
         if (modalMode === 'create') {
-            if (data.nombre.trim() === '' && data.apellido_paterno.trim() === '') {
+            const nombre = data.nombre.trim();
+            const paterno = data.apellido_paterno.trim();
+            const materno = data.apellido_materno.trim();
+            const fecha = data.fecha_nacimiento;
+
+            if (nombre === '' && paterno === '') {
                 if (data.matricula !== '' || data.email !== '') {
                     setData(currentData => ({
                         ...currentData,
                         matricula: '',
-                        email: ''
+                        email: '',
                     }));
                 }
             } else {
-                const firstInit = data.nombre.trim().charAt(0) || '';
-                const paternalInit = data.apellido_paterno.trim().charAt(0) || '';
-                const maternalInit = data.apellido_materno.trim().charAt(0) || '';
+                const firstInit = nombre.charAt(0) || '';
+                const paternalInit = paterno.charAt(0) || '';
+                const maternalInit = materno.charAt(0) || '';
                 const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
-                const groupSelected = groups.find(g => g.id === Number(data.academic_group_id));
+
+                const groupSelected = groups.find(g => g.id === Number(data.grupo_id));
                 const groupCode = groupSelected ? groupSelected.id : '00';
                 const currentYear = new Date().getFullYear();
                 const generatedMatricula = `${initials}${groupCode}${currentYear}`;
 
-                let firstNamePart = data.nombre.trim().split(/\s+/)[0]?.toLowerCase() || '';
-                let paternalPart = data.apellido_paterno.trim().split(/\s+/)[0]?.toLowerCase() || '';
-                let emailBase = `${firstNamePart}.${paternalPart}`.trim();
-                emailBase = emailBase.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                const generatedEmail = emailBase && emailBase !== '.' ? `${emailBase}@prepahid.edu.mx` : '';
+                let firstNamePart = nombre.split(/\s+/)[0]?.toLowerCase() || '';
+                let paternalPart = paterno.split(/\s+/)[0]?.toLowerCase() || '';
+                firstNamePart = firstNamePart.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                paternalPart = paternalPart.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+                // Usamos el sufijo aleatorio generado al abrir el modal
+                const generatedEmail = firstNamePart && paternalPart
+                    ? `${firstNamePart}.${paternalPart}.${randomSuffix}@prepahidalgo.edu.mx`
+                    : '';
 
                 if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
                     setData(currentData => ({
                         ...currentData,
                         matricula: generatedMatricula,
-                        email: generatedEmail
+                        email: generatedEmail,
                     }));
                 }
             }
         }
-    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.academic_group_id, modalMode, groups]);;
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, data.fecha_nacimiento, modalMode, groups, randomSuffix]);;
 
     const handleExportExcel = () => {
         const rows = filteredStudents.map(s => [
@@ -131,6 +142,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     const openCreateModal = () => {
         setModalMode('create');
+        setRandomSuffix(Math.random().toString(36).substring(2, 6).toUpperCase());
         reset();
         setIsFormModalOpen(true);
     };
@@ -146,8 +158,8 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             email: student.email,
             telefono: student.telefono,
             fecha_nacimiento: student.fecha_nacimiento,
-            academic_group_id: student.groupId,
-            status: student.status
+            grupo_id: student.groupId,
+            estatus: student.status
         });
         setIsFormModalOpen(true);
     };

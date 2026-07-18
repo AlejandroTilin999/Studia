@@ -9,8 +9,8 @@ interface SpecialtyFormModalProps {
     onClose: () => void;
     mode: 'create' | 'edit';
     data: {
-        name: string;
-        code: string;
+        nombre: string;
+        codigo: string;
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -31,12 +31,12 @@ export default function SpecialtyFormModal({
 
     useEffect(() => {
         if (isOpen && mode === 'create') {
-            setData('name', '');
-            setData('code', '');
+            setData('nombre', '');
+            setData('codigo', '');
         }
     }, [isOpen, mode]);
 
-    const isFormValid = data.name.trim() !== '' && data.code.trim() !== '';
+    const isFormValid = data.nombre.trim() !== '' && data.codigo.trim() !== '';
 
     return (
         <BaseModal
@@ -85,11 +85,11 @@ export default function SpecialtyFormModal({
                             <FormInput
                                 type="text"
                                 placeholder="Ej: Informática"
-                                value={data.name}
-                                onChange={e => setData('name', e.target.value)}
+                                value={data.nombre}
+                                onChange={e => setData('nombre', e.target.value)}
                                 maxLength={50}
                             />
-                            {errors.name && <span className="text-red-500 text-[10px] mt-1 block">{errors.name}</span>}
+                            {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                         </div>
 
                         <div className="space-y-1.5 text-left">
@@ -97,12 +97,11 @@ export default function SpecialtyFormModal({
                             <FormInput
                                 type="text"
                                 placeholder="Ej: INF"
-                                value={data.code}
-                                onChange={e => setData('code', e.target.value.toUpperCase())}
+                                value={data.codigo}
+                                onChange={e => setData('codigo', e.target.value.toUpperCase())}
                                 maxLength={10}
                             />
-                            <p className="text-[9px] text-slate-400 font-medium leading-none">Abreviación corta de 3 letras recomendada. Se usará para generar códigos de grupo.</p>
-                            {errors.code && <span className="text-red-500 text-[10px] mt-1 block">{errors.code}</span>}
+                            {errors.codigo && <span className="text-red-500 text-[10px] mt-1 block">{errors.codigo}</span>}
                         </div>
                     </div>
 

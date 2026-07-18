@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
-    protected $fillable = ['user_id', 'concept', 'amount', 'status'];
+    protected $table = 'facturas'; // Se llamará facturas si se crea
+    protected $fillable = ['usuario_id', 'concepto', 'monto', 'estatus'];
 
-    // El cobro/factura le pertenece a un usuario específico
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 }

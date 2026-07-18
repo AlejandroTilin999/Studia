@@ -1,9 +1,9 @@
 export interface Specialty {
     id: number;
-    name: string;
-    code: string;
+    nombre: string;
+    codigo: string;
 }
 
 export interface SpecialtiesIndexProps {
-    specialties: Specialty[];
+    especialidades?: Specialty[];
 }

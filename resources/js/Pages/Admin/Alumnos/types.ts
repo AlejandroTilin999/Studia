@@ -4,21 +4,22 @@ export interface BackendGrade {
     period: string;
     course?: {
         id: number;
-        name: string;
+        nombre: string;
     };
 }
 
 export interface BackendStudent {
     id: number;
     matricula: string;
-    name: string;
+    nombre: string;
     email: string;
-    status?: 'active' | 'suspended';
-    academic_group?: {
+    curp?: string;
+    estatus?: 'active' | 'suspended';
+    grupo?: {
         id: number;
-        name: string;
+        nombre: string;
     };
-    grades?: BackendGrade[];
+    calificaciones?: BackendGrade[];
     telefono?: string;
     fecha_nacimiento?: string;
     rawNombre?: string;
@@ -28,8 +29,8 @@ export interface BackendStudent {
 
 export interface AcademicGroupProp {
     id: number;
-    name: string;
-    code: string;
+    nombre: string;
+    codigo: string;
 }
 
 export interface StudentFormatted {
@@ -37,6 +38,7 @@ export interface StudentFormatted {
     matricula: string;
     name: string;
     email: string;
+    curp?: string;
     groupId: number;
     groupName: string;
     status: 'active' | 'suspended';

@@ -37,7 +37,7 @@ export default function StudentTableControls({
                 />
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto relative">
-                
+
                 <button
                     onClick={onOpenCreateModal}
                     className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
@@ -68,7 +68,7 @@ export default function StudentTableControls({
                         >
                             <option value="all">Todos los Grupos</option>
                             {groups.map(g => (
-                                <option key={g.id} value={g.id.toString()}>{g.name}</option>
+                                <option key={g.id} value={g.id.toString()}>{g.nombre}</option>
                             ))}
                         </select>
                     </div>

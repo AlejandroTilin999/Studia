@@ -5,6 +5,7 @@ import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
 import { FormSelect } from '@/Components/forms/FormSelect';
 import { AcademicGroupProp } from '../types';
+import { MONTHS, YEARS } from '../constants';
 
 interface StudentFormModalProps {
     isOpen: boolean;
@@ -20,8 +21,8 @@ interface StudentFormModalProps {
         email: string;
         telefono: string;
         fecha_nacimiento: string;
-        academic_group_id: number | string;
-        status: 'active' | 'inactive' | 'suspended';
+        grupo_id: number | string;
+        estatus: 'active' | 'inactive' | 'suspended';
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -68,26 +69,6 @@ export default function StudentFormModal({
         }
     }, [isOpen]);
 
-    const years = Array.from({ length: 2027 - 1970 }, (_, i) => (2026 - i).toString());
-    const days = Array.from({ length: 31 }, (_, i) => {
-        const val = (i + 1).toString();
-        return val.padStart(2, '0');
-    });
-    const months = [
-        { value: '01', label: 'Enero' },
-        { value: '02', label: 'Febrero' },
-        { value: '03', label: 'Marzo' },
-        { value: '04', label: 'Abril' },
-        { value: '05', label: 'Mayo' },
-        { value: '06', label: 'Junio' },
-        { value: '07', label: 'Julio' },
-        { value: '08', label: 'Agosto' },
-        { value: '09', label: 'Septiembre' },
-        { value: '10', label: 'Octubre' },
-        { value: '11', label: 'Noviembre' },
-        { value: '12', label: 'Diciembre' },
-    ];
-
     const handleDateChange = (type: 'day' | 'month' | 'year', value: string) => {
         let d = localDay;
         let m = localMonth;
@@ -99,9 +80,26 @@ export default function StudentFormModal({
         } else if (type === 'month') {
             setLocalMonth(value);
             m = value;
+            // Validar si el día actual excede el nuevo mes (ej: de 31 de Enero a Febrero)
+            if (d) {
+                const maxDays = new Date(parseInt(y) || 2000, parseInt(value), 0).getDate();
+                if (parseInt(d) > maxDays) {
+                    const newDay = maxDays.toString().padStart(2, '0');
+                    setLocalDay(newDay);
+                    d = newDay;
+                }
+            }
         } else if (type === 'year') {
             setLocalYear(value);
             y = value;
+            // Re-validar febrero en bisiestos
+            if (m === '02' && d === '29') {
+                const maxDays = new Date(parseInt(value), 2, 0).getDate();
+                if (maxDays < 29) {
+                    setLocalDay('28');
+                    d = '28';
+                }
+            }
         }
 
         if (d && m && y) {
@@ -110,6 +108,13 @@ export default function StudentFormModal({
             setData('fecha_nacimiento', '');
         }
     };
+
+    const dynamicDays = React.useMemo(() => {
+        const year = parseInt(localYear) || 2026;
+        const month = parseInt(localMonth) || 1;
+        const count = new Date(year, month, 0).getDate();
+        return Array.from({ length: count }, (_, i) => (i + 1).toString().padStart(2, '0'));
+    }, [localMonth, localYear]);
 
     return (
         <BaseModal
@@ -121,28 +126,28 @@ export default function StudentFormModal({
             showFooter={false}
             fullBleed={true}
         >
-            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[460px] h-full text-left relative">
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[460px] max-h-[90vh] md:max-h-none overflow-y-auto md:overflow-visible h-full text-left relative">
                 {/* Windows Close button relative to the entire grid modal container */}
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
+                    className="fixed md:absolute top-4 right-4 z-50 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
                 >
                     <X size={16} className="stroke-[2.5]" />
                 </button>
 
                 {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
-                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
+                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none shrink-0">
                     <div className="space-y-6">
                         <div>
-                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
-                            <h3 className="text-xl font-bold text-white leading-tight">
+                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-8 md:h-10 w-auto object-contain mb-4 md:mb-6" />
+                            <h3 className="text-lg md:text-xl font-bold text-white leading-tight">
                                 {mode === 'create' ? 'Inscribir Nuevo Alumno' : 'Modificar Información del Alumno'}
                             </h3>
                         </div>
 
                         <div className="space-y-4">
-                            <p className="text-xs text-blue-100 leading-relaxed font-normal">
+                            <p className="text-[11px] md:text-xs text-blue-100 leading-relaxed font-normal">
                                 {mode === 'create'
                                     ? 'Al registrar la matrícula, el alumno recibirá sus credenciales de acceso institucional y se creará su expediente de calificaciones.'
                                     : 'Modifica los datos personales y de grupo. Por seguridad, la matrícula y el correo no pueden ser editados.'}
@@ -150,16 +155,16 @@ export default function StudentFormModal({
                         </div>
                     </div>
 
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6">
                         Prepahid Campus Escolar
                     </div>
                 </div>
 
                 {/* Right Form Panel (col-span-3) */}
-                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[440px] relative">
-                    <div className="space-y-4 flex-1 flex flex-col justify-center">
+                <div className="col-span-1 md:col-span-3 p-5 md:p-6 flex flex-col justify-between min-h-0 md:min-h-[440px] relative bg-white rounded-b-[10px] md:rounded-r-[10px] md:rounded-bl-none">
+                    <div className="space-y-5 flex-1 flex flex-col justify-center">
                         {/* Autogenerated Credentials Grid */}
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel>Matrícula</FormLabel>
                                 <FormInput
@@ -195,9 +200,9 @@ export default function StudentFormModal({
                                 {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <FormLabel required>Apellido Paternal</FormLabel>
+                                    <FormLabel required>Apellido Paterno</FormLabel>
                                     <FormInput
                                         required
                                         value={data.apellido_paterno}
@@ -209,7 +214,7 @@ export default function StudentFormModal({
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <FormLabel required>Apellido Maternal</FormLabel>
+                                    <FormLabel required>Apellido Materno</FormLabel>
                                     <FormInput
                                         required
                                         value={data.apellido_materno}
@@ -222,50 +227,50 @@ export default function StudentFormModal({
                             </div>
                         </div>
 
-                        <div className="space-y-1.5 text-left">
-                            <FormLabel required>Fecha de nacimiento</FormLabel>
-                            <div className="grid grid-cols-3 gap-2">
-                                <FormSelect
-                                    required
-                                    value={localDay}
-                                    onChange={e => handleDateChange('day', e.target.value)}
-                                >
-                                    <option value="">Día</option>
-                                    {days.map(d => (
-                                        <option key={d} value={d}>{d}</option>
-                                    ))}
-                                </FormSelect>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                            <div className="space-y-1.5 text-left">
+                                <FormLabel required>Fecha de nacimiento</FormLabel>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <FormSelect
+                                        required
+                                        value={localDay}
+                                        onChange={e => handleDateChange('day', e.target.value)}
+                                    >
+                                        <option value="">Día</option>
+                                        {dynamicDays.map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                    </FormSelect>
 
-                                <FormSelect
-                                    required
-                                    value={localMonth}
-                                    onChange={e => handleDateChange('month', e.target.value)}
-                                >
-                                    <option value="">Mes</option>
-                                    {months.map(m => (
-                                        <option key={m.value} value={m.value}>{m.label}</option>
-                                    ))}
-                                </FormSelect>
+                                    <FormSelect
+                                        required
+                                        value={localMonth}
+                                        onChange={e => handleDateChange('month', e.target.value)}
+                                    >
+                                        <option value="">Mes</option>
+                                        {MONTHS.map(m => (
+                                            <option key={m.value} value={m.value}>{m.label}</option>
+                                        ))}
+                                    </FormSelect>
 
-                                <FormSelect
-                                    required
-                                    value={localYear}
-                                    onChange={e => handleDateChange('year', e.target.value)}
-                                >
-                                    <option value="">Año</option>
-                                    {years.map(y => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </FormSelect>
+                                    <FormSelect
+                                        required
+                                        value={localYear}
+                                        onChange={e => handleDateChange('year', e.target.value)}
+                                    >
+                                        <option value="">Año</option>
+                                        {YEARS.map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </FormSelect>
+                                </div>
+                                {errors.fecha_nacimiento && (
+                                    <span className="text-red-500 text-[10px] mt-1 block">
+                                        {errors.fecha_nacimiento}
+                                    </span>
+                                )}
                             </div>
-                            {errors.fecha_nacimiento && (
-                                <span className="text-red-500 text-[10px] mt-1 block">
-                                    {errors.fecha_nacimiento}
-                                </span>
-                            )}
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5 text-left">
                                 <FormLabel required>Teléfono</FormLabel>
                                 <FormInput
@@ -278,6 +283,7 @@ export default function StudentFormModal({
                                         setData('telefono', value);
                                     }}
                                     placeholder="Ej. 4431234567"
+                                    className="h-9 text-xs"
                                 />
                                 {errors.telefono && (
                                     <span className="text-red-500 text-[10px] mt-1 block">
@@ -285,31 +291,32 @@ export default function StudentFormModal({
                                     </span>
                                 )}
                             </div>
+                        </div>
 
-                            <div className="space-y-1.5 text-left">
-                                <FormLabel required>Grupo Académico</FormLabel>
-                                <FormSelect
-                                    required
-                                    value={data.academic_group_id}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        setData('academic_group_id', val === '' ? '' : Number(val));
-                                    }}
-                                >
-                                    <option value="">Seleccionar grupo...</option>
-                                    {groups.map((group) => (
-                                        <option key={group.id} value={group.id}>
-                                            {group.name}
-                                        </option>
-                                    ))}
-                                </FormSelect>
-                                {errors.academic_group_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.academic_group_id}</span>}
-                            </div>
+                        <div className="space-y-1.5 text-left">
+                            <FormLabel required>Grupo Académico</FormLabel>
+                            <FormSelect
+                                required
+                                value={data.grupo_id}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setData('grupo_id', val === '' ? '' : Number(val));
+                                }}
+                                className="h-9 text-xs"
+                            >
+                                <option value="">Seleccionar grupo...</option>
+                                {groups.map((group) => (
+                                    <option key={group.id} value={group.id}>
+                                        {group.nombre}
+                                    </option>
+                                ))}
+                            </FormSelect>
+                            {errors.grupo_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.grupo_id}</span>}
                         </div>
                     </div>
 
                     {/* Footer de Navegación Aligned Right */}
-                    <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
+                    <div className="mt-8 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none bg-white md:bg-transparent sticky bottom-0 md:relative">
                         <button
                             type="button"
                             onClick={onClose}

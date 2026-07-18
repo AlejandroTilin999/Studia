@@ -1,13 +1,12 @@
 import AppTable from '@/Components/table/AppTable';
-import { Shield } from 'lucide-react';
 import { TableActions, TableActionButton } from '@/Components/TableActions';
 
 export interface MockUser {
     id: number;
-    name: string;
+    nombre: string;
     email: string;
-    role: 'admin' | 'docente' | 'alumno';
-    status: 'active' | 'inactive';
+    rol: 'admin' | 'docente' | 'alumno';
+    estatus: 'active' | 'inactive';
     telefono?: string;
 }
 
@@ -35,10 +34,10 @@ export default function UserTable({
                     accessor: (row) => (
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-650">
-                                {row.name.charAt(0).toUpperCase()}
+                                {row.nombre?.charAt(0).toUpperCase() || 'U'}
                             </div>
                             <div className="text-left">
-                                <span className="font-medium text-slate-700 block leading-tight text-[13px]">{row.name}</span>
+                                <span className="font-medium text-slate-700 block leading-tight text-[13px]">{row.nombre}</span>
                                 <span className="text-xs text-slate-400 block mt-0.5">{row.email}</span>
                             </div>
                         </div>
@@ -48,14 +47,14 @@ export default function UserTable({
                     header: "Rol",
                     accessor: (row) => (
                         <span className={`flex items-center justify-center w-[110px] h-7 rounded-lg text-xs font-normal border ${
-                            row.role === 'admin' 
-                                ? 'bg-purple-50 text-purple-700 border-purple-100' 
-                                : row.role === 'docente' 
-                                    ? 'bg-amber-50 text-amber-700 border-amber-100' 
+                            row.rol?.toLowerCase() === 'admin'
+                                ? 'bg-purple-50 text-purple-700 border-purple-100'
+                                : row.rol?.toLowerCase() === 'docente'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
                                     : 'bg-blue-50 text-blue-700 border-blue-100'
                         }`}>
-                            {row.role === 'admin' ? 'Administrador' :
-                                row.role === 'docente' ? 'Docente' : 'Alumno'}
+                            {row.rol?.toLowerCase() === 'admin' ? 'Administrador' :
+                                row.rol?.toLowerCase() === 'docente' ? 'Docente' : 'Alumno'}
                         </span>
                     ),
                 },
@@ -66,12 +65,12 @@ export default function UserTable({
                             type="button"
                             onClick={() => onToggleStatus(row)}
                             className={`flex items-center justify-center w-[110px] h-7 rounded-lg text-xs font-normal border transition-all ${
-                                row.status === 'active'
+                                row.estatus === 'active'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
                                     : 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'
                             }`}
                         >
-                            {row.status === 'active' ? 'Activo' : 'Inactivo'}
+                            {row.estatus === 'active' ? 'Activo' : 'Inactivo'}
                         </button>
                     ),
                 },

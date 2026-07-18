@@ -18,21 +18,21 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
 
     const formattedTeachers: TeacherFormatted[] = backendTeachers.map((t: TeacherFromBackend) => {
         const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
-        const correoDocente = t.user?.email || t.email || (t.employee_code ? `${t.employee_code.toLowerCase()}@prepahidalgo.edu.mx` : 'docente@prepahidalgo.edu.mx');
+        const correoDocente = t.usuario?.email || t.email || (t.codigo_empleado ? `${t.codigo_empleado.toLowerCase()}@prepahidalgo.edu.mx` : 'docente@prepahidalgo.edu.mx');
 
         return {
             id: t.id,
-            matricula: t.employee_code || 'S/M',
+            matricula: t.codigo_empleado || 'S/M',
             name: nombreCompleto,
             rawNombre: t.nombre || '',
             rawPaterno: t.apellido_paterno || '',
             rawMaterno: t.apellido_materno || '',
             email: correoDocente,
-            phone: t.phone || 'Sin teléfono',
-            specialty: t.specialty || 'General',
-            assignments: t.courses?.map(c => ({
-                subject: c.name,
-                groupName: c.groupName || 'Asignado'
+            phone: t.telefono || 'Sin teléfono',
+            specialty: t.especialidad || 'General',
+            assignments: t.materias?.map(m => ({
+                subject: m.nombre,
+                groupName: m.nombre_group || m.nombre_grupo || 'Asignado'
             })) || []
         };
     });
@@ -44,19 +44,20 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+    const [randomSuffix, setRandomSuffix] = useState('');
 
-    // FORMULARIO DE INERTIA CONECTADO AL BACKEND
+    // FORMULARIO DE INERTIA (Campos en Español)
     const { data, setData, reset, processing, errors } = useForm({
         matricula: '',
         email: '',
         nombre: '',
         apellido_paterno: '',
         apellido_materno: '',
-        phone: '',
-        specialty: ''
+        telefono: '',
+        especialidad: ''
     });
 
-    // Auto-generar matrícula y correo igual que en alumnos
+    // Auto-generar matrícula y correo
     useEffect(() => {
         if (modalMode !== 'create') return;
         if (!data.nombre.trim() && !data.apellido_paterno.trim()) {
@@ -75,14 +76,15 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         let primerPaterno = data.apellido_paterno.trim().split(/\s+/)[0]?.toLowerCase() || '';
         primerNombre  = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         primerPaterno = primerPaterno.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
         const generatedEmail = primerNombre && primerPaterno
-            ? `${primerNombre}.${primerPaterno}@prepahidalgo.edu.mx`
+            ? `${primerNombre}.${primerPaterno}.${randomSuffix}@prepahidalgo.edu.mx`
             : '';
 
         if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
             setData(d => ({ ...d, matricula: generatedMatricula, email: generatedEmail }));
         }
-    }, [data.nombre, data.apellido_paterno, data.apellido_materno, modalMode]);
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, modalMode, randomSuffix]);
 
     const handleExportExcel = () => {
         const rows = filteredTeachers.map(t => [
@@ -115,6 +117,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
 
     const openCreateModal = () => {
         setModalMode('create');
+        setRandomSuffix(Math.random().toString(36).substring(2, 6).toUpperCase());
         reset();
         setIsFormModalOpen(true);
     };
@@ -128,15 +131,14 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             nombre: teacher.rawNombre,
             apellido_paterno: teacher.rawPaterno,
             apellido_materno: teacher.rawMaterno ?? '',
-            phone: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
-            specialty: teacher.specialty
+            telefono: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
+            especialidad: teacher.specialty
         });
         setIsFormModalOpen(true);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
         SwalHelper.loading(
             modalMode === 'create' ? 'Registrando docente...' : 'Actualizando datos...',
             'Estamos procesando la información del profesor.'
@@ -176,7 +178,6 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         ).then((result) => {
             if (result.isConfirmed) {
                 SwalHelper.loading('Eliminando...', 'Borrando expediente del servidor.');
-
                 teacherService.destroy(teacher.id, {
                     onSuccess: () => {
                         SwalHelper.success('¡Eliminado!', 'El docente ha sido removido del sistema.');
@@ -187,11 +188,6 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 });
             }
         });
-    };
-
-    const openAssignmentsModal = (teacher: any) => {
-        setSelectedTeacher(teacher);
-        setIsAssignmentsModalOpen(true);
     };
 
     return (
@@ -213,10 +209,9 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             ]}
             donutChartLabel="profesores"
             donutChartSegments={[
-                { name: "Activos", count: totalTeachersCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" }
+                { name: "Asignados", count: totalTeachersCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" }
             ]}
         >
-            {/* Controls */}
             <TeacherTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -224,15 +219,11 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
             />
-
-            {/* Table */}
             <TeacherTable
                 teachers={filteredTeachers}
                 onEdit={openEditModal}
                 onDelete={handleDeleteTeacher}
             />
-
-            {/* Form Modal */}
             <TeacherFormModal
                 open={isFormModalOpen}
                 mode={modalMode}

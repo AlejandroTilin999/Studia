@@ -8,10 +8,10 @@ class Log extends Model
 {
     public $timestamps = false;
     protected $table = 'logs';
-    protected $fillable = ['user_id', 'accion', 'tabla', 'fecha'];
+    protected $fillable = ['usuario_id', 'accion', 'tabla', 'fecha'];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 }

@@ -34,11 +34,6 @@ export default function GroupTable({
                     ),
                 },
                 {
-                    header: "Turno",
-                    accessor: "shift",
-                    className: "text-slate-500 font-medium text-[13px] text-left",
-                },
-                {
                     header: "Tutor / Profesor Asignado",
                     accessor: (row) => row.teacherName,
                     className: "text-slate-500 font-medium text-[13px] text-left",

@@ -13,13 +13,13 @@ class Enrollment extends Model
 
     // Asegúrate de agregar phone y address al array $fillable
     protected $fillable = [
-        'user_id',
-        'academic_group_id',
-        'academic_period_id',
-        'student_code',
-        'status',
-        'phone',    // 👈 Permitir guardar teléfono
-        'address',  // 👈 Permitir guardar dirección
+        'usuario_id',
+        'grupo_id',
+        'ciclo_id',
+        'codigo_alumno',
+        'estatus',
+        'telefono',
+        'direccion',
         'fecha_baja',
     ];
 
@@ -28,7 +28,7 @@ class Enrollment extends Model
      */
     public function grades()
     {
-        return $this->hasMany(Grade::class, 'enrollment_id');
+        return $this->hasMany(Grade::class, 'usuario_id', 'usuario_id');
     }
 
     /**
@@ -36,7 +36,7 @@ class Enrollment extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 
     /**
@@ -44,7 +44,7 @@ class Enrollment extends Model
      */
     public function academicGroup()
     {
-        return $this->belongsTo(AcademicGroup::class, 'academic_group_id');
+        return $this->belongsTo(AcademicGroup::class, 'grupo_id');
     }
 
     /**
@@ -52,6 +52,6 @@ class Enrollment extends Model
      */
     public function academicPeriod()
     {
-        return $this->belongsTo(AcademicPeriod::class, 'academic_period_id');
+        return $this->belongsTo(AcademicPeriod::class, 'ciclo_id');
     }
 }

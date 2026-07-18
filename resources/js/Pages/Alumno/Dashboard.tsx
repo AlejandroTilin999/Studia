@@ -71,10 +71,10 @@ export default function AlumnoDashboard({
     // 1. Catálogo de materias leídas dinámicamente desde las props
     const subjects = useMemo(() => propAlumnoGroups.map((group: any) => ({
         id: group.id,
-        name: group.name,
+        name: group.nombre,
         iconName: 'compass',
-        teacher: group.teacher,
-        description: group.description
+        teacher: group.docente,
+        description: group.descripcion
     })), [propAlumnoGroups]);
 
     // Sincronizar al navegar en la barra lateral o por URL params
@@ -127,9 +127,9 @@ export default function AlumnoDashboard({
 
     // 2. Datos del alumno con lógica de GPA dinámica
     const baseStudentInfo = propStudentInfo || {
-        name: auth?.user?.name || 'Alumno',
+        name: auth?.user?.nombre || 'Alumno',
         matricula: auth?.user?.alumnoGroups?.[0] ? `ALU-${auth.user.id}` : 'S/M',
-        groupName: auth?.user?.alumnoGroups?.[0]?.groupName || 'Sin grupo',
+        groupName: auth?.user?.alumnoGroups?.[0]?.nombre_grupo || 'Sin grupo',
         email: auth?.user?.email || '',
         registeredAt: 'Agosto 2025',
         gpa: subjects.length > 0 ? '0.0' : '—',

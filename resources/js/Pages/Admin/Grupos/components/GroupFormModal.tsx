@@ -10,12 +10,11 @@ interface GroupFormModalProps {
     mode: 'create' | 'edit';
     group: any;
     data: {
-        code: string;
-        name: string;
-        shift: string;
-        major: string;
-        tutor_teacher_id: string | number;
-        turno_id: string | number;
+        codigo: string;
+        nombre: string;
+        turno: string;
+        especialidad: string;
+        docente_tutor_id: string | number;
         activo: boolean;
     };
     setData: (key: any, value: any) => void;
@@ -26,8 +25,6 @@ interface GroupFormModalProps {
     materiasList?: any[];
     specialties?: any[];
     groupsList?: any[];
-    planes?: any[];
-    turnos?: any[];
 }
 
 export default function GroupFormModal({
@@ -43,7 +40,6 @@ export default function GroupFormModal({
     specialties = [],
     profesores = [],
     groupsList = [],
-    turnos = [],
 }: GroupFormModalProps) {
     const [selectedSemester, setSelectedSemester] = useState('');
     const [selectedSection, setSelectedSection] = useState('');
@@ -51,8 +47,8 @@ export default function GroupFormModal({
     // Sincronizar y parsear datos al abrir el modal
     useEffect(() => {
         if (isOpen) {
-            if (mode === 'edit' && data.code) {
-                const cleanCode = data.code.trim();
+            if (mode === 'edit' && data.codigo) {
+                const cleanCode = data.codigo.trim();
                 const parts = cleanCode.split('-');
                 if (parts.length >= 2) {
                     const firstPart = parts[0];
@@ -68,58 +64,57 @@ export default function GroupFormModal({
                 } else {
                     const firstChar = cleanCode.charAt(0);
                     const secondChar = cleanCode.charAt(1);
-                    if (['1','2','3','4','5','6'].includes(firstChar)) {
-                        setSelectedSemester(firstChar);
-                    }
-                    if (secondChar && /^[A-Z]$/i.test(secondChar)) {
-                        setSelectedSection(secondChar.toUpperCase());
-                    }
+                    if (['1','2','3','4','5','6'].includes(firstChar)) setSelectedSemester(firstChar);
+                    if (secondChar && /^[A-Z]$/i.test(secondChar)) setSelectedSection(secondChar.toUpperCase());
                 }
             } else {
                 setSelectedSemester('');
                 setSelectedSection('');
+                setData('turno', 'Matutino');
             }
         }
     }, [isOpen, mode]);
 
     const getSpecialtySuffix = (major: string) => {
         if (!major) return '';
+        const majorLower = major.toLowerCase();
         const match = specialties.find(
-            s => s.name.toLowerCase() === major.toLowerCase() ||
-            (major.toLowerCase() === 'ti' && s.name.toLowerCase() === 'informática')
+            s => s && ((s.nombre?.toLowerCase() === majorLower) ||
+            (majorLower === 'ti' && s.nombre?.toLowerCase() === 'informática'))
         );
-        return match ? match.code.toUpperCase() : 'INF';
+        return match ? (match.codigo?.toUpperCase() || 'INF') : 'INF';
     };
 
     // Autogenerar código y nombre al cambiar semestre, sección o especialidad
     useEffect(() => {
         if (isOpen) {
-            const suffix = getSpecialtySuffix(data.major);
+            const suffix = getSpecialtySuffix(data.especialidad);
             if (selectedSemester && selectedSection && suffix) {
-                setData('code', `${selectedSemester}${selectedSection}-${suffix}`);
+                setData('codigo', `${selectedSemester}${selectedSection}-${suffix}`);
             } else {
-                setData('code', '');
+                setData('codigo', '');
             }
         }
-    }, [selectedSemester, selectedSection, data.major, isOpen, specialties]);
+    }, [selectedSemester, selectedSection, data.especialidad, isOpen, specialties]);
 
     useEffect(() => {
         if (isOpen) {
+            const majorLower = data.especialidad?.toLowerCase() || '';
             const match = specialties.find(
-                s => s.name.toLowerCase() === data.major.toLowerCase() ||
-                (data.major.toLowerCase() === 'ti' && s.name.toLowerCase() === 'informática')
+                s => s && ((s.nombre?.toLowerCase() === majorLower) ||
+                (majorLower === 'ti' && s.nombre?.toLowerCase() === 'informática'))
             );
-            const displayMajor = match ? match.name : (data.major === 'TI' ? 'Informática' : data.major);
+            const displayMajor = match ? match.nombre : (data.especialidad === 'TI' ? 'Informática' : data.especialidad);
 
             if (selectedSemester && selectedSection && displayMajor) {
-                setData('name', `${selectedSemester}${selectedSection} ${displayMajor}`);
+                setData('nombre', `${selectedSemester}${selectedSection} ${displayMajor}`);
             } else {
-                setData('name', '');
+                setData('nombre', '');
             }
         }
-    }, [selectedSemester, selectedSection, data.major, isOpen, specialties]);
+    }, [selectedSemester, selectedSection, data.especialidad, isOpen, specialties]);
 
-    const isFormValid = data.code.trim() !== '' && data.name.trim() !== '';
+    const isFormValid = data.codigo.trim() !== '' && data.nombre.trim() !== '';
 
     return (
         <BaseModal
@@ -132,7 +127,6 @@ export default function GroupFormModal({
             fullBleed={true}
         >
             <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[300px] h-full text-left relative">
-                {/* Windows Close button relative to the entire grid modal container */}
                 <button
                     type="button"
                     onClick={onClose}
@@ -141,7 +135,6 @@ export default function GroupFormModal({
                     <X size={16} className="stroke-[2.5]" />
                 </button>
 
-                {/* Left Info Panel (col-span-2) - Solid Blue #0266E0 */}
                 <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
                     <div className="space-y-6">
                         <div>
@@ -150,22 +143,19 @@ export default function GroupFormModal({
                                 {mode === 'create' ? 'Registrar Nuevo Grupo' : 'Modificar Grupo'}
                             </h3>
                         </div>
-
                         <div className="space-y-4">
                             <p className="text-xs text-blue-100 leading-relaxed font-normal">
                                 {mode === 'create'
-                                    ? 'Genera un nuevo grupo para estructurar la carga de alumnos. Configura el semestre, sección, turno y bachillerato.'
+                                    ? 'Genera un nuevo grupo para estructurar la carga de alumnos. Configura el semestre, sección y bachillerato.'
                                     : 'Modifica los datos principales del grupo académico.'}
                             </p>
                         </div>
                     </div>
-
                     <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
                         Prepahid Campus Escolar
                     </div>
                 </div>
 
-                {/* Right Form Panel (col-span-3) */}
                 <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative">
                     <div className="space-y-4 flex-1 pr-2">
                         <div className="grid grid-cols-2 gap-4 text-left">
@@ -185,7 +175,6 @@ export default function GroupFormModal({
                                     <option value="6">6° Semestre</option>
                                 </FormSelect>
                             </div>
-
                             <div className="space-y-1.5">
                                 <FormLabel required>Sección / Grupo</FormLabel>
                                 <FormSelect
@@ -203,46 +192,21 @@ export default function GroupFormModal({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                        <div className="grid grid-cols-1 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel required>Especialidad</FormLabel>
                                 <FormSelect
-                                    value={data.major}
-                                    onChange={e => setData('major', e.target.value)}
+                                    value={data.especialidad}
+                                    onChange={e => setData('especialidad', e.target.value)}
                                 >
                                     <option value="">Selecciona especialidad</option>
                                     {specialties.map((s) => (
-                                        <option key={s.id} value={s.name}>
-                                            {s.name}
+                                        <option key={s.id} value={s.nombre}>
+                                            {s.nombre}
                                         </option>
                                     ))}
                                 </FormSelect>
-                                {errors.major && <span className="text-red-500 text-[10px] mt-1 block">{errors.major}</span>}
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <FormLabel required>Turno</FormLabel>
-                                <FormSelect
-                                    value={data.turno_id}
-                                    onChange={e => {
-                                        const id = e.target.value;
-                                        setData('turno_id', id);
-                                        const matchedTurno = turnos.find(t => t.id.toString() === id.toString());
-                                        if (matchedTurno) {
-                                            setData('shift', matchedTurno.nombre);
-                                        } else {
-                                            setData('shift', '');
-                                        }
-                                    }}
-                                >
-                                    <option value="">Selecciona un turno</option>
-                                    {turnos.map((t) => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.nombre}
-                                        </option>
-                                    ))}
-                                </FormSelect>
-                                {errors.turno_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.turno_id}</span>}
+                                {errors.especialidad && <span className="text-red-500 text-[10px] mt-1 block">{errors.especialidad}</span>}
                             </div>
                         </div>
 
@@ -250,8 +214,8 @@ export default function GroupFormModal({
                             <div className="space-y-1.5">
                                 <FormLabel>Tutor / Profesor Titular</FormLabel>
                                 <FormSelect
-                                    value={data.tutor_teacher_id}
-                                    onChange={e => setData('tutor_teacher_id', e.target.value)}
+                                    value={data.docente_tutor_id}
+                                    onChange={e => setData('docente_tutor_id', e.target.value)}
                                 >
                                     <option value="">Sin tutor asignado</option>
                                     {profesores.map((p) => {
@@ -266,11 +230,10 @@ export default function GroupFormModal({
                                         );
                                     })}
                                 </FormSelect>
-                                {errors.tutor_teacher_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.tutor_teacher_id}</span>}
+                                {errors.docente_tutor_id && <span className="text-red-500 text-[10px] mt-1 block">{errors.docente_tutor_id}</span>}
                             </div>
                         </div>
 
-                        {/* Preview de Datos Autogenerados */}
                         <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-xl text-left text-[11px] space-y-2">
                             <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">
                                 Previsualización del Grupo
@@ -278,19 +241,18 @@ export default function GroupFormModal({
                             <div className="grid grid-cols-2 gap-2 mt-1">
                                 <div>
                                     <span className="text-[10px] text-slate-400 font-medium block">Código Generado</span>
-                                    <span className="font-extrabold text-slate-700">{data.code || '---'}</span>
-                                    {errors.code && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.code}</span>}
+                                    <span className="font-extrabold text-slate-700">{data.codigo || '---'}</span>
+                                    {errors.codigo && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.codigo}</span>}
                                 </div>
                                 <div>
                                     <span className="text-[10px] text-slate-400 font-medium block">Nombre del Grupo</span>
-                                    <span className="font-extrabold text-slate-700">{data.name || '---'}</span>
-                                    {errors.name && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.name}</span>}
+                                    <span className="font-extrabold text-slate-700">{data.nombre || '---'}</span>
+                                    {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.nombre}</span>}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Navigation Footer */}
                     <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
                         <button
                             type="button"
@@ -299,7 +261,6 @@ export default function GroupFormModal({
                         >
                             Cancelar
                         </button>
-
                         <button
                             type="submit"
                             disabled={processing || !isFormValid}

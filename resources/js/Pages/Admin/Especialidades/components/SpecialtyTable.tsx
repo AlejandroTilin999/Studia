@@ -22,14 +22,14 @@ export default function SpecialtyTable({
             columns={[
                 {
                     header: "Código / Abreviación",
-                    accessor: (row) => row.code,
+                    accessor: (row) => row.codigo,
                     className: "text-slate-500 font-medium text-[13px] text-left",
                 },
                 {
                     header: "Nombre de la Especialidad",
                     accessor: (row) => (
                         <span className="text-slate-500 text-[13px] rounded-lg block w-fit text-left">
-                            {row.name}
+                            {row.nombre}
                         </span>
                     ),
                 },
@@ -43,7 +43,7 @@ export default function SpecialtyTable({
                                 icon="edit"
                             />
                             <TableActionButton
-                                onClick={() => onDelete(row.id, row.name)}
+                                onClick={() => onDelete(row.id, row.nombre)}
                                 title="Eliminar Especialidad"
                                 icon="delete"
                                 variant="danger"

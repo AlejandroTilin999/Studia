@@ -20,17 +20,17 @@ class CourseController extends Controller
         $materiasFormateadas = $coursesRaw->map(function ($course) {
             return [
                 'id' => $course->id,
-                'codigo' => $course->code ?? $course->codigo ?? 'N/A',
-                'nombre' => $course->name ?? $course->nombre,
+                'codigo' => $course->codigo,
+                'nombre' => $course->nombre,
                 'semestre' => $course->semestre ?? 1,
-                'descripcion' => $course->description ?? $course->descripcion ?? 'Sin descripción disponible',
+                'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
                 'tipo' => $course->tipo ?? 'General',
-                'teacher_id' => $course->teacher_id,
+                'docente_id' => $course->docente_id,
                 'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
-                'grupos' => $course->groups ? $course->groups->pluck('code')->unique()->toArray() : [],
+                'grupos' => $course->groups ? $course->groups->pluck('codigo')->unique()->toArray() : [],
                 'especialidades' => $course->specialties ? $course->specialties->map(fn($s) => [
                     'id' => $s->id,
-                    'name' => $s->name,
+                    'nombre' => $s->nombre,
                 ])->toArray() : [],
             ];
         });
@@ -43,31 +43,31 @@ class CourseController extends Controller
 
         $grupos = AcademicGroup::all()->map(fn($g) => [
             'id' => $g->id,
-            'code' => $g->code,
-            'name' => $g->name ?? $g->code,
+            'codigo' => $g->codigo,
+            'nombre' => $g->nombre,
         ]);
 
-        $specialties = Specialty::all()->map(fn($s) => [
+        $especialidades = Specialty::all()->map(fn($s) => [
             'id' => $s->id,
-            'name' => $s->name,
-            'code' => $s->code,
+            'nombre' => $s->nombre,
+            'codigo' => $s->codigo,
         ]);
 
         return Inertia::render('Admin/Materias/Index', [
             'materias' => $materiasFormateadas,
             'profesores' => $profesores,
             'grupos' => $grupos,
-            'specialties' => $specialties,
+            'especialidades' => $especialidades,
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:materias,code|max:20',
-            'name' => 'required|string|max:255',
+            'codigo' => 'required|string|unique:materias,codigo|max:20',
+            'nombre' => 'required|string|max:255',
             'semestre' => 'required|integer|min:1|max:6',
-            'description' => 'nullable|string',
+            'descripcion' => 'nullable|string',
             'tipo' => 'required|string|in:General,Especialidad',
             'linked_groups' => 'nullable|array',
             'specialty_ids' => 'nullable|array',
@@ -76,10 +76,10 @@ class CourseController extends Controller
 
         DB::transaction(function () use ($validated, $request) {
             $course = Course::create([
-                'code' => $validated['code'],
-                'name' => $validated['name'],
+                'codigo' => $validated['codigo'],
+                'nombre' => $validated['nombre'],
                 'semestre' => $validated['semestre'],
-                'description' => $validated['description'],
+                'descripcion' => $validated['descripcion'],
                 'tipo' => $validated['tipo'],
             ]);
 
@@ -97,9 +97,9 @@ class CourseController extends Controller
         $course = Course::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'nombre' => 'required|string|max:255',
             'semestre' => 'required|integer|min:1|max:6',
-            'description' => 'nullable|string',
+            'descripcion' => 'nullable|string',
             'tipo' => 'required|string|in:General,Especialidad',
             'linked_groups' => 'nullable|array',
             'specialty_ids' => 'nullable|array',
@@ -108,9 +108,9 @@ class CourseController extends Controller
 
         DB::transaction(function () use ($validated, $request, $course) {
             $course->update([
-                'name' => $validated['name'],
+                'nombre' => $validated['nombre'],
                 'semestre' => $validated['semestre'],
-                'description' => $validated['description'],
+                'descripcion' => $validated['descripcion'],
                 'tipo' => $validated['tipo'],
             ]);
 
@@ -130,10 +130,10 @@ class CourseController extends Controller
         $course = Course::findOrFail($id);
 
         // 1. Verificar si tiene asignaciones (cargas académicas) activas o históricas
-        $loadsCount = \App\Models\AcademicLoad::where('course_id', $course->id)->count();
+        $loadsCount = \App\Models\AcademicLoad::where('materia_id', $course->id)->count();
         if ($loadsCount > 0) {
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar la materia '{$course->name}' porque ya está asignada a {$loadsCount} grupos o periodos escolares."
+                'delete' => "No se puede eliminar la materia '{$course->nombre}' porque ya está asignada a {$loadsCount} grupos o periodos escolares."
             ]);
         }
 

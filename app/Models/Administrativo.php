@@ -7,10 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Administrativo extends Model
 {
     protected $table = 'administrativos';
-    protected $fillable = ['user_id', 'puesto'];
+    protected $fillable = ['usuario_id', 'puesto'];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 }

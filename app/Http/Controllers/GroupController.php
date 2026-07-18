@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicGroup;
 use App\Models\Teacher;
-use App\Models\PlanEstudio;
-use App\Models\Turno;
 use App\Models\Specialty;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,19 +12,18 @@ class GroupController extends Controller
 {
     public function index()
     {
-        // Traer grupos mapeados con sus nombres de columnas reales de la DB
+        // Traer grupos mapeados con sus nombres de columnas reales de la DB (Español)
         $groups = AcademicGroup::with(['tutor'])->get()->map(function ($group) {
             return [
                 'id' => $group->id,
-                'codigo' => $group->code,
-                'nombre' => $group->name,
-                'turno' => $group->shift ?? 'Horario único',
-                'especialidad' => $group->major, // Mapeado de major
-                'tutor_teacher_id' => $group->tutor_teacher_id ?? '',
+                'codigo' => $group->codigo,
+                'nombre' => $group->nombre,
+                'turno' => $group->turno ?? 'Matutino',
+                'especialidad' => $group->especialidad,
+                'docente_tutor_id' => $group->docente_tutor_id ?? '',
                 'profesor' => $group->tutor
                     ? trim("{$group->tutor->nombre} {$group->tutor->apellido_paterno}")
                     : 'Sin tutor asignado',
-                'turno_id' => $group->turno_id ?? '',
                 'activo' => (bool)($group->activo ?? true)
             ];
         });
@@ -41,44 +38,34 @@ class GroupController extends Controller
         $specialties = Specialty::all()->map(function ($s) {
             return [
                 'id' => $s->id,
-                'name' => $s->name,
-                'code' => $s->code,
-            ];
-        });
-
-        $turnos = Turno::all()->map(function ($t) {
-            return [
-                'id' => $t->id,
-                'nombre' => $t->nombre,
+                'nombre' => $s->nombre,
+                'codigo' => $s->codigo,
             ];
         });
 
         return Inertia::render('Admin/Grupos/Index', [
             'grupos' => $groups,
             'profesores' => $teachers,
-            'especialidades' => $specialties,
-            'turnos' => $turnos
+            'especialidades' => $specialties
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:grupos,code',
-            'name' => 'required|string|unique:grupos,name|max:20',
-            'shift' => 'required|string',
-            'major' => 'required|string',
-            'tutor_teacher_id' => 'nullable',
-            'turno_id' => 'nullable|exists:turnos,id',
+            'codigo' => 'required|string|unique:grupos,codigo',
+            'nombre' => 'required|string|unique:grupos,nombre|max:20',
+            'turno' => 'nullable|string',
+            'especialidad' => 'required|string',
+            'docente_tutor_id' => 'nullable',
             'activo' => 'nullable|boolean',
         ], [
-            'code.unique' => 'Este grupo ya existe (el código ya está registrado).',
-            'name.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
+            'codigo.unique' => 'Este grupo ya existe (el código ya está registrado).',
+            'nombre.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
         ]);
 
-        $validated['tutor_teacher_id'] = $validated['tutor_teacher_id'] ?: null;
-        $validated['turno_id'] = $validated['turno_id'] ?: null;
-        $validated['plan_id'] = null; // Plan eliminado por requerimiento de usuario
+        $validated['docente_tutor_id'] = $validated['docente_tutor_id'] ?: null;
+        $validated['turno'] = 'Matutino';
 
         AcademicGroup::create($validated);
 
@@ -90,21 +77,19 @@ class GroupController extends Controller
         $group = AcademicGroup::findOrFail($id);
 
         $validated = $request->validate([
-            'code' => 'required|string|unique:grupos,code,' . $group->id,
-            'name' => 'required|string|unique:grupos,name,' . $group->id . '|max:20',
-            'shift' => 'required|string',
-            'major' => 'required|string',
-            'tutor_teacher_id' => 'nullable',
-            'turno_id' => 'nullable|exists:turnos,id',
+            'codigo' => 'required|string|unique:grupos,codigo,' . $group->id,
+            'nombre' => 'required|string|unique:grupos,nombre,' . $group->id . '|max:20',
+            'turno' => 'nullable|string',
+            'especialidad' => 'required|string',
+            'docente_tutor_id' => 'nullable',
             'activo' => 'nullable|boolean',
         ], [
-            'code.unique' => 'Este grupo ya existe (el código ya está registrado).',
-            'name.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
+            'codigo.unique' => 'Este grupo ya existe (el código ya está registrado).',
+            'nombre.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
         ]);
 
-        $validated['tutor_teacher_id'] = $validated['tutor_teacher_id'] ?: null;
-        $validated['turno_id'] = $validated['turno_id'] ?: null;
-        $validated['plan_id'] = null; // Plan eliminado por requerimiento de usuario
+        $validated['docente_tutor_id'] = $validated['docente_tutor_id'] ?: null;
+        $validated['turno'] = 'Matutino';
 
         $group->update($validated);
 
@@ -116,18 +101,18 @@ class GroupController extends Controller
         $group = AcademicGroup::findOrFail($id);
 
         // 1. Verificar si tiene alumnos inscritos
-        $studentsCount = \App\Models\Enrollment::where('academic_group_id', $group->id)->count();
+        $studentsCount = \App\Models\Enrollment::where('grupo_id', $group->id)->count();
         if ($studentsCount > 0) {
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar el grupo '{$group->name}' porque tiene {$studentsCount} alumnos inscritos actualmente."
+                'delete' => "No se puede eliminar el grupo '{$group->nombre}' porque tiene {$studentsCount} alumnos inscritos actualmente."
             ]);
         }
 
         // 2. Verificar si tiene cargas académicas (materias asignadas)
-        $loadsCount = \App\Models\AcademicLoad::where('academic_group_id', $group->id)->count();
+        $loadsCount = \App\Models\AcademicLoad::where('grupo_id', $group->id)->count();
         if ($loadsCount > 0) {
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar el grupo '{$group->name}' porque tiene {$loadsCount} materias asignadas en el ciclo escolar."
+                'delete' => "No se puede eliminar el grupo '{$group->nombre}' porque tiene {$loadsCount} materias asignadas en el ciclo escolar."
             ]);
         }
 

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class EntregaTarea extends Model
 {
     protected $table = 'entregas_tareas';
-    protected $fillable = ['tarea_id', 'user_id', 'score', 'status'];
+    protected $fillable = ['tarea_id', 'usuario_id', 'calificacion', 'estatus'];
 
     public function assignment()
     {
@@ -16,6 +16,6 @@ class EntregaTarea extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 }

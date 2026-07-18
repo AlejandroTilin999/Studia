@@ -12,53 +12,52 @@ interface UsersIndexProps {
 }
 
 export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
-    // 2. Control de filtros
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
 
-    // 3. Modales de agregar/editar
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
 
-    // Filtrar usuarios
     const filteredUsers = dbUsers.filter(user => {
-        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        const matchesSearch = user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
                              user.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+        const matchesRole = roleFilter === 'all' || user.rol === roleFilter;
         return matchesSearch && matchesRole;
     });
 
-    // Abrir modal de creación
     const openCreateModal = () => {
         setModalMode('create');
         setSelectedUser(null);
         setIsModalOpen(true);
     };
 
-    // Abrir modal de edición
     const openEditModal = (user: MockUser) => {
         setModalMode('edit');
         setSelectedUser(user);
         setIsModalOpen(true);
     };
 
-    // Guardar formulario
     const handleFormSubmit = (formData: any) => {
         SwalHelper.loading(
             modalMode === 'create' ? 'Creando usuario...' : 'Actualizando datos...',
             'Procesando en el servidor'
         );
 
+        const payload = {
+            nombre: formData.nombre,
+            apellido_paterno: formData.apellido_paterno,
+            apellido_materno: formData.apellido_materno,
+            email: formData.email,
+            rol: formData.rol,
+            genero: formData.genero,
+            estatus: formData.estatus,
+            password: formData.password || 'Prepahid2026',
+            telefono: formData.telefono
+        };
+
         if (modalMode === 'create') {
-            router.post('/admin/usuarios', {
-                name: formData.name,
-                email: formData.email,
-                role: formData.role,
-                status: formData.status,
-                password: formData.password || 'Prepahid2026',
-                phone: formData.phone
-            }, {
+            router.post('/admin/usuarios', payload, {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     SwalHelper.success('¡Hecho!', 'El usuario ha sido registrado con éxito.');
@@ -68,13 +67,7 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 }
             });
         } else if (modalMode === 'edit' && selectedUser) {
-            router.put(`/admin/usuarios/${selectedUser.id}`, {
-                name: formData.name,
-                email: formData.email,
-                role: formData.role,
-                status: formData.status,
-                phone: formData.phone
-            }, {
+            router.put(`/admin/usuarios/${selectedUser.id}`, payload, {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     SwalHelper.success('¡Actualizado!', 'Los datos del usuario han sido actualizados.');
@@ -86,13 +79,11 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
         }
     };
 
-    // Alternar estado activo/inactivo
     const toggleStatus = (user: MockUser) => {
-        const isActivating = user.status !== 'active';
-
+        const isActivating = user.estatus !== 'active';
         SwalHelper.confirm(
             isActivating ? '¿Activar Cuenta?' : '¿Desactivar Cuenta?',
-            `¿Estás seguro de que deseas ${isActivating ? 'activar' : 'suspender'} el acceso de ${user.name}?`,
+            `¿Estás seguro de que deseas ${isActivating ? 'activar' : 'suspender'} el acceso de ${user.nombre}?`,
             isActivating ? 'Sí, Activar' : 'Sí, Suspender',
             'Cancelar',
             isActivating ? 'info' : 'warning'
@@ -111,11 +102,10 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
         });
     };
 
-    // Simular restablecimiento de contraseña
     const handleResetPassword = (user: MockUser) => {
         SwalHelper.confirm(
             '¿Restablecer Contraseña?',
-            `Se cambiará la contraseña de ${user.name} a la predeterminada (Prepahid2026).`,
+            `Se cambiará la contraseña de ${user.nombre} a la predeterminada (Prepahid2026).`,
             'Sí, Restablecer',
             'No, Cancelar',
             'warning'
@@ -134,12 +124,11 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
         });
     };
 
-    // Estadísticas
     const totalCount = dbUsers.length;
-    const adminCount = dbUsers.filter(u => u.role?.toLowerCase() === 'admin').length;
-    const teacherCount = dbUsers.filter(u => u.role?.toLowerCase() === 'docente').length;
-    const studentCount = dbUsers.filter(u => u.role?.toLowerCase() === 'alumno').length;
-    const activeCount = dbUsers.filter(u => u.status === 'active').length;
+    const adminCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'admin').length;
+    const teacherCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'docente').length;
+    const studentCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'alumno').length;
+    const activeCount = dbUsers.filter(u => u.estatus === 'active').length;
 
     return (
         <AdminPageLayout
@@ -165,7 +154,6 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 { name: "Inactivos", count: totalCount - activeCount, color: "#f43f5e", bulletClass: "bg-rose-500" }
             ]}
         >
-            {/* Controls: Search and Actions */}
             <UserTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -173,16 +161,12 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 setRoleFilter={setRoleFilter}
                 onOpenCreateModal={openCreateModal}
             />
-
-            {/* Table */}
             <UserTable
                 users={filteredUsers}
                 onToggleStatus={toggleStatus}
                 onResetPassword={handleResetPassword}
                 onOpenEditModal={openEditModal}
             />
-
-            {/* Modal de Agregar / Editar */}
             <UserFormModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

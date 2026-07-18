@@ -19,7 +19,6 @@ class GradeService
     {
         if ($value === null || $value === '—') return '—';
         $val = floatval($value);
-        // Lógica: .6 sube, .5 baja (floor con offset 0.4)
         return (int) floor($val + 0.4);
     }
 
@@ -28,41 +27,39 @@ class GradeService
      */
     public static function getStudentKardex($userId)
     {
-        // 1. Obtener todas las inscripciones del alumno
-        $enrollments = Enrollment::where('user_id', $userId)
+        $enrollments = Enrollment::where('usuario_id', $userId)
             ->with(['academicGroup', 'academicPeriod'])
             ->get();
 
         $kardex = [];
 
         foreach ($enrollments as $enrollment) {
-            $periodName = $enrollment->academicPeriod->name ?? 'N/A';
-            $groupId = $enrollment->academic_group_id;
-            $periodId = $enrollment->academic_period_id;
+            $periodName = $enrollment->academicPeriod->nombre ?? 'N/A';
+            $groupId = $enrollment->grupo_id;
+            $periodId = $enrollment->ciclo_id;
 
-            // 2. Obtener todas las cargas académicas del grupo en este periodo
-            $loads = AcademicLoad::where('academic_group_id', $groupId)
-                ->where('academic_period_id', $periodId)
-                ->with(['course', 'teacher'])
+            $loads = AcademicLoad::where('grupo_id', $groupId)
+                ->where('ciclo_id', $periodId)
+                ->with(['course', 'teacher.user'])
                 ->get();
 
             foreach ($loads as $load) {
-                $subjectName = $load->course->name ?? 'Materia Desconocida';
-                $teacherName = $load->teacher
-                    ? trim("{$load->teacher->nombre} {$load->teacher->apellido_paterno} {$load->teacher->apellido_materno}")
-                    : 'Sin docente';
+                $subjectName = $load->course?->nombre ?? 'Materia Desconocida';
+                $teacherName = $load->teacher?->user?->nombre_completo ?? 'Sin docente';
 
-                $parcialAverages = [];
+                $consolidado = Grade::where('usuario_id', $userId)
+                    ->where('carga_id', $load->id)
+                    ->whereNull('criterio_id')
+                    ->first();
+
                 $parcialDetails = [];
 
                 for ($parcial = 1; $parcial <= 3; $parcial++) {
-                    // Obtener criterios de evaluación
                     $criteria = CriterioEvaluacion::where('carga_id', $load->id)
                         ->where('parcial', $parcial)
                         ->get();
 
                     if ($criteria->isEmpty()) {
-                        $parcialAverages[$parcial] = null;
                         $parcialDetails[$parcial] = [
                             'configured' => false,
                             'criteria' => [],
@@ -72,14 +69,10 @@ class GradeService
                     }
 
                     $criteriaData = [];
-                    $filled = true;
-                    $weightedSum = 0;
-
                     foreach ($criteria as $criterion) {
                         $score = null;
 
-                        if ($criterion->sync_tasks) {
-                            // Obtener promedio de tareas
+                        if ($criterion->sincronizar_tareas) {
                             $tasks = Tarea::where('carga_id', $load->id)
                                 ->where('parcial', $parcial)
                                 ->get();
@@ -87,16 +80,15 @@ class GradeService
                             if ($tasks->isEmpty()) {
                                 $score = 0;
                             } else {
-                                $sumNormalized = 0;
-                                $count = 0;
+                                $sumNormalized = 0; $count = 0;
                                 foreach ($tasks as $task) {
                                     $delivery = EntregaTarea::where('tarea_id', $task->id)
-                                        ->where('user_id', $userId)
+                                        ->where('usuario_id', $userId)
                                         ->first();
 
-                                    $taskScore = ($delivery && $delivery->score !== '') ? floatval($delivery->score) : null;
+                                    $taskScore = ($delivery && $delivery->calificacion !== '') ? floatval($delivery->calificacion) : null;
                                     if ($taskScore !== null) {
-                                        $maxPoints = $task->points ?: 10;
+                                        $maxPoints = $task->puntos ?: 10;
                                         $sumNormalized += ($taskScore / $maxPoints) * 10;
                                         $count++;
                                     }
@@ -104,18 +96,11 @@ class GradeService
                                 $score = $count === 0 ? 0 : ($sumNormalized / $count);
                             }
                         } else {
-                            // Obtener calificación directa del criterio
                             $grade = Grade::where('criterio_id', $criterion->id)
-                                ->where('user_id', $userId)
+                                ->where('usuario_id', $userId)
                                 ->first();
 
-                            $score = ($grade && $grade->score !== '') ? floatval($grade->score) : null;
-                        }
-
-                        if ($score === null) {
-                            $filled = false;
-                        } else {
-                            $weightedSum += ($score * $criterion->porcentaje / 100);
+                            $score = ($grade && $grade->calificacion !== '') ? floatval($grade->calificacion) : null;
                         }
 
                         $criteriaData[] = [
@@ -125,34 +110,24 @@ class GradeService
                         ];
                     }
 
-                    $parcialAverage = $filled ? round($weightedSum, 1) : null;
-                    $parcialAverages[$parcial] = $parcialAverage;
+                    $pKey = "p{$parcial}";
+                    $parcialAvgValue = $consolidado ? $consolidado->$pKey : null;
+
                     $parcialDetails[$parcial] = [
                         'configured' => true,
                         'criteria' => $criteriaData,
-                        'average' => self::formatGrade($parcialAverage)
+                        'average' => $parcialAvgValue !== null ? self::formatGrade($parcialAvgValue) : '—'
                     ];
                 }
 
-                // Calcular promedio final
-                $sum = 0;
-                $count = 0;
-                foreach ($parcialAverages as $avg) {
-                    if ($avg !== null) {
-                        $sum += $avg;
-                        $count++;
-                    }
-                }
-
-                $finalScore = $count === 0 ? '—' : round($sum / $count, 1);
-                $finalScoreFormatted = self::formatGrade($finalScore);
+                $finalScoreFormatted = ($consolidado && $consolidado->final !== null) ? self::formatGrade($consolidado->final) : '—';
                 $approved = ($finalScoreFormatted !== '—') ? ($finalScoreFormatted >= 6 ? 'Sí' : 'No') : '—';
 
                 $kardex[] = [
                     'id' => $load->id,
                     'uuid' => $load->uuid,
                     'subject' => $subjectName,
-                    'code' => $load->course->code ?? 'S/C',
+                    'code' => $load->course?->codigo ?? 'S/C',
                     'teacher' => $teacherName,
                     'score' => $finalScoreFormatted,
                     'approved' => $approved,
@@ -170,16 +145,14 @@ class GradeService
      */
     public static function getStudentTasks($userId)
     {
-        $enrollment = Enrollment::where('user_id', $userId)
-            ->where('status', 'active')
+        $enrollment = Enrollment::where('usuario_id', $userId)
+            ->where('estatus', 'active')
             ->first();
 
-        if (!$enrollment) {
-            return [];
-        }
+        if (!$enrollment) return [];
 
-        $loads = AcademicLoad::where('academic_group_id', $enrollment->academic_group_id)
-            ->where('academic_period_id', $enrollment->academic_period_id)
+        $loads = AcademicLoad::where('grupo_id', $enrollment->grupo_id)
+            ->where('ciclo_id', $enrollment->ciclo_id)
             ->with('course')
             ->get();
 
@@ -190,20 +163,20 @@ class GradeService
 
             foreach ($tasks as $task) {
                 $delivery = EntregaTarea::where('tarea_id', $task->id)
-                    ->where('user_id', $userId)
+                    ->where('usuario_id', $userId)
                     ->first();
 
                 $status = 'Pendiente';
                 if ($delivery) {
-                    if ($delivery->score !== '') {
+                    if ($delivery->calificacion !== '') {
                         $status = 'Calificado';
-                    } elseif ($delivery->status === 'submitted') {
+                    } elseif ($delivery->estatus === 'submitted') {
                         $status = 'Entregado';
                     }
                 }
 
-                $deadlineFormatted = $task->deadline
-                    ? date('d \d\e F', strtotime($task->deadline))
+                $deadlineFormatted = $task->fecha_entrega
+                    ? date('d \d\e F', strtotime($task->fecha_entrega))
                     : 'Sin fecha';
 
                 $months = [
@@ -212,18 +185,16 @@ class GradeService
                     'July' => 'Julio', 'August' => 'Agosto', 'September' => 'Septiembre',
                     'October' => 'Octubre', 'November' => 'Noviembre', 'December' => 'Diciembre'
                 ];
-                foreach ($months as $en => $es) {
-                    $deadlineFormatted = str_replace($en, $es, $deadlineFormatted);
-                }
+                foreach ($months as $en => $es) $deadlineFormatted = str_replace($en, $es, $deadlineFormatted);
 
                 $tasksList[] = [
                     'id' => $task->id,
-                    'subjectName' => $load->course->name ?? 'Materia Desconocida',
+                    'subjectName' => $load->course?->nombre ?? 'Materia Desconocida',
                     'parcial' => $task->parcial,
-                    'title' => $task->name,
+                    'title' => $task->nombre,
                     'status' => $status,
-                    'desc' => $task->description ?? 'Sin descripción',
-                    'points' => ($task->points ?: 10) . ' puntos',
+                    'desc' => $task->descripcion ?? 'Sin descripción',
+                    'points' => ($task->puntos ?: 10) . ' puntos',
                     'deadline' => $deadlineFormatted,
                 ];
             }

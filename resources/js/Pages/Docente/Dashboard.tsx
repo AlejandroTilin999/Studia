@@ -13,18 +13,18 @@ import TeacherRightSidebar from '@/Components/TeacherRightSidebar';
 
 interface AssignedLoadItem {
     id: string | number;
-    code: string;
-    subject: string;
-    groupName: string;
-    studentsCount: number;
-    schedule: string;
-    status: string;
+    codigo: string;
+    nombre_materia: string;
+    nombre_grupo: string;
+    cantidad_alumnos: number;
+    turno: string;
+    estatus: string;
 }
 
 interface DocenteDashboardProps {
     teacherInfo?: {
-        name: string;
-        specialty: string;
+        nombre: string;
+        especialidad: string;
         email: string;
     };
     assignedLoad?: AssignedLoadItem[];
@@ -36,8 +36,8 @@ export default function DocenteDashboard({
 }: DocenteDashboardProps) {
     // 1. Datos del docente con fallback seguro
     const teacherInfo = {
-        name: propTeacherInfo?.name || 'Docente',
-        specialty: propTeacherInfo?.specialty || 'General',
+        name: propTeacherInfo?.nombre || 'Docente',
+        specialty: propTeacherInfo?.especialidad || 'General',
         email: propTeacherInfo?.email || ''
     };
 
@@ -94,15 +94,15 @@ export default function DocenteDashboard({
                                     <div className="flex items-center gap-4 min-w-0">
                                         <div className="min-w-0 text-left">
                                             <h4 className="text-sm font-bold text-slate-900 truncate leading-tight">
-                                                {load.subject}
+                                                {load.nombre_materia}
                                             </h4>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                                    Grupo {load.groupName}
+                                                    Grupo {load.nombre_grupo}
                                                 </span>
                                                 <span className="text-slate-300">•</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
-                                                    {load.studentsCount} alumnos
+                                                    {load.cantidad_alumnos} alumnos
                                                 </span>
                                             </div>
                                         </div>
@@ -110,11 +110,11 @@ export default function DocenteDashboard({
 
                                     <div className="flex items-center gap-3 shrink-0 ml-4">
                                         <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md border ${
-                                            load.status === 'completed'
+                                            load.estatus === 'completed'
                                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                                 : 'bg-amber-50 text-amber-600 border-amber-100'
                                         }`}>
-                                            {load.status === 'completed' ? 'Cargado' : 'Pendiente'}
+                                            {load.estatus === 'completed' ? 'Cargado' : 'Pendiente'}
                                         </span>
                                         <ChevronRight size={16} className="text-slate-300 group-hover:text-[#1e88e5] group-hover:translate-x-0.5 transition-all" />
                                     </div>

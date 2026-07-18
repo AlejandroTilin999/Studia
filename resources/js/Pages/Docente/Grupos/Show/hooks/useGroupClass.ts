@@ -59,12 +59,12 @@ export function useGroupClass() {
 
         if (classInfo) {
             setLoadId(classInfo.id);
-            setGrupo(classInfo.groupName);
-            setMateria(classInfo.subject);
-            setEspecialidad(classInfo.major);
-            setSemestre(classInfo.semester);
-            if (classInfo.students) {
-                setStudents(classInfo.students);
+            setGrupo(classInfo.nombre_grupo);
+            setMateria(classInfo.nombre_materia);
+            setEspecialidad(classInfo.especialidad);
+            setSemestre(classInfo.semestre);
+            if (classInfo.alumnos) {
+                setStudents(classInfo.alumnos);
             }
             return;
         }
@@ -144,28 +144,28 @@ export function useGroupClass() {
         PARCIALES.forEach(({ num }) => {
             axios.get(`/docente/clases/${loadId}/config?parcial=${num}`)
                 .then(res => {
-                    const { configured, criteria, grades } = res.data;
+                    const { configurado, criterios, alumnos } = res.data;
                     const currentParams = new URLSearchParams(window.location.search);
                     const isCurrentInUrl = currentParams.get('parcial') === num.toString();
 
-                    if (configured) {
+                    if (configurado) {
                         setConfigs(prev => ({
                             ...prev,
-                            [num]: { configured, criteria }
+                            [num]: { configured: configurado, criteria: criterios }
                         }));
                         setAllGrades(prev => ({
                             ...prev,
-                            [num]: grades
+                            [num]: alumnos
                         }));
 
                         // Si este es el parcial que estamos viendo, cargar sus datos activos
                         if (isCurrentInUrl) {
                             setScreen('grades');
-                            setStudentGrades(grades);
+                            setStudentGrades(alumnos);
 
                             // Cargar tareas específicas de este parcial
                             axios.get(`/docente/clases/${loadId}/tareas?parcial=${num}`)
-                                .then(tRes => setTasks(tRes.data.tasks))
+                                .then(tRes => setTasks(tRes.data.tareas))
                                 .catch(err => console.error("Error tareas:", err));
                         }
                     } else if (isCurrentInUrl) {
@@ -199,14 +199,14 @@ export function useGroupClass() {
         setDraftCriteria(prev => prev.filter(c => c.id !== id));
     }
 
-    function updateCriterion(id: number, field: 'name' | 'percentage', value: string | number) {
+    function updateCriterion(id: number, field: 'nombre' | 'porcentaje', value: string | number) {
         setDraftCriteria(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
     }
 
     function toggleSyncTasks(id: number) {
         setDraftCriteria(prev => prev.map(c => ({
             ...c,
-            syncTasks: c.id === id ? !c.syncTasks : false // Solo uno a la vez
+            sincronizar_tareas: c.id === id ? !c.sincronizar_tareas : false // Solo uno a la vez
         })));
     }
 
@@ -221,10 +221,10 @@ export function useGroupClass() {
             SwalHelper.loading('Guardando configuración...', 'Estableciendo criterios de evaluación');
             axios.post(`/docente/clases/${loadId}/criterios`, {
                 parcial: activeParcial,
-                criteria: draftCriteria
+                criterios: draftCriteria
             })
             .then(res => {
-                const freshCriteria = res.data.criteria;
+                const freshCriteria = res.data.criterios;
                 setConfigs(prev => ({
                     ...prev,
                     [activeParcial!]: { configured: true, criteria: freshCriteria }
@@ -232,7 +232,7 @@ export function useGroupClass() {
                 // Recargar calificaciones correspondientes a los nuevos criterios
                 axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
                     .then(r => {
-                        setStudentGrades(r.data.grades);
+                        setStudentGrades(r.data.alumnos);
                         SwalHelper.success('¡Configurado!', 'Los criterios han sido guardados correctamente.');
                     })
                     .catch(err => console.error("Error al refrescar notas:", err));
@@ -500,7 +500,7 @@ export function useGroupClass() {
             defaultMessages[`1:${student.id}`] = [
                 {
                     sender: 'alumno',
-                    senderName: student.name,
+                    senderName: student.nombre || student.name,
                     text: 'Profesor, disculpe la tardanza, ya adjunté mi mapa conceptual de monomios.',
                     timestamp: 'Ayer, 08:32 PM'
                 },

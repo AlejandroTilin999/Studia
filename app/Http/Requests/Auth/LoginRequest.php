@@ -51,7 +51,7 @@ class LoginRequest extends FormRequest
             $profileType = $this->input('profile_type');
 
             // Validar si eligió la pestaña "Estudiante" pero NO tiene rol de alumno
-            if ($profileType === 'student' && $user->role !== 'alumno') {
+            if ($profileType === 'student' && $user->rol !== 'alumno') {
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([
                     'email' => 'Este correo no pertenece a una cuenta de estudiante.',
@@ -59,7 +59,7 @@ class LoginRequest extends FormRequest
             }
 
             // Validar si eligió la pestaña "Personal" pero NO es docente ni admin
-            if ($profileType === 'staff' && !in_array($user->role, ['docente', 'admin'])) {
+            if ($profileType === 'staff' && !in_array($user->rol, ['docente', 'admin'])) {
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([
                     'email' => 'Este correo no pertenece al personal docente o administrativo.',

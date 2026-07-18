@@ -11,14 +11,25 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
+        'nombre',
+        'apellido_paterno',
+        'apellido_materno',
         'email',
         'password',
-        'role',
+        'rol',
         'activo',
         'password_changed',
         'telefono',
     ];
+
+    /**
+     * Accessor para obtener el nombre completo.
+     */
+    public function getNombreCompletoAttribute()
+    {
+        $fullName = trim("{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}");
+        return $fullName ?: 'Sin nombre registrado';
+    }
 
     protected $hidden = [
         'password',
@@ -32,15 +43,18 @@ class User extends Authenticatable
 
     // --- RELACIONES ESCOLARES ---
 
-    // Un usuario (alumno) puede tener muchas inscripciones a lo largo del tiempo
     public function enrollments()
     {
-        return $this->hasMany(Enrollment::class);
+        return $this->hasMany(Enrollment::class, 'usuario_id');
     }
 
-    // Un usuario puede tener muchas facturas o cobros de colegiatura
-    public function invoices()
+    public function teacher()
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasOne(Teacher::class, 'usuario_id');
+    }
+
+    public function student()
+    {
+        return $this->hasOne(Student::class, 'usuario_id');
     }
 }

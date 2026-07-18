@@ -12,10 +12,10 @@ class AcademicLoad extends Model
     protected $table = 'cargas_academicas';
 
     protected $fillable = [
-        'academic_period_id',
-        'academic_group_id',
-        'course_id',
-        'teacher_id',
+        'ciclo_id',
+        'grupo_id',
+        'materia_id',
+        'docente_id',
         'uuid'
     ];
 
@@ -36,7 +36,7 @@ class AcademicLoad extends Model
      */
     public function academicPeriod()
     {
-        return $this->belongsTo(AcademicPeriod::class, 'academic_period_id');
+        return $this->belongsTo(AcademicPeriod::class, 'ciclo_id');
     }
 
     /**
@@ -44,7 +44,7 @@ class AcademicLoad extends Model
      */
     public function academicGroup()
     {
-        return $this->belongsTo(AcademicGroup::class, 'academic_group_id');
+        return $this->belongsTo(AcademicGroup::class, 'grupo_id');
     }
 
     /**
@@ -52,7 +52,7 @@ class AcademicLoad extends Model
      */
     public function course()
     {
-        return $this->belongsTo(Course::class, 'course_id');
+        return $this->belongsTo(Course::class, 'materia_id');
     }
 
     /**
@@ -60,6 +60,6 @@ class AcademicLoad extends Model
      */
     public function teacher()
     {
-        return $this->belongsTo(Teacher::class, 'teacher_id');
+        return $this->belongsTo(Teacher::class, 'docente_id');
     }
 }

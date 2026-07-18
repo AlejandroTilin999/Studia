@@ -17,10 +17,10 @@ class UserController extends Controller
         $users = User::orderBy('created_at', 'desc')->get()->map(function ($u) {
             return [
                 'id' => $u->id,
-                'name' => $u->name,
+                'nombre' => $u->nombre_completo,
                 'email' => $u->email,
-                'role' => $u->role ?? 'admin',
-                'status' => ($u->activo !== false) ? 'active' : 'inactive',
+                'rol' => $u->rol ?? 'admin',
+                'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
                 'telefono' => $u->telefono ?? '',
             ];
         });
@@ -33,37 +33,38 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'role' => 'required|string|in:admin,docente,alumno',
-            'status' => 'required|string|in:active,inactive',
-            'password' => 'required|string|min:6',
-            'phone' => 'nullable|string|max:20',
+            'nombre'           => 'required|string|max:255',
+            'apellido_paterno' => 'required|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'email'            => 'required|string|email|max:255|unique:users,email',
+            'rol'              => 'required|string|in:admin,docente,alumno',
+            'estatus'          => 'required|string|in:active,inactive',
+            'password'         => 'required|string|min:6',
+            'telefono'         => 'nullable|string|max:20',
         ]);
 
         DB::transaction(function () use ($request) {
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'activo' => $request->status === 'active',
-                'telefono' => $request->phone,
+                'nombre'           => $request->nombre,
+                'apellido_paterno' => $request->apellido_paterno,
+                'apellido_materno' => $request->apellido_materno,
+                'email'            => $request->email,
+                'password'         => Hash::make($request->password),
+                'rol'              => $request->rol,
+                'activo'           => $request->estatus === 'active',
+                'telefono'         => $request->telefono,
             ]);
 
-            // Si es docente o alumno, crear perfil base si no existe
-            if ($request->role === 'docente') {
+            if ($request->rol === 'docente') {
                 Teacher::create([
-                    'user_id' => $user->id,
-                    'employee_code' => 'EMP-' . mt_rand(1000, 9999),
-                    'nombre' => $request->name,
-                    'apellido_paterno' => 'Docente',
-                    'specialty' => 'General',
+                    'usuario_id'       => $user->id,
+                    'codigo_empleado'  => 'EMP-' . mt_rand(1000, 9999),
+                    'especialidad'     => 'General',
                 ]);
-            } elseif ($request->role === 'alumno') {
+            } elseif ($request->rol === 'alumno') {
                 Student::create([
-                    'user_id' => $user->id,
-                    'matricula' => 'ALU-' . mt_rand(10000, 99999),
+                    'usuario_id' => $user->id,
+                    'matricula'  => 'ALU-' . mt_rand(10000, 99999),
                 ]);
             }
         });
@@ -76,30 +77,25 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => "required|string|email|max:255|unique:users,email,{$user->id}",
-            'role' => 'required|string|in:admin,docente,alumno',
-            'status' => 'required|string|in:active,inactive',
-            'phone' => 'nullable|string|max:20',
+            'nombre'           => 'required|string|max:255',
+            'apellido_paterno' => 'required|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'email'            => "required|string|email|max:255|unique:users,email,{$user->id}",
+            'rol'              => 'required|string|in:admin,docente,alumno',
+            'estatus'          => 'required|string|in:active,inactive',
+            'telefono'         => 'nullable|string|max:20',
         ]);
 
         DB::transaction(function () use ($request, $user) {
             $user->update([
-                'name' => $request->name,
-                'email' => $request->email,
-                'role' => $request->role,
-                'activo' => $request->status === 'active',
-                'telefono' => $request->phone,
+                'nombre'           => $request->nombre,
+                'apellido_paterno' => $request->apellido_paterno,
+                'apellido_materno' => $request->apellido_materno,
+                'email'            => $request->email,
+                'rol'              => $request->rol,
+                'activo'           => $request->estatus === 'active',
+                'telefono'         => $request->telefono,
             ]);
-
-            // Sincronizar perfiles
-            if ($user->role === 'docente' && $user->teacher) {
-                $user->teacher->update([
-                    'nombre' => $request->name,
-                ]);
-            } elseif ($user->role === 'alumno' && $user->student) {
-                // Si existe alumno
-            }
         });
 
         return redirect()->back()->with('message', 'Usuario actualizado con éxito.');

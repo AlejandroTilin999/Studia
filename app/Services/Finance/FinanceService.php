@@ -12,10 +12,10 @@ class FinanceService
     public function generateCharge(int $userId, string $concept, float $amount)
     {
         return Invoice::create([
-            'user_id' => $userId,
-            'concept' => $concept,
-            'amount' => $amount,
-            'status' => 'pending'
+            'usuario_id' => $userId,
+            'concepto' => $concept,
+            'monto' => $amount,
+            'estatus' => 'pending'
         ]);
     }
 
@@ -26,12 +26,12 @@ class FinanceService
     {
         $invoice = Invoice::findOrFail($invoiceId);
 
-        if ($invoice->status === 'paid') {
+        if ($invoice->estatus === 'paid') {
             throw new \Exception("Esta factura ya fue pagada anteriormente.");
         }
 
         $invoice->update([
-            'status' => 'paid'
+            'estatus' => 'paid'
         ]);
 
         return $invoice;

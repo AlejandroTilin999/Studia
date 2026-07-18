@@ -15,10 +15,10 @@ interface LoadFormModalProps {
     courses: CourseCatalogItem[];
     teachers: TeacherCatalogItem[];
     data: {
-        academic_period_id: string | number;
-        academic_group_id: string | number;
-        course_id: string | number;
-        teacher_id: string | number;
+        ciclo_id: string | number;
+        grupo_id: string | number;
+        materia_id: string | number;
+        docente_id: string | number;
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -42,9 +42,9 @@ export default function LoadFormModal({
     onSubmit,
 }: LoadFormModalProps) {
     // 1. Identificar especialidad y semestre del grupo seleccionado
-    const selectedGroup = groups.find(g => g.id.toString() === data.academic_group_id.toString());
-    const groupMajor = selectedGroup?.major || '';
-    const groupSemester = selectedGroup?.code ? parseInt(selectedGroup.code.charAt(0)) : null;
+    const selectedGroup = groups.find(g => g.id.toString() === data.grupo_id.toString());
+    const groupMajor = selectedGroup?.especialidad || '';
+    const groupSemester = selectedGroup?.codigo ? parseInt(selectedGroup.codigo.charAt(0)) : null;
 
     // 2. Filtrar materias: Generales o Especialidad + Mismo Semestre
     const filteredCourses = React.useMemo(() => {
@@ -57,69 +57,74 @@ export default function LoadFormModal({
 
             // Regla 2: Debe ser General o de la especialidad del grupo
             if (course.tipo === 'General') return true;
-            return course.specialty_names?.some(sName => sName.toLowerCase() === groupMajor.toLowerCase());
+            return course.especialidades?.some(sName => sName.toLowerCase() === groupMajor.toLowerCase());
         });
     }, [courses, groupMajor, groupSemester]);
 
     // 3. Filtrar profesores según la materia seleccionada
-    const selectedCourse = courses.find(c => c.id.toString() === data.course_id.toString());
+    const selectedCourse = courses.find(c => c.id.toString() === data.materia_id.toString());
 
     const filteredTeachers = React.useMemo(() => {
-        if (!selectedCourse) return teachers; // Si no hay materia, mostrar todos
+        if (!selectedCourse) return teachers;
 
-        return teachers.filter(teacher => {
+        const filtered = teachers.filter(teacher => {
+            const teacherSpec = (teacher.especialidad || '').toLowerCase();
+
             if (selectedCourse.tipo === 'General') {
-                // Para materias generales, mostramos docentes de especialidad "General"
-                // o incluso podríamos mostrar a todos si se permite.
-                // Por tu solicitud, priorizamos los generales.
-                return teacher.specialty.toLowerCase() === 'general';
+                // Para materias generales, permitimos a todos los docentes o priorizamos
+                // pero por ahora mostraremos a todos para evitar listas vacías
+                return true;
             }
 
-            // Para materias de especialidad, el docente debe tener esa especialidad
-            return selectedCourse.specialty_names?.some(
-                sName => sName.toLowerCase() === teacher.specialty.toLowerCase()
+            // Para materias de especialidad, buscamos coincidencia
+            return selectedCourse.especialidades?.some(
+                sName => sName.toLowerCase() === teacherSpec
             );
         });
+
+        // Si el filtro es tan estricto que no deja a nadie, mostramos a todos
+        return filtered.length > 0 ? filtered : teachers;
     }, [teachers, selectedCourse]);
 
     // 4. Resetear materia si el grupo cambia y la materia seleccionada ya no es válida
     useEffect(() => {
-        if (isOpen && data.course_id && groupMajor) {
-            const isStillValid = filteredCourses.some(c => c.id.toString() === data.course_id.toString());
+        if (isOpen && data.materia_id && groupMajor) {
+            const isStillValid = filteredCourses.some(c => c.id.toString() === data.materia_id.toString());
             if (!isStillValid) {
-                setData('course_id', '');
+                setData('materia_id', '');
             }
         }
-    }, [data.academic_group_id, filteredCourses]);
+    }, [data.grupo_id, filteredCourses]);
 
     // 5. Resetear profesor si la materia cambia y el profesor ya no es válido
     useEffect(() => {
-        if (isOpen && data.teacher_id && selectedCourse) {
-            const isStillValid = filteredTeachers.some(t => t.id.toString() === data.teacher_id.toString());
+        if (isOpen && data.docente_id && selectedCourse) {
+            const isStillValid = filteredTeachers.some(t => t.id.toString() === data.docente_id.toString());
             if (!isStillValid) {
-                setData('teacher_id', '');
+                setData('docente_id', '');
             }
         }
-    }, [data.course_id, filteredTeachers]);
+    }, [data.materia_id, filteredTeachers]);
 
     useEffect(() => {
         if (isOpen && mode === 'create') {
             // Inicializar con primer elemento de catálogo si aplica
-            if (periods.length > 0 && !data.academic_period_id) {
-                const activePeriod = periods.find(p => p.is_active) || periods[0];
-                setData('academic_period_id', activePeriod.id);
+            if (periods.length > 0 && !data.ciclo_id) {
+                const activePeriod = periods.find(p => p.activo) || periods[0];
+                setData('ciclo_id', activePeriod.id);
             }
-            if (groups.length > 0 && !data.academic_group_id) {
-                setData('academic_group_id', groups[0].id);
+            if (groups.length > 0 && !data.grupo_id) {
+                setData('grupo_id', groups[0].id);
             }
-            if (courses.length > 0 && !data.course_id) {
-                setData('course_id', courses[0].id);
+            if (courses.length > 0 && !data.materia_id) {
+                setData('materia_id', courses[0].id);
             }
-            if (teachers.length > 0 && !data.teacher_id) {
-                setData('teacher_id', teachers[0].id);
+            if (teachers.length > 0 && !data.docente_id) {
+                setData('docente_id', teachers[0].id);
             }
         }
     }, [isOpen, mode]);
+
 
     return (
         <BaseModal
@@ -169,46 +174,23 @@ export default function LoadFormModal({
                 <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[440px] relative">
                     <div className="space-y-5 flex-1 flex flex-col justify-center">
 
-                        {/* Ciclo Escolar (Contexto) */}
-                        <div className="space-y-1.5 opacity-90">
-                            <div className="flex items-center justify-between">
-                                <FormLabel required>Ciclo Escolar Activo</FormLabel>
-                                <span className="text-[9px] bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded-full border border-emerald-100 select-none">
-                                    Periodo de operación
-                                </span>
-                            </div>
-                            <FormSelect
-                                value={data.academic_period_id}
-                                onChange={e => setData('academic_period_id', e.target.value)}
-                                disabled={true}
-                                className="bg-slate-50 border border-slate-200 cursor-not-allowed select-none text-slate-500 font-bold h-10 text-xs"
-                            >
-                                {periods.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </FormSelect>
-                            {errors.academic_period_id && (
-                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.academic_period_id}</span>
-                            )}
-                        </div>
-
                         {/* Grupo */}
                         <div className="space-y-1.5">
                             <FormLabel required>Grupo Académico</FormLabel>
                             <FormSelect
-                                value={data.academic_group_id}
-                                onChange={e => setData('academic_group_id', e.target.value)}
+                                value={data.grupo_id}
+                                onChange={e => setData('grupo_id', e.target.value)}
                                 className="h-10 text-xs"
                             >
                                 <option value="">Selecciona un grupo...</option>
                                 {groups.map(g => (
                                     <option key={g.id} value={g.id}>
-                                        {g.name}
+                                        {g.nombre}
                                     </option>
                                 ))}
                             </FormSelect>
-                            {errors.academic_group_id && (
-                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.academic_group_id}</span>
+                            {errors.grupo_id && (
+                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.grupo_id}</span>
                             )}
                         </div>
 
@@ -216,14 +198,14 @@ export default function LoadFormModal({
                         <div className="space-y-1.5">
                             <FormLabel required>Materia (Asignatura)</FormLabel>
                             <FormSelect
-                                value={data.course_id}
-                                onChange={e => setData('course_id', e.target.value)}
+                                value={data.materia_id}
+                                onChange={e => setData('materia_id', e.target.value)}
                                 className="h-10 text-xs"
                             >
                                 <option value="">Selecciona una materia...</option>
                                 {filteredCourses.map(c => (
                                     <option key={c.id} value={c.id}>
-                                        {c.name} ({c.code})
+                                        {c.nombre} ({c.codigo})
                                     </option>
                                 ))}
                             </FormSelect>
@@ -232,8 +214,8 @@ export default function LoadFormModal({
                                     No hay materias para {groupSemester}° Semestre de {groupMajor}.
                                 </p>
                             )}
-                            {errors.course_id && (
-                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.course_id}</span>
+                            {errors.materia_id && (
+                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.materia_id}</span>
                             )}
                         </div>
 
@@ -241,24 +223,24 @@ export default function LoadFormModal({
                         <div className="space-y-1.5">
                             <FormLabel required>Profesor / Docente</FormLabel>
                             <FormSelect
-                                value={data.teacher_id}
-                                onChange={e => setData('teacher_id', e.target.value)}
+                                value={data.docente_id}
+                                onChange={e => setData('docente_id', e.target.value)}
                                 className="h-10 text-xs"
                             >
                                 <option value="">Selecciona un docente...</option>
                                 {filteredTeachers.map(t => (
                                     <option key={t.id} value={t.id}>
-                                        {t.nombre_completo} ({t.specialty})
+                                        {t.nombre_completo} ({t.especialidad})
                                     </option>
                                 ))}
                             </FormSelect>
                             {filteredTeachers.length === 0 && selectedCourse && (
                                 <p className="text-[10px] text-amber-600 font-bold mt-1">
-                                    No hay docentes disponibles para {selectedCourse.tipo === 'General' ? 'materias generales' : `la especialidad: ${selectedCourse.specialty_names?.join(', ')}`}.
+                                    No hay docentes disponibles para {selectedCourse.tipo === 'General' ? 'materias generales' : `la especialidad: ${selectedCourse.especialidades?.join(', ')}`}.
                                 </p>
                             )}
-                            {errors.teacher_id && (
-                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.teacher_id}</span>
+                            {errors.docente_id && (
+                                <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.docente_id}</span>
                             )}
                         </div>
                     </div>

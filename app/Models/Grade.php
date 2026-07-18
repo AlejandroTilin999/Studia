@@ -12,13 +12,19 @@ class Grade extends Model
     protected $table = 'calificaciones';
 
     protected $fillable = [
+        'usuario_id',
+        'carga_id',
         'criterio_id',
-        'user_id',
-        'score',
+        'calificacion',
+        'p1',
+        'p2',
+        'p3',
+        'final',
+        'estatus'
     ];
 
     /**
-     * Relación con el Criterio de Evaluación
+     * Relación con el Criterio de Evaluación (opcional)
      */
     public function criterio()
     {
@@ -30,6 +36,14 @@ class Grade extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    /**
+     * Relación con la Carga Académica
+     */
+    public function academicLoad()
+    {
+        return $this->belongsTo(AcademicLoad::class, 'carga_id');
     }
 }

@@ -55,7 +55,7 @@ export default function LoadTableControls({
                 >
                     <option value="all">Todos los grupos</option>
                     {groups.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
+                        <option key={g.id} value={g.id}>{g.nombre}</option>
                     ))}
                 </select>
             </div>

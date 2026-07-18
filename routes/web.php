@@ -10,7 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\Auth\PasswordChangeController; // 👈 Controlador para cambio obligatorio
+use App\Http\Controllers\Auth\PasswordChangeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,7 +29,7 @@ Route::get('/', function () {
 });
 
 // ==========================================
-// 2. RUTAS LIBERADAS / PÚBLICAS API (Sin auth)
+// 2. RUTAS LIBERADAS / PÚBLICAS API
 // ==========================================
 Route::get('/student', [StudentController::class, 'index'])->name('students.index');
 Route::post('/student', [StudentController::class, 'store'])->name('students.store');
@@ -38,20 +38,16 @@ Route::get('/teacher', [TeacherController::class, 'index'])->name('teachers.inde
 Route::post('/teacher', [TeacherController::class, 'store'])->name('teachers.store');
 
 // ==========================================
-// 3. RUTAS PROTEGIDAS (Requieren autenticación)
+// 3. RUTAS PROTEGIDAS
 // ==========================================
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // 🔒 RUTAS DE CAMBIO DE CONTRASEÑA OBLIGATORIO (Exentas del Middleware de Bloqueo)
     Route::get('/cambiar-contrasena', [PasswordChangeController::class, 'show'])->name('password.change_view');
     Route::post('/cambiar-contrasena', [PasswordChangeController::class, 'update'])->name('password.force_update');
 
-    // 🔒 GRUPO CON MIDDLEWARE DE FUERZA DE CONTRASEÑA ACTIVO
-    // Todos los que naveguen aquí adentro y sean Alumnos/Docentes sin password_changed cambiado serán interceptados
-        // 🔀 REDIRECCIÓN DINÁMICA DE DASHBOARDS BASADA EN ROLES
         Route::get('/dashboard', function (Request $request) {
             $user = $request->user();
-            $role = $user->role ?? 'admin'; // Si no está definido el rol en BD, fallback a admin
+            $role = $user->rol ?? 'admin';
 
             if ($role === 'docente') {
                 return redirect()->route('docente.dashboard');
@@ -67,29 +63,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         Route::prefix('admin')->group(function () {
             Route::get('/dashboard', function () {
-                $cycles = \App\Models\AcademicPeriod::orderBy('start_date', 'desc')->get()->map(function ($p) {
+                $cycles = \App\Models\AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
                     return [
                         'id' => $p->id,
-                        'name' => $p->name,
-                        'start_date' => $p->start_date instanceof \DateTimeInterface ? $p->start_date->format('Y-m-d') : $p->start_date,
-                        'end_date' => $p->end_date instanceof \DateTimeInterface ? $p->end_date->format('Y-m-d') : $p->end_date,
-                        'is_active' => (bool)$p->is_active,
+                        'nombre' => $p->nombre,
+                        'fecha_inicio' => $p->fecha_inicio instanceof \DateTimeInterface ? $p->fecha_inicio->format('Y-m-d') : $p->fecha_inicio,
+                        'fecha_fin' => $p->fecha_fin instanceof \DateTimeInterface ? $p->fecha_fin->format('Y-m-d') : $p->fecha_fin,
+                        'activo' => (bool)$p->activo,
                     ];
                 });
 
-                $activePeriod = \App\Models\AcademicPeriod::where('is_active', true)->first();
+                $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
                 $activePeriodId = $activePeriod ? $activePeriod->id : null;
 
                 if ($activePeriodId) {
-                    $studentsCount = \App\Models\Enrollment::where('academic_period_id', $activePeriodId)->count();
-                    $teachersCount = \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->distinct('teacher_id')->count('teacher_id');
-                    $groupsCount = \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->distinct('academic_group_id')->count('academic_group_id');
-                    $coursesCount = \App\Models\AcademicLoad::where('academic_period_id', $activePeriodId)->distinct('course_id')->count('course_id');
+                    $studentsCount = \App\Models\Enrollment::where('ciclo_id', $activePeriodId)->count();
+                    $teachersCount = \App\Models\AcademicLoad::where('ciclo_id', $activePeriodId)->distinct('docente_id')->count('docente_id');
+                    $groupsCount = \App\Models\AcademicLoad::where('ciclo_id', $activePeriodId)->distinct('grupo_id')->count('grupo_id');
+                    $coursesCount = \App\Models\AcademicLoad::where('ciclo_id', $activePeriodId)->distinct('materia_id')->count('materia_id');
                 } else {
-                    $studentsCount = 0;
-                    $teachersCount = 0;
-                    $groupsCount = 0;
-                    $coursesCount = 0;
+                    $studentsCount = 0; $teachersCount = 0; $groupsCount = 0; $coursesCount = 0;
                 }
 
                 return Inertia::render('Admin/Dashboard', [
@@ -101,12 +94,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ]);
             })->name('admin.dashboard');
 
-            // Gestión de Ciclos Escolares desde el Dashboard
             Route::post('/cycles', [AcademicPeriodController::class, 'store'])->name('admin.cycles.store');
             Route::post('/cycles/{id}/activate', [AcademicPeriodController::class, 'activate'])->name('admin.cycles.activate');
             Route::post('/cycles/{id}/close', [AcademicPeriodController::class, 'close'])->name('admin.cycles.close');
 
-            // Usuarios globales del Panel Admin
             Route::get('/usuarios', [UserController::class, 'index'])->name('admin.users.index');
             Route::post('/usuarios', [UserController::class, 'store'])->name('admin.users.store');
             Route::put('/usuarios/{id}', [UserController::class, 'update'])->name('admin.users.update');
@@ -119,31 +110,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/alumnos/{id}', [StudentController::class, 'destroy'])->name('admin.alumnos.destroy');
             Route::post('/alumnos/{id}/toggle', [StudentController::class, 'toggleStatus'])->name('admin.alumnos.toggle');
 
-            // Docentes asociados al panel de Administración
             Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
             Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
             Route::put('/docentes/{id}', [TeacherController::class, 'update'])->name('admin.docentes.update');
             Route::delete('/docentes/{id}', [TeacherController::class, 'destroy'])->name('admin.docentes.destroy');
 
-            // Grupos Académicos del Panel Admin (Corregido y unificado)
             Route::get('/grupos', [GroupController::class, 'index'])->name('groups.index');
             Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
             Route::put('/grupos/{id}', [GroupController::class, 'update'])->name('groups.update');
             Route::delete('/grupos/{id}', [GroupController::class, 'destroy'])->name('groups.destroy');
 
-            // Asignaciones de Materias (Cargas Académicas)
             Route::get('/asignaciones', [AcademicLoadController::class, 'index'])->name('admin.loads.index');
             Route::post('/asignaciones', [AcademicLoadController::class, 'store'])->name('admin.loads.store');
             Route::put('/asignaciones/{id}', [AcademicLoadController::class, 'update'])->name('admin.loads.update');
             Route::delete('/asignaciones/{id}', [AcademicLoadController::class, 'destroy'])->name('admin.loads.destroy');
 
-            // Materias Asociadas al Panel Admin
             Route::get('/materias', [CourseController::class, 'index'])->name('admin.materias.index');
             Route::post('/materias', [CourseController::class, 'store'])->name('materias.store');
             Route::put('/materias/{id}', [CourseController::class, 'update'])->name('materias.update');
             Route::delete('/materias/{id}', [CourseController::class, 'destroy'])->name('materias.destroy');
 
-            // Especialidades Asociadas al Panel Admin
             Route::get('/especialidades', [SpecialtyController::class, 'index'])->name('admin.especialidades.index');
             Route::post('/especialidades', [SpecialtyController::class, 'store'])->name('admin.especialidades.store');
             Route::put('/especialidades/{id}', [SpecialtyController::class, 'update'])->name('admin.especialidades.update');
@@ -158,24 +144,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('docente')->group(function () {
             Route::get('/dashboard', function () {
                 $user = auth()->user();
-                $teacher = \App\Models\Teacher::where('user_id', $user->id)->first();
+                $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
 
                 $loads = [];
                 if ($teacher) {
-                    $loads = \App\Models\AcademicLoad::where('teacher_id', $teacher->id)
+                    $loads = \App\Models\AcademicLoad::where('docente_id', $teacher->id)
                         ->with(['academicGroup', 'course'])
                         ->get()
                         ->map(function ($load) {
                             return [
                                 'id' => $load->uuid,
-                                'code' => $load->course->code ?? 'N/A',
-                                'subject' => $load->course->name ?? 'N/A',
-                                'groupName' => $load->academicGroup->name ?? 'N/A',
-                                'studentsCount' => \App\Models\Enrollment::where('academic_group_id', $load->academic_group_id)
-                                    ->where('status', 'active')
+                                'codigo' => $load->course->codigo ?? 'N/A',
+                                'nombre_materia' => $load->course->nombre ?? 'N/A',
+                                'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
+                                'cantidad_alumnos' => \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+                                    ->where('estatus', 'active')
                                     ->count(),
-                                'schedule' => 'Lunes y Miércoles 07:00 - 08:40',
-                                'status' => 'pending',
+                                'turno' => 'Turno Matutino',
+                                'estatus' => 'pending',
                             ];
                         });
                 }
@@ -183,8 +169,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 return Inertia::render('Docente/Dashboard', [
                     'assignedLoad' => $loads,
                     'teacherInfo' => $teacher ? [
-                        'name' => trim("{$teacher->nombre} {$teacher->apellido_paterno} " . ($teacher->apellido_materno ?? '')),
-                        'specialty' => $teacher->specialty ?? 'General',
+                        'nombre' => ($teacher && $teacher->user) ? $teacher->user->nombre_completo : 'Docente',
+                        'especialidad' => $teacher->especialidad ?? 'General',
                         'email' => $user->email,
                     ] : null
                 ]);
@@ -202,15 +188,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $students = [];
                 if ($load) {
-                    $students = \App\Models\Enrollment::where('academic_group_id', $load->academic_group_id)
-                        ->where('status', 'active')
+                    $students = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+                        ->where('estatus', 'active')
                         ->with('user')
                         ->get()
                         ->map(function ($enrollment) {
                             return [
-                                'id' => $enrollment->user_id,
-                                'name' => $enrollment->user->name ?? 'Sin nombre',
-                                'matricula' => $enrollment->student_code ?? 'N/A',
+                                'id' => $enrollment->usuario_id,
+                                'nombre' => $enrollment->user->nombre ?? 'Sin nombre',
+                                'matricula' => $enrollment->codigo_alumno ?? 'N/A',
                             ];
                         })->toArray();
                 }
@@ -218,17 +204,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 return Inertia::render('Docente/Grupos/Show', [
                     'classInfo' => $load ? [
                         'id' => $load->uuid,
-                        'groupName' => $load->academicGroup->name ?? 'N/A',
-                        'subject' => $load->course->name ?? 'N/A',
-                        'code' => $load->course->code ?? 'N/A',
-                        'major' => $load->academicGroup->major ?? 'N/A',
-                        'semester' => $load->course->semestre ?? (isset($load->academicGroup->code[0]) ? $load->academicGroup->code[0] : '1'),
-                        'students' => $students,
+                        'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
+                        'nombre_materia' => $load->course->nombre ?? 'N/A',
+                        'codigo_materia' => $load->course->codigo ?? 'N/A',
+                        'especialidad' => $load->academicGroup->especialidad ?? 'N/A',
+                        'semestre' => $load->course->semestre ?? 1,
+                        'alumnos' => $students,
                     ] : null
                 ]);
             })->name('docente.grupos.show');
 
-            // APIs de persistencia del Classroom en Supabase
             Route::get('/clases/{uuid}/config', [App\Http\Controllers\DocenteClassroomController::class, 'getConfig']);
             Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
             Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
@@ -242,14 +227,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('alumno')->group(function () {
             Route::get('/dashboard', function () {
                 $studentId = auth()->id();
-                $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
-                    ->where('status', 'active')
+                $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
+                    ->where('estatus', 'active')
                     ->with(['academicGroup.tutor', 'academicPeriod'])
                     ->first();
 
                 $kardex = \App\Services\GradeService::getStudentKardex($studentId);
-                $sum = 0;
-                $count = 0;
+                $sum = 0; $count = 0;
                 foreach ($kardex as $k) {
                     if ($k['score'] !== '—') {
                         $sum += floatval($k['score']);
@@ -259,22 +243,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
 
                 $studentInfo = [
-                    'name' => auth()->user()->name,
-                    'matricula' => $enrollment ? $enrollment->student_code : 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup?->name ?? 'Sin grupo',
+                    'name' => auth()->user()->nombre,
+                    'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup?->nombre ?? 'Sin grupo',
                     'email' => auth()->user()->email,
                     'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => $gpa,
                     'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
                         ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
                         : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->name ?? '2026',
-                    'periodo' => ''
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ?? '2026',
                 ];
 
                 $taskList = \App\Services\GradeService::getStudentTasks($studentId);
 
-                // Preparar la lista de materias para el frontend
                 $alumnoGroups = array_map(function($item) {
                     return [
                         'id' => $item['uuid'],
@@ -294,14 +276,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/materias', function () {
                 $studentId = auth()->id();
-                $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
-                    ->where('status', 'active')
+                $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
+                    ->where('estatus', 'active')
                     ->with(['academicGroup.tutor', 'academicPeriod'])
                     ->first();
 
                 $kardex = \App\Services\GradeService::getStudentKardex($studentId);
-                $sum = 0;
-                $count = 0;
+                $sum = 0; $count = 0;
                 foreach ($kardex as $k) {
                     if ($k['score'] !== '—') {
                         $sum += floatval($k['score']);
@@ -311,22 +292,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
 
                 $studentInfo = [
-                    'name' => auth()->user()->name,
-                    'matricula' => $enrollment ? $enrollment->student_code : 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup?->name ?? 'Sin grupo',
+                    'name' => auth()->user()->nombre,
+                    'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup?->nombre ?? 'Sin grupo',
                     'email' => auth()->user()->email,
                     'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => $gpa,
                     'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
                         ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
                         : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->name ?? '2026',
-                    'periodo' => ''
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ?? '2026',
                 ];
 
                 $taskList = \App\Services\GradeService::getStudentTasks($studentId);
 
-                // Preparar la lista de materias para el frontend
                 $alumnoGroups = array_map(function($item) {
                     return [
                         'id' => $item['uuid'],
@@ -347,20 +326,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/calificaciones', function () {
                 $studentId = auth()->id();
-                $enrollment = \App\Models\Enrollment::where('user_id', $studentId)
-                    ->where('status', 'active')
+                $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
+                    ->where('estatus', 'active')
                     ->with(['academicGroup.tutor', 'academicPeriod'])
                     ->first();
 
                 $studentInfo = [
-                    'name' => auth()->user()->name,
-                    'matricula' => $enrollment ? $enrollment->student_code : 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup?->name ?? 'Sin grupo',
+                    'name' => auth()->user()->nombre,
+                    'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup?->nombre ?? 'Sin grupo',
                     'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
                         ? trim("{$enrollment->academicGroup->tutor->nombre} {$enrollment->academicGroup->tutor->apellido_paterno}")
                         : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->name ?? '2026',
-                    'periodo' => ''
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ?? '2026',
                 ];
 
                 $grades = \App\Services\GradeService::getStudentKardex($studentId);
@@ -376,16 +354,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             })->name('alumno.documentos.index');
         });
 
-        // ------------------------------------------
-        // Perfil Común de Usuarios
-        // ------------------------------------------
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     });
 
-
-// ==========================================
-// 4. RUTAS DE AUTENTICACIÓN (Laravel Breeze)
-// ==========================================
 require __DIR__.'/auth.php';

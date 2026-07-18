@@ -1,18 +1,20 @@
 export interface SpecialtySelect {
     id: number;
-    name: string;
-    code: string;
+    nombre: string;
+    codigo: string;
 }
 
 export interface MateriaBackend {
     id: number;
     codigo: string;
     nombre: string;
+    semestre: number;
     descripcion: string;
     tipo: 'General' | 'Especialidad';
     profesor: string;
     grupos: string[];
-    especialidades: { id: number; name: string }[];
+    especialidades: { id: number; nombre: string }[];
+    docente_id?: number | null;
 }
 
 export interface ProfesorSelect {
@@ -22,15 +24,15 @@ export interface ProfesorSelect {
 
 export interface GroupSelect {
     id: number;
-    code: string;
-    name: string;
+    codigo: string;
+    nombre: string;
 }
 
 export interface MateriasIndexProps {
     materias?: MateriaBackend[];
     profesores?: ProfesorSelect[];
     grupos?: GroupSelect[];
-    specialties?: SpecialtySelect[];
+    especialidades?: SpecialtySelect[];
 }
 
 export interface SubjectFormatted {

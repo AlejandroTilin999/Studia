@@ -33,7 +33,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   // Determinar rol automáticamente basado en la información del usuario o la URL
   const { auth, alumnoGroups: propAlumnoGroups } = usePage().props as any;
   const user = auth?.user;
-  const userRole = (user?.role || '').toUpperCase();
+  const userRole = (user?.rol || user?.role || '').toUpperCase();
 
   let resolvedRole: Role = 'ADMIN';
   if (userRole === 'DOCENTE' || url.startsWith('/docente')) {
@@ -247,10 +247,10 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                                 "block text-[13px] leading-tight",
                                 isSubjectActive ? "font-extrabold" : "font-bold"
                               )}>
-                                {s.name}
+                                {s.nombre}
                               </span>
                               <span className="block text-[10px] text-slate-400 font-semibold truncate mt-0.5">
-                                {s.teacher}
+                                {s.docente}
                               </span>
                             </div>
                           </button>
@@ -337,7 +337,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                                 "block text-[13px] leading-tight",
                                 isGroupActive ? "font-extrabold" : "font-bold"
                               )}>
-                                Grupo {g.name}
+                                Grupo {g.nombre_grupo}
                               </span>
                               <span className="block text-[10px] text-slate-400 font-semibold truncate mt-0.5">
                                 {g.materia}
@@ -428,7 +428,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             >
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-extrabold text-slate-800 truncate leading-tight">
-                  {user?.name || 'Usuario'}
+                  {user?.nombre_completo || 'Usuario'}
                 </p>
                 <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
                   {user?.email || ''}

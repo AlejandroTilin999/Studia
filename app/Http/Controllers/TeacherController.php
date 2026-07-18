@@ -13,24 +13,26 @@ class TeacherController extends Controller
 {
     public function index()
     {
-        // Traemos los docentes con sus cargas académicas (asignaciones reales) y su usuario vinculado
-        $teachers = Teacher::with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])->get();
+        // Traemos los docentes con sus cargas académicas y su usuario vinculado (solo registros válidos)
+        $teachers = Teacher::whereHas('user')
+            ->with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])
+            ->get();
 
         $teachers = $teachers->map(function ($t) {
             return [
-                'id'               => $t->id,
-                'employee_code'    => $t->employee_code,
-                'nombre'           => $t->nombre,
-                'apellido_paterno' => $t->apellido_paterno,
-                'apellido_materno' => $t->apellido_materno,
-                'specialty'        => $t->specialty,
-                'phone'            => $t->phone,
-                'user'             => $t->user ? ['email' => $t->user->email] : null,
-                'courses'          => $t->academicLoads->map(fn($l) => [
-                    'id'        => $l->course->id ?? null,
-                    'name'      => $l->course->name ?? 'N/A',
-                    'code'      => $l->course->code ?? '',
-                    'groupName' => $l->academicGroup->name ?? 'N/A',
+                'id'                => $t->id,
+                'codigo_empleado'   => $t->codigo_empleado,
+                'nombre'            => $t->user->nombre ?? '',
+                'apellido_paterno'  => $t->user->apellido_paterno ?? '',
+                'apellido_materno'  => $t->user->apellido_materno ?? '',
+                'especialidad'      => $t->especialidad,
+                'telefono'          => $t->user->telefono ?? '',
+                'usuario'           => $t->user ? ['email' => $t->user->email] : null,
+                'materias'          => $t->academicLoads->map(fn($l) => [
+                    'id'             => $l->course->id ?? null,
+                    'nombre'         => $l->course->nombre ?? 'N/A',
+                    'codigo'         => $l->course->codigo ?? '',
+                    'nombre_grupo'   => $l->academicGroup->nombre ?? 'N/A',
                 ])->values()->toArray(),
             ];
         });
@@ -46,27 +48,27 @@ class TeacherController extends Controller
             'nombre'           => 'required|string|max:255',
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
-            'specialty'        => 'required|string|max:255',
-            'phone'            => 'required|numeric|digits:10',
+            'especialidad'     => 'required|string|max:255',
+            'telefono'         => 'required|numeric|digits:10',
         ], [
             'nombre.required'           => 'El nombre es obligatorio.',
             'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
             'apellido_materno.required' => 'El apellido materno es obligatorio.',
-            'specialty.required'        => 'La especialidad es obligatoria.',
-            'phone.required'            => 'El número de celular es obligatorio.',
-            'phone.numeric'             => 'El celular solo debe contener números.',
-            'phone.digits'              => 'El número de celular debe tener exactamente 10 dígitos.',
+            'especialidad.required'     => 'La especialidad es obligatoria.',
+            'telefono.required'         => 'El número de celular es obligatorio.',
+            'telefono.numeric'          => 'El celular solo debe contener números.',
+            'telefono.digits'           => 'El número de celular debe tener exactamente 10 dígitos.',
         ]);
 
         // Generar matrícula docente: DOC-{INICIALES}{AÑO}, garantizando unicidad
         $firstInit    = strtoupper(substr(trim($request->nombre), 0, 1));
         $paternoInit  = strtoupper(substr(trim($request->apellido_paterno), 0, 1));
-        $maternoInit  = strtoupper(substr(trim($request->apellido_materno ?? ''), 0, 1)) ?: 'X';
+        $maternoInit  = (strtoupper(substr(trim($request->apellido_materno ?? ''), 0, 1))) ?: 'X';
         $year         = date('Y');
         $baseCode     = "DOC-{$firstInit}{$paternoInit}{$maternoInit}{$year}";
         $employeeCode = $baseCode;
         $counter      = 1;
-        while (Teacher::where('employee_code', $employeeCode)->exists()) {
+        while (Teacher::where('codigo_empleado', $employeeCode)->exists()) {
             $employeeCode = $baseCode . $counter;
             $counter++;
         }
@@ -78,31 +80,29 @@ class TeacherController extends Controller
         $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
         $emailBase      = "{$firstNamePart}.{$paternoPart}";
         $generatedEmail = "{$emailBase}@prepahidalgo.edu.mx";
-        $emailCounter   = 1;
+
         while (User::where('email', $generatedEmail)->exists()) {
-            $generatedEmail = "{$emailBase}{$emailCounter}@prepahidalgo.edu.mx";
-            $emailCounter++;
+            $randomSuffix = strtoupper(substr(md5(uniqid()), 0, 4));
+            $generatedEmail = "{$emailBase}.{$randomSuffix}@prepahidalgo.edu.mx";
         }
 
         DB::transaction(function () use ($request, $employeeCode, $generatedEmail) {
             // 1. Crear el usuario correspondiente
-            $fullName = trim("{$request->nombre} {$request->apellido_paterno} " . ($request->apellido_materno ?? ''));
             $user = User::create([
-                'name'     => $fullName,
-                'email'    => $generatedEmail,
-                'password' => Hash::make('Prepahid2026'),
-                'role'     => 'docente',
+                'nombre'           => $request->nombre,
+                'apellido_paterno' => $request->apellido_paterno,
+                'apellido_materno' => $request->apellido_materno,
+                'telefono'         => $request->telefono,
+                'email'            => $generatedEmail,
+                'password'         => Hash::make('Prepahid2026'),
+                'rol'              => 'docente',
             ]);
 
             // 2. Crear el docente enlazado
             Teacher::create([
-                'user_id'          => $user->id,
-                'employee_code'    => $employeeCode,
-                'nombre'           => $request->nombre,
-                'apellido_paterno' => $request->apellido_paterno,
-                'apellido_materno' => $request->apellido_materno,
-                'specialty'        => $request->specialty,
-                'phone'            => $request->phone,
+                'usuario_id'       => $user->id,
+                'codigo_empleado'  => $employeeCode,
+                'especialidad'     => $request->especialidad,
             ]);
         });
 
@@ -117,34 +117,32 @@ class TeacherController extends Controller
             'nombre'           => 'required|string|max:255',
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
-            'specialty'        => 'required|string|max:255',
-            'phone'            => 'required|numeric|digits:10', // Mismas reglas estrictas
+            'especialidad'     => 'required|string|max:255',
+            'telefono'         => 'required|numeric|digits:10',
         ], [
             'nombre.required'           => 'El nombre es obligatorio.',
             'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
             'apellido_materno.required' => 'El apellido materno es obligatorio.',
-            'specialty.required'        => 'La especialidad es obligatoria.',
-            'phone.required'            => 'El número de celular es obligatorio.',
-            'phone.numeric'             => 'El celular solo debe contener números.',
-            'phone.digits'              => 'El número de celular debe tener exactamente 10 dígitos.',
+            'especialidad.required'     => 'La especialidad es obligatoria.',
+            'telefono.required'         => 'El número de celular es obligatorio.',
+            'telefono.numeric'          => 'El celular solo debe contener números.',
+            'telefono.digits'           => 'El número de celular debe tener exactamente 10 dígitos.',
         ]);
 
         DB::transaction(function () use ($request, $teacher) {
-            // 1. Si está enlazado a un usuario, actualizar su nombre
+            // 1. Si está enlazado a un usuario, actualizar sus datos personales
             if ($teacher->user) {
-                $fullName = trim("{$request->nombre} {$request->apellido_paterno} " . ($request->apellido_materno ?? ''));
                 $teacher->user->update([
-                    'name' => $fullName,
+                    'nombre'           => $request->nombre,
+                    'apellido_paterno' => $request->apellido_paterno,
+                    'apellido_materno' => $request->apellido_materno,
+                    'telefono'         => $request->telefono,
                 ]);
             }
 
             // 2. Actualizar docente
             $teacher->update([
-                'nombre'           => $request->nombre,
-                'apellido_paterno' => $request->apellido_paterno,
-                'apellido_materno' => $request->apellido_materno,
-                'specialty'        => $request->specialty,
-                'phone'            => $request->phone,
+                'especialidad'     => $request->especialidad,
             ]);
         });
 
@@ -159,25 +157,22 @@ class TeacherController extends Controller
         $loadsCount = $teacher->academicLoads()->count();
         if ($loadsCount > 0) {
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar al docente '{$teacher->nombre}' porque tiene {$loadsCount} materias asignadas actualmente."
+                'delete' => "No se puede eliminar al docente '{$teacher->user->nombre}' porque tiene {$loadsCount} materias asignadas actualmente."
             ]);
         }
 
         // 2. Verificar si es tutor de algún grupo
-        $groupTutor = \App\Models\AcademicGroup::where('tutor_teacher_id', $teacher->id)->first();
+        $groupTutor = \App\Models\AcademicGroup::where('docente_tutor_id', $teacher->id)->first();
         if ($groupTutor) {
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar al docente '{$teacher->nombre}' porque es tutor titular del grupo '{$groupTutor->name}'."
+                'delete' => "No se puede eliminar al docente '{$teacher->user->nombre}' porque es tutor titular del grupo '{$groupTutor->nombre}'."
             ]);
         }
 
         DB::transaction(function () use ($teacher) {
-            // 1. Eliminar al usuario asociado si existe
             if ($teacher->user) {
                 $teacher->user->delete();
             }
-
-            // 2. Eliminar al docente
             $teacher->delete();
         });
 

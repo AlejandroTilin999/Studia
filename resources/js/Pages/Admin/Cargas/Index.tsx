@@ -23,7 +23,7 @@ export default function CargasIndex({
     const { exportToExcel } = useExportExcel();
 
     const activePeriod = useMemo(() => {
-        return periods.find((p: any) => p.is_active);
+        return periods.find((p: any) => p.activo);
     }, [periods]);
 
     const [periodFilter, setPeriodFilter] = useState('all');
@@ -40,39 +40,38 @@ export default function CargasIndex({
     const [selectedLoad, setSelectedLoad] = useState<AcademicLoadItem | null>(null);
 
     const { data, setData, reset, processing, errors } = useForm({
-        academic_period_id: '' as string | number,
-        academic_group_id: '' as string | number,
-        course_id: '' as string | number,
-        teacher_id: '' as string | number,
+        ciclo_id: '' as string | number,
+        grupo_id: '' as string | number,
+        materia_id: '' as string | number,
+        docente_id: '' as string | number,
     });
 
     const filteredLoads = useMemo(() => {
         return loads.filter(load => {
             const matchesSearch =
-                load.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                load.course_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                load.teacher_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                load.group_name.toLowerCase().includes(searchQuery.toLowerCase());
+                load.nombre_materia.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                load.codigo_materia.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                load.nombre_docente.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                load.nombre_grupo.toLowerCase().includes(searchQuery.toLowerCase());
 
-            const matchesPeriod = periodFilter === 'all' || load.academic_period_id.toString() === periodFilter;
-            const matchesGroup = groupFilter === 'all' || load.academic_group_id.toString() === groupFilter;
+            const matchesPeriod = periodFilter === 'all' || load.ciclo_id.toString() === periodFilter;
+            const matchesGroup = groupFilter === 'all' || load.grupo_id.toString() === groupFilter;
 
             return matchesSearch && matchesPeriod && matchesGroup;
         });
     }, [loads, searchQuery, periodFilter, groupFilter]);
 
     const totalLoadsCount = loads.length;
-    const activeCyclesCount = periods.filter((p: any) => p.is_active).length;
-    const coveredGroupsCount = new Set(loads.map(l => l.academic_group_id)).size;
+    const activeCyclesCount = periods.filter((p: any) => p.activo).length;
+    const coveredGroupsCount = new Set(loads.map(l => l.grupo_id)).size;
 
     const handleExportExcel = () => {
-        const headers = ["Ciclo Escolar", "Grupo", "Materia (Clave)", "Materia (Nombre)", "Docente"];
+        const headers = ["Grupo", "Materia (Clave)", "Materia (Nombre)", "Docente"];
         const rows = filteredLoads.map(l => [
-            l.period_name,
-            l.group_name,
-            l.course_code,
-            l.course_name,
-            l.teacher_name
+            l.nombre_grupo,
+            l.codigo_materia,
+            l.nombre_materia,
+            l.nombre_docente
         ]);
 
         exportToExcel(
@@ -88,7 +87,7 @@ export default function CargasIndex({
     const openCreateModal = () => {
         reset();
         if (activePeriod) {
-            setData('academic_period_id', activePeriod.id);
+            setData('ciclo_id', activePeriod.id);
         }
         setIsCreateModalOpen(true);
     };
@@ -96,10 +95,10 @@ export default function CargasIndex({
     const openEditModal = (load: AcademicLoadItem) => {
         setSelectedLoad(load);
         setData({
-            academic_period_id: load.academic_period_id,
-            academic_group_id: load.academic_group_id,
-            course_id: load.course_id,
-            teacher_id: load.teacher_id,
+            ciclo_id: load.ciclo_id,
+            grupo_id: load.grupo_id,
+            materia_id: load.materia_id,
+            docente_id: load.docente_id,
         });
         setIsEditModalOpen(true);
     };
@@ -137,7 +136,7 @@ export default function CargasIndex({
     const handleDeleteLoad = (load: AcademicLoadItem) => {
         SwalHelper.confirm(
             '¿Eliminar Asignación?',
-            `¿Estás seguro de que deseas desvincular "${load.course_name}" del grupo "${load.group_name}"?`,
+            `¿Estás seguro de que deseas desvincular "${load.nombre_materia}" del grupo "${load.nombre_grupo}"?`,
             'Sí, Eliminar',
             'Cancelar',
             'error'
@@ -160,7 +159,7 @@ export default function CargasIndex({
         <AdminPageLayout
             headTitle="Asignaciones"
             title={`Asignaciones de Materias (${totalLoadsCount})`}
-            subtitle={activePeriod ? `Gestionando asignaciones para el periodo: ${activePeriod.name}` : "Asocia grupos, materias y docentes"}
+            subtitle={activePeriod ? `Gestionando asignaciones para el periodo: ${activePeriod.nombre}` : "Asocia grupos, materias y docentes"}
             breadcrumb="Asignaciones"
             toastMessage={toastMessage}
             metrics={[

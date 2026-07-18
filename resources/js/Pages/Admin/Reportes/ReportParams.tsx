@@ -2,18 +2,18 @@ import { Download } from 'lucide-react';
 
 interface StudentItem {
     matricula: string;
-    name: string;
-    group_id: number;
+    nombre: string;
+    grupo_id: number;
 }
 
 interface GroupItem {
     id: number;
-    name: string;
+    nombre: string;
 }
 
 interface PeriodItem {
     id: number;
-    name: string;
+    nombre: string;
 }
 
 interface ReportParamsProps {
@@ -61,7 +61,7 @@ export default function ReportParams({
                         >
                             {groups.map((g) => (
                                 <option key={g.id} value={g.id.toString()}>
-                                    {g.name}
+                                    {g.nombre}
                                 </option>
                             ))}
                             {groups.length === 0 && <option value="">No hay grupos disponibles</option>}
@@ -81,7 +81,7 @@ export default function ReportParams({
                             >
                                 {filteredStudents.map((s) => (
                                     <option key={s.matricula} value={s.matricula}>
-                                        {s.name} ({s.matricula})
+                                        {s.nombre} ({s.matricula})
                                     </option>
                                 ))}
                                 {filteredStudents.length === 0 && <option value="">No hay alumnos en este grupo</option>}
@@ -102,7 +102,7 @@ export default function ReportParams({
                             >
                                 {periods.map((p) => (
                                     <option key={p.id} value={p.id.toString()}>
-                                        {p.name}
+                                        {p.nombre}
                                     </option>
                                 ))}
                                 {periods.length === 0 && <option value="">No hay ciclos disponibles</option>}

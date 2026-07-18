@@ -8,18 +8,18 @@ import { Download, FileText } from 'lucide-react';
 
 interface StudentItem {
     matricula: string;
-    name: string;
-    group_id: number;
+    nombre: string;
+    grupo_id: number;
 }
 
 interface GroupItem {
     id: number;
-    name: string;
+    nombre: string;
 }
 
 interface PeriodItem {
     id: number;
-    name: string;
+    nombre: string;
 }
 
 interface AdminReportesProps {
@@ -52,7 +52,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
     const handleGroupChange = (newGroupId: string) => {
         setGroupFilter(newGroupId);
         // Al cambiar de grupo, intentar seleccionar al primer alumno de ese grupo
-        const firstStudentOfGroup = students.find(s => s.group_id?.toString() === newGroupId);
+        const firstStudentOfGroup = students.find(s => s.grupo_id?.toString() === newGroupId);
         if (firstStudentOfGroup) {
             setSelectedStudentMatricula(firstStudentOfGroup.matricula);
         } else {
@@ -61,19 +61,19 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
     };
 
     const handleDownloadReport = () => {
-        const groupName = groups.find(g => g.id.toString() === groupFilter)?.name || 'Desconocido';
-        const periodName = periods.find(p => p.id.toString() === periodFilter)?.name || 'Desconocido';
+        const groupName = groups.find(g => g.id.toString() === groupFilter)?.nombre || 'Desconocido';
+        const periodName = periods.find(p => p.id.toString() === periodFilter)?.nombre || 'Desconocido';
 
         if (selectedReport === 'asistencia') {
             SwalHelper.alert('Generando Reporte', `Generando Reporte de asistencia para Grupo ${groupName} (${periodName})...`, 'info');
         } else if (selectedReport === 'constancia') {
             const student = students.find(s => s.matricula === selectedStudentMatricula);
             if (!student) return SwalHelper.error('Error', 'Debe seleccionar un alumno válido.');
-            SwalHelper.alert('Generando Constancia', `Generando Constancia de estudios para ${student.name} (${selectedStudentMatricula}) - Grupo ${groupName}...`, 'info');
+            SwalHelper.alert('Generando Constancia', `Generando Constancia de estudios para ${student.nombre} (${selectedStudentMatricula}) - Grupo ${groupName}...`, 'info');
         } else if (selectedReport === 'boleta') {
             const student = students.find(s => s.matricula === selectedStudentMatricula);
             if (!student) return SwalHelper.error('Error', 'Debe seleccionar un alumno válido.');
-            SwalHelper.alert('Generando Boleta', `Generando Boleta de calificaciones para ${student.name} (${selectedStudentMatricula}) - Ciclo ${periodName}...`, 'info');
+            SwalHelper.alert('Generando Boleta', `Generando Boleta de calificaciones para ${student.nombre} (${selectedStudentMatricula}) - Ciclo ${periodName}...`, 'info');
         }
     };
 
@@ -85,7 +85,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
         SwalHelper.toast('Filtros restablecidos.', 'info');
     };
 
-    const filteredStudents = students.filter(s => s.group_id?.toString() === groupFilter);
+    const filteredStudents = students.filter(s => s.grupo_id?.toString() === groupFilter);
 
     return (
         <AdminPageLayout

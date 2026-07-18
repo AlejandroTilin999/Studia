@@ -38,7 +38,7 @@ export default function StudentKardexModal({
     const customRound = (val: number) => Math.floor(val + 0.4);
 
     const rawGpa = calculateGPA(displayGrades);
-    const gpa = isNaN(parseFloat(rawGpa)) ? rawGpa : customRound(parseFloat(rawGpa));
+    const gpa = isNaN(parseFloat(rawGpa)) ? '-' : customRound(parseFloat(rawGpa));
 
     const handleDownloadSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,20 +52,23 @@ export default function StudentKardexModal({
                 <span className="font-normal text-xs text-slate-800">{grade.code}</span>
             ),
             align: "left",
-            className: "pl-4 text-left w-1/4"
+            className: "pl-4 text-left w-1/3"
         },
         {
             header: "Materia",
             accessor: (grade: KardexRow) => grade.subject,
             align: "left",
-            className: "text-slate-755 font-normal pl-4 text-left w-2/4"
+            className: "text-slate-755 font-normal pl-4 text-left w-1/3"
         },
         {
             header: "Calificación",
-            accessor: (grade: KardexRow) => customRound(Number(grade.score)),
+            accessor: (grade: KardexRow) => {
+                const score = Number(grade.score);
+                return isNaN(score) ? '-' : customRound(score);
+            },
             align: "center",
             headerClassName: "text-center",
-            className: "text-slate-700 font-normal text-center w-1/4"
+            className: "text-slate-700 font-normal text-center w-1/3"
         }
     ];
 

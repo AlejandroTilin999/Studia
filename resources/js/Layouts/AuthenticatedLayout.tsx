@@ -15,7 +15,7 @@ function LayoutContent({
     const { isMobile, setOpenMobile } = useSidebar();
 
     return (
-        <div className="h-screen w-full flex bg-white overflow-hidden relative flex-col md:flex-row">
+        <div className="h-screen w-full flex bg-white overflow-hidden relative flex-col md:flex-row text-left">
             {/* Top Bar for Mobile */}
             {isMobile && (
                 <div className="sticky top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shrink-0">

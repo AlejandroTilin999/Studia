@@ -1,20 +1,19 @@
 export interface Criterion {
     id: number;
-    name: string;
-    percentage: number;
-    syncTasks?: boolean;
+    nombre: string;
+    porcentaje: number;
+    sincronizar_tareas?: boolean;
 }
 
 export interface Task {
     id: number;
-    name: string;
-    description?: string;
-    deadline?: string;
-    dueTime?: string;
-    points?: number;
+    nombre: string;
+    descripcion?: string;
+    fecha_entrega?: string;
+    puntos?: number;
     type?: 'task' | 'material';
     attachments?: { name: string; size: string; type: string }[];
-    grades: Record<number, string>; // studentId → score
+    calificaciones: Record<number, string>; // studentId → score
 }
 
 export interface ParcialConfig {
@@ -25,8 +24,8 @@ export interface ParcialConfig {
 export interface StudentGrade {
     id: number;
     matricula: string;
-    name: string;
-    scores: Record<number, string>; // criterionId → score
+    nombre: string;
+    calificaciones: Record<number, string>; // criterionId → score
     consolidado?: {
         p1: number | null;
         p2: number | null;
@@ -36,7 +35,7 @@ export interface StudentGrade {
     } | null;
 }
 
-export const MOCK_STUDENTS: Omit<StudentGrade, 'scores'>[] = [];
+export const MOCK_STUDENTS: Omit<StudentGrade, 'calificaciones'>[] = [];
 
 export const DEFAULT_CRITERIA: Criterion[] = [];
 
@@ -47,4 +46,3 @@ export const PARCIALES = [
 ];
 
 export const MINIMUM_PASSING_GRADE = 7;
-

@@ -15,18 +15,16 @@ export default function GruposIndex({
     grupos = [],
     profesores = [],
     materias = [],
-    especialidades = [],
-    turnos = []
+    especialidades = []
 }: GruposIndexProps) {
     const formattedGroups: GroupFormatted[] = (grupos || []).map(g => ({
         id: g.id,
         code: g.codigo || 'S/C',
         name: g.nombre || 'Sin nombre',
-        shift: g.turno || 'Horario único',
+        shift: g.turno || 'Matutino',
         teacherName: g.profesor || 'Pendiente de Asignación',
-        teacher_id: g.tutor_teacher_id,
-        specialty: g.especialidad === 'TI' ? 'Informática' : (g.especialidad || 'General'),
-        turno_id: g.turno_id ?? '',
+        teacher_id: g.docente_tutor_id,
+        specialty: g.especialidad || 'General',
         activo: g.activo ?? true
     }));
 
@@ -40,15 +38,13 @@ export default function GruposIndex({
     const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
 
-    // Formulario reactivo de Inertia
+    // Formulario reactivo de Inertia (Nombres en Español)
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
-        code: '',
-        name: '',
-        shift: 'Matutino',
-        major: '',
-        tutor_teacher_id: '' as string | number,
-        linked_courses: [] as number[],
-        turno_id: '' as string | number,
+        codigo: '',
+        nombre: '',
+        turno: 'Matutino',
+        especialidad: '',
+        docente_tutor_id: '' as string | number,
         activo: true
     });
 
@@ -74,10 +70,11 @@ export default function GruposIndex({
     const filteredGroups = filteredGroupsList(formattedGroups, searchQuery, specialtyFilter);
 
     function filteredGroupsList(list: GroupFormatted[], search: string, filter: string) {
+        const query = search.toLowerCase();
         return list.filter(g => {
-            const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase()) ||
-                g.code.toLowerCase().includes(search.toLowerCase()) ||
-                g.teacherName.toLowerCase().includes(search.toLowerCase());
+            const matchesSearch = (g.name?.toLowerCase() || '').includes(query) ||
+                (g.code?.toLowerCase() || '').includes(query) ||
+                (g.teacherName?.toLowerCase() || '').includes(query);
             const matchesSpecialty = filter === 'all' || g.specialty === filter;
             return matchesSearch && matchesSpecialty;
         });
@@ -90,17 +87,14 @@ export default function GruposIndex({
     };
 
     const openEditModal = (group: GroupFormatted) => {
-        const rawGroup = grupos.find(g => g.id === group.id);
         clearErrors();
         setSelectedGroup(group);
         setData({
-            code: group.code,
-            name: group.name,
-            shift: group.shift,
-            major: group.specialty,
-            tutor_teacher_id: group.teacher_id ?? '',
-            linked_courses: rawGroup?.linked_courses || [],
-            turno_id: group.turno_id ?? '',
+            codigo: group.code,
+            nombre: group.name,
+            turno: group.shift,
+            especialidad: group.specialty,
+            docente_tutor_id: group.teacher_id ?? '',
             activo: group.activo ?? true
         } as any);
         setIsEditModalOpen(true);
@@ -130,9 +124,7 @@ export default function GruposIndex({
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
         SwalHelper.loading('Registrando grupo...', 'Guardando datos en el servidor');
-
         post('/admin/grupos', {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
@@ -149,7 +141,6 @@ export default function GruposIndex({
         e.preventDefault();
         if (selectedGroup) {
             SwalHelper.loading('Actualizando grupo...', 'Procesando cambios');
-
             put(`/admin/grupos/${selectedGroup.id}`, {
                 onSuccess: () => {
                     setIsEditModalOpen(false);
@@ -163,7 +154,6 @@ export default function GruposIndex({
     };
 
     const totalGroupsCount = formattedGroups.length;
-    const shiftCount = Array.from(new Set(formattedGroups.map(g => g.shift))).length;
 
     return (
         <AdminPageLayout
@@ -173,7 +163,6 @@ export default function GruposIndex({
             breadcrumb="Grupos"
             metrics={[
                 { code: "T1", label: "Grupos totales", value: totalGroupsCount },
-                { code: "T3", label: "Turnos", value: shiftCount },
                 { code: "T4", label: "Asignados", value: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length }
             ]}
             quickActions={[
@@ -187,7 +176,6 @@ export default function GruposIndex({
                 { name: "Sin tutor", count: formattedGroups.filter(g => g.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
-            {/* Controls */}
             <GroupTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -197,14 +185,12 @@ export default function GruposIndex({
                 specialties={especialidades}
             />
 
-            {/* Table */}
             <GroupTable
                 groups={filteredGroups}
                 onOpenEditModal={openEditModal}
                 onDelete={handleDeleteGroup}
             />
 
-            {/* Create Modal */}
             <GroupFormModal
                 isOpen={isCreateModalOpen}
                 onClose={() => {
@@ -217,7 +203,6 @@ export default function GruposIndex({
                 materiasList={materias}
                 specialties={especialidades}
                 groupsList={formattedGroups}
-                turnos={turnos}
                 data={data}
                 setData={setData}
                 errors={errors}
@@ -225,7 +210,6 @@ export default function GruposIndex({
                 onSubmit={handleCreateSubmit}
             />
 
-            {/* Edit Modal */}
             <GroupFormModal
                 isOpen={isEditModalOpen}
                 onClose={() => {
@@ -237,7 +221,6 @@ export default function GruposIndex({
                 materiasList={materias}
                 specialties={especialidades}
                 groupsList={formattedGroups}
-                turnos={turnos}
                 data={data}
                 setData={setData}
                 errors={errors}
