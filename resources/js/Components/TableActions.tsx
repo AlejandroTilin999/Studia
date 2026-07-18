@@ -1,11 +1,11 @@
 import React from 'react';
-import { Edit, Trash2, Key, FileText, Plus } from 'lucide-react';
+import { Edit, Trash2, Key, FileText, Plus, UserMinus, UserPlus } from 'lucide-react';
 
 interface ActionButtonProps {
     onClick: (e: React.MouseEvent) => void;
     title: string;
-    icon: 'edit' | 'delete' | 'reset-password' | 'kardex' | 'activate' | 'plus';
-    variant?: 'default' | 'danger' | 'success';
+    icon: 'edit' | 'delete' | 'reset-password' | 'kardex' | 'activate' | 'plus' | 'suspend';
+    variant?: 'default' | 'danger' | 'success' | 'warning';
 }
 
 export function TableActionButton({ onClick, title, icon, variant = 'default' }: ActionButtonProps) {
@@ -19,7 +19,10 @@ export function TableActionButton({ onClick, title, icon, variant = 'default' }:
                 return <Key size={16} />;
             case 'kardex':
                 return <FileText size={16} />;
+            case 'suspend':
+                return <UserMinus size={16} />;
             case 'activate':
+                return <UserPlus size={16} />;
             case 'plus':
                 return <Plus size={16} />;
             default:
@@ -30,6 +33,9 @@ export function TableActionButton({ onClick, title, icon, variant = 'default' }:
     const getColors = () => {
         if (variant === 'danger') {
             return 'text-slate-400 hover:text-rose-600 hover:bg-rose-50/50';
+        }
+        if (variant === 'warning') {
+            return 'text-slate-400 hover:text-amber-600 hover:bg-amber-50/50';
         }
         if (variant === 'success') {
             return 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/50';

@@ -36,7 +36,7 @@ class StudentController extends Controller
                                 'id' => $student->enrollment->academicGroup->id,
                                 'nombre' => $student->enrollment->academicGroup->nombre,
                             ] : null,
-                            'estatus' => $student->enrollment->estatus ?? 'active',
+                            'estatus' => $student->estatus ?? 'active',
                             'calificaciones' => [],
                         ];
                     });
@@ -118,6 +118,7 @@ class StudentController extends Controller
                 'usuario_id'       => $user->id,
                 'matricula'        => $finalMatricula,
                 'fecha_nacimiento' => $request->fecha_nacimiento,
+                'estatus'          => 'active',
             ]);
 
             // 3. Registrar su inscripción en el grupo
@@ -180,6 +181,7 @@ class StudentController extends Controller
             $student->update([
                 'matricula'        => $request->matricula,
                 'fecha_nacimiento' => $request->fecha_nacimiento,
+                'estatus'          => $request->estatus ?? $student->estatus,
             ]);
 
             // 3. Actualizar inscripción (traslado con historial o asignación inicial)
@@ -209,11 +211,21 @@ class StudentController extends Controller
     public function toggleStatus($id)
     {
         $student = Student::findOrFail($id);
+
+        // 1. Determinar el nuevo estado
+        // Usamos el estatus del alumno como fuente de verdad
+        $currentStatus = $student->estatus ?? 'active';
+        $newStatus = ($currentStatus === 'active') ? 'suspended' : 'active';
+
+        // 2. Actualizar el alumno
+        $student->update(['estatus' => $newStatus]);
+
+        // 3. Sincronizar con la inscripción (si existe)
         if ($student->enrollment) {
-            $newStatus = $student->enrollment->estatus === 'active' ? 'suspended' : 'active';
             $student->enrollment->update(['estatus' => $newStatus]);
         }
-        return redirect()->route('admin.alumnos.index');
+
+        return redirect()->back()->with('message', 'Estado del alumno actualizado.');
     }
 
     /**

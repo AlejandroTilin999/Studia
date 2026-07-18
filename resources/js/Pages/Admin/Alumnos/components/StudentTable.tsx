@@ -71,8 +71,8 @@ export default function StudentTable({
                     <TableActionButton
                         onClick={() => onOpenBajaModal(student)}
                         title={student.status === 'active' ? "Dar de Baja" : "Dar de Alta"}
-                        icon={student.status === 'active' ? 'delete' : 'activate'}
-                        variant={student.status === 'active' ? 'danger' : 'success'}
+                        icon={student.status === 'active' ? 'suspend' : 'activate'}
+                        variant={student.status === 'active' ? 'warning' : 'success'}
                     />
                     <TableActionButton
                         onClick={() => onDelete(student.id, student.name)}
