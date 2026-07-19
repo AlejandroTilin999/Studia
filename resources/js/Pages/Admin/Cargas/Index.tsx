@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useForm, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
+import { RiFileExcel2Fill } from 'react-icons/ri';
 import LoadFormModal from './components/LoadFormModal';
 import LoadTable from './components/LoadTable';
 import LoadTableControls from './components/LoadTableControls';
@@ -225,7 +226,7 @@ export default function CargasIndex({
                 { code: "T4", label: "Grupos cubiertos", value: loads.length > 0 ? coveredGroupsCount : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf }
             ]}
             donutChartLabel="asignaciones"

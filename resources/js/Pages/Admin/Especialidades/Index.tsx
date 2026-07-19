@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, Plus, Search } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
+import { RiFileExcel2Fill } from 'react-icons/ri';
 import SpecialtyTable from './components/SpecialtyTable';
 import SpecialtyFormModal from './components/SpecialtyFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
@@ -144,7 +145,7 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
                 { code: "E1", label: "Especialidades", value: totalSpecialtiesCount }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Gestionar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers }
             ]}

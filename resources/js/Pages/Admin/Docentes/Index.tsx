@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, FileText } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
+import { RiFileExcel2Fill } from 'react-icons/ri';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
@@ -224,7 +225,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 { code: "T4", label: "Activos en ciclo", value: backendTeachers.length > 0 ? totalTeachersCount : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
                 { label: "Ver materias activas", onClick: () => router.visit('/admin/materias'), icon: FileText }

@@ -32,23 +32,15 @@ interface AdminReportesProps {
 
 export default function AdminReportesIndex({ groups = [], students = [], periods = [] }: AdminReportesProps) {
     const { toastMessage, triggerToast } = useToast();
-    const [selectedReport, setSelectedReport] = useState<'asistencia' | 'constancia' | 'boleta'>('asistencia');
+    const [selectedReport, setSelectedReport] = useState<'asistencia' | 'constancia' | 'boleta' | 'kardex' | null>('asistencia');
 
-    // Inicializar filtros de forma segura
+    // Inicializar filtros vacíos para forzar selección manual
     const [groupFilter, setGroupFilter] = useState<string>('');
     const [selectedStudentMatricula, setSelectedStudentMatricula] = useState<string>('');
     const [periodFilter, setPeriodFilter] = useState<string>('');
 
     useEffect(() => {
-        if (groups.length > 0 && !groupFilter) {
-            setGroupFilter(groups[0].id.toString());
-        }
-        if (periods.length > 0 && !periodFilter) {
-            setPeriodFilter(periods[0].id.toString());
-        }
-        if (students.length > 0 && !selectedStudentMatricula) {
-            setSelectedStudentMatricula(students[0].matricula);
-        }
+        // Quitamos la selección automática por defecto
     }, [groups, periods, students]);
 
     const handleGroupChange = (newGroupId: string) => {
@@ -63,6 +55,11 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
     };
 
     const handleDownloadReport = () => {
+        if (!selectedReport) {
+            SwalHelper.alert('Selección requerida', 'Por favor, selecciona primero el tipo de documento que deseas generar.', 'warning');
+            return;
+        }
+
         const groupName = groups.find(g => g.id.toString() === groupFilter)?.nombre || 'Desconocido';
         const periodName = periods.find(p => p.id.toString() === periodFilter)?.nombre || 'Desconocido';
 
@@ -76,14 +73,17 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             const student = students.find(s => s.matricula === selectedStudentMatricula);
             if (!student) return SwalHelper.error('Error', 'Debe seleccionar un alumno válido.');
             SwalHelper.alert('Generando Boleta', `Generando Boleta de calificaciones para ${student.nombre} (${selectedStudentMatricula}) - Ciclo ${periodName}...`, 'info');
+        } else if (selectedReport === 'kardex') {
+            const student = students.find(s => s.matricula === selectedStudentMatricula);
+            if (!student) return SwalHelper.error('Error', 'Debe seleccionar un alumno válido.');
+            SwalHelper.alert('Generando Kardex', `Generando Historial Académico (Kardex) para ${student.nombre} (${selectedStudentMatricula})...`, 'info');
         }
     };
 
     const handleReset = () => {
-        setSelectedReport('asistencia');
-        setGroupFilter(groups[0]?.id?.toString() || '');
-        setSelectedStudentMatricula(students[0]?.matricula || '');
-        setPeriodFilter(periods[0]?.id?.toString() || '');
+        setGroupFilter('');
+        setSelectedStudentMatricula('');
+        setPeriodFilter('');
         SwalHelper.toast('Filtros restablecidos.', 'info');
     };
 
@@ -115,39 +115,48 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             donutChartTitle="Formato de Descargas"
             donutChartLabel="archivos"
             donutChartSegments={[
-                { name: "Asistencia (PDF)", count: 20, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                { name: "Asistencia (PDF)", count: 20, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
                 { name: "Boletas (PDF)", count: 25, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
-            <h3 className="font-extrabold text-slate-800 text-lg mb-6 tracking-tight text-left">Panel de Reportes Oficiales</h3>
-
             <Deferred data={["groups", "students", "periods"]} fallback={
                 <DotsLoader
                     label="Cargando reportes"
                     sublabel="Por favor espera un momento..."
                 />
             }>
-                {/* Dashboard Control Box */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-8 flex-1 min-h-0">
-                    <ReportSelector
-                        selectedReport={selectedReport}
-                        setSelectedReport={setSelectedReport}
-                    />
+                <div className="flex-1 flex flex-col py-2 animate-in fade-in duration-500 h-full">
+                    <div className="mb-10 text-left">
+                        <p className="text-slate-500 text-[13px] font-medium leading-relaxed max-w-3xl">
+                            Desde este panel puedes generar y descargar toda la documentación oficial del centro escolar.
+                            Selecciona el tipo de documento que necesites, ajusta los filtros según el grupo o alumno y obtén el reporte en formato PDF listo para impresión.
+                        </p>
+                    </div>
 
-                    <ReportParams
-                        selectedReport={selectedReport}
-                        groupFilter={groupFilter}
-                        onGroupChange={handleGroupChange}
-                        selectedStudentMatricula={selectedStudentMatricula}
-                        setSelectedStudentMatricula={setSelectedStudentMatricula}
-                        periodFilter={periodFilter}
-                        setPeriodFilter={setPeriodFilter}
-                        filteredStudents={filteredStudents}
-                        groups={groups}
-                        periods={periods}
-                        onDownload={handleDownloadReport}
-                        onReset={handleReset}
-                    />
+                    <div className="flex-1 flex flex-col gap-10">
+                        <ReportSelector
+                            selectedReport={selectedReport}
+                            setSelectedReport={setSelectedReport}
+                        />
+
+                        <ReportParams
+                            selectedReport={selectedReport}
+                            groupFilter={groupFilter}
+                            onGroupChange={handleGroupChange}
+                            selectedStudentMatricula={selectedStudentMatricula}
+                            setSelectedStudentMatricula={setSelectedStudentMatricula}
+                            periodFilter={periodFilter}
+                            setPeriodFilter={setPeriodFilter}
+                            filteredStudents={filteredStudents}
+                            groups={groups}
+                            periods={periods}
+                            onDownload={handleDownloadReport}
+                            onReset={handleReset}
+                        />
+
+                        {/* Espaciador para empujar el contenido hacia arriba si hay mucho espacio */}
+                        <div className="flex-1" />
+                    </div>
                 </div>
             </Deferred>
         </AdminPageLayout>

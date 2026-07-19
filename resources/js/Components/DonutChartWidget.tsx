@@ -38,7 +38,7 @@ export default function DonutChartWidget({
   const chartAndLegend = (
     <div className="flex flex-col items-center w-full">
       {/* Donut chart SVG with text in center */}
-      <div className="relative w-32 h-32 flex items-center justify-center mb-3">
+      <div className="relative w-32 h-32 2xl:w-40 2xl:h-40 flex items-center justify-center mb-3 transition-all duration-500">
         <svg viewBox="0 0 100 100" className={cn("w-full h-full transform -rotate-90 select-none", isLoading && "animate-pulse opacity-50")}>
           {/* Base grey track circle */}
           <circle
@@ -89,12 +89,12 @@ export default function DonutChartWidget({
           {isLoading ? (
             <div className="h-6 w-10 bg-slate-100 animate-pulse rounded" />
           ) : (
-            <span className="text-3xl font-black text-[#0266E0] leading-none">
+            <span className="text-3xl 2xl:text-[32px] font-black text-[#0266E0] leading-none transition-all">
               {displayValue}
             </span>
           )}
           {centerLabel && (
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+            <span className="text-[10px] 2xl:text-[12px] font-bold text-slate-400 uppercase tracking-wider mt-1 transition-all">
               {centerLabel}
             </span>
           )}

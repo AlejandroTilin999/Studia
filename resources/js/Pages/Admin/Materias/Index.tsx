@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, Users } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
+import { RiFileExcel2Fill } from 'react-icons/ri';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import SubjectTable from './components/SubjectTable';
 import SubjectTableControls from './components/SubjectTableControls';
@@ -195,7 +196,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 { code: "T4", label: "Sin docente", value: materias.length > 0 ? formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
                 { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileSpreadsheet, Layers, FileText } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa";
+import { RiFileExcel2Fill } from "react-icons/ri";
 import { useForm, router, Deferred } from '@inertiajs/react';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
@@ -312,7 +313,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 { code: "T4", label: "De baja", value: alumnos.length > 0 ? inactiveCount : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
                 { label: "Ver reportes escolares", onClick: () => router.visit('/admin/reportes'), icon: FileText }

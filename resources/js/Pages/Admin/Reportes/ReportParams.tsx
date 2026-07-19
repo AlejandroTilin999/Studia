@@ -1,4 +1,7 @@
-import { Download } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { RotateCcw, Users, User, Calendar } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa';
+import { cn } from '@/lib/utils';
 
 interface StudentItem {
     matricula: string;
@@ -17,7 +20,7 @@ interface PeriodItem {
 }
 
 interface ReportParamsProps {
-    selectedReport: 'asistencia' | 'constancia' | 'boleta';
+    selectedReport: 'asistencia' | 'constancia' | 'boleta' | 'kardex' | null;
     groupFilter: string;
     onGroupChange: (group: string) => void;
     selectedStudentMatricula: string;
@@ -45,89 +48,128 @@ export default function ReportParams({
     onDownload,
     onReset,
 }: ReportParamsProps) {
-    return (
-        <div className="col-span-1 md:col-span-2 border border-slate-100 bg-slate-50/50 rounded-2xl p-6 flex flex-col gap-6 h-fit text-left">
-            <div className="space-y-5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Parámetros del Reporte</span>
+    if (!selectedReport) return null;
 
-                {/* Group filter dropdown */}
-                <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Filtrar Grupo por:</label>
-                    <div>
-                        <select
-                            value={groupFilter}
-                            onChange={e => onGroupChange(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#1e88e5] text-xs font-bold text-slate-700 transition-all focus:outline-none focus:border-[#1e88e5]"
-                        >
-                            {groups.map((g) => (
-                                <option key={g.id} value={g.id.toString()}>
-                                    {g.nombre}
-                                </option>
-                            ))}
-                            {groups.length === 0 && <option value="">No hay grupos disponibles</option>}
-                        </select>
+    const showStudent = selectedReport === 'constancia' || selectedReport === 'boleta' || selectedReport === 'kardex';
+    const showPeriod = selectedReport === 'asistencia' || selectedReport === 'boleta' || selectedReport === 'kardex';
+
+    // Validación de formulario completo
+    const isFormValid = useMemo(() => {
+        if (!groupFilter) return false;
+        if (showStudent && !selectedStudentMatricula) return false;
+        if (showPeriod && !periodFilter) return false;
+        return true;
+    }, [groupFilter, selectedStudentMatricula, periodFilter, showStudent, showPeriod]);
+
+    // Verificar si hay algún filtro seleccionado para habilitar el reset
+    const isAnyFilterSelected = useMemo(() => {
+        return !!groupFilter || !!selectedStudentMatricula || !!periodFilter;
+    }, [groupFilter, selectedStudentMatricula, periodFilter]);
+
+    return (
+        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+            <div className="flex items-center gap-3 mb-4 ml-1">
+                <div className={cn(
+                    "w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500",
+                    isFormValid
+                        ? "bg-slate-500 border-slate-500 text-white"
+                        : "border-slate-200 text-slate-400"
+                )}>
+                    2
+                </div>
+                <h4 className="text-[13px] font-semibold text-slate-400 block text-left">
+                    Configura los parámetros de filtrado
+                </h4>
+            </div>
+
+            {/* Fila 1: Selectores de Filtrado (Dinámicos) */}
+            <div className="flex flex-col lg:flex-row bg-white border border-slate-100 rounded-xl overflow-hidden shadow-none divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+
+                {/* 1. GRUPO */}
+                <div className="flex-1 flex flex-col justify-center px-6 py-5 min-w-0">
+                    <div className="flex items-center gap-2 mb-2.5">
+                        <Users size={14} className="text-slate-400 shrink-0" />
+                        <label className="text-[13px] font-normal text-slate-500 truncate">
+                            Grupo académico <span className="text-red-500 font-bold ml-0.5">*</span>
+                        </label>
                     </div>
+                    <select
+                        value={groupFilter}
+                        onChange={e => onGroupChange(e.target.value)}
+                        className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-1 focus:ring-[#0266E0]/10 focus:border-slate-200 text-[13.5px] font-normal text-slate-700 cursor-pointer transition-all"
+                    >
+                        <option value="">Seleccionar grupo...</option>
+                        {groups.map((g) => (
+                            <option key={g.id} value={g.id.toString()}>{g.nombre}</option>
+                        ))}
+                    </select>
                 </div>
 
-                {/* Student filter dropdown (only for constancia or boleta) */}
-                {(selectedReport === 'constancia' || selectedReport === 'boleta') && (
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Seleccionar Alumno:</label>
-                        <div>
-                            <select
-                                value={selectedStudentMatricula}
-                                onChange={e => setSelectedStudentMatricula(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#1e88e5] text-xs font-bold text-slate-700 transition-all focus:outline-none focus:border-[#1e88e5]"
-                            >
-                                {filteredStudents.map((s) => (
-                                    <option key={s.matricula} value={s.matricula}>
-                                        {s.nombre} ({s.matricula})
-                                    </option>
-                                ))}
-                                {filteredStudents.length === 0 && <option value="">No hay alumnos en este grupo</option>}
-                            </select>
+                {/* 2. ALUMNO (Opcional) */}
+                {showStudent && (
+                    <div className="flex-1 flex flex-col justify-center px-6 py-5 min-w-0 animate-in fade-in zoom-in-98 duration-300">
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <User size={14} className="text-slate-400 shrink-0" />
+                            <label className="text-[13px] font-normal text-slate-500 truncate">
+                                Estudiante seleccionado <span className="text-red-500 font-bold ml-0.5">*</span>
+                            </label>
                         </div>
+                        <select
+                            value={selectedStudentMatricula}
+                            onChange={e => setSelectedStudentMatricula(e.target.value)}
+                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-1 focus:ring-[#0266E0]/10 focus:border-slate-200 text-[13.5px] font-normal text-slate-700 cursor-pointer transition-all"
+                        >
+                            <option value="">Seleccionar alumno...</option>
+                            {filteredStudents.map((s) => (
+                                <option key={s.matricula} value={s.matricula}>{s.nombre}</option>
+                            ))}
+                        </select>
                     </div>
                 )}
 
-                {/* Period filter dropdown (only for asistencia or boleta) */}
-                {(selectedReport === 'asistencia' || selectedReport === 'boleta') && (
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Filtrar por Ciclo Escolar:</label>
-                        <div>
-                            <select
-                                value={periodFilter}
-                                onChange={e => setPeriodFilter(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#1e88e5] text-xs font-bold text-slate-700 transition-all focus:outline-none focus:border-[#1e88e5]"
-                            >
-                                {periods.map((p) => (
-                                    <option key={p.id} value={p.id.toString()}>
-                                        {p.nombre}
-                                    </option>
-                                ))}
-                                {periods.length === 0 && <option value="">No hay ciclos disponibles</option>}
-                            </select>
+                {/* 3. CICLO (Opcional) */}
+                {showPeriod && (
+                    <div className="flex-1 flex flex-col justify-center px-6 py-5 min-w-0 animate-in fade-in zoom-in-98 duration-300">
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <Calendar size={14} className="text-slate-400 shrink-0" />
+                            <label className="text-[13px] font-normal text-slate-500 truncate">
+                                Periodo vigente <span className="text-red-500 font-bold ml-0.5">*</span>
+                            </label>
                         </div>
+                        <select
+                            value={periodFilter}
+                            onChange={e => setPeriodFilter(e.target.value)}
+                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-1 focus:ring-[#0266E0]/10 focus:border-slate-200 text-[13.5px] font-normal text-slate-700 cursor-pointer transition-all"
+                        >
+                            <option value="">Seleccionar ciclo...</option>
+                            {periods.map((p) => (
+                                <option key={p.id} value={p.id.toString()}>{p.nombre}</option>
+                            ))}
+                        </select>
                     </div>
                 )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-2 pt-2">
-                <button
-                    type="button"
-                    onClick={onDownload}
-                    className="w-full bg-[#1e88e5] hover:bg-blue-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-none"
-                >
-                    <Download className="w-4 h-4" />
-                    Generar y Descargar
-                </button>
+            {/* Fila 2: Acciones Ancladas a la derecha */}
+            <div className="flex items-center justify-end gap-3">
                 <button
                     type="button"
                     onClick={onReset}
-                    className="w-full border border-slate-200 text-slate-500 font-bold h-12 rounded-xl flex items-center justify-center gap-2 text-xs hover:bg-slate-50 transition-all"
+                    disabled={!isAnyFilterSelected}
+                    className="h-11 px-5 bg-white border border-slate-100 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-[12px] uppercase tracking-widest rounded-lg flex items-center gap-2 hover:bg-slate-50 hover:text-slate-600 transition-all active:scale-[0.97]"
                 >
+                    <RotateCcw size={16} />
                     Restablecer
+                </button>
+
+                <button
+                    type="button"
+                    onClick={onDownload}
+                    disabled={!isFormValid}
+                    className="h-11 px-8 bg-white border border-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 font-bold text-[13px] rounded-lg flex items-center justify-center gap-3 hover:bg-rose-50/30 hover:border-rose-100 transition-all active:scale-[0.95] shadow-sm group"
+                >
+                    <FaFilePdf size={16} className={cn("transition-colors", isFormValid ? "text-rose-500" : "text-slate-300")} />
+                    Generar reporte PDF
                 </button>
             </div>
         </div>

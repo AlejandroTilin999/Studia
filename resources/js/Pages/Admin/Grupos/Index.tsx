@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, Users } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
+import { RiFileExcel2Fill } from 'react-icons/ri';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import GroupTable from './components/GroupTable';
 import GroupTableControls from './components/GroupTableControls';
@@ -192,7 +193,7 @@ export default function GruposIndex({
                 { code: "T4", label: "Asignados", value: grupos.length > 0 ? formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Gestionar materias", onClick: () => router.visit('/admin/materias'), icon: Layers },
                 { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }

@@ -118,16 +118,21 @@ export default function AdminPageLayout({
                 </div>
 
                 {/* Right Side: Sidebar Widgets */}
-                <div className="w-full lg:w-[330px] xl:w-[360px] bg-white border-l border-slate-100 p-5 lg:p-6 xl:px-7 space-y-5 lg:space-y-8 xl:space-y-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-start">
-                    <QuickSummaryWidget metrics={metrics} isLoading={isLoading} />
-                    <QuickActionsWidget actions={quickActions} />
+                <div className="w-full lg:w-[330px] xl:w-[380px] 2xl:w-[420px] bg-white border-l border-slate-50 p-5 lg:p-6 xl:p-8 2xl:p-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-between transition-all duration-500 ease-in-out">
+                    <div className="space-y-8 xl:space-y-10 2xl:space-y-12">
+                        <QuickSummaryWidget metrics={metrics} isLoading={isLoading} />
+                        <QuickActionsWidget actions={quickActions} />
+                    </div>
+
                     {donutChartSegments && donutChartLabel && (
-                        <DonutChartWidget
-                            title={donutChartTitle}
-                            centerLabel={donutChartLabel}
-                            segments={donutChartSegments}
-                            isLoading={isLoading}
-                        />
+                        <div className="pt-8 border-t border-slate-50 mt-auto">
+                            <DonutChartWidget
+                                title={donutChartTitle}
+                                centerLabel={donutChartLabel}
+                                segments={donutChartSegments}
+                                isLoading={isLoading}
+                            />
+                        </div>
                     )}
                 </div>
             </div>
