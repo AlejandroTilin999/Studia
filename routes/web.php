@@ -141,13 +141,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $user = auth()->user();
                 $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
 
-                $loads = [];
-                if ($teacher) {
-                    $loads = \App\Models\AcademicLoad::where('docente_id', $teacher->id)
-                        ->with(['academicGroup', 'course'])
-                        ->get()
-                        ->map(function ($load) {
-                            return [
+                return Inertia::render('Docente/Dashboard', [
+                    'assignedLoad' => Inertia::defer(function() use ($teacher) {
+                        if (!$teacher) return [];
+
+                        return \App\Models\AcademicLoad::where('docente_id', $teacher->id)
+                            ->with(['academicGroup', 'course'])
+                            ->get()
+                            ->map(fn($load) => [
                                 'id' => $load->uuid,
                                 'codigo' => $load->course->codigo ?? 'N/A',
                                 'nombre_materia' => $load->course->nombre ?? 'N/A',
@@ -157,17 +158,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                     ->count(),
                                 'turno' => 'Turno Matutino',
                                 'estatus' => 'pending',
-                            ];
-                        });
-                }
-
-                return Inertia::render('Docente/Dashboard', [
-                    'assignedLoad' => $loads,
-                    'teacherInfo' => $teacher ? [
-                        'nombre' => ($teacher && $teacher->user) ? $teacher->user->nombre_completo : 'Docente',
+                            ]);
+                    }),
+                    'teacherInfo' => [
+                        'nombre' => $user->nombre_completo,
                         'especialidad' => $teacher->especialidad ?? 'General',
                         'email' => $user->email,
-                    ] : null
+                    ]
                 ]);
             })->name('docente.dashboard');
 
@@ -222,112 +219,83 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('alumno')->middleware('role:alumno')->group(function () {
             Route::get('/', function () {
                 $studentId = auth()->id();
+                $user = auth()->user();
+
+                // Optimizamos: Carga inmediata mínima para el esqueleto
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
                     ->where('estatus', 'active')
-                    ->with(['academicGroup.tutor', 'academicPeriod'])
+                    ->with(['academicGroup.tutor.user', 'academicPeriod'])
                     ->first();
 
-                $kardex = \App\Services\GradeService::getStudentKardex($studentId);
-                $sum = 0; $count = 0;
-                foreach ($kardex as $k) {
-                    if ($k['score'] !== '—') {
-                        $sum += floatval($k['score']);
-                        $count++;
-                    }
-                }
-                $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
-
                 $studentInfo = [
-                    'name' => auth()->user()->nombre_completo,
-                    'firstName' => auth()->user()->nombre,
-                    'lastNamePaternal' => auth()->user()->apellido_paterno,
-                    'lastNameMaternal' => auth()->user()->apellido_materno,
-                    'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
-                    'groupName' => ($enrollment && $enrollment->academicGroup)
-                        ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre)
-                        : 'Sin grupo',
+                    'name' => $user->nombre_completo,
+                    'firstName' => $user->nombre,
+                    'lastNamePaternal' => $user->apellido_paterno,
+                    'lastNameMaternal' => $user->apellido_materno,
+                    'email' => $user->email,
+                    'matricula' => $enrollment?->codigo_alumno ?? 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre) : 'Sin grupo',
                     'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
-                    'email' => auth()->user()->email,
-                    'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
-                    'gpa' => $gpa,
-                    'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
-                        ? $enrollment->academicGroup->tutor->user->nombre_completo
-                        : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
+                    'registeredAt' => $enrollment?->created_at ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
+                    'gpa' => '—', // Calculado en el cliente para velocidad instantánea
+                    'tutor' => $enrollment?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
                 ];
-
-                $taskList = \App\Services\GradeService::getStudentTasks($studentId);
-
-                $alumnoGroups = array_map(function($item) {
-                    return [
-                        'id' => $item['uuid'],
-                        'nombre' => $item['subject'],
-                        'docente' => $item['teacher'],
-                        'description' => 'Materia inscrita en el ciclo actual.'
-                    ];
-                }, $kardex);
 
                 return Inertia::render('Alumno/Dashboard', [
                     'studentInfo' => $studentInfo,
-                    'taskList' => $taskList,
-                    'kardex' => $kardex,
-                    'alumnoGroups' => $alumnoGroups
+                    'kardex' => Inertia::defer(fn() => \App\Services\GradeService::getStudentKardex($studentId)),
+                    'taskList' => Inertia::defer(fn() => \App\Services\GradeService::getStudentTasks($studentId)),
+                    'alumnoGroups' => Inertia::defer(function() use ($studentId) {
+                        $k = \App\Services\GradeService::getStudentKardex($studentId);
+                        return array_map(fn($item) => [
+                            'id' => $item['uuid'],
+                            'nombre' => $item['subject'],
+                            'docente' => $item['teacher'],
+                            'description' => $item['description'] ?? ''
+                        ], $k);
+                    })
                 ]);
             })->name('alumno.dashboard');
 
             Route::get('/materias', function () {
                 $studentId = auth()->id();
+                $user = auth()->user();
+
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
                     ->where('estatus', 'active')
-                    ->with(['academicGroup.tutor', 'academicPeriod'])
+                    ->with(['academicGroup.tutor.user', 'academicPeriod'])
                     ->first();
 
-                $kardex = \App\Services\GradeService::getStudentKardex($studentId);
-                $sum = 0; $count = 0;
-                foreach ($kardex as $k) {
-                    if ($k['score'] !== '—') {
-                        $sum += floatval($k['score']);
-                        $count++;
-                    }
-                }
-                $gpa = $count > 0 ? \App\Services\GradeService::formatGrade($sum / $count) : '—';
-
                 $studentInfo = [
-                    'name' => auth()->user()->nombre_completo,
-                    'firstName' => auth()->user()->nombre,
-                    'lastNamePaternal' => auth()->user()->apellido_paterno,
-                    'lastNameMaternal' => auth()->user()->apellido_materno,
-                    'matricula' => $enrollment ? $enrollment->codigo_alumno : 'ALU-' . $studentId,
-                    'groupName' => ($enrollment && $enrollment->academicGroup)
-                        ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre)
-                        : 'Sin grupo',
+                    'name' => $user->nombre_completo,
+                    'firstName' => $user->nombre,
+                    'lastNamePaternal' => $user->apellido_paterno,
+                    'lastNameMaternal' => $user->apellido_materno,
+                    'email' => $user->email,
+                    'matricula' => $enrollment?->codigo_alumno ?? 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre) : 'Sin grupo',
                     'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
-                    'email' => auth()->user()->email,
-                    'registeredAt' => $enrollment ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
-                    'gpa' => $gpa,
-                    'tutor' => ($enrollment && $enrollment->academicGroup && $enrollment->academicGroup->tutor)
-                        ? $enrollment->academicGroup->tutor->user->nombre_completo
-                        : 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
+                    'registeredAt' => $enrollment?->created_at ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
+                    'gpa' => '—',
+                    'tutor' => $enrollment?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
                 ];
-
-                $taskList = \App\Services\GradeService::getStudentTasks($studentId);
-
-                $alumnoGroups = array_map(function($item) {
-                    return [
-                        'id' => $item['uuid'],
-                        'nombre' => $item['subject'],
-                        'docente' => $item['teacher'],
-                        'description' => 'Materia inscrita en el ciclo actual.'
-                    ];
-                }, $kardex);
 
                 return Inertia::render('Alumno/Dashboard', [
                     'defaultView' => 'tareas',
                     'studentInfo' => $studentInfo,
-                    'taskList' => $taskList,
-                    'kardex' => $kardex,
-                    'alumnoGroups' => $alumnoGroups
+                    'kardex' => Inertia::defer(fn() => \App\Services\GradeService::getStudentKardex($studentId)),
+                    'taskList' => Inertia::defer(fn() => \App\Services\GradeService::getStudentTasks($studentId)),
+                    'alumnoGroups' => Inertia::defer(function() use ($studentId) {
+                        $k = \App\Services\GradeService::getStudentKardex($studentId);
+                        return array_map(fn($item) => [
+                            'id' => $item['uuid'],
+                            'nombre' => $item['subject'],
+                            'docente' => $item['teacher'],
+                            'description' => $item['description'] ?? ''
+                        ], $k);
+                    })
                 ]);
             })->name('alumno.materias.index');
         });

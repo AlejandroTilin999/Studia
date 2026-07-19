@@ -1,6 +1,7 @@
 import AppTable from '@/Components/table/AppTable';
 import { AcademicLoadItem } from '../types';
 import { TableActions, TableActionButton } from '@/Components/TableActions';
+import { cn } from '@/lib/utils';
 
 interface LoadTableProps {
     loads: AcademicLoadItem[];
@@ -20,21 +21,32 @@ export default function LoadTable({
             data={loads}
             keyExtractor={(item) => item.id}
             emptyMessage="No se encontraron cargas académicas registradas."
+            defaultPageSize={20}
             columns={[
                 {
-                    header: 'Grupo',
-                    accessor: (row) => (
-                        <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-[10.5px] font-extrabold rounded-lg block w-fit text-left">
-                            {row.nombre_grupo}
-                        </span>
-                    ),
-                    className: "text-left",
+                    header: 'Grupo Académico',
+                    accessor: (row, index) => {
+                        // Lógica para no repetir el nombre del grupo si es el mismo que el anterior
+                        // Esto asume que el componente AppTable no ha reordenado los datos de forma distinta
+                        // a como los recibió (por defecto vienen ordenados por grupo desde el controlador)
+                        const isDuplicate = index > 0 && loads[index - 1]?.nombre_grupo === row.nombre_grupo;
+
+                        return (
+                            <div className={cn(
+                                "text-[13px] font-normal text-slate-800 transition-opacity duration-300",
+                                isDuplicate ? "opacity-0 select-none" : "opacity-100"
+                            )}>
+                                {row.nombre_grupo}
+                            </div>
+                        );
+                    },
+                    className: "text-left w-40",
                 },
                 {
-                    header: 'Materia',
+                    header: 'Asignatura / Materia',
                     accessor: (row) => (
                         <div className="leading-normal text-left">
-                            <div className="text-[13px] font-medium ">
+                            <div className="text-[13px] font-medium text-slate-600">
                                 {row.nombre_materia}
                             </div>
                             <div className="text-[10px] font-normal text-slate-400 mt-0.5">
@@ -45,12 +57,12 @@ export default function LoadTable({
                     className: "text-left",
                 },
                 {
-                    header: 'Profesor / Docente',
+                    header: 'Profesor Titular',
                     accessor: (row) => (
                         <div className="leading-tight text-left">
                             <span className="text-[13px] font-medium text-slate-600 block">{row.nombre_docente}</span>
                             {row.area_docente && (
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Área: {row.area_docente}</span>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">ÁREA: {row.area_docente}</span>
                             )}
                         </div>
                     ),

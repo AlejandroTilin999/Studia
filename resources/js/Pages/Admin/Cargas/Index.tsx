@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useForm, Deferred } from '@inertiajs/react';
-import { Download } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa';
 import LoadFormModal from './components/LoadFormModal';
 import LoadTable from './components/LoadTable';
 import LoadTableControls from './components/LoadTableControls';
@@ -8,6 +9,7 @@ import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import { loadService } from './services/loadService';
 import { CargasIndexProps, AcademicLoadItem } from './types';
 import DotsLoader from '@/Components/ui/DotsLoader';
@@ -22,6 +24,7 @@ export default function CargasIndex({
     const [searchQuery, setSearchQuery] = useState('');
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
+    const { exportToPDF } = useExportPDF();
 
     const activePeriod = useMemo(() => {
         return periods.find((p: any) => p.activo);
@@ -47,6 +50,18 @@ export default function CargasIndex({
         docente_id: '' as string | number,
         assignments: [] as { materia_id: number | string, docente_id: number | string }[],
     });
+
+    const handleExportPDF = () => {
+        const headers = ["Grupo", "Clave Materia", "Materia", "Docente"];
+        const rows = filteredLoads.map(l => [
+            l.nombre_grupo,
+            l.codigo_materia,
+            l.nombre_materia,
+            l.nombre_docente
+        ]);
+
+        exportToPDF("Reporte de Asignaciones Docentes", headers, rows, "asignaciones");
+    };
 
     const filteredLoads = useMemo(() => {
         return loads.filter(load => {
@@ -82,7 +97,7 @@ export default function CargasIndex({
             headers,
             rows,
             "asignaciones",
-            () => triggerToast("Reporte de asignaciones de materias exportado a Excel.")
+            () => SwalHelper.success("¡Asignaciones Exportadas!", "El reporte de asignaciones de materias se ha generado correctamente.")
         );
     };
 
@@ -98,6 +113,31 @@ export default function CargasIndex({
         if (!teachers || teachers.length === 0) {
             SwalHelper.alert('Faltan Profesores', 'No hay docentes registrados. Da de alta profesores primero.', 'warning');
             return;
+        }
+
+        // Validar si quedan grupos disponibles para asignación masiva
+        if (activePeriod) {
+            const isOddCycle = activePeriod.mes_inicio ? (activePeriod.mes_inicio >= 8 || activePeriod.mes_inicio === 1) : true;
+            const availableGroups = groups.filter(g => {
+                const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
+                const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
+                if (!matchesParity) return false;
+
+                const alreadyAssigned = loads.some(l =>
+                    l.grupo_id.toString() === g.id.toString() &&
+                    l.ciclo_id.toString() === activePeriod.id.toString()
+                );
+                return !alreadyAssigned;
+            });
+
+            if (availableGroups.length === 0) {
+                SwalHelper.alert(
+                    'Sin Grupos Disponibles',
+                    'Actualmente todos los grupos correspondientes a este periodo ya cuentan con su plantilla docente asignada.',
+                    'info'
+                );
+                return;
+            }
         }
 
         reset();
@@ -174,21 +214,23 @@ export default function CargasIndex({
     return (
         <AdminPageLayout
             headTitle="Asignaciones"
-            title={`Asignaciones de Materias (${totalLoadsCount})`}
+            title="Asignaciones de Materias"
             subtitle={activePeriod ? `Gestionando asignaciones para el periodo: ${activePeriod.nombre}` : "Asocia grupos, materias y docentes"}
             breadcrumb="Asignaciones"
             toastMessage={toastMessage}
+            isLoading={loads.length === 0}
             metrics={[
-                { code: "T1", label: "Asignaciones", value: String(totalLoadsCount) },
-                { code: "T3", label: "Ciclos activos", value: String(activeCyclesCount) },
-                { code: "T4", label: "Grupos cubiertos", value: String(coveredGroupsCount) }
+                { code: "T1", label: "Asignaciones", value: loads.length > 0 ? totalLoadsCount : null },
+                { code: "T3", label: "Ciclos activos", value: loads.length > 0 ? activeCyclesCount : null },
+                { code: "T4", label: "Grupos cubiertos", value: loads.length > 0 ? coveredGroupsCount : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download }
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf }
             ]}
             donutChartLabel="asignaciones"
             donutChartSegments={[
-                { name: "Asignadas", count: totalLoadsCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" }
+                { name: "Asignadas", count: totalLoadsCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" }
             ]}
         >
             <LoadTableControls
@@ -225,6 +267,7 @@ export default function CargasIndex({
                 }}
                 mode={isCreateModalOpen ? 'create' : 'edit'}
                 load={selectedLoad}
+                existingLoads={loads}
                 periods={periods}
                 groups={groups}
                 courses={courses}

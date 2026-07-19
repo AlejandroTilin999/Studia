@@ -16,11 +16,12 @@ class CheckRole
      */
     public function handle(Request $request, Closure $next, string $role): Response
     {
-        if (!$request->user()) {
+        $user = $request->user();
+        if (!$user) {
             return redirect('/login');
         }
 
-        $userRole = strtolower($request->user()->rol);
+        $userRole = strtolower($user->rol ?? '');
 
         if ($userRole !== strtolower($role)) {
             // Redirigir según el rol real del usuario si intenta entrar a donde no debe
@@ -32,7 +33,7 @@ class CheckRole
                 return redirect()->route('alumno.dashboard');
             }
 
-            return redirect('/');
+            return redirect('/dashboard');
         }
 
         return $next($request);

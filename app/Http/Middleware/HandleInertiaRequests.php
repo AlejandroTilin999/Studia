@@ -33,8 +33,10 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
-        // Obtener ciclo activo globalmente
-        $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
+        // Caché para el ciclo activo (Casi estático)
+        $activePeriod = \Cache::remember('active_academic_period', 1800, function() {
+            return \App\Models\AcademicPeriod::where('activo', true)->first();
+        });
 
         return [
             ...parent::share($request),
@@ -51,8 +53,8 @@ class HandleInertiaRequests extends Middleware
                     'apellido_materno' => $user->apellido_materno,
                     'nombre_completo' => $user->nombre_completo,
                     'email' => $user->email,
-                    'rol' => strtoupper($user->rol),
-                    // Cargamos esto siempre para la Sidebar (Consultas rápidas)
+                    'rol' => strtoupper($user->rol ?? ''),
+                    // Cargamos esto con un tiempo de vida mayor
                     'docenteGroups' => $this->getDocenteGroups($user),
                     'alumnoGroups' => $this->getAlumnoGroups($user),
                 ] : null,
@@ -61,34 +63,42 @@ class HandleInertiaRequests extends Middleware
     }
 
     private function getDocenteGroups($user) {
-        if ($user->rol !== 'docente') return [];
-        $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
-        if (!$teacher) return [];
-        return \App\Models\AcademicLoad::where('docente_id', $teacher->id)
-            ->with(['academicGroup', 'course'])
-            ->get()
-            ->map(fn($load) => [
-                'id' => $load->uuid,
-                'nombre_grupo' => $load->academicGroup->nombre ?? 'Grup. s/n',
-                'materia' => $load->course->nombre ?? 'Mat. s/n',
-                'codigo' => $load->course->codigo ?? 'S/C'
-            ]);
+        if (!$user || strtolower($user->rol ?? '') !== 'docente') return [];
+
+        return \Cache::remember("sidebar_docente_{$user->id}", 600, function() use ($user) {
+            $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
+            if (!$teacher) return [];
+
+            return \App\Models\AcademicLoad::where('docente_id', $teacher->id)
+                ->with(['academicGroup', 'course'])
+                ->get()
+                ->map(fn($load) => [
+                    'id' => $load->uuid,
+                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'Grup. s/n',
+                    'materia' => $load->course?->nombre ?? 'Mat. s/n',
+                    'codigo' => $load->course?->codigo ?? 'S/C'
+                ])->toArray();
+        });
     }
 
     private function getAlumnoGroups($user) {
-        if ($user->rol !== 'alumno') return [];
-        $enrollment = \App\Models\Enrollment::where('usuario_id', $user->id)->where('estatus', 'active')->first();
-        if (!$enrollment) return [];
-        return \App\Models\AcademicLoad::where('grupo_id', $enrollment->grupo_id)
-            ->where('ciclo_id', $enrollment->ciclo_id)
-            ->with(['course', 'teacher.user', 'academicGroup'])
-            ->get()
-            ->map(fn($load) => [
-                'id' => $load->uuid,
-                'nombre' => $load->course->nombre ?? 'N/A',
-                'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
-                'descripcion' => $load->course->descripcion ?? 'Sin descripción',
-                'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A'
-            ]);
+        if (!$user || strtolower($user->rol ?? '') !== 'alumno') return [];
+
+        return \Cache::remember("sidebar_alumno_{$user->id}", 600, function() use ($user) {
+            $enrollment = \App\Models\Enrollment::where('usuario_id', $user->id)->where('estatus', 'active')->first();
+            if (!$enrollment) return [];
+
+            return \App\Models\AcademicLoad::where('grupo_id', $enrollment->grupo_id)
+                ->where('ciclo_id', $enrollment->ciclo_id)
+                ->with(['course', 'teacher.user', 'academicGroup'])
+                ->get()
+                ->map(fn($load) => [
+                    'id' => $load->uuid,
+                    'nombre' => $load->course?->nombre ?? 'N/A',
+                    'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
+                    'descripcion' => $load->course?->descripcion ?? 'Sin descripción',
+                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A'
+                ])->toArray();
+        });
     }
 }

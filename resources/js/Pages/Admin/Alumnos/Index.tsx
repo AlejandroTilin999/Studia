@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Download, Layers, FileText } from "lucide-react";
+import { FileSpreadsheet, Layers, FileText } from "lucide-react";
+import { FaFilePdf } from "react-icons/fa";
 import { useForm, router, Deferred } from '@inertiajs/react';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { studentService } from './services/studentService';
@@ -16,6 +18,7 @@ import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } fro
 export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndexProps) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
+    const { exportToPDF } = useExportPDF();
 
     // Mapeamos los datos simplificados directamente de la tabla única de alumnos
     const formattedStudents: StudentFormatted[] = alumnos.map((student: BackendStudent) => ({
@@ -125,8 +128,21 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             ["Matrícula", "Nombre Completo", "Correo Electrónico", "Grupo Asignado", "Estado Matrícula"],
             rows,
             "reporte_alumnos",
-            (msg) => triggerToast("Reporte de alumnos exportado a Excel con éxito.")
+            (msg) => SwalHelper.success("¡Listado Generado!", "El reporte de alumnos se ha descargado correctamente.")
         );
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Matrícula", "Nombre Completo", "Correo Electrónico", "Grupo", "Estado"];
+        const rows = filteredStudents.map(s => [
+            s.matricula,
+            s.name,
+            s.email,
+            s.groupName,
+            s.status === 'active' ? 'Activo' : 'De Baja'
+        ]);
+
+        exportToPDF("Reporte General de Alumnos", headers, rows, "reporte_alumnos");
     };
 
     const filteredStudents = formattedStudents.filter(student => {
@@ -282,23 +298,28 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
     return (
         <AdminPageLayout
             headTitle="Gestión de Alumnos"
-            title={`Gestión de alumnos (${totalCount})`}
+            title="Gestión de alumnos"
             subtitle="Consulta, edita y registra expedientes e inscripciones escolares"
             breadcrumb="Alumnos"
             toastMessage={toastMessage}
+            isLoading={alumnos.length === 0}
+            breadcrumb="Alumnos"
+            toastMessage={toastMessage}
+            isLoading={alumnos.length === 0}
             metrics={[
-                { code: "T1", label: "Alumnos totales", value: totalCount },
-                { code: "T3", label: "Activos", value: activeCount },
-                { code: "T4", label: "De baja", value: inactiveCount }
+                { code: "T1", label: "Alumnos totales", value: alumnos.length > 0 ? totalCount : null },
+                { code: "T3", label: "Activos", value: alumnos.length > 0 ? activeCount : null },
+                { code: "T4", label: "De baja", value: alumnos.length > 0 ? inactiveCount : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
                 { label: "Ver reportes escolares", onClick: () => router.visit('/admin/reportes'), icon: FileText }
             ]}
             donutChartLabel="alumnos"
             donutChartSegments={[
-                { name: "Activos", count: activeCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                { name: "Activos", count: activeCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
                 { name: "De baja", count: inactiveCount, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >

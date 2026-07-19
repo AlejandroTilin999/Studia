@@ -33,7 +33,7 @@ export default function LoadTableControls({
                     placeholder="Buscar por materia, grupo o profesor..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0266E0] focus:outline-none transition-all text-slate-700 placeholder-slate-450 font-semibold"
+                    className="pl-11 pr-4 h-12 w-full bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0266E0] focus:outline-none transition-all text-slate-700 placeholder-slate-450 font-normal"
                 />
             </div>
 

@@ -38,6 +38,7 @@ interface AdminPageLayoutProps {
     donutChartLabel?: string;
     donutChartSegments?: SegmentItem[];
     children: React.ReactNode;
+    isLoading?: boolean;
 }
 
 export default function AdminPageLayout({
@@ -52,6 +53,7 @@ export default function AdminPageLayout({
     donutChartLabel,
     donutChartSegments,
     children,
+    isLoading = false,
 }: AdminPageLayoutProps) {
     useEffect(() => {
         const mainEl = document.querySelector('main');
@@ -116,14 +118,15 @@ export default function AdminPageLayout({
                 </div>
 
                 {/* Right Side: Sidebar Widgets */}
-                <div className="w-full lg:w-[360px] xl:w-[400px] bg-white border-l border-slate-100 p-5 lg:p-6 xl:p-8 space-y-5 lg:space-y-8 xl:space-y-12 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-start">
-                    <QuickSummaryWidget metrics={metrics} />
+                <div className="w-full lg:w-[330px] xl:w-[360px] bg-white border-l border-slate-100 p-5 lg:p-6 xl:px-7 space-y-5 lg:space-y-8 xl:space-y-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-start">
+                    <QuickSummaryWidget metrics={metrics} isLoading={isLoading} />
                     <QuickActionsWidget actions={quickActions} />
                     {donutChartSegments && donutChartLabel && (
                         <DonutChartWidget
                             title={donutChartTitle}
                             centerLabel={donutChartLabel}
                             segments={donutChartSegments}
+                            isLoading={isLoading}
                         />
                     )}
                 </div>

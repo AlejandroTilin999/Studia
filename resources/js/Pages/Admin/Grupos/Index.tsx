@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { Download, Layers, Users } from 'lucide-react';
+import { FileSpreadsheet, Layers, Users } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import GroupTable from './components/GroupTable';
 import GroupTableControls from './components/GroupTableControls';
@@ -9,6 +10,7 @@ import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import { groupService } from './services/groupService';
 import { GruposIndexProps, GroupFormatted } from './types';
 
@@ -38,6 +40,7 @@ export default function GruposIndex({
 
     const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
+    const { exportToPDF } = useExportPDF();
 
     // Formulario reactivo de Inertia (Nombres en Español)
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
@@ -64,8 +67,21 @@ export default function GruposIndex({
             headers,
             rows,
             "reporte_grupos",
-            (msg) => triggerToast("Reporte de grupos exportado a Excel con éxito.")
+            (msg) => SwalHelper.success("¡Listado de Grupos!", "El reporte de grupos académicos se ha generado correctamente.")
         );
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Código", "Nombre del Grupo", "Turno", "Especialidad", "Tutor"];
+        const rows = filteredGroups.map(g => [
+            g.code,
+            g.name,
+            g.shift,
+            g.specialty,
+            g.teacherName
+        ]);
+
+        exportToPDF("Reporte de Grupos Académicos", headers, rows, "reporte_grupos");
     };
 
     const filteredGroups = filteredGroupsList(formattedGroups, searchQuery, specialtyFilter);
@@ -167,21 +183,23 @@ export default function GruposIndex({
     return (
         <AdminPageLayout
             headTitle="Gestión de Grupos"
-            title={`Gestión de grupos (${totalGroupsCount})`}
+            title="Gestión de grupos"
             subtitle="Consulta, edita y registra grupos académicos y tutores"
             breadcrumb="Grupos"
+            isLoading={grupos.length === 0}
             metrics={[
-                { code: "T1", label: "Grupos totales", value: totalGroupsCount },
-                { code: "T4", label: "Asignados", value: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length }
+                { code: "T1", label: "Grupos totales", value: grupos.length > 0 ? totalGroupsCount : null },
+                { code: "T4", label: "Asignados", value: grupos.length > 0 ? formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Gestionar materias", onClick: () => router.visit('/admin/materias'), icon: Layers },
                 { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }
             ]}
             donutChartLabel="grupos"
             donutChartSegments={[
-                { name: "Asignados", count: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                { name: "Asignados", count: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
                 { name: "Sin tutor", count: formattedGroups.filter(g => g.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >

@@ -24,7 +24,7 @@ columns,
 data,
 keyExtractor,
 emptyMessage="No se encontraron elementos.",
-defaultPageSize=10,
+defaultPageSize=20,
 enablePagination=true,
 enableSorting=true,
 onRowClick
@@ -55,10 +55,10 @@ return (
 <div className="flex flex-col gap-4 w-full">
 
   <div className="
-    border 
-    border-slate-100 
-    overflow-hidden 
-    bg-white 
+    border
+    border-slate-100
+    overflow-hidden
+    bg-white
     overflow-x-auto
     w-full
   ">

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { Download, Layers, Plus, Search } from 'lucide-react';
+import { FileSpreadsheet, Layers, Plus, Search } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa';
 import SpecialtyTable from './components/SpecialtyTable';
 import SpecialtyFormModal from './components/SpecialtyFormModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import { specialtyService } from './services/specialtyService';
 import { SpecialtiesIndexProps, Specialty } from './types';
 import DotsLoader from '@/Components/ui/DotsLoader';
@@ -19,6 +21,7 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
 
     const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
+    const { exportToPDF } = useExportPDF();
 
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
         nombre: '',
@@ -38,8 +41,18 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
             headers,
             rows,
             "reporte_especialidades",
-            (msg) => triggerToast("Reporte de especialidades exportado a Excel con éxito.")
+            (msg) => SwalHelper.success("¡Listado de Especialidades!", "El reporte de especialidades se ha generado correctamente.")
         );
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Código / Abreviación", "Nombre de la Especialidad"];
+        const rows = filteredSpecialties.map(s => [
+            s.codigo,
+            s.nombre
+        ]);
+
+        exportToPDF("Catálogo de Especialidades y Carreras", headers, rows, "reporte_especialidades");
     };
 
     const filteredSpecialties = (especialidades || []).filter(s =>
@@ -124,14 +137,15 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
     return (
         <AdminPageLayout
             headTitle="Gestión de Especialidades"
-            title={`Gestión de Especialidades (${totalSpecialtiesCount})`}
+            title="Gestión de Especialidades"
             subtitle="Consulta, edita y registra especialidades y carreras técnicas"
             breadcrumb="Especialidades"
             metrics={[
                 { code: "E1", label: "Especialidades", value: totalSpecialtiesCount }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Gestionar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers }
             ]}
         >

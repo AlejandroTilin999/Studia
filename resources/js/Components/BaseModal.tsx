@@ -139,15 +139,15 @@ export default function BaseModal({
 
         return (
             <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 font-sans select-none">
-                <button 
-                    type="button" 
-                    onClick={onClose} 
+                <button
+                    type="button"
+                    onClick={onClose}
                     className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-[8px] text-xs font-semibold transition-all focus:outline-none"
                 >
                     {cancelLabel}
                 </button>
                 {(confirmLabel || onSubmit) && (
-                    <button 
+                    <button
                         type="submit"
                         disabled={isConfirmDisabled}
                         className={cn(
@@ -177,12 +177,12 @@ export default function BaseModal({
     );
 
     return (
-        <div 
+        <div
             onClick={handleBackdropClick}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 backdrop-blur-[2px] p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/35 backdrop-blur-[2px] p-2 sm:p-4 animate-in fade-in duration-150 overflow-y-auto"
         >
             <div className={cn(
-                "bg-white w-full rounded-[10px] overflow-hidden animate-in fade-in zoom-in-98 duration-150 relative",
+                "bg-white w-full rounded-[10px] overflow-hidden animate-in fade-in zoom-in-98 duration-150 relative my-auto",
                 fullBleed ? "p-0 border-0 shadow-2xl" : "p-6 pt-7 border border-slate-200/90 shadow-none",
                 maxWidthClass
             )}>
@@ -191,9 +191,9 @@ export default function BaseModal({
 
                 {/* Close button only if not full bleed */}
                 {!fullBleed && (
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
+                    <button
+                        type="button"
+                        onClick={onClose}
                         className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all focus:outline-none"
                     >
                         <X size={15} className="stroke-[2.5]" />

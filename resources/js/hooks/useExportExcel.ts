@@ -22,6 +22,9 @@ export function useExportExcel() {
 
         const logoUrl = "https://nsnjjcnzdhxmqvkwewdy.supabase.co/storage/v1/object/public/Escolar/phid_logo.png";
 
+        // Mostrar SweetAlert de carga
+        SwalHelper.loading("Generando Excel", "Estamos preparando tu reporte personalizado. Un momento...");
+
         // Estructura XML / HTML optimizada para Excel
         const htmlTemplate = `
             <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -148,9 +151,14 @@ export function useExportExcel() {
         link.click();
         document.body.removeChild(link);
 
-        if (onSuccess) {
-            onSuccess(`Reporte generado correctamente.`);
-        }
+        // Pequeño retardo para que la descarga inicie y luego mostramos éxito
+        setTimeout(() => {
+            if (onSuccess) {
+                onSuccess(`Reporte generado correctamente.`);
+            } else {
+                SwalHelper.success("¡Hecho!", "Tu reporte de Excel ha sido generado con éxito.");
+            }
+        }, 800);
     }, []);
 
     return { exportToExcel };

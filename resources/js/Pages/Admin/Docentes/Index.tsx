@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { Download, Layers, FileText } from 'lucide-react';
+import { FileSpreadsheet, Layers, FileText } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { teacherService } from './services/teacherService';
 import TeacherFormModal from './components/TeacherFormModal';
@@ -16,6 +18,7 @@ import { DocentesIndexProps, TeacherFormatted, TeacherFromBackend } from './type
 export default function DocentesIndex({ teachers: backendTeachers = [] }: DocentesIndexProps) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
+    const { exportToPDF } = useExportPDF();
 
     const formattedTeachers: TeacherFormatted[] = backendTeachers.map((t: TeacherFromBackend) => {
         const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
@@ -104,8 +107,21 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             ["Matrícula", "Nombre Completo", "Correo Electrónico", "Teléfono", "Especialidad"],
             rows,
             "reporte_docentes",
-            (msg) => triggerToast("Reporte de docentes exportado a Excel con éxito.")
+            (msg) => SwalHelper.success("¡Reporte Generado!", "El listado de docentes se ha descargado correctamente.")
         );
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Matrícula", "Nombre Completo", "Correo Electrónico", "Teléfono", "Especialidad"];
+        const rows = filteredTeachers.map(t => [
+            t.matricula,
+            t.name,
+            t.email,
+            t.phone,
+            t.specialty
+        ]);
+
+        exportToPDF("Reporte de Personal Docente", headers, rows, "reporte_docentes");
     };
 
     const filteredTeachers = formattedTeachers.filter(teacher =>
@@ -197,23 +213,25 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     return (
         <AdminPageLayout
             headTitle="Gestión de Profesores"
-            title={`Gestión de profesores (${totalTeachersCount})`}
+            title="Gestión de profesores"
             subtitle="Consulta, edita y registra expedientes de personal docente"
             breadcrumb="Profesores"
             toastMessage={toastMessage}
+            isLoading={backendTeachers.length === 0}
             metrics={[
-                { code: "T1", label: "Docentes totales", value: totalTeachersCount },
-                { code: "T3", label: "Especialidades", value: specialtyCount },
-                { code: "T4", label: "Activos en ciclo", value: totalTeachersCount }
+                { code: "T1", label: "Docentes totales", value: backendTeachers.length > 0 ? totalTeachersCount : null },
+                { code: "T3", label: "Especialidades", value: backendTeachers.length > 0 ? specialtyCount : null },
+                { code: "T4", label: "Activos en ciclo", value: backendTeachers.length > 0 ? totalTeachersCount : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
                 { label: "Ver materias activas", onClick: () => router.visit('/admin/materias'), icon: FileText }
             ]}
             donutChartLabel="profesores"
             donutChartSegments={[
-                { name: "Asignados", count: totalTeachersCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" }
+                { name: "Asignados", count: totalTeachersCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" }
             ]}
         >
             <TeacherTableControls

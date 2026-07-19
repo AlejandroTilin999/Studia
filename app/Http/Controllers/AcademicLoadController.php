@@ -17,78 +17,59 @@ class AcademicLoadController extends Controller
     {
         return Inertia::render('Admin/Cargas/Index', [
             'loads' => Inertia::defer(function () {
-                return AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user'])->get()->map(function ($l) {
-                    return [
-                        'id' => $l->id,
-                        'ciclo_id' => $l->ciclo_id,
-                        'nombre_ciclo' => $l->academicPeriod->nombre ?? 'N/A',
-                        'grupo_id' => $l->grupo_id,
-                        'nombre_grupo' => $l->academicGroup->nombre ?? 'N/A',
-                        'codigo_grupo' => $l->academicGroup->codigo ?? 'N/A',
-                        'materia_id' => $l->materia_id,
-                        'nombre_materia' => $l->course->nombre ?? 'N/A',
-                        'codigo_materia' => $l->course->codigo ?? 'N/A',
-                        'docente_id' => $l->docente_id,
-                        'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
-                        'area_docente' => $l->teacher->area ?? '',
-                        'area_materia' => $l->course->area ?? '',
-                    ];
-                });
-            }),
-            'periods' => AcademicPeriod::all()->map(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'nombre' => $p->nombre,
-                    'activo' => (bool)$p->activo,
-                    'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
-                ];
-            }),
-            'groups' => AcademicGroup::all()->map(function ($g) {
-                return [
-                    'id' => $g->id,
-                    'nombre' => $g->nombre,
-                    'codigo' => $g->codigo,
-                    'especialidad' => $g->especialidad,
-                ];
-            }),
-            'courses' => Course::with('specialties')->get()->map(function ($c) {
-                return [
-                    'id' => $c->id,
-                    'nombre' => $c->nombre,
-                    'codigo' => $c->codigo,
-                    'tipo' => $c->tipo,
-                    'area' => $c->area ?? '',
-                    'semestre' => $c->semestre,
-                    'especialidades' => $c->specialties->pluck('nombre')->toArray(),
-                ];
-            }),
-            'teachers' => Teacher::whereHas('user', function($query) {
-                    $query->whereNotNull('nombre')
-                          ->where('nombre', '!=', '')
-                          ->where('nombre', '!=', 'Sin nombre')
-                          ->where('nombre', '!=', 'Sin nombre registrado');
-                })
-                ->with('user')
-                ->get()
-                ->map(function ($t) {
-                    return [
-                        'id' => $t->id,
-                        'nombre_completo' => $t->user->nombre_completo,
-                        'especialidad' => $t->especialidad,
-                        'area' => $t->area ?? '',
-                    ];
-                })
-                ->whenEmpty(function() {
-                    return Teacher::with('user')->get()->map(function($t) {
+                return AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user'])
+                    ->get()
+                    ->map(function ($l) {
                         return [
-                            'id' => $t->id,
-                            'nombre_completo' => $t->user->nombre_completo,
-                            'especialidad' => $t->especialidad,
-                            'area' => $t->area ?? '',
+                            'id' => $l->id,
+                            'ciclo_id' => $l->ciclo_id,
+                            'nombre_ciclo' => $l->academicPeriod->nombre ?? 'N/A',
+                            'grupo_id' => $l->grupo_id,
+                            'nombre_grupo' => $l->academicGroup->nombre ?? 'N/A',
+                            'codigo_grupo' => $l->academicGroup->codigo ?? 'N/A',
+                            'materia_id' => $l->materia_id,
+                            'nombre_materia' => $l->course->nombre ?? 'N/A',
+                            'codigo_materia' => $l->course->codigo ?? 'N/A',
+                            'docente_id' => $l->docente_id,
+                            'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
+                            'area_docente' => $l->teacher->area ?? '',
+                            'area_materia' => $l->course->area ?? '',
                         ];
-                    });
-                })
+                    })
+                    ->sortBy('nombre_grupo')
+                    ->values();
+            }),
+            'periods' => Inertia::defer(fn() => AcademicPeriod::all()->map(fn($p) => [
+                'id' => $p->id,
+                'nombre' => $p->nombre,
+                'activo' => (bool)$p->activo,
+                'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
+            ])),
+            'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(fn($g) => [
+                'id' => $g->id,
+                'nombre' => $g->nombre,
+                'codigo' => $g->codigo,
+                'especialidad' => $g->especialidad,
+            ])),
+            'courses' => Inertia::defer(fn() => Course::with('specialties')->get()->map(fn($c) => [
+                'id' => $c->id,
+                'nombre' => $c->nombre,
+                'codigo' => $c->codigo,
+                'tipo' => $c->tipo,
+                'area' => $c->area ?? '',
+                'semestre' => $c->semestre,
+                'especialidades' => $c->specialties->pluck('nombre')->toArray(),
+            ])),
+            'teachers' => Inertia::defer(fn() => Teacher::with('user')
+                ->get()
+                ->map(fn($t) => [
+                    'id' => $t->id,
+                    'nombre_completo' => $t->user->nombre_completo ?? 'Docente sin nombre',
+                    'especialidad' => $t->especialidad,
+                    'area' => $t->area ?? '',
+                ])
                 ->values()
+            )
         ]);
     }
 

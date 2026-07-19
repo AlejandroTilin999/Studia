@@ -128,10 +128,10 @@ export default function AdminDashboard() {
   };
 
   const metrics: MetricItem[] = [
-    { code: "T1", label: "Alumnos", value: studentsCount !== undefined ? String(studentsCount) : "0" },
-    { code: "T2", label: "Profesores", value: teachersCount !== undefined ? String(teachersCount) : "0" },
-    { code: "T3", label: "Grupos", value: groupsCount !== undefined ? String(groupsCount) : "0" },
-    { code: "T4", label: "Materias", value: coursesCount !== undefined ? String(coursesCount) : "0" }
+    { code: "T1", label: "Alumnos", value: studentsCount ?? null },
+    { code: "T2", label: "Profesores", value: teachersCount ?? null },
+    { code: "T3", label: "Grupos", value: groupsCount ?? null },
+    { code: "T4", label: "Materias", value: coursesCount ?? null }
   ];
 
   return (

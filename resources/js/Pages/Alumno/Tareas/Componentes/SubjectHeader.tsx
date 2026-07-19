@@ -49,7 +49,7 @@ export default function SubjectHeader({
                 <div className="px-6 md:px-8 pt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Banner Principal */}
-                        <div className={`relative overflow-hidden rounded-[32px] border p-8 sm:p-10 flex flex-col justify-center min-h-[220px] shadow-none lg:col-span-2 ${groupColors.bg} ${groupColors.border}`}>
+                        <div className={`relative overflow-hidden rounded-lg border p-8 sm:p-10 flex flex-col justify-center min-h-[220px] shadow-none lg:col-span-2 ${groupColors.bg} ${groupColors.border}`}>
                             {/* Decoración geométrica */}
                             <div className="absolute left-0 top-0 bottom-0 w-48 overflow-hidden pointer-events-none z-0">
                                 <svg className="absolute -left-6 top-1 w-44 h-48 opacity-20" viewBox="0 0 120 140" fill="none">
@@ -71,7 +71,7 @@ export default function SubjectHeader({
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-none">
+                                    <h1 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight leading-none">
                                         {subject.name}
                                     </h1>
                                     <p className="text-sm md:text-base font-medium text-slate-500 leading-relaxed max-w-2xl">
@@ -82,7 +82,7 @@ export default function SubjectHeader({
                         </div>
 
                         {/* Widget de Información Rápida (Estilo Docente) */}
-                        <div className="bg-slate-50 border border-slate-100 rounded-[32px] p-6 sm:p-8 flex flex-col justify-between h-full select-none text-left">
+                        <div className="bg-slate-50 border border-slate-100 rounded-lg p-6 sm:p-8 flex flex-col justify-between h-full select-none text-left">
                             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Información Académica</h3>
 
                             <div className="flex-1 flex flex-col justify-center gap-3">

@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, Deferred } from '@inertiajs/react';
 import {
     Users,
     Clock,
@@ -10,6 +10,7 @@ import {
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import TeacherInfoCard from '@/Components/TeacherInfoCard';
 import TeacherRightSidebar from '@/Components/TeacherRightSidebar';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 interface AssignedLoadItem {
     id: string | number;
@@ -85,45 +86,54 @@ export default function DocenteDashboard({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {assignedLoad.length > 0 ? assignedLoad.map((load) => (
-                                <Link
-                                    key={load.id}
-                                    href={`/docente/grupos/show?id=${load.id}`}
-                                    className="group flex items-center justify-between p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none"
-                                >
-                                    <div className="flex items-center gap-4 min-w-0">
-                                        <div className="min-w-0 text-left">
-                                            <h4 className="text-sm font-bold text-slate-900 truncate leading-tight">
-                                                {load.nombre_materia}
-                                            </h4>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                                    Grupo {load.nombre_grupo}
-                                                </span>
-                                                <span className="text-slate-300">•</span>
-                                                <span className="text-[10px] font-bold text-slate-400">
-                                                    {load.cantidad_alumnos} alumnos
-                                                </span>
+                            <Deferred data="assignedLoad" fallback={
+                                <div className="md:col-span-2">
+                                    <DotsLoader
+                                        label="Cargando tus grupos"
+                                        sublabel="Recuperando carga académica vigente..."
+                                    />
+                                </div>
+                            }>
+                                {assignedLoad.length > 0 ? assignedLoad.map((load) => (
+                                    <Link
+                                        key={load.id}
+                                        href={`/docente/grupos/show?id=${load.id}`}
+                                        className="group flex items-center justify-between p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none"
+                                    >
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <div className="min-w-0 text-left">
+                                                <h4 className="text-sm font-bold text-slate-900 truncate leading-tight">
+                                                    {load.nombre_materia}
+                                                </h4>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        Grupo {load.nombre_grupo}
+                                                    </span>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-[10px] font-bold text-slate-400">
+                                                        {load.cantidad_alumnos} alumnos
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-3 shrink-0 ml-4">
-                                        <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md border ${
-                                            load.estatus === 'completed'
-                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                : 'bg-amber-50 text-amber-600 border-amber-100'
-                                        }`}>
-                                            {load.estatus === 'completed' ? 'Cargado' : 'Pendiente'}
-                                        </span>
-                                        <ChevronRight size={16} className="text-slate-300 group-hover:text-[#1e88e5] group-hover:translate-x-0.5 transition-all" />
+                                        <div className="flex items-center gap-3 shrink-0 ml-4">
+                                            <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md border ${
+                                                load.estatus === 'completed'
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                    : 'bg-amber-50 text-amber-600 border-amber-100'
+                                            }`}>
+                                                {load.estatus === 'completed' ? 'Cargado' : 'Pendiente'}
+                                            </span>
+                                            <ChevronRight size={16} className="text-slate-300 group-hover:text-[#1e88e5] group-hover:translate-x-0.5 transition-all" />
+                                        </div>
+                                    </Link>
+                                )) : (
+                                    <div className="md:col-span-2 p-12 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
+                                        <p className="text-sm text-slate-400 font-bold">Sin grupos asignados actualmente.</p>
                                     </div>
-                                </Link>
-                            )) : (
-                                <div className="md:col-span-2 p-12 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
-                                    <p className="text-sm text-slate-400 font-bold">Sin grupos asignados actualmente.</p>
-                                </div>
-                            )}
+                                )}
+                            </Deferred>
                         </div>
                     </div>
                 </div>

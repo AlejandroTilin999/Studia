@@ -18,4 +18,9 @@ class Tarea extends Model
     {
         return $this->hasMany(EntregaTarea::class, 'tarea_id');
     }
+
+    public function entregas()
+    {
+        return $this->hasMany(EntregaTarea::class, 'tarea_id');
+    }
 }

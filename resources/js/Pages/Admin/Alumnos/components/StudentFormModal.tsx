@@ -186,8 +186,8 @@ export default function StudentFormModal({
                             </div>
                         </div>
 
-                        {/* Name Split Fields */}
-                        <div className="grid grid-cols-1 gap-4 text-left">
+                        {/* Nombres y Apellido Paterno */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel required>Nombre(s)</FormLabel>
                                 <FormInput
@@ -200,75 +200,31 @@ export default function StudentFormModal({
                                 {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Apellido Paterno</FormLabel>
-                                    <FormInput
-                                        required
-                                        value={data.apellido_paterno}
-                                        onChange={e => setData('apellido_paterno', e.target.value)}
-                                        placeholder="Ej: Gómez"
-                                        className="h-9 text-xs"
-                                    />
-                                    {errors.apellido_paterno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_paterno}</span>}
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <FormLabel required>Apellido Materno</FormLabel>
-                                    <FormInput
-                                        required
-                                        value={data.apellido_materno}
-                                        onChange={e => setData('apellido_materno', e.target.value)}
-                                        placeholder="Ej: López"
-                                        className="h-9 text-xs"
-                                    />
-                                    {errors.apellido_materno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_materno}</span>}
-                                </div>
+                            <div className="space-y-1.5">
+                                <FormLabel required>Apellido Paterno</FormLabel>
+                                <FormInput
+                                    required
+                                    value={data.apellido_paterno}
+                                    onChange={e => setData('apellido_paterno', e.target.value)}
+                                    placeholder="Ej: Gómez"
+                                    className="h-9 text-xs"
+                                />
+                                {errors.apellido_paterno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_paterno}</span>}
                             </div>
                         </div>
 
+                        {/* Apellido Materno y Teléfono */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                            <div className="space-y-1.5 text-left">
-                                <FormLabel required>Fecha de nacimiento</FormLabel>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <FormSelect
-                                        required
-                                        value={localDay}
-                                        onChange={e => handleDateChange('day', e.target.value)}
-                                    >
-                                        <option value="">Día</option>
-                                        {dynamicDays.map(d => (
-                                            <option key={d} value={d}>{d}</option>
-                                        ))}
-                                    </FormSelect>
-
-                                    <FormSelect
-                                        required
-                                        value={localMonth}
-                                        onChange={e => handleDateChange('month', e.target.value)}
-                                    >
-                                        <option value="">Mes</option>
-                                        {MONTHS.map(m => (
-                                            <option key={m.value} value={m.value}>{m.label}</option>
-                                        ))}
-                                    </FormSelect>
-
-                                    <FormSelect
-                                        required
-                                        value={localYear}
-                                        onChange={e => handleDateChange('year', e.target.value)}
-                                    >
-                                        <option value="">Año</option>
-                                        {YEARS.map(y => (
-                                            <option key={y} value={y}>{y}</option>
-                                        ))}
-                                    </FormSelect>
-                                </div>
-                                {errors.fecha_nacimiento && (
-                                    <span className="text-red-500 text-[10px] mt-1 block">
-                                        {errors.fecha_nacimiento}
-                                    </span>
-                                )}
+                            <div className="space-y-1.5">
+                                <FormLabel required>Apellido Materno</FormLabel>
+                                <FormInput
+                                    required
+                                    value={data.apellido_materno}
+                                    onChange={e => setData('apellido_materno', e.target.value)}
+                                    placeholder="Ej: López"
+                                    className="h-9 text-xs"
+                                />
+                                {errors.apellido_materno && <span className="text-red-500 text-[10px] mt-1 block">{errors.apellido_materno}</span>}
                             </div>
 
                             <div className="space-y-1.5 text-left">
@@ -291,6 +247,50 @@ export default function StudentFormModal({
                                     </span>
                                 )}
                             </div>
+                        </div>
+
+                        {/* Fecha de nacimiento (Línea sola) */}
+                        <div className="space-y-1.5 text-left">
+                            <FormLabel required>Fecha de nacimiento</FormLabel>
+                            <div className="grid grid-cols-3 gap-2">
+                                <FormSelect
+                                    required
+                                    value={localDay}
+                                    onChange={e => handleDateChange('day', e.target.value)}
+                                >
+                                    <option value="">Día</option>
+                                    {dynamicDays.map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </FormSelect>
+
+                                <FormSelect
+                                    required
+                                    value={localMonth}
+                                    onChange={e => handleDateChange('month', e.target.value)}
+                                >
+                                    <option value="">Mes</option>
+                                    {MONTHS.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </FormSelect>
+
+                                <FormSelect
+                                    required
+                                    value={localYear}
+                                    onChange={e => handleDateChange('year', e.target.value)}
+                                >
+                                    <option value="">Año</option>
+                                    {YEARS.map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </FormSelect>
+                            </div>
+                            {errors.fecha_nacimiento && (
+                                <span className="text-red-500 text-[10px] mt-1 block">
+                                    {errors.fecha_nacimiento}
+                                </span>
+                            )}
                         </div>
 
                         <div className="space-y-1.5 text-left">

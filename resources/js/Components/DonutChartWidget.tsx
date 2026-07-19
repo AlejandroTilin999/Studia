@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "@/lib/utils";
 
 export interface ChartSegment {
   name: string;
@@ -14,15 +15,17 @@ interface DonutChartWidgetProps {
   centerValue?: string | number;
   hideLegend?: boolean;
   variant?: 'card' | 'plain';
+  isLoading?: boolean;
 }
 
-export default function DonutChartWidget({ 
-  title = "Estado de Matrícula", 
-  centerLabel, 
+export default function DonutChartWidget({
+  title = "Estado de Matrícula",
+  centerLabel,
   segments,
   centerValue,
   hideLegend = false,
-  variant = 'card'
+  variant = 'card',
+  isLoading = false
 }: DonutChartWidgetProps) {
   const total = segments.reduce((acc, curr) => acc + curr.count, 0);
   const displayValue = centerValue !== undefined ? centerValue : total;
@@ -35,8 +38,8 @@ export default function DonutChartWidget({
   const chartAndLegend = (
     <div className="flex flex-col items-center w-full">
       {/* Donut chart SVG with text in center */}
-      <div className="relative w-28 h-28 flex items-center justify-center mb-3">
-        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 select-none">
+      <div className="relative w-32 h-32 flex items-center justify-center mb-3">
+        <svg viewBox="0 0 100 100" className={cn("w-full h-full transform -rotate-90 select-none", isLoading && "animate-pulse opacity-50")}>
           {/* Base grey track circle */}
           <circle
             cx="50"
@@ -46,7 +49,7 @@ export default function DonutChartWidget({
             stroke="#f1f5f9"
             strokeWidth="11"
           />
-          {total > 0 ? (
+          {total > 0 && !isLoading ? (
             segments.map((segment, idx) => {
               const percentage = segment.count / total;
               const strokeLength = percentage * circumference;
@@ -83,11 +86,15 @@ export default function DonutChartWidget({
 
         {/* Inner label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-black text-[#1e88e5] leading-none">
-            {displayValue}
-          </span>
+          {isLoading ? (
+            <div className="h-6 w-10 bg-slate-100 animate-pulse rounded" />
+          ) : (
+            <span className="text-3xl font-black text-[#0266E0] leading-none">
+              {displayValue}
+            </span>
+          )}
           {centerLabel && (
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
               {centerLabel}
             </span>
           )}
@@ -99,10 +106,14 @@ export default function DonutChartWidget({
         <div className="flex flex-row justify-center gap-x-4 gap-y-1.5 w-full flex-wrap">
           {segments.map((segment, idx) => (
             <div key={idx} className="flex items-center gap-1.5 select-none shrink-0">
-              <div className={`w-2.5 h-2.5 rounded-full ${segment.bulletClass}`}></div>
-              <span className="text-[10px] font-extrabold text-slate-550">
-                {segment.name} ({segment.count})
-              </span>
+              <div className={`w-2.5 h-2.5 rounded-full ${segment.bulletClass} ${isLoading && "animate-pulse opacity-50"}`}></div>
+              {isLoading ? (
+                 <div className="h-3 w-16 bg-slate-50 animate-pulse rounded" />
+              ) : (
+                <span className="text-[10px] font-extrabold text-slate-550">
+                  {segment.name} ({segment.count})
+                </span>
+              )}
             </div>
           ))}
         </div>

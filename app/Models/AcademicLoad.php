@@ -62,4 +62,20 @@ class AcademicLoad extends Model
     {
         return $this->belongsTo(Teacher::class, 'docente_id');
     }
+
+    /**
+     * Relación con los Criterios de Evaluación
+     */
+    public function criterios()
+    {
+        return $this->hasMany(CriterioEvaluacion::class, 'carga_id');
+    }
+
+    /**
+     * Relación con las Tareas
+     */
+    public function tareas()
+    {
+        return $this->hasMany(Tarea::class, 'carga_id');
+    }
 }

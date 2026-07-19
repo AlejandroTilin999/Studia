@@ -7,6 +7,8 @@ import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import StudentDashboardCards from './StudentDashboardCards';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { formatGrade } from '@/utils/gradeHelper';
+import { Deferred } from '@inertiajs/react';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 // Componentes modulares (Organizados en carpetas correspondientes)
 import SubjectCard from './Tareas/SubjectCard';
@@ -72,13 +74,16 @@ export default function AlumnoDashboard({
     const [activeSubjectTab, setActiveSubjectTab] = useState<'novedades' | 'trabajo'>('novedades');
 
     // 1. Catálogo de materias leídas dinámicamente desde las props
-    const subjects = useMemo(() => propAlumnoGroups.map((group: any) => ({
-        id: group.id,
-        name: group.nombre,
-        iconName: 'compass',
-        teacher: group.docente,
-        description: group.descripcion
-    })), [propAlumnoGroups]);
+    const subjects = useMemo(() => {
+        if (!propAlumnoGroups || !Array.isArray(propAlumnoGroups)) return [];
+        return propAlumnoGroups.map((group: any) => ({
+            id: group.id,
+            name: group.nombre,
+            iconName: 'compass',
+            teacher: group.docente,
+            description: group.description
+        }));
+    }, [propAlumnoGroups]);
 
     // Sincronizar al navegar en la barra lateral o por URL params
     useEffect(() => {
@@ -138,21 +143,40 @@ export default function AlumnoDashboard({
         groupName: auth?.user?.alumnoGroups?.[0]?.nombre_grupo || 'Sin grupo',
         email: auth?.user?.email || '',
         registeredAt: 'Agosto 2025',
-        gpa: subjects.length > 0 ? '0.0' : '—',
+        gpa: (subjects && subjects.length > 0) ? '0.0' : '—',
         tutor: 'Pendiente',
         ciclo: '2026-A',
         periodo: '(Enero-Julio 2026)',
         specialty: 'Técnico en Informática'
     };
 
-    const studentInfo = {
-        ...baseStudentInfo,
-        subjectsCount: subjects.length
-    };
+    const studentInfo = useMemo(() => {
+        const info = {
+            ...baseStudentInfo,
+            subjectsCount: subjects?.length || 0,
+            gpa: '—'
+        };
+
+        if (kardex && Array.isArray(kardex) && kardex.length > 0) {
+            let sum = 0;
+            let count = 0;
+            kardex.forEach(k => {
+                if (k.score !== '—' && k.score !== null) {
+                    sum += parseFloat(k.score);
+                    count++;
+                }
+            });
+            if (count > 0) {
+                info.gpa = formatGrade(sum / count).toString();
+            }
+        }
+
+        return info;
+    }, [baseStudentInfo, subjects, kardex]);
 
     // Determinar el parcial activo
     const activeParcialNum = useMemo(() => {
-        if (!kardex || kardex.length === 0) return 1;
+        if (!kardex || !Array.isArray(kardex) || kardex.length === 0) return 1;
         const first = kardex[0];
         if (!first.details) return 1;
         if (first.details[1]?.average === '—') return 1;
@@ -166,6 +190,7 @@ export default function AlumnoDashboard({
 
     // Tareas filtradas para el dashboard principal (solo parcial activo)
     const activeParcialTasks = useMemo(() => {
+        if (!taskList || !Array.isArray(taskList)) return [];
         return taskList.filter(t => !t.parcial || t.parcial === activeParcialNum);
     }, [taskList, activeParcialNum]);
 
@@ -269,9 +294,11 @@ export default function AlumnoDashboard({
                                 <div className="min-h-[400px]">
 
                                     {!selectedSubject && (
-                                        <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e88e5] mb-4"></div>
-                                            <p className="font-medium text-sm">Cargando portal de materia...</p>
+                                        <div className="flex flex-col items-center justify-center h-[400px]">
+                                            <DotsLoader
+                                                label="Cargando portal de materia"
+                                                sublabel="Sincronizando tus tareas y evaluaciones..."
+                                            />
                                         </div>
                                     )}
 
@@ -354,7 +381,7 @@ export default function AlumnoDashboard({
                                                                                         </div>
                                                                                     </>
                                                                                 ) : (
-                                                                                    <p className="text-xs text-slate-400 font-medium italic">Evaluación no disponible.</p>
+                                                                                    <p className="text-xs text-slate-400 font-medium">Evaluación no disponible.</p>
                                                                                 )}
                                                                             </div>
                                                                         </div>

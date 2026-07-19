@@ -221,9 +221,8 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   {isMenuExpanded && materiasOpen && (
                     <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
                       {alumnoGroups.map((s: any) => {
-                        // Simulamos que al dar clic nos lleva al dashboard filtrado por materia
-                        // o a una vista de detalle si existiera. Por ahora al dashboard de tareas.
-                        const isSubjectActive = false; // Implementar lógica de activo si es necesario
+                        const isSubjectActive = url.includes(`id=${s.id}`) &&
+                          (pathname.startsWith('/alumno/materias') || pathname === '/alumno');
                         return (
                           <button
                             key={s.id}
@@ -311,9 +310,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
                       {docenteGroups.map((g: any) => {
                         const groupPath = `/docente/grupos/show?id=${g.id}`;
-                        const isGroupActive = pathname === '/docente/grupos/show'
-                          && (url.includes(`id=${g.id}`) || (url.includes(`grupo=${g.name}`) && url.includes(encodeURIComponent(g.materia))))
-                          && !url.includes('tab=tasks');
+                        const isGroupActive = pathname === '/docente/grupos/show' && url.includes(`id=${g.id}`);
                         return (
                           <button
                             key={g.id}

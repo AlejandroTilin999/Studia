@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { Download, Layers, Users } from 'lucide-react';
+import { FileSpreadsheet, Layers, Users } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import SubjectTable from './components/SubjectTable';
 import SubjectTableControls from './components/SubjectTableControls';
@@ -9,6 +10,7 @@ import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
+import { useExportPDF } from '@/hooks/useExportPDF';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
@@ -39,6 +41,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
 
     const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
+    const { exportToPDF } = useExportPDF();
 
     // Formulario de Inertia (Campos en Español)
     const { data, setData, post, put, delete: destroy, reset, errors, processing } = useForm({
@@ -70,8 +73,21 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             headers,
             rows,
             "reporte_materias",
-            (msg) => triggerToast("Reporte de materias exportado a Excel con éxito.")
+            (msg) => SwalHelper.success("¡Catálogo Exportado!", "El catálogo de materias se ha descargado correctamente en Excel.")
         );
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Código", "Asignatura", "Tipo", "Área", "Profesor"];
+        const rows = filteredSubjects.map(s => [
+            s.code,
+            s.name,
+            s.tipo,
+            s.area || 'N/A',
+            s.teacherName
+        ]);
+
+        exportToPDF("Catálogo Académico de Materias", headers, rows, "reporte_materias");
     };
 
     const filteredSubjects = formattedSubjects.filter(subject => {
@@ -169,22 +185,24 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
     return (
         <AdminPageLayout
             headTitle="Gestión de Materias"
-            title={`Gestión de materias (${totalSubjectsCount})`}
+            title="Gestión de materias"
             subtitle={activePeriod ? `Ciclo Activo: ${activePeriod.nombre} (${activePeriod.es_nones ? 'Semestres Nones' : 'Semestres Pares'})` : "Consulta, edita y registra planes de estudio"}
             breadcrumb="Materias"
+            isLoading={materias.length === 0}
             metrics={[
-                { code: "T1", label: "Materias totales", value: totalSubjectsCount },
-                { code: "T3", label: "En ciclo actual", value: formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length },
-                { code: "T4", label: "Sin docente", value: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length }
+                { code: "T1", label: "Materias totales", value: materias.length > 0 ? totalSubjectsCount : null },
+                { code: "T3", label: "En ciclo actual", value: materias.length > 0 ? formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length : null },
+                { code: "T4", label: "Sin docente", value: materias.length > 0 ? formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length : null }
             ]}
             quickActions={[
-                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: Download },
+                { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: FileSpreadsheet },
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
                 { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }
             ]}
             donutChartLabel="materias"
             donutChartSegments={[
-                { name: "Con docente", count: formattedSubjects.filter(s => s.teacherName !== 'Pendiente de Asignación').length, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                { name: "Con docente", count: formattedSubjects.filter(s => s.teacherName !== 'Pendiente de Asignación').length, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
                 { name: "Sin docente", count: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
