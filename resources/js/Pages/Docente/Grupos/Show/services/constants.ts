@@ -35,7 +35,7 @@ export interface StudentGrade {
     } | null;
 }
 
-export const MOCK_STUDENTS: Omit<StudentGrade, 'calificaciones'>[] = [];
+export const MOCK_STUDENTS: StudentGrade[] = [];
 
 export const DEFAULT_CRITERIA: Criterion[] = [];
 

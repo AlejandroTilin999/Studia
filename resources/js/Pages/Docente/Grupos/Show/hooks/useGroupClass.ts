@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import axios from 'axios';
 import {
@@ -50,7 +50,7 @@ export function useGroupClass() {
     const [themeKey, setThemeKey] = useState<string>('blue');
     const [showPaletteMenu, setShowPaletteMenu] = useState(false);
     const [students, setStudents] = useState<any[]>(() => {
-        return classInfo?.students || MOCK_STUDENTS;
+        return classInfo?.alumnos || MOCK_STUDENTS;
     });
 
     useEffect(() => {
@@ -69,30 +69,37 @@ export function useGroupClass() {
             return;
         }
 
-        // Si no hay classInfo y tampoco hay un ID en la URL, redirigir al dashboard
         if (!queryId) {
-            router.visit('/docente/dashboard');
+            router.visit('/docente');
             return;
         }
     }, [classInfo]);
 
-    // 2. Control del tema visual
+    // 2. Control del tema visual (Sincronizado con el servidor)
     useEffect(() => {
+        if (!loadId) return;
+
+        // Intentar obtener de cache local primero para rapidez, pero el servidor manda
         const stored = localStorage.getItem(`studia:docente:${grupo}:${materia}:banner-color`);
         if (stored && COLOR_THEMES[stored]) {
             setThemeKey(stored);
-        } else {
-            setThemeKey(getGroupDefaultThemeKey(grupo));
         }
-    }, [grupo, materia]);
+
+        // El color real viene de classInfo o getConfig (ya manejado en loadId useEffect)
+    }, [loadId, grupo, materia]);
 
     function handleThemeChange(newKey: string) {
         setThemeKey(newKey);
         localStorage.setItem(`studia:docente:${grupo}:${materia}:banner-color`, newKey);
         setShowPaletteMenu(false);
+
+        if (loadId) {
+            axios.post(`/docente/clases/${loadId}/theme`, { color: newKey })
+                .catch(err => console.error("Error al guardar tema:", err));
+        }
     }
 
-    // 3. Pantalla actual y parcial activo (Inicializado desde URL)
+    // 3. Pantalla actual y parcial activo
     const [screen, setScreen] = useState<Screen>(() => {
         const params = new URLSearchParams(window.location.search);
         return (params.get('parcial') ? 'grades' : 'parciales') as Screen;
@@ -105,7 +112,7 @@ export function useGroupClass() {
     const [configs, setConfigs] = useState<Record<number, ParcialConfig>>({});
     const [allGrades, setAllGrades] = useState<Record<number, StudentGrade[]>>({});
 
-    // 3.1 Sincronizar URL cuando cambia el parcial o la pantalla
+    // 3.1 Sincronizar URL
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
@@ -121,32 +128,23 @@ export function useGroupClass() {
         window.history.replaceState(null, '', newUrl);
     }, [activeParcial, screen]);
 
-    // Sincronizar configuraciones al cambiar grupo/materia (Conectado a Supabase)
+    // Sincronizar configuraciones
     useEffect(() => {
-        if (!loadId) return; // Esperar a tener el loadId real
+        if (!loadId) return;
 
-        const fresh: Record<number, ParcialConfig> = {};
-        const freshGrades: Record<number, StudentGrade[]> = {};
-
-        // Limpiar estados antes de cargar nuevos datos para evitar mezclas entre clases
         setTasks([]);
         setStudentGrades([]);
 
         PARCIALES.forEach(({ num }) => {
-            // Limpiar localStorage (opcional, pero mejor confiar en la BD)
-            const c = loadConfig(grupo, materia, num);
-            if (c) fresh[num] = c;
-        });
-
-        setConfigs(fresh);
-
-        // Consultas optimizadas a la base de datos
-        PARCIALES.forEach(({ num }) => {
             axios.get(`/docente/clases/${loadId}/config?parcial=${num}`)
                 .then(res => {
-                    const { configurado, criterios, alumnos } = res.data;
+                    const { configurado, criterios, alumnos, color_tema } = res.data;
                     const currentParams = new URLSearchParams(window.location.search);
                     const isCurrentInUrl = currentParams.get('parcial') === num.toString();
+
+                    if (color_tema && COLOR_THEMES[color_tema]) {
+                        setThemeKey(color_tema);
+                    }
 
                     if (configurado) {
                         setConfigs(prev => ({
@@ -158,12 +156,10 @@ export function useGroupClass() {
                             [num]: alumnos
                         }));
 
-                        // Si este es el parcial que estamos viendo, cargar sus datos activos
                         if (isCurrentInUrl) {
                             setScreen('grades');
                             setStudentGrades(alumnos);
 
-                            // Cargar tareas específicas de este parcial
                             axios.get(`/docente/clases/${loadId}/tareas?parcial=${num}`)
                                 .then(tRes => setTasks(tRes.data.tareas))
                                 .catch(err => console.error("Error tareas:", err));
@@ -171,27 +167,27 @@ export function useGroupClass() {
                     } else if (isCurrentInUrl) {
                         setScreen('wizard');
                         setWizardStep(1);
-                        setDraftCriteria([]);
+                        setDraftCriteria(DEFAULT_CRITERIA.map(c => ({ ...c })));
                     }
                 })
                 .catch(err => console.error("Error al cargar config de parcial:", num, err));
         });
-    }, [loadId]); // Solo re-ejecutar si cambia la clase (loadId)
+    }, [loadId]);
 
     // 4. Asistente (Wizard) de Criterios
     const [wizardStep, setWizardStep] = useState(1);
     const [draftCriteria, setDraftCriteria] = useState<Criterion[]>(DEFAULT_CRITERIA.map(c => ({ ...c })));
     const [nextId, setNextId] = useState(10);
 
-    const totalPct = draftCriteria.reduce((sum, c) => sum + c.percentage, 0);
-    const hasSync = draftCriteria.some(c => c.syncTasks);
+    const totalPct = draftCriteria.reduce((sum, c) => sum + (c.porcentaje || 0), 0);
+    const hasSync = draftCriteria.some(c => c.sincronizar_tareas);
     const pctValid = totalPct === 100 &&
                      draftCriteria.length > 0 &&
-                     draftCriteria.every(c => c.name.trim() !== '') &&
+                     draftCriteria.every(c => c.nombre.trim() !== '') &&
                      hasSync;
 
     function addCriterion() {
-        setDraftCriteria(prev => [...prev, { id: nextId, name: 'Nuevo criterio', percentage: 0 }]);
+        setDraftCriteria(prev => [...prev, { id: nextId, nombre: 'Nuevo criterio', porcentaje: 0 }]);
         setNextId(n => n + 1);
     }
 
@@ -206,16 +202,12 @@ export function useGroupClass() {
     function toggleSyncTasks(id: number) {
         setDraftCriteria(prev => prev.map(c => ({
             ...c,
-            sincronizar_tareas: c.id === id ? !c.sincronizar_tareas : false // Solo uno a la vez
+            sincronizar_tareas: c.id === id ? !c.sincronizar_tareas : false
         })));
     }
 
     function saveWizardConfig() {
         if (!pctValid) return;
-        const newConfig: ParcialConfig = {
-            configured: true,
-            criteria: draftCriteria
-        };
 
         if (loadId && activeParcial) {
             SwalHelper.loading('Guardando configuración...', 'Estableciendo criterios de evaluación');
@@ -229,7 +221,7 @@ export function useGroupClass() {
                     ...prev,
                     [activeParcial!]: { configured: true, criteria: freshCriteria }
                 }));
-                // Recargar calificaciones correspondientes a los nuevos criterios
+
                 axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
                     .then(r => {
                         setStudentGrades(r.data.alumnos);
@@ -240,25 +232,39 @@ export function useGroupClass() {
                 setScreen('grades');
             })
             .catch(err => {
-                console.error("Error al guardar criterios en Supabase:", err);
-                SwalHelper.error("Error", "Hubo un error al guardar la configuración en la base de datos.");
+                console.error("Error al guardar criterios:", err);
+                SwalHelper.error("Error", "Hubo un error al guardar la configuración.");
             });
-        } else {
-            saveConfig(grupo, materia, activeParcial!, newConfig);
-            setConfigs(prev => ({ ...prev, [activeParcial!]: newConfig }));
-            SwalHelper.success('¡Hecho!', 'Configuración guardada localmente.');
-            setScreen('grades');
         }
     }
 
     function resetConfig() {
         if (!activeParcial) return;
+
+        // Validar si ya hay calificaciones o tareas evaluadas
+        const hasGrades = studentGrades.some(s =>
+            Object.values(s.calificaciones || {}).some(val => val !== null && val !== '' && val !== '—')
+        );
+
+        const hasTaskGrades = tasks.some(t =>
+            Object.values(t.calificaciones || {}).some(val => val !== null && val !== '' && val !== '—')
+        );
+
+        if (hasGrades || hasTaskGrades) {
+            SwalHelper.alert(
+                'Acción bloqueada',
+                'No puedes modificar los criterios porque ya existen calificaciones o tareas evaluadas en este parcial. Si necesitas cambiar algo, primero borra las calificaciones.',
+                'warning'
+            );
+            return;
+        }
+
         if (activeParcial === 2 && !isParcialClosed(1)) {
-            SwalHelper.alert('Acción bloqueada', 'No se puede reconfigurar el Segundo Parcial. Primero debes concluir y calificar el Primer Parcial.', 'warning');
+            SwalHelper.alert('Acción bloqueada', 'Primero debes concluir el Primer Parcial.', 'warning');
             return;
         }
         if (activeParcial === 3 && (!isParcialClosed(1) || !isParcialClosed(2))) {
-            SwalHelper.alert('Acción bloqueada', 'No se puede reconfigurar el Tercer Parcial. Primero debes concluir y calificar los parciales anteriores.', 'warning');
+            SwalHelper.alert('Acción bloqueada', 'Primero debes concluir los parciales anteriores.', 'warning');
             return;
         }
 
@@ -274,39 +280,29 @@ export function useGroupClass() {
     function resetParcial(num: number) {
         SwalHelper.confirm(
             '¿Reiniciar Parcial?',
-            'Se borrarán todos los criterios y calificaciones de este parcial. Esta acción no se puede deshacer.',
+            'Se borrarán todos los criterios y calificaciones de este parcial.',
             'Sí, Reiniciar',
             'Cancelar',
             'warning'
         ).then((result) => {
-            if (result.isConfirmed) {
-                if (loadId) {
-                    SwalHelper.loading('Reiniciando...', 'Limpiando datos del parcial');
-                    axios.post(`/docente/clases/${loadId}/criterios`, {
-                        parcial: num,
-                        criteria: []
-                    })
-                    .then(() => {
-                        setConfigs(prev => {
-                            const next = { ...prev };
-                            delete next[num];
-                            return next;
-                        });
-                        SwalHelper.success('¡Hecho!', 'El parcial ha sido reiniciado.');
-                    })
-                    .catch(err => {
-                        console.error("Error al reiniciar parcial en Supabase:", err);
-                        SwalHelper.error('Error', 'No se pudo reiniciar el parcial.');
-                    });
-                } else {
-                    localStorage.removeItem(storageKey(grupo, materia, num));
+            if (result.isConfirmed && loadId) {
+                SwalHelper.loading('Reiniciando...', 'Limpiando datos');
+                axios.post(`/docente/clases/${loadId}/criterios`, {
+                    parcial: num,
+                    criterios: []
+                })
+                .then(() => {
                     setConfigs(prev => {
                         const next = { ...prev };
                         delete next[num];
                         return next;
                     });
-                    SwalHelper.success('¡Hecho!', 'El parcial ha sido reiniciado (Local).');
-                }
+                    SwalHelper.success('¡Hecho!', 'El parcial ha sido reiniciado.');
+                })
+                .catch(err => {
+                    console.error("Error al reiniciar parcial:", err);
+                    SwalHelper.error('Error', 'No se pudo reiniciar el parcial.');
+                });
             }
         });
     }
@@ -317,72 +313,45 @@ export function useGroupClass() {
     const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
 
     useEffect(() => {
-        if (activeParcial) {
-            if (loadId) {
-                // Cargar criterios y calificaciones del parcial activo desde Supabase
-                axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
-                    .then(res => {
-                        const { configured, criteria, grades } = res.data;
-                        setConfigs(prev => ({
-                            ...prev,
-                            [activeParcial]: { configured, criteria }
-                        }));
-                        setStudentGrades(grades);
-                    })
-                    .catch(err => {
-                        console.error("Error al cargar config desde Supabase:", err);
-                        setStudentGrades(students.map(s => ({ ...s, scores: {} })));
-                    });
+        if (activeParcial && loadId) {
+            axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
+                .then(res => {
+                    const { configured, criterios, alumnos } = res.data;
+                    setConfigs(prev => ({
+                        ...prev,
+                        [activeParcial]: { configured, criteria: criterios }
+                    }));
+                    setStudentGrades(alumnos);
+                })
+                .catch(err => {
+                    console.error("Error al cargar config:", err);
+                });
 
-                // Cargar tareas del parcial activo desde Supabase
-                axios.get(`/docente/clases/${loadId}/tareas?parcial=${activeParcial}`)
-                    .then(res => {
-                        setTasks(res.data.tasks);
-                    })
-                    .catch(err => {
-                        console.error("Error al cargar tareas desde Supabase:", err);
-                        setTasks([]);
-                    });
-            } else {
-                // Cargar calificaciones locales
-                const storedGrades = localStorage.getItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:grades`);
-                if (storedGrades) {
-                    setStudentGrades(JSON.parse(storedGrades) as StudentGrade[]);
-                } else {
-                    setStudentGrades(students.map(s => ({ ...s, scores: {} })));
-                }
-
-                // Cargar tareas locales
-                const storedTasks = localStorage.getItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`);
-                if (storedTasks) {
-                    setTasks(JSON.parse(storedTasks) as Task[]);
-                } else {
+            axios.get(`/docente/clases/${loadId}/tareas?parcial=${activeParcial}`)
+                .then(res => {
+                    setTasks(res.data.tareas);
+                })
+                .catch(err => {
+                    console.error("Error al cargar tareas:", err);
                     setTasks([]);
-                }
-            }
+                });
         }
-    }, [activeParcial, grupo, materia, students, loadId]);
+    }, [activeParcial, loadId]);
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
         if (loadId && activeParcial) {
             axios.post(`/docente/clases/${loadId}/tareas`, {
                 parcial: activeParcial,
-                tasks: newTasks
+                tareas: newTasks
             })
             .then(res => {
-                setTasks(res.data.tasks);
-                // No mostramos toast aquí para evitar spam en cada cambio de nota,
-                // pero sí lo haremos al crear/editar una actividad completa
+                setTasks(res.data.tareas);
             })
             .catch(err => {
-                console.error("Error al guardar tareas en Supabase:", err);
+                console.error("Error al guardar tareas:", err);
                 SwalHelper.error('Error', 'No se pudieron sincronizar las actividades.');
             });
-        } else {
-            if (activeParcial) {
-                localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:tasks`, JSON.stringify(newTasks));
-            }
         }
     }
 
@@ -391,8 +360,8 @@ export function useGroupClass() {
         let sumNormalized = 0;
         let count = 0;
         tasks.forEach(t => {
-            const score = parseFloat(t.grades[studentId] || '0');
-            const maxPoints = t.points || 10;
+            const score = parseFloat(t.calificaciones[studentId] || '0');
+            const maxPoints = t.puntos || 10;
             const normalized = (score / maxPoints) * 10;
             sumNormalized += normalized;
             count++;
@@ -404,11 +373,11 @@ export function useGroupClass() {
 
     function openParcial(parcialNum: number) {
         if (parcialNum === 2 && !isParcialClosed(1)) {
-            SwalHelper.alert('Acceso restringido', 'Primero debes concluir y calificar el Primer Parcial para acceder a este.', 'info');
+            SwalHelper.alert('Acceso restringido', 'Primero debes concluir el Primer Parcial.', 'info');
             return;
         }
         if (parcialNum === 3 && (!isParcialClosed(1) || !isParcialClosed(2))) {
-            SwalHelper.alert('Acceso restringido', 'Primero debes concluir y calificar los parciales anteriores para acceder a este.', 'info');
+            SwalHelper.alert('Acceso restringido', 'Primero debes concluir los parciales anteriores.', 'info');
             return;
         }
 
@@ -416,66 +385,58 @@ export function useGroupClass() {
         setActiveTab('grades');
         setSelectedTaskId(null);
 
-        // Limpiar datos previos antes de cargar el nuevo parcial
         setTasks([]);
         setStudentGrades([]);
 
         const config = configs[parcialNum];
         if (config?.configured) {
             setScreen('grades');
-            // Cargar datos reales del parcial seleccionado
             if (loadId) {
                 axios.get(`/docente/clases/${loadId}/config?parcial=${parcialNum}`)
-                    .then(res => setStudentGrades(res.data.grades));
+                    .then(res => setStudentGrades(res.data.alumnos));
                 axios.get(`/docente/clases/${loadId}/tareas?parcial=${parcialNum}`)
-                    .then(res => setTasks(res.data.tasks));
+                    .then(res => setTasks(res.data.tareas));
             }
         } else {
             setWizardStep(1);
-            setDraftCriteria([]);
+            setDraftCriteria(DEFAULT_CRITERIA.map(c => ({ ...c })));
             setScreen('wizard');
         }
     }
 
     function setScore(studentId: number, criterionId: number, val: string) {
         setStudentGrades(prev => prev.map(s =>
-            s.id === studentId ? { ...s, scores: { ...s.scores, [criterionId]: val } } : s
+            s.id === studentId ? { ...s, calificaciones: { ...s.calificaciones, [criterionId]: val } } : s
         ));
     }
 
     function handleAsentarCalificaciones() {
-        const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];
-        const updatedGrades = studentGrades.map(s => {
-            const scores = { ...s.scores };
-            activeCriteria.forEach(c => {
-                if (c.syncTasks) {
-                    scores[c.id] = getStudentTasksAverage(s.id);
-                }
-            });
-            return { ...s, scores };
-        });
-        setStudentGrades(updatedGrades);
-
         if (loadId && activeParcial) {
-            SwalHelper.loading('Guardando...', 'Asentando calificaciones en el servidor');
+            const activeCriteria = configs[activeParcial]?.criteria ?? [];
+            const updatedGrades = studentGrades.map(s => {
+                const calificaciones = { ...s.calificaciones };
+                activeCriteria.forEach(c => {
+                    if (c.sincronizar_tareas) {
+                        calificaciones[c.id] = getStudentTasksAverage(s.id);
+                    }
+                });
+                return { ...s, calificaciones };
+            });
+
+            SwalHelper.loading('Guardando...', 'Asentando calificaciones');
             axios.post(`/docente/clases/${loadId}/calificaciones`, {
                 parcial: activeParcial,
-                grades: updatedGrades
+                alumnos: updatedGrades
             })
             .then(() => {
                 setAllGrades(prev => ({ ...prev, [activeParcial!]: updatedGrades }));
-                SwalHelper.success('¡Completado!', 'Las calificaciones han sido asentadas correctamente.');
+                setStudentGrades(updatedGrades);
+                SwalHelper.success('¡Completado!', 'Calificaciones asentadas correctamente.');
             })
             .catch(err => {
-                console.error("Error al guardar calificaciones en Supabase:", err);
+                console.error("Error al asentar calificaciones:", err);
                 SwalHelper.error('Error', 'No se pudieron guardar las calificaciones.');
             });
-        } else {
-            if (activeParcial) {
-                localStorage.setItem(`studia:docente:${grupo}:${materia}:parcial${activeParcial}:grades`, JSON.stringify(updatedGrades));
-                setAllGrades(prev => ({ ...prev, [activeParcial!]: updatedGrades }));
-            }
-            SwalHelper.success('¡Hecho!', 'Calificaciones asentadas (Almacenamiento Local).');
         }
     }
 
@@ -493,59 +454,11 @@ export function useGroupClass() {
         }
     }, [studentGrades]);
 
-    // Inicializar mensajes privados
-    useEffect(() => {
-        const defaultMessages: Record<string, { sender: 'alumno' | 'docente', senderName: string, text: string, timestamp: string }[]> = {};
-        studentGrades.forEach(student => {
-            defaultMessages[`1:${student.id}`] = [
-                {
-                    sender: 'alumno',
-                    senderName: student.nombre || student.name,
-                    text: 'Profesor, disculpe la tardanza, ya adjunté mi mapa conceptual de monomios.',
-                    timestamp: 'Ayer, 08:32 PM'
-                },
-                {
-                    sender: 'docente',
-                    senderName: 'Mtro. Francisco Javier Hernández',
-                    text: 'Hola. Enterado, procederé a evaluar tu trabajo en el transcurso del día.',
-                    timestamp: 'Hoy, 09:15 AM'
-                }
-            ];
-            defaultMessages[`2:${student.id}`] = [
-                {
-                    sender: 'alumno',
-                    senderName: student.name,
-                    text: 'Profe, no pude resolver el ejercicio 12, ¿me podría orientar?',
-                    timestamp: 'Ayer, 04:15 PM'
-                }
-            ];
-        });
-        setPrivateMessages(defaultMessages);
-    }, [studentGrades]);
-
-    function sendPrivateMessage(key: string) {
-        if (!chatInputText.trim()) return;
-        const newMsg = {
-            sender: 'docente' as const,
-            senderName: 'Mtro. Francisco Javier Hernández',
-            text: chatInputText.trim(),
-            timestamp: 'Hace un momento'
-        };
-        setPrivateMessages(prev => ({
-            ...prev,
-            [key]: [...(prev[key] || []), newMsg]
-        }));
-        setChatInputText('');
-    }
-
     function getParcialAverage(studentId: number, parcialNum: number): number | string {
         const cfg = configs[parcialNum];
         if (!cfg || !cfg.configured) return "—";
 
-        // Usar las notas del estado local para mayor reactividad
         let studentGradesList = allGrades[parcialNum] || [];
-
-        // Si estamos en el parcial activo, priorizar studentGrades (cambios actuales)
         if (activeParcial === parcialNum) {
             studentGradesList = studentGrades;
         }
@@ -555,14 +468,11 @@ export function useGroupClass() {
 
         const criteria = cfg.criteria || [];
 
-        // Verificar si todos los criterios tienen nota
         const filled = criteria.every(c => {
-            if (c.syncTasks && activeParcial === parcialNum) {
-                // Si es el activo y es de plataforma, calculamos el promedio dinámico
+            if (c.sincronizar_tareas && activeParcial === parcialNum) {
                 return getStudentTasksAverage(studentId) !== '';
             }
-            // Para el resto, usamos el valor ya guardado o capturado en scores
-            const val = sGrade.scores[c.id];
+            const val = sGrade.calificaciones[c.id];
             return val !== undefined && val !== null && val !== '';
         });
 
@@ -570,19 +480,19 @@ export function useGroupClass() {
 
         const avg = criteria.reduce((sum, c) => {
             let scoreVal = '0';
-            if (c.syncTasks && activeParcial === parcialNum) {
+            if (c.sincronizar_tareas && activeParcial === parcialNum) {
                 scoreVal = getStudentTasksAverage(studentId);
             } else {
-                scoreVal = sGrade.scores[c.id] || '0';
+                scoreVal = sGrade.calificaciones[c.id] || '0';
             }
-            return sum + (parseFloat(scoreVal) * c.percentage / 100);
+            return sum + (parseFloat(scoreVal) * c.porcentaje / 100);
         }, 0);
 
         return parseFloat(avg.toFixed(1));
     }
 
     function isParcialClosed(parcialNum: number): boolean {
-        const cfg = configs[parcialNum] || loadConfig(grupo, materia, parcialNum);
+        const cfg = configs[parcialNum];
         if (!cfg || !cfg.configured) return false;
 
         return students.every(student => {
@@ -656,7 +566,6 @@ export function useGroupClass() {
         setIsGradesModalOpen,
         privateMessages,
         setPrivateMessages,
-        sendPrivateMessage,
         getParcialAverage,
         getFinalAverage,
         isParcialClosed,

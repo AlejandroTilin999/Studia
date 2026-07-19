@@ -68,19 +68,9 @@ export default function ReportParams({
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
-            <div className="flex items-center gap-3 mb-4 ml-1">
-                <div className={cn(
-                    "w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500",
-                    isFormValid
-                        ? "bg-slate-500 border-slate-500 text-white"
-                        : "border-slate-200 text-slate-400"
-                )}>
-                    2
-                </div>
-                <h4 className="text-[13px] font-semibold text-slate-400 block text-left">
-                    Configura los parámetros de filtrado
-                </h4>
-            </div>
+            <h4 className="text-[13px] font-semibold text-slate-400 block text-left ml-1">
+                Paso 2: Configura los parámetros de filtrado
+            </h4>
 
             {/* Fila 1: Selectores de Filtrado (Dinámicos) */}
             <div className="flex flex-col lg:flex-row bg-white border border-slate-100 rounded-xl overflow-hidden shadow-none divide-y lg:divide-y-0 lg:divide-x divide-slate-100">

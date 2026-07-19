@@ -76,8 +76,35 @@ class DocenteClassroomController extends Controller
         return response()->json([
             'configurado' => $configurado,
             'criterios' => $criteria,
-            'alumnos' => $gradesData
+            'alumnos' => $gradesData,
+            'color_tema' => $load->color_tema ?? 'blue'
         ]);
+    }
+
+    /**
+     * Actualiza el tema visual (color) de la clase.
+     */
+    public function updateTheme(Request $request, $uuid)
+    {
+        $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
+
+        $request->validate([
+            'color' => 'required|string'
+        ]);
+
+        $load->update(['color_tema' => $request->input('color')]);
+
+        // [IMPORTANTE] Limpiar el caché de los alumnos de este grupo para que vean el cambio al instante
+        $studentIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+            ->where('estatus', 'active')
+            ->pluck('usuario_id');
+
+        foreach ($studentIds as $id) {
+            \Cache::forget("student_kardex_{$id}");
+            \Cache::forget("student_tasks_{$id}");
+        }
+
+        return response()->json(['message' => 'Tema actualizado']);
     }
 
     /**

@@ -19,7 +19,7 @@ export default function DashboardWelcomeBanner({
     wrapperClassName = "pt-0 pb-6 md:pb-10"
 }: DashboardWelcomeBannerProps) {
     const { url } = usePage();
-    
+
     // Resolve role based on path
     let role = 'ADMIN';
     if (url.startsWith('/docente')) {
@@ -28,10 +28,10 @@ export default function DashboardWelcomeBanner({
         role = 'ALUMNO';
     }
 
-    const imageSrc = role === 'ADMIN' 
-        ? '/assets/admin-dashboard.png' 
-        : role === 'DOCENTE' 
-            ? '/assets/docente-dashboard.png' 
+    const imageSrc = role === 'ADMIN'
+        ? '/assets/admin-dashboard.png'
+        : role === 'DOCENTE'
+            ? '/assets/docente-dashboard.png'
             : '/assets/persona-dashboard.webp';
 
     const currentDate = new Date().toLocaleDateString('es-ES', {
@@ -47,7 +47,7 @@ export default function DashboardWelcomeBanner({
         if (role === 'ADMIN') {
             router.visit('/admin/reportes');
         } else if (role === 'DOCENTE') {
-            router.visit('/docente/dashboard');
+            router.visit('/docente');
         } else {
             router.visit('/alumno/calificaciones');
         }
@@ -72,24 +72,24 @@ export default function DashboardWelcomeBanner({
     return (
         <div className={`relative w-full ${wrapperClassName}`}>
             {/* Main Card Container */}
-            <div className="relative w-full overflow-hidden bg-[#e8f0fe] rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-12 lg:p-14 shadow-sm border border-blue-100 select-none">
-                
+            <div className="relative w-full overflow-hidden bg-[#e8f0fe] rounded-xl md:rounded-2xl p-6 sm:p-8 md:p-12 lg:p-14 shadow-sm border border-blue-100 select-none">
+
                 {/* --- DECORACIONES GEOMÉTRICAS (Abstract background elements) --- */}
                 <div className="absolute left-0 top-0 bottom-0 w-48 overflow-hidden pointer-events-none select-none z-0">
                     {/* Wavy line */}
                     <svg className="absolute -left-6 top-1 w-44 h-48 opacity-25" viewBox="0 0 120 140" fill="none">
                         <path d="M10 10 Q50 60 20 100 T100 120" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
-                    
+
                     {/* Green Triangle */}
                     <div className="absolute left-10 top-4 w-14 h-14 bg-[#4db6ac] rotate-12 opacity-30" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
-                    
+
                     {/* Purple Rectangle */}
                     <div className="absolute -left-8 top-12 w-24 h-12 bg-[#ab47bc] rotate-45 opacity-20 rounded-md"></div>
-                    
+
                     {/* Blue Circle */}
                     <div className="absolute left-8 top-28 w-12 h-12 bg-[#1e88e5] rounded-full opacity-40"></div>
-                    
+
                     {/* Orange Square */}
                     <div className="absolute -left-6 top-40 w-12 h-12 bg-[#ffa726] rotate-12 opacity-35 rounded-md"></div>
                 </div>
@@ -99,7 +99,7 @@ export default function DashboardWelcomeBanner({
 
                 {/* --- CONTENT GRID --- */}
                 <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
-                    
+
                     {/* Left Column: Text & Button */}
                     <div className="col-span-1 lg:col-span-8 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4 relative z-10">
                         {/* Date Pill Badge */}
@@ -139,10 +139,11 @@ export default function DashboardWelcomeBanner({
                     {/* Right Column: Image */}
                     <div className="col-span-1 lg:col-span-4 flex justify-center lg:justify-end">
                         <div className="relative w-full max-w-[180px] sm:max-w-[220px] md:max-w-[260px] lg:max-w-[340px] xl:max-w-[380px] h-40 sm:h-48 md:h-56 lg:h-[280px] xl:h-[320px] flex items-end justify-center">
-                            <img 
-                                src={imageSrc} 
-                                alt="Personaje Dashboard" 
-                                className="h-full w-auto object-contain hover:-translate-y-2 hover:scale-[1.02] transition-all duration-500"
+                            <img
+                                src={imageSrc}
+                                alt="Personaje Dashboard"
+                                draggable="false"
+                                className="h-full w-auto object-contain pointer-events-none select-none"
                             />
                         </div>
                     </div>

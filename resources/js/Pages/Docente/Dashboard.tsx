@@ -67,33 +67,33 @@ export default function DocenteDashboard({
                         wrapperClassName="pb-0"
                     />
 
-                    {/* Ficha Resumen del Profesor (Ahora fuera del contenedor para alinear ancho) */}
-                    <TeacherInfoCard
-                        name={teacherInfo.name}
-                        specialty={teacherInfo.specialty}
-                        email={teacherInfo.email}
-                        groupsCount={assignedLoad.length}
-                    />
-
-                    {/* Carga Académica Asignada */}
-                    <div className="space-y-6">
-                        <div className="space-y-1 text-left px-2">
-                            <h3 className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Carga Académica</h3>
-                            <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-snug">Grupos y Materias Asignadas</h2>
-                            <p className="text-xs md:text-[13px] text-slate-500 font-semibold leading-relaxed max-w-2xl mt-1.5">
-                                Gestiona tus clases vigentes, configura criterios de evaluación y realiza la captura de calificaciones de tus alumnos de forma organizada.
-                            </p>
+                    <Deferred data={['teacherInfo', 'assignedLoad']} fallback={
+                        <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
+                            <DotsLoader
+                                label="Cargando panel de control"
+                                sublabel="Sincronizando tus grupos y expedientes..."
+                            />
                         </div>
+                    }>
+                        {/* Ficha Resumen del Profesor */}
+                        <TeacherInfoCard
+                            name={teacherInfo.name}
+                            specialty={teacherInfo.specialty}
+                            email={teacherInfo.email}
+                            groupsCount={assignedLoad.length}
+                        />
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Deferred data="assignedLoad" fallback={
-                                <div className="md:col-span-2">
-                                    <DotsLoader
-                                        label="Cargando tus grupos"
-                                        sublabel="Recuperando carga académica vigente..."
-                                    />
-                                </div>
-                            }>
+                        {/* Carga Académica Asignada */}
+                        <div className="space-y-6">
+                            <div className="space-y-1 text-left px-2">
+                                <h3 className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Carga Académica</h3>
+                                <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-snug">Grupos y Materias Asignadas</h2>
+                                <p className="text-xs md:text-[13px] text-slate-500 font-semibold leading-relaxed max-w-2xl mt-1.5">
+                                    Gestiona tus clases vigentes, configura criterios de evaluación y realiza la captura de calificaciones de tus alumnos de forma organizada.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {assignedLoad.length > 0 ? assignedLoad.map((load) => (
                                     <Link
                                         key={load.id}
@@ -133,9 +133,9 @@ export default function DocenteDashboard({
                                         <p className="text-sm text-slate-400 font-bold">Sin grupos asignados actualmente.</p>
                                     </div>
                                 )}
-                            </Deferred>
+                            </div>
                         </div>
-                    </div>
+                    </Deferred>
                 </div>
 
                 {/* Columna Derecha */}

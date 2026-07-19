@@ -29,10 +29,12 @@ interface Task {
 }
 
 interface Subject {
+    id?: string | number;
     name: string;
     iconName: string;
     teacher: string;
     description: string;
+    color_tema?: string;
 }
 
 interface AlumnoDashboardProps {
@@ -81,7 +83,8 @@ export default function AlumnoDashboard({
             name: group.nombre,
             iconName: 'compass',
             teacher: group.docente,
-            description: group.description
+            description: group.description,
+            color_tema: group.color_tema || 'blue'
         }));
     }, [propAlumnoGroups]);
 

@@ -8,6 +8,7 @@ interface Subject {
     iconName: string;
     teacher: string;
     description: string;
+    color_tema?: string;
 }
 
 interface Task {
@@ -37,9 +38,7 @@ export default function SubjectHeader({
     onBack,
     onBackToSubject
 }: SubjectHeaderProps) {
-    // Definimos un tema por defecto para el alumno (por ejemplo azul) o basado en el índice si lo tuviéramos.
-    // Para simplificar usamos el azul institucional.
-    const themeKey = 'blue';
+    const themeKey = subject?.color_tema || 'blue';
     const groupColors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
 
     return (

@@ -127,7 +127,8 @@ class GradeService
                     'score' => $finalScoreFormatted,
                     'approved' => ($finalScoreFormatted !== '—') ? ($finalScoreFormatted >= 6 ? 'Sí' : 'No') : '—',
                     'period' => $periodName,
-                    'details' => $parcialDetails
+                    'details' => $parcialDetails,
+                    'color_tema' => $load->color_tema ?? 'blue'
                 ];
             }
 

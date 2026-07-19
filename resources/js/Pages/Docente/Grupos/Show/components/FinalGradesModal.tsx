@@ -50,7 +50,7 @@ export default function FinalGradesModal({
         },
         {
             header: "Alumno",
-            accessor: (student: any) => student.name,
+            accessor: (student: any) => student.nombre,
             align: "left" as const,
             sortable: false,
             headerClassName: "pl-2",

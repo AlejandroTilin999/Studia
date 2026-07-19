@@ -31,22 +31,22 @@ export default function GradesTab({
                         },
                         {
                             header: 'Alumno',
-                            accessor: r => r.name,
+                            accessor: r => r.nombre,
                             className: 'text-sm text-slate-500',
                         },
                         ...activeCriteria.map(c => {
-                            const isSynced = c.syncTasks;
+                            const isSynced = c.sincronizar_tareas;
                             return {
                                 header: (
                                     <div className="flex flex-col items-center gap-0.5 min-w-[140px] max-w-[200px] text-center">
-                                        <span className="text-xs font-semibold text-slate-700 truncate w-full" title={c.name}>{c.name}</span>
-                                        <span className="text-[10px] font-bold text-slate-400">{c.percentage}%</span>
+                                        <span className="text-xs font-semibold text-slate-700 truncate w-full" title={c.nombre}>{c.nombre}</span>
+                                        <span className="text-[10px] font-bold text-slate-400">{c.porcentaje}%</span>
                                     </div>
                                 ),
                                 align: 'center' as const,
                                 headerClassName: 'w-36',
                                 accessor: (r: StudentGrade) => {
-                                    const val = isSynced ? getStudentTasksAverage(r.id) : (r.scores[c.id] ?? '');
+                                    const val = isSynced ? getStudentTasksAverage(r.id) : (r.calificaciones[c.id] ?? '');
                                     return (
                                         <div className="flex justify-center items-center gap-1.5 h-8">
                                             {isSynced ? (
@@ -70,7 +70,7 @@ export default function GradesTab({
                                                             val === '' ? 'border-slate-200' : 'border-transparent'
                                                             } focus:border-[#1e88e5] focus:ring-0 text-slate-800 outline-none transition-all py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                                                     />
-                                                    <span className="text-[10px]text-slate-400">/ 10</span>
+                                                    <span className="text-[10px] text-slate-400">/ 10</span>
                                                 </div>
                                             )}
                                         </div>
@@ -84,13 +84,13 @@ export default function GradesTab({
                             headerClassName: 'w-24',
                             accessor: (r: StudentGrade) => {
                                 const filled = activeCriteria.every(c => {
-                                    const val = c.syncTasks ? getStudentTasksAverage(r.id) : (r.scores[c.id] ?? '');
+                                    const val = c.sincronizar_tareas ? getStudentTasksAverage(r.id) : (r.calificaciones[c.id] ?? '');
                                     return val !== '';
                                 });
                                 if (!filled) return <span className="text-xs text-slate-300 font-semibold">—</span>;
                                 const avg = activeCriteria.reduce((sum, c) => {
-                                    const val = c.syncTasks ? getStudentTasksAverage(r.id) : (r.scores[c.id] || '0');
-                                    return sum + (parseFloat(val) * c.percentage / 100);
+                                    const val = c.sincronizar_tareas ? getStudentTasksAverage(r.id) : (r.calificaciones[c.id] || '0');
+                                    return sum + (parseFloat(val) * c.porcentaje / 100);
                                 }, 0);
                                 return (
                                     <span className={`text-sm font-black ${avg >= MINIMUM_PASSING_GRADE ? 'text-slate-700' : 'text-rose-500'}`}>

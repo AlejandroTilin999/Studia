@@ -21,8 +21,8 @@ export default function TasksTab({
             if (t.id === taskId) {
                 return {
                     ...t,
-                    grades: {
-                        ...t.grades,
+                    calificaciones: {
+                        ...t.calificaciones,
                         [studentId]: scoreVal
                     }
                 };
@@ -52,14 +52,14 @@ export default function TasksTab({
                             },
                             {
                                 header: 'Alumno',
-                                accessor: r => r.name,
+                                accessor: r => r.nombre,
                                 className: 'text-sm text-slate-500',
                             },
                             ...tasks.map(t => ({
                                 header: (
                                     <div className="flex flex-col items-center gap-0.5 min-w-[140px] max-w-[200px] text-center">
-                                        <span className="text-xs font-semibold text-slate-700 truncate w-full" title={t.name}>{t.name}</span>
-                                        <span className="text-[10px] font-bold text-slate-400">Máx: {t.points || 10} pts</span>
+                                        <span className="text-xs font-semibold text-slate-700 truncate w-full" title={t.nombre}>{t.nombre}</span>
+                                        <span className="text-[10px] font-bold text-slate-400">Máx: {t.puntos || 10} pts</span>
                                     </div>
                                 ),
                                 align: 'center' as const,
@@ -69,8 +69,8 @@ export default function TasksTab({
                                             type="number"
                                             step="0.1"
                                             min="0"
-                                            max={t.points || 10}
-                                            value={t.grades[r.id] ?? ''}
+                                            max={t.puntos || 10}
+                                            value={t.calificaciones[r.id] ?? ''}
                                             onChange={e => handleTaskGradeChange(t.id, r.id, e.target.value)}
                                             placeholder="—"
                                             className="w-16 text-center text-sm py-1.5 px-1 bg-slate-50 border border-transparent rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-slate-700 transition-all outline-none"

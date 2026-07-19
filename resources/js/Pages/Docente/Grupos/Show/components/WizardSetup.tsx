@@ -11,7 +11,7 @@ interface WizardSetupProps {
     materia: string;
     pctValid: boolean;
     totalPct: number;
-    updateCriterion: (id: number, field: 'name' | 'percentage', value: string | number) => void;
+    updateCriterion: (id: number, field: 'nombre' | 'porcentaje', value: string | number) => void;
     toggleSyncTasks: (id: number) => void;
     removeCriterion: (id: number) => void;
     addCriterion: () => void;
@@ -64,14 +64,14 @@ export default function WizardSetup({
                         </p>
 
                         {/* Indicador suma */}
-                        <div className={`flex flex-col gap-1.5 mb-5 px-4 py-3 rounded-xl ${pctValid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
+                        <div className={`flex flex-col gap-1.5 mb-5 px-4 py-3 rounded-xl ${pctValid ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>
                             <div className="flex items-center gap-2 text-xs font-extrabold">
-                                <div className={`w-2 h-2 rounded-full ${pctValid ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-                                Total: {totalPct === 0 ? '' : `${totalPct}%`} {totalPct === 100 ? '— ¡Suma correcta!' : '— Debe sumar 100%'}
+                                <div className={`w-2 h-2 rounded-full ${pctValid ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                Distribución: {totalPct}% {pctValid ? '— Configuración lista para guardar' : '— Pendiente por asignar (Total 100%)'}
                             </div>
-                            {!draftCriteria.some(c => c.syncTasks) && (
-                                <div className="text-[10px] font-bold ml-4 text-amber-600/80">
-                                    * Debes vincular al menos un criterio con la plataforma (clic en botón Plataforma).
+                            {!draftCriteria.some(c => c.sincronizar_tareas) && (
+                                <div className="text-[10px] font-bold ml-4 text-slate-400">
+                                    * Es necesario vincular un criterio con la plataforma.
                                 </div>
                             )}
                         </div>
@@ -87,8 +87,8 @@ export default function WizardSetup({
                                     {/* Nombre */}
                                     <input
                                         type="text"
-                                        value={c.name}
-                                        onChange={e => updateCriterion(c.id, 'name', e.target.value)}
+                                        value={c.nombre}
+                                        onChange={e => updateCriterion(c.id, 'nombre', e.target.value)}
                                         className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 font-semibold outline-none focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
                                         placeholder="Nombre del criterio"
                                     />
@@ -99,10 +99,10 @@ export default function WizardSetup({
                                             type="number"
                                             min={0}
                                             max={100}
-                                            value={c.percentage === 0 ? '' : c.percentage}
+                                            value={c.porcentaje === 0 ? '' : c.porcentaje}
                                             onChange={e => {
                                                 const val = e.target.value === '' ? 0 : Number(e.target.value);
-                                                updateCriterion(c.id, 'percentage', val);
+                                                updateCriterion(c.id, 'porcentaje', val);
                                             }}
                                             className="w-16 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-extrabold text-slate-800 outline-none focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
                                             placeholder="0"
@@ -114,7 +114,7 @@ export default function WizardSetup({
                                     <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
                                         <div
                                             className="h-full bg-[#1e88e5] rounded-full transition-all"
-                                            style={{ width: `${Math.min(c.percentage, 100)}%` }}
+                                            style={{ width: `${Math.min(c.porcentaje, 100)}%` }}
                                         />
                                     </div>
 
@@ -122,12 +122,12 @@ export default function WizardSetup({
                                     <button
                                         onClick={() => toggleSyncTasks(c.id)}
                                         type="button"
-                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border shrink-0 ${c.syncTasks
+                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border shrink-0 ${c.sincronizar_tareas
                                                 ? 'bg-blue-50 border-blue-200 text-[#1e88e5]'
                                                 : 'bg-white border-slate-200 text-slate-400 hover:text-slate-655 hover:bg-slate-50'
                                             }`}
                                     >
-                                        <Layers size={13} className={c.syncTasks ? 'text-[#1e88e5]' : 'text-slate-400'} />
+                                        <Layers size={13} className={c.sincronizar_tareas ? 'text-[#1e88e5]' : 'text-slate-400'} />
                                         <span>Plataforma</span>
                                     </button>
 
@@ -184,8 +184,8 @@ export default function WizardSetup({
                                         <span className="w-5 h-5 rounded-full bg-[#1e88e5]/10 text-[#1e88e5] flex items-center justify-center text-[10px] font-extrabold">
                                             {idx + 1}
                                         </span>
-                                        <span className="text-sm font-semibold text-slate-700">{c.name}</span>
-                                        {c.syncTasks && (
+                                        <span className="text-sm font-semibold text-slate-700">{c.nombre}</span>
+                                        {c.sincronizar_tareas && (
                                             <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-[#1e88e5] border border-blue-100 px-2 py-0.5 rounded-md">
                                                 <Layers size={9} />
                                                 Plataforma
@@ -195,10 +195,10 @@ export default function WizardSetup({
                                     <div className="flex items-center gap-2">
                                         {/* mini barra */}
                                         <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#1e88e5] rounded-full" style={{ width: `${c.percentage}%` }} />
+                                            <div className="h-full bg-[#1e88e5] rounded-full" style={{ width: `${c.porcentaje}%` }} />
                                         </div>
                                         <span className="text-sm font-extrabold text-slate-800 w-10 text-right">
-                                            {c.percentage === 0 ? '' : `${c.percentage}%`}
+                                            {c.porcentaje === 0 ? '' : `${c.porcentaje}%`}
                                         </span>
                                     </div>
                                 </div>

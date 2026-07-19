@@ -1,6 +1,7 @@
 import React from 'react';
 import { Layers } from 'lucide-react';
 import { Criterion } from '../services/constants';
+import { cn } from '@/lib/utils';
 
 interface CriteriaGridProps {
     activeCriteria: Criterion[];
@@ -8,34 +9,38 @@ interface CriteriaGridProps {
 
 export default function CriteriaGrid({ activeCriteria }: CriteriaGridProps) {
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5 mb-6 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-6 w-full">
             {activeCriteria.map(c => (
-                <div 
-                    key={c.id} 
-                    className={`rounded-xl p-4 flex flex-col justify-between gap-1.5 border transition-all shadow-sm ${
-                        c.syncTasks 
-                            ? 'bg-blue-50/40 text-[#1e88e5] border-blue-100/60' 
-                            : 'bg-slate-50/50 text-slate-700 border-slate-150'
-                    }`}
+                <div
+                    key={c.id}
+                    className={cn(
+                        "rounded-2xl px-5 py-3 border transition-all flex flex-col justify-between h-[85px] shadow-none",
+                        c.sincronizar_tareas
+                            ? 'bg-[#f8fbff] border-[#e1effe] text-[#0266E0]'
+                            : 'bg-white border-slate-100 text-slate-700'
+                    )}
                 >
                     <div className="flex justify-between items-start w-full">
-                        <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                            c.syncTasks ? 'text-blue-600' : 'text-slate-400'
-                        }`}>
-                            {c.name}
+                        <span className={cn(
+                            "text-[10px] font-bold uppercase tracking-widest",
+                            c.sincronizar_tareas ? 'text-[#0266E0]/70' : 'text-slate-400'
+                        )}>
+                            {c.nombre}
                         </span>
-                        {c.syncTasks && (
-                            <Layers size={13} className="text-[#1e88e5] shrink-0" />
+                        {c.sincronizar_tareas && (
+                            <Layers size={13} className="text-[#0266E0] shrink-0 opacity-60" />
                         )}
                     </div>
-                    <div className="flex items-baseline gap-1 mt-1">
-                        <span className={`text-xl font-black ${
-                            c.syncTasks ? 'text-[#1e88e5]' : 'text-slate-800'
-                        }`}>
-                            {c.percentage}%
+
+                    <div className="flex items-center gap-3">
+                        <span className={cn(
+                            "text-2xl font-bold tracking-tight",
+                            c.sincronizar_tareas ? 'text-[#0266E0]' : 'text-slate-800'
+                        )}>
+                            {c.porcentaje}%
                         </span>
-                        {c.syncTasks && (
-                            <span className="text-[9px] font-black uppercase bg-[#1e88e5]/10 text-[#1e88e5] px-1.5 py-0.5 rounded border border-[#1e88e5]/10 tracking-wide">
+                        {c.sincronizar_tareas && (
+                            <span className="text-[8px] font-black uppercase bg-[#e1effe] text-[#0266E0] px-2 py-1 rounded border border-[#0266E0]/10 tracking-widest leading-none">
                                 Sincronizado
                             </span>
                         )}

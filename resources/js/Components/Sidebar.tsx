@@ -28,9 +28,8 @@ interface SidebarProps {
 
 export default function Sidebar({ role: propRole }: SidebarProps) {
   const { url } = usePage();
-  const pathname = url.split('?')[0]; // Limpiar query params de la URL actual
+  const pathname = url.split('?')[0];
 
-  // Determinar rol automáticamente basado en la información del usuario o la URL
   const { auth, alumnoGroups: propAlumnoGroups } = usePage().props as any;
   const user = auth?.user;
   const userRole = (user?.rol || user?.role || '').toUpperCase();
@@ -45,12 +44,11 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const role = propRole || resolvedRole;
   const { expanded, setExpanded, openMobile, setOpenMobile, isMobile } = useSidebar();
 
-  // Mapeamos los items de menú de tu diseño a las rutas correspondientes en Laravel
   const menuItems = [
     {
       name: "Inicio",
       icon: Home,
-      path: role === "ADMIN" ? "/admin" : role === "DOCENTE" ? "/docente/dashboard" : "/alumno",
+      path: role === "ADMIN" ? "/admin" : role === "DOCENTE" ? "/docente" : "/alumno",
       roles: ["ADMIN", "DOCENTE", "ALUMNO"]
     },
     {
@@ -74,7 +72,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Grupos",
       icon: Layers,
-      path: role === "ADMIN" ? "/admin/grupos" : (user?.docenteGroups?.length > 0 ? `/docente/grupos/show?id=${user.docenteGroups[0].id}` : '/docente/dashboard'),
+      path: role === "ADMIN" ? "/admin/grupos" : (user?.docenteGroups?.length > 0 ? `/docente/grupos/show?id=${user.docenteGroups[0].id}` : '/docente'),
       roles: ["ADMIN", "DOCENTE"]
     },
     {
@@ -104,153 +102,97 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   ];
 
   const filteredItems = menuItems.filter(item => item.roles.includes(role));
-
-  // Datos de los grupos/materias (leídos dinámicamente)
   const docenteGroups = user?.docenteGroups || [];
   const alumnoGroups = propAlumnoGroups || user?.alumnoGroups || [];
 
-  const [gruposOpen, setGruposOpen] = useState(() => {
-    // Mantener abierto si la ruta actual es de grupos o si es un docente para ver su carga
-    return url.startsWith('/docente/grupos') || role === 'DOCENTE';
-  });
-
-  const [materiasOpen, setMateriasOpen] = useState(() => {
-    // Mantener abierto si es un alumno para ver sus materias
-    return url.startsWith('/alumno') && url.includes('tab=tasks') || role === 'ALUMNO';
-  });
+  const [gruposOpen, setGruposOpen] = useState(() => url.startsWith('/docente/grupos') || role === 'DOCENTE');
+  const [materiasOpen, setMateriasOpen] = useState(() => (url.startsWith('/alumno') && url.includes('tab=tasks')) || role === 'ALUMNO');
 
   const SidebarInner = ({ isSheet = false }) => {
+    const isMenuExpanded = expanded || isSheet;
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      const handleClickOutside = (e: MouseEvent) => {
-        if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-          setUserMenuOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+        const handleClickOutside = (e: MouseEvent) => {
+          if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+            setUserMenuOpen(false);
+          }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     return (
     <div className="flex flex-col h-full bg-white font-body pt-2">
-      {/* Fila superior: logo + botón hamburguesa (expandido) | botón solo (colapsado) */}
-      {(expanded || isSheet) ? (
-        <div className="shrink-0 flex items-center justify-between px-5 pt-5 pb-4 mb-2">
-          <img src="/assets/phid_logo.png" alt="Logo Prepa Hidalgo" className="h-[34px] w-auto object-contain ml-3" />
-          <button
-            type="button"
-            onClick={() => {
-              if (isMobile) setOpenMobile(!openMobile);
-              else setExpanded(!expanded);
-            }}
-            className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
-            title="Colapsar barra lateral"
-          >
-            <PanelLeft size={18} />
-          </button>
-        </div>
-      ) : (
-        <div className="shrink-0 flex flex-col items-center pt-4 pb-2 gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (isMobile) setOpenMobile(!openMobile);
-              else setExpanded(!expanded);
-            }}
-            className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"
-            title="Expandir barra lateral"
-          >
-            <PanelLeft size={18} />
-          </button>
-          <img src="/assets/icono-sidebar.png" alt="Icono" className="h-8 w-auto object-contain" />
-        </div>
-      )}
+      {/* Logo de la Institución */}
+      <div className={cn(
+        "shrink-0 flex items-center mb-6 pt-4 relative",
+        isMenuExpanded ? "justify-start pl-8 pr-6" : "justify-center px-0 flex-col gap-4"
+      )}>
+        {isMenuExpanded ? (
+          <>
+            <img src="/assets/phid_logo.png" alt="Logo Prepa Hidalgo" className="h-[34px] w-auto object-contain" />
+            <button
+                type="button"
+                onClick={() => isMobile ? setOpenMobile(!openMobile) : setExpanded(!expanded)}
+                className="absolute right-4 p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
+            >
+                <PanelLeft size={18} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+                type="button"
+                onClick={() => isMobile ? setOpenMobile(!openMobile) : setExpanded(!expanded)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"
+            >
+                <PanelLeft size={18} />
+            </button>
+            <img src="/assets/icono-sidebar.png" alt="Icono" className="h-8 w-auto object-contain" />
+          </>
+        )}
+      </div>
 
       <SidebarContent className="flex-1 overflow-y-auto scrollbar-hide py-0">
         <SidebarMenu className="px-0">
           {filteredItems.map((item) => {
             const itemPathname = item.path.split('?')[0];
-            const isMenuExpanded = expanded || isSheet;
+            const isActive = item.name === 'Inicio' ? pathname === itemPathname : (pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/')));
 
             // ─── Bloque especial: "Materias" para ALUMNO ───────────────────
             if (role === 'ALUMNO' && item.name === 'Materias') {
-              const isAnySubjectActive = pathname.startsWith('/alumno/materias');
+              const isAnySubjectActive = pathname.startsWith('/alumno/materias') || (pathname === '/alumno' && url.includes('id='));
               return (
-                <SidebarMenuItem key={item.path} className="mb-1.5">
-                  {/* Cabecera colapsable de Materias */}
+                <SidebarMenuItem key={item.path} className="mb-1">
                   <button
-                    onClick={() => {
-                      if (isMenuExpanded) {
-                        setMateriasOpen(prev => !prev);
-                      }
-                    }}
+                    onClick={() => isMenuExpanded && setMateriasOpen(prev => !prev)}
                     className={cn(
                       "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
-                      isMenuExpanded
-                        ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
-                        : "justify-center px-0 rounded-none w-full",
-                      isAnySubjectActive
-                        ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold"
-                        : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold"
+                      isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full",
+                      isAnySubjectActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-semibold"
                     )}
                   >
-                    <BookOpen className={cn(
-                      "w-5 h-5 shrink-0 transition-colors",
-                      isAnySubjectActive ? "text-[#1e88e5]" : "text-slate-400"
-                    )} />
-
+                    <BookOpen className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnySubjectActive ? "text-[#0266E0]" : "text-slate-300")} />
                     {isMenuExpanded && (
                       <>
-                        <span className={cn(
-                          "text-[14px] ml-1 flex-1 text-left",
-                          isAnySubjectActive ? "text-[#1e88e5] font-extrabold" : "text-slate-450 font-bold"
-                        )}>
-                          Materias
-                        </span>
-                        {materiasOpen
-                          ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                          : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                        }
+                        <span className={cn("text-[14px] ml-1 flex-1 text-left", isAnySubjectActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold")}>Materias</span>
+                        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200", materiasOpen ? "rotate-0" : "-rotate-90")} />
                       </>
                     )}
                   </button>
 
-                  {/* Sub-ítems de cada materia */}
                   {isMenuExpanded && materiasOpen && (
-                    <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
+                    <div className="mt-1 ml-10 mr-4 space-y-1 animate-in slide-in-from-top-1 duration-200">
                       {alumnoGroups.map((s: any) => {
-                        const isSubjectActive = url.includes(`id=${s.id}`) &&
-                          (pathname.startsWith('/alumno/materias') || pathname === '/alumno');
+                        const isSubActive = url.includes(`id=${s.id}`);
                         return (
-                          <button
-                            key={s.id}
-                            onClick={() => {
-                              router.visit(`/alumno/materias?id=${s.id}`);
-                              if (isSheet) setOpenMobile(false);
-                            }}
-                            className={cn(
-                              "w-full flex items-center gap-2.5 px-4 py-2 rounded-xl text-left transition-all",
-                              isSubjectActive
-                                ? "bg-[#e8f2ff] text-[#1e88e5]"
-                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                            )}
-                          >
-                            <span className={cn(
-                              "w-1.5 h-1.5 rounded-full shrink-0",
-                              isSubjectActive ? "bg-[#1e88e5]" : "bg-slate-300"
-                            )} />
+                          <button key={s.id} onClick={() => router.visit(`/alumno/materias?id=${s.id}`)} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all", isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600")}>
+                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isSubActive ? "bg-[#0266E0]" : "bg-slate-300")} />
                             <div className="min-w-0">
-                              <span className={cn(
-                                "block text-[13px] leading-tight",
-                                isSubjectActive ? "font-extrabold" : "font-bold"
-                              )}>
-                                {s.nombre}
-                              </span>
-                              <span className="block text-[10px] text-slate-400 font-semibold truncate mt-0.5">
-                                {s.docente}
-                              </span>
+                                <span className={cn("block text-[13px] leading-tight", isSubActive ? "font-bold" : "font-semibold")}>{s.nombre}</span>
+                                <span className="block text-[10px] text-slate-400 font-medium truncate mt-0.5">{s.docente}</span>
                             </div>
                           </button>
                         );
@@ -260,85 +202,31 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 </SidebarMenuItem>
               );
             }
-            // ──────────────────────────────────────────────────────────────
 
             // ─── Bloque especial: "Grupos" para DOCENTE ───────────────────
             if (role === 'DOCENTE' && item.name === 'Grupos') {
               const isAnyGroupActive = pathname.startsWith('/docente/grupos');
               return (
-                <SidebarMenuItem key={item.path} className="mb-1.5">
-                  {/* Cabecera colapsable de Grupos */}
-                  <button
-                    onClick={() => {
-                      if (isMenuExpanded) {
-                        setGruposOpen(prev => !prev);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
-                      isMenuExpanded
-                        ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
-                        : "justify-center px-0 rounded-none w-full",
-                      isAnyGroupActive
-                        ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold"
-                        : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold"
-                    )}
-                  >
-                    <Layers className={cn(
-                      "w-5 h-5 shrink-0 transition-colors",
-                      isAnyGroupActive ? "text-[#1e88e5]" : "text-slate-400"
-                    )} />
-
+                <SidebarMenuItem key={item.path} className="mb-1">
+                  <button onClick={() => isMenuExpanded && setGruposOpen(prev => !prev)} className={cn("flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full", isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full", isAnyGroupActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-bold")}>
+                    <Layers className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnyGroupActive ? "text-[#0266E0]" : "text-slate-300")} />
                     {isMenuExpanded && (
                       <>
-                        <span className={cn(
-                          "text-[14px] ml-1 flex-1 text-left",
-                          isAnyGroupActive ? "text-[#1e88e5] font-extrabold" : "text-slate-450 font-bold"
-                        )}>
-                          Grupos
-                        </span>
-                        {gruposOpen
-                          ? <ChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                          : <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                        }
+                        <span className={cn("text-[14px] ml-1 flex-1 text-left", isAnyGroupActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold")}>Grupos</span>
+                        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200", gruposOpen ? "rotate-0" : "-rotate-90")} />
                       </>
                     )}
                   </button>
-
-                  {/* Sub-ítems de cada grupo */}
                   {isMenuExpanded && gruposOpen && (
-                    <div className="mt-0.5 ml-8 mr-4 space-y-0.5">
+                    <div className="mt-1 ml-10 mr-4 space-y-1 animate-in slide-in-from-top-1 duration-200">
                       {docenteGroups.map((g: any) => {
-                        const groupPath = `/docente/grupos/show?id=${g.id}`;
-                        const isGroupActive = pathname === '/docente/grupos/show' && url.includes(`id=${g.id}`);
+                        const isSubActive = pathname === '/docente/grupos/show' && url.includes(`id=${g.id}`);
                         return (
-                          <button
-                            key={g.id}
-                            onClick={() => {
-                              router.visit(groupPath);
-                              if (isSheet) setOpenMobile(false);
-                            }}
-                            className={cn(
-                              "w-full flex items-center gap-2.5 px-4 py-2 rounded-xl text-left transition-all",
-                              isGroupActive
-                                ? "bg-[#e8f2ff] text-[#1e88e5]"
-                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                            )}
-                          >
-                            <span className={cn(
-                              "w-1.5 h-1.5 rounded-full shrink-0",
-                              isGroupActive ? "bg-[#1e88e5]" : "bg-slate-300"
-                            )} />
+                          <button key={g.id} onClick={() => router.visit(`/docente/grupos/show?id=${g.id}`)} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all", isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600")}>
+                            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isSubActive ? "bg-[#0266E0]" : "bg-slate-300")} />
                             <div className="min-w-0">
-                              <span className={cn(
-                                "block text-[13px] leading-tight",
-                                isGroupActive ? "font-extrabold" : "font-bold"
-                              )}>
-                                Grupo {g.nombre_grupo}
-                              </span>
-                              <span className="block text-[10px] text-slate-400 font-semibold truncate mt-0.5">
-                                {g.materia}
-                              </span>
+                                <span className={cn("block text-[13px] leading-tight", isSubActive ? "font-bold" : "font-semibold")}>Grupo {g.nombre_grupo}</span>
+                                <span className="block text-[10px] text-slate-400 font-medium truncate mt-0.5">{g.materia}</span>
                             </div>
                           </button>
                         );
@@ -348,67 +236,25 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 </SidebarMenuItem>
               );
             }
-            // ──────────────────────────────────────────────────────────────
 
-            // Determinar si el enlace está activo de forma independiente
-            let isActive = false;
-            if (role === 'DOCENTE') {
-              if (item.name === 'Tareas') {
-                isActive = pathname === '/docente/grupos/show' && url.includes('tab=tasks');
-              } else if (item.name === 'Inicio') {
-                isActive = pathname === itemPathname; // Estricto para Inicio
-              } else {
-                isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
-              }
-            } else if (role === 'ALUMNO') {
-              if (item.name === 'Inicio') {
-                isActive = pathname === itemPathname && !url.includes('tab='); // No activo si hay pestaña de materia
-              } else {
-                isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
-              }
-            } else {
-              if (item.name === 'Inicio') {
-                isActive = pathname === itemPathname; // Estricto para Inicio Admin (/admin)
-              } else {
-                isActive = pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/'));
-              }
-            }
             return (
-              <SidebarMenuItem key={item.path} className="mb-1.5">
+              <SidebarMenuItem key={item.path} className="mb-1">
                 <Link
                   href={item.path}
                   prefetch="hover"
-                  cacheFor="1m"
                   className={cn(
                     "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
-                    isMenuExpanded
-                      ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
-                      : "justify-center px-0 rounded-none w-full",
-                    isActive
-                      ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold"
-                      : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold"
+                    isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full",
+                    isActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-bold"
                   )}
                 >
-                  <item.icon className={cn(
-                    "w-5 h-5 shrink-0 transition-colors",
-                    isActive ? "text-[#1e88e5]" : "text-slate-400 group-hover:text-slate-650"
-                  )} />
-
+                  <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-slate-300 group-hover:text-slate-500")} />
                   {isMenuExpanded && (
                     <>
-                      <span className={cn(
-                        "text-[14px] ml-1 transition-all duration-300",
-                        isActive ? "text-[#1e88e5] font-extrabold" : "text-slate-450 font-bold group-hover:text-slate-650"
-                      )}>
-                        {item.name}
-                      </span>
-
-                      {/* Botón de flecha blanca para el activo */}
+                      <span className={cn("text-[14px] ml-1 transition-all duration-300", isActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold group-hover:text-slate-600")}>{item.name}</span>
                       {isActive && (
-                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm text-[#1e88e5] ml-auto shrink-0 transition-transform group-hover:translate-x-0.5">
-                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#0266E0] ml-auto shrink-0">
+                          <ChevronRight size={14} strokeWidth={4} />
                         </div>
                       )}
                     </>
@@ -421,71 +267,59 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-0 border-none shrink-0 mb-4">
-        {/* Tarjeta del Usuario — clickeable con dropdown */}
-        {(expanded || isSheet) && (
-          <div ref={userMenuRef} className="mx-4 mb-4 mt-4 relative">
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen(prev => !prev)}
-              className="w-full flex items-center gap-3 p-3.5 bg-[#f4f7ff] border border-blue-50 rounded-2xl hover:border-blue-200 hover:bg-[#eef3ff] transition-all text-left group"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-extrabold text-slate-800 truncate leading-tight">
-                  {user?.nombre_completo || 'Usuario'}
-                </p>
-                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
-                  {user?.email || ''}
-                </p>
-              </div>
-              <ChevronDown
-                size={14}
-                className={cn(
-                  "shrink-0 text-slate-400 transition-transform duration-200",
-                  userMenuOpen ? "rotate-180" : ""
+        {isMenuExpanded && (
+            <div ref={userMenuRef} className="mx-4 mb-4 mt-4 relative">
+                <button
+                    type="button"
+                    onClick={() => setUserMenuOpen(prev => !prev)}
+                    className="w-full flex items-center gap-3 p-3 bg-[#f4f7ff] border border-blue-50 rounded-2xl hover:border-blue-200 hover:bg-[#eef3ff] transition-all text-left group"
+                >
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-extrabold text-slate-800 truncate leading-tight">
+                            {user?.nombre_completo || 'Usuario'}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                            {user?.email || ''}
+                        </p>
+                    </div>
+                    <ChevronDown
+                        size={14}
+                        className={cn(
+                            "shrink-0 text-slate-400 transition-transform duration-200",
+                            userMenuOpen ? "rotate-180" : ""
+                        )}
+                    />
+                </button>
+
+                {/* Dropdown Menu */}
+                {userMenuOpen && (
+                    <div className="absolute bottom-full mb-2 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                        <button
+                            type="button"
+                            onClick={() => { router.visit('/profile'); setUserMenuOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-[12px] font-bold text-slate-700 hover:bg-slate-50 transition-all text-left"
+                        >
+                            <User size={14} className="text-slate-400" />
+                            Mi Perfil
+                        </button>
+                        <div className="mx-3 border-t border-slate-100" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setUserMenuOpen(false);
+                                SwalHelper.confirm('¿Cerrar sesión?', '¿Estás seguro de que deseas salir?', 'Sí, salir', 'Cancelar', 'warning')
+                                    .then(res => res.isConfirmed && router.post('/logout'));
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-all text-left"
+                        >
+                            <LogOut size={14} className="text-rose-400" />
+                            Cerrar sesión
+                        </button>
+                    </div>
                 )}
-              />
-            </button>
-
-            {/* Dropdown */}
-            {userMenuOpen && (
-              <div className="absolute bottom-full mb-2 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-50">
-                <button
-                  type="button"
-                  onClick={() => { router.visit('/profile'); setUserMenuOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-4 py-3 text-[12px] font-bold text-slate-700 hover:bg-slate-50 transition-all text-left"
-                >
-                  <User size={14} className="text-slate-400" />
-                  Mi Perfil
-                </button>
-                <div className="mx-3 border-t border-slate-100" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    SwalHelper.confirm(
-                      '¿Cerrar sesión?',
-                      '¿Estás seguro de que deseas salir del sistema?',
-                      'Sí, salir',
-                      'Cancelar',
-                      'warning'
-                    ).then((result) => {
-                      if (result.isConfirmed) {
-                        router.post('/logout');
-                      }
-                    });
-                  }}
-                  className="w-full flex items-center gap-2.5 px-4 py-3 text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-all text-left"
-                >
-                  <LogOut size={14} className="text-rose-400" />
-                  Cerrar sesión
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
         )}
-
       </SidebarFooter>
-
     </div>
     );
   };
@@ -513,122 +347,23 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   );
 }
 
-/* ==========================================================================
-   SUBCOMPONENTES DE LA BARRA LATERAL (Shadcn Mocks)
-   ========================================================================== */
-
-const SidebarContext = React.createContext<{
-  expanded: boolean;
-  setExpanded: (expanded: boolean) => void;
-  openMobile: boolean;
-  setOpenMobile: (open: boolean) => void;
-  isMobile: boolean;
-} | null>(null);
-
-export function useSidebar() {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider");
-  }
-  return context;
-}
-
-export function SidebarProvider({
-  children,
-  defaultExpanded = true,
-}: {
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-}) {
+const SidebarContext = React.createContext<{ expanded: boolean; setExpanded: (e: boolean) => void; openMobile: boolean; setOpenMobile: (o: boolean) => void; isMobile: boolean; } | null>(null);
+export const useSidebar = () => { const c = React.useContext(SidebarContext); if (!c) throw new Error("useSidebar error"); return c; };
+export const SidebarProvider = ({ children, defaultExpanded = true }: { children: React.ReactNode; defaultExpanded?: boolean; }) => {
   const [expanded, setExpanded] = React.useState(defaultExpanded);
   const [openMobile, setOpenMobile] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
-
   React.useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setExpanded(false);
-      } else {
-        setExpanded(true);
-      }
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const check = () => { const m = window.innerWidth < 768; setIsMobile(m); setExpanded(!m); };
+    check(); window.addEventListener("resize", check); return () => window.removeEventListener("resize", check);
   }, []);
+  return <SidebarContext.Provider value={{ expanded, setExpanded, openMobile, setOpenMobile, isMobile }}>{children}</SidebarContext.Provider>;
+};
 
-  return (
-    <SidebarContext.Provider value={{ expanded, setExpanded, openMobile, setOpenMobile, isMobile }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-}
-
-export const SidebarUI = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, children, ...props }, ref) => {
-  return (
-    <aside
-      ref={ref}
-      className={cn(
-        "flex flex-col bg-white border-r transition-all duration-300 ease-in-out z-40 h-full max-h-full overflow-hidden",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </aside>
-  );
-});
-SidebarUI.displayName = "SidebarUI";
-
-export const SidebarHeader = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={cn("p-4 shrink-0", className)}>{children}</div>
-);
-
-export const SidebarContent = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={cn("flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-hide", className)}>{children}</div>
-);
-
-export const SidebarFooter = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={cn("p-4 shrink-0", className)}>{children}</div>
-);
-
-export const SidebarMenu = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <nav className={cn("space-y-1 flex flex-col", className)}>{children}</nav>
-);
-
-export const SidebarMenuItem = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={cn("w-full", className)}>{children}</div>
-);
-
-export const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    isActive?: boolean;
-    expanded?: boolean;
-  }
->(({ className, isActive, expanded = true, children, ...props }, ref) => {
-  return (
-    <button
-      ref={ref}
-      className={cn(
-        "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
-        expanded
-          ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5"
-          : "justify-center px-0 rounded-none w-full",
-        isActive
-          ? "bg-[#e8f2ff] text-[#1e88e5] font-extrabold animate-none"
-          : "bg-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-700 font-bold",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-});
-SidebarMenuButton.displayName = "SidebarMenuButton";
+export const SidebarUI = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
+  <aside ref={ref} className={cn("flex flex-col bg-white border-r transition-all duration-300 ease-in-out z-40 h-full max-h-full overflow-hidden", className)} {...props}>{children}</aside>
+));
+export const SidebarContent = ({ className, children }: { className?: string; children: React.ReactNode }) => <div className={cn("flex-1 overflow-y-auto py-4 scrollbar-hide", className)}>{children}</div>;
+export const SidebarFooter = ({ className, children }: { className?: string; children: React.ReactNode }) => <div className={cn("p-4 shrink-0", className)}>{children}</div>;
+export const SidebarMenu = ({ className, children }: { className?: string; children: React.ReactNode }) => <nav className={cn("space-y-1 flex flex-col", className)}>{children}</nav>;
+export const SidebarMenuItem = ({ className, children }: { className?: string; children: React.ReactNode }) => <div className={cn("w-full", className)}>{children}</div>;

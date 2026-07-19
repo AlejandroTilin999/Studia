@@ -35,19 +35,9 @@ export default function ReportSelector({
 
     return (
         <div className="space-y-4 w-full">
-            <div className="flex items-center gap-3 mb-6 ml-1">
-                <div className={cn(
-                    "w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all duration-500",
-                    selectedReport
-                        ? "bg-slate-500 border-slate-500 text-white"
-                        : "border-slate-200 text-slate-400"
-                )}>
-                    1
-                </div>
-                <h4 className="text-[13px] font-semibold text-slate-400 block text-left">
-                    Selecciona el tipo de documento
-                </h4>
-            </div>
+            <h4 className="text-[13px] font-semibold text-slate-400 block text-left mb-6 ml-1">
+                Paso 1: Selecciona el tipo de documento
+            </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
                 {options.map((opt) => {

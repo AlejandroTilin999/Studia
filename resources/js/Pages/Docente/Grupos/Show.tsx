@@ -22,6 +22,14 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
 
     return (
         <AuthenticatedLayout noPadding>
+            <Deferred data="classInfo" fallback={
+                <div className="flex flex-col items-center justify-center min-h-screen w-full bg-white">
+                    <DotsLoader
+                        label="Cargando aula virtual"
+                        sublabel="Sincronizando expedientes y criterios..."
+                    />
+                </div>
+            }>
                 <Head title={grupo ? `${grupo} — ${materia}` : "Cargando clase..."} />
 
                 {/* Contenedor principal ajustado para ocupar el alto total disponible */}
@@ -148,6 +156,7 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                     getParcialAverage={getParcialAverage}
                     getFinalAverage={getFinalAverage}
                 />
+            </Deferred>
         </AuthenticatedLayout>
     );
 }

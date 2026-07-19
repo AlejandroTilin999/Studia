@@ -3,6 +3,7 @@ import { ClipboardList, BookOpen, FileText, User, ChevronRight, Star, Clock } fr
 import { router, Deferred } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import DotsLoader from '@/Components/ui/DotsLoader';
+import { COLOR_THEMES } from '@/Pages/Docente/ColorThemes';
 
 interface Task {
     id: number;
@@ -151,62 +152,82 @@ export default function StudentDashboardCards({
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {kardex && kardex.length > 0 ? kardex.map((item) => (
-                            <div
-                                key={item.id}
-                                onClick={() => router.visit(`/alumno/materias?id=${item.uuid}`)}
-                                className="group flex flex-col p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none cursor-pointer"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="min-w-0 text-left">
-                                        <h4 className="text-sm font-medium text-slate-900 truncate leading-tight group-hover:text-[#1e88e5] transition-colors">
-                                            {item.subject}
-                                        </h4>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] font-normal text-slate-500 uppercase tracking-wider">
-                                                {item.teacher}
+                        {kardex && kardex.length > 0 ? kardex.map((item) => {
+                            const themeKey = item.color_tema || 'blue';
+                            const colors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    onClick={() => router.visit(`/alumno/materias?id=${item.uuid}`)}
+                                    className={cn(
+                                        "group flex flex-col p-5 bg-white border transition-all duration-200 rounded-2xl shadow-none cursor-pointer",
+                                        colors.borderHover,
+                                        `hover:${colors.bgSoft}`
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="min-w-0 text-left">
+                                            <h4 className={cn(
+                                                "text-sm font-medium text-slate-900 truncate leading-tight transition-colors",
+                                                `group-hover:${colors.text}`
+                                            )}>
+                                                {item.subject}
+                                            </h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-normal text-slate-500 uppercase tracking-wider">
+                                                    {item.teacher}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                "text-[10px] font-normal uppercase tracking-wider px-2 py-1 rounded-lg",
+                                                colors.badgeBg,
+                                                colors.text
+                                            )}>
+                                                PROM: {item.score}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-normal text-[#1e88e5] uppercase tracking-wider bg-blue-50 px-2 py-1 rounded-lg">
-                                            PROM: {item.score}
-                                        </span>
+
+                                    <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
+                                        {[1, 2, 3].map((p) => {
+                                            const pData = item.details?.[p];
+                                            const avg = pData?.average ?? '—';
+                                            return (
+                                                <div key={p} className="flex flex-col items-center p-2 rounded-xl bg-slate-50/50 group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
+                                                    <span className="text-[9px] font-normal text-slate-400 uppercase tracking-widest mb-1">Parcial {p}</span>
+                                                    <span className={cn(
+                                                        "text-xs font-medium",
+                                                        avg === '—' ? "text-slate-300" : "text-slate-700"
+                                                    )}>
+                                                        {avg}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="flex justify-end mt-4">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.visit(`/alumno/materias?id=${item.uuid}`);
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-1 text-[10px] font-normal uppercase tracking-widest transition-colors",
+                                                colors.text,
+                                                `hover:${colors.textDark}`
+                                            )}
+                                        >
+                                            Ver Detalle completo
+                                            <ChevronRight size={14} />
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
-                                    {[1, 2, 3].map((p) => {
-                                        const pData = item.details?.[p];
-                                        const avg = pData?.average ?? '—';
-                                        return (
-                                            <div key={p} className="flex flex-col items-center p-2 rounded-xl bg-slate-50/50 group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
-                                                <span className="text-[9px] font-normal text-slate-400 uppercase tracking-widest mb-1">Parcial {p}</span>
-                                                <span className={cn(
-                                                    "text-xs font-medium",
-                                                    avg === '—' ? "text-slate-300" : "text-slate-700"
-                                                )}>
-                                                    {avg}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="flex justify-end mt-4">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            router.visit(`/alumno/materias?id=${item.uuid}`);
-                                        }}
-                                        className="flex items-center gap-1 text-[10px] font-normal text-[#1e88e5] uppercase tracking-widest hover:text-blue-700 transition-colors"
-                                    >
-                                        Ver Detalle completo
-                                        <ChevronRight size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                        )) : (
+                            );
+                        }) : (
                             <div className="md:col-span-2 p-12 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
                                 <p className="text-sm text-slate-400 font-normal">No tienes materias inscritas actualmente.</p>
                             </div>

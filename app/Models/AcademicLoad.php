@@ -16,7 +16,8 @@ class AcademicLoad extends Model
         'grupo_id',
         'materia_id',
         'docente_id',
-        'uuid'
+        'uuid',
+        'color_tema'
     ];
 
     protected static function booted()

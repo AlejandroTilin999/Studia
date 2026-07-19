@@ -137,7 +137,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Módulo de Docente
         // ------------------------------------------
         Route::prefix('docente')->middleware('role:docente')->group(function () {
-            Route::get('/dashboard', function () {
+            Route::get('/', function () {
                 $user = auth()->user();
                 $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
 
@@ -160,11 +160,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                 'estatus' => 'pending',
                             ]);
                     }),
-                    'teacherInfo' => [
-                        'nombre' => $user->nombre_completo,
-                        'especialidad' => $teacher->especialidad ?? 'General',
-                        'email' => $user->email,
-                    ]
+                    'teacherInfo' => Inertia::defer(fn() => [
+                        'nombre' => auth()->user()->nombre_completo,
+                        'especialidad' => \App\Models\Teacher::where('usuario_id', auth()->id())->first()->especialidad ?? 'General',
+                        'email' => auth()->user()->email,
+                    ])
                 ]);
             })->name('docente.dashboard');
 
@@ -174,39 +174,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/grupos/show', function (Illuminate\Http\Request $request) {
                 $uuid = $request->query('id');
-                $load = \App\Models\AcademicLoad::where('uuid', $uuid)
-                    ->with(['academicGroup', 'course'])
-                    ->first();
-
-                $students = [];
-                if ($load) {
-                    $students = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
-                        ->where('estatus', 'active')
-                        ->with('user')
-                        ->get()
-                        ->map(function ($enrollment) {
-                            return [
-                                'id' => $enrollment->usuario_id,
-                                'nombre' => $enrollment->user->nombre ?? 'Sin nombre',
-                                'matricula' => $enrollment->codigo_alumno ?? 'N/A',
-                            ];
-                        })->toArray();
-                }
 
                 return Inertia::render('Docente/Grupos/Show', [
-                    'classInfo' => $load ? [
-                        'id' => $load->uuid,
-                        'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
-                        'nombre_materia' => $load->course->nombre ?? 'N/A',
-                        'codigo_materia' => $load->course->codigo ?? 'N/A',
-                        'especialidad' => $load->academicGroup->especialidad ?? 'N/A',
-                        'semestre' => $load->course->semestre ?? 1,
-                        'alumnos' => $students,
-                    ] : null
+                    'classInfo' => Inertia::defer(function() use ($uuid) {
+                        $load = \App\Models\AcademicLoad::where('uuid', $uuid)
+                            ->with(['academicGroup', 'course'])
+                            ->first();
+
+                        if (!$load) return null;
+
+                        $students = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+                            ->where('estatus', 'active')
+                            ->with('user')
+                            ->get()
+                            ->map(function ($enrollment) {
+                                return [
+                                    'id' => $enrollment->usuario_id,
+                                    'nombre' => $enrollment->user->nombre_completo ?? 'Sin nombre',
+                                    'matricula' => $enrollment->codigo_alumno ?? 'N/A',
+                                ];
+                            })->toArray();
+
+                        return [
+                            'id' => $load->uuid,
+                            'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
+                            'nombre_materia' => $load->course->nombre ?? 'N/A',
+                            'codigo_materia' => $load->course->codigo ?? 'N/A',
+                            'especialidad' => $load->academicGroup->especialidad ?? 'N/A',
+                            'semestre' => $load->course->semestre ?? 1,
+                            'alumnos' => $students,
+                        ];
+                    })
                 ]);
             })->name('docente.grupos.show');
 
             Route::get('/clases/{uuid}/config', [App\Http\Controllers\DocenteClassroomController::class, 'getConfig']);
+            Route::post('/clases/{uuid}/theme', [App\Http\Controllers\DocenteClassroomController::class, 'updateTheme']);
             Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
             Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
             Route::get('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'getTareas']);
@@ -252,7 +255,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             'id' => $item['uuid'],
                             'nombre' => $item['subject'],
                             'docente' => $item['teacher'],
-                            'description' => $item['description'] ?? ''
+                            'description' => $item['description'] ?? '',
+                            'color_tema' => $item['color_tema'] ?? 'blue'
                         ], $k);
                     })
                 ]);
@@ -293,7 +297,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             'id' => $item['uuid'],
                             'nombre' => $item['subject'],
                             'docente' => $item['teacher'],
-                            'description' => $item['description'] ?? ''
+                            'description' => $item['description'] ?? '',
+                            'color_tema' => $item['color_tema'] ?? 'blue'
                         ], $k);
                     })
                 ]);
