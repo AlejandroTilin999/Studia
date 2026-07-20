@@ -14,6 +14,10 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'password_changed', // 👈 Agrega esta línea
+        'activo',
+        'telefono',
     ];
 
     protected $hidden = [
@@ -24,6 +28,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'password_changed' => 'boolean', // 👈 Fuerza a que Laravel lo trate como booleano (true/false)
+        'activo' => 'boolean',
     ];
 
     // --- RELACIONES ESCOLARES ---

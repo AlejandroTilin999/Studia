@@ -41,9 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cambiar-contrasena', [PasswordChangeController::class, 'show'])->name('password.change_view');
     Route::post('/cambiar-contrasena', [PasswordChangeController::class, 'update'])->name('password.force_update');
 
-    // 🔒 GRUPO CON MIDDLEWARE DE FUERZA DE CONTRASEÑA ACTIVO
-    // Todos los que naveguen aquí adentro y sean Alumnos/Docentes sin password_changed cambiado serán interceptados
-        // 🔀 REDIRECCIÓN DINÁMICA DE DASHBOARDS BASADA EN ROLES
+    Route::middleware(['force.password.change'])->group(function () {
+
         Route::get('/dashboard', function (Request $request) {
             $user = $request->user();
             $role = $user->role ?? 'admin'; // Si no está definido el rol en BD, fallback a admin
@@ -79,7 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
             Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
             Route::put('/docentes/{teacher}', [TeacherController::class, 'update'])->name('admin.docentes.update');
-            
+
             // Grupos Académicos del Panel Admin (Corregido y unificado)
             Route::get('/grupos', [GroupController::class, 'index'])->name('groups.index');
             Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
@@ -132,6 +131,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+        });
     });
 
 
