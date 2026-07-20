@@ -3,7 +3,7 @@ import { ClipboardList, BookOpen, FileText, User, ChevronRight, Star, Clock } fr
 import { router, Deferred } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import DotsLoader from '@/Components/ui/DotsLoader';
-import { COLOR_THEMES } from '@/Pages/Docente/ColorThemes';
+import { COLOR_THEMES } from '@/Pages/Alumno/ColorThemes';
 
 interface Task {
     id: number;

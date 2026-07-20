@@ -1,0 +1,4 @@
+- [x] Renombrar carpeta `Profile` a `Perfil`
+- [x] Actualizar `ProfileController.php` para apuntar a la nueva carpeta
+- [x] Agregar validación para apellidos en `ProfileUpdateRequest.php`
+- [x] Implementar campos de nombre completo y deshabilitar email en `UpdateProfileInformationForm.tsx`
