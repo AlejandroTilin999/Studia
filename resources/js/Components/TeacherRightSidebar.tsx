@@ -10,7 +10,7 @@ interface TaskItem {
     id: number;
     title: string;
     date: string;
-    type: 'EXAMEN' | 'TAREA' | 'URGENTE';
+    type?: 'EXAMEN' | 'TAREA' | 'URGENTE';
 }
 
 interface TeacherRightSidebarProps {
@@ -55,8 +55,8 @@ export default function TeacherRightSidebar({
                             className="flex flex-col gap-2 p-4 rounded-xl border border-slate-100 bg-white hover:border-blue-100 transition-all duration-300 select-none group"
                         >
                             <div className="flex justify-between items-center">
-                                <span className={`text-[9px] font-normal uppercase tracking-widest px-2.5 py-1 rounded-lg border ${getBadgeStyles(task.type)}`}>
-                                    {task.type}
+                                <span className={`text-[9px] font-normal uppercase tracking-widest px-2.5 py-1 rounded-lg border ${getBadgeStyles(task.type || 'TAREA')}`}>
+                                    {task.type || 'TAREA'}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-normal">
                                     {task.date}

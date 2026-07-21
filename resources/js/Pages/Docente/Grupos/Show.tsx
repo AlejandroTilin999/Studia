@@ -96,8 +96,8 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                                             <div className="flex-grow overflow-y-auto mb-6">
                                                 {done ? (
                                                     <div className="space-y-2">
-                                                        {cfg.criteria.map((c)=>(
-                                                            <div key={c.id} className="flex justify-between text-sm"><span className="text-slate-500 truncate">{c.name}</span><span className="font-bold">{c.percentage}%</span></div>
+                                                        {cfg.criteria.map((c: any)=>(
+                                                            <div key={c.id} className="flex justify-between text-sm"><span className="text-slate-500 truncate">{c.nombre || c.name}</span><span className="font-bold">{c.porcentaje ?? c.percentage}%</span></div>
                                                         ))}
                                                     </div>
                                                 ) : (

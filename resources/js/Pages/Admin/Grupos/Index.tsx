@@ -27,7 +27,7 @@ export default function GruposIndex({
         name: g.nombre || 'Sin nombre',
         shift: g.turno || 'Matutino',
         teacherName: g.profesor || 'Pendiente de Asignación',
-        teacher_id: g.docente_tutor_id,
+        teacher_id: (g as any).docente_tutor_id,
         specialty: g.especialidad || 'General',
         activo: g.activo ?? true
     }));
@@ -189,8 +189,8 @@ export default function GruposIndex({
             breadcrumb="Grupos"
             isLoading={grupos.length === 0}
             metrics={[
-                { code: "T1", label: "Grupos totales", value: grupos.length > 0 ? totalGroupsCount : null },
-                { code: "T4", label: "Asignados", value: grupos.length > 0 ? formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length : null }
+                { code: "T1", label: "Grupos totales", value: grupos.length > 0 ? totalGroupsCount : 0 },
+                { code: "T4", label: "Asignados", value: grupos.length > 0 ? formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length : 0 }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
@@ -208,7 +208,7 @@ export default function GruposIndex({
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 specialtyFilter={specialtyFilter}
-                setGroupFilter={setSpecialtyFilter}
+                setSpecialtyFilter={setSpecialtyFilter}
                 onOpenCreateModal={openCreateModal}
                 specialties={especialidades}
             />

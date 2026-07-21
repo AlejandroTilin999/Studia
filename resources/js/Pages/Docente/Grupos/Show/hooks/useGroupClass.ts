@@ -566,6 +566,7 @@ export function useGroupClass() {
         setIsGradesModalOpen,
         privateMessages,
         setPrivateMessages,
+        sendPrivateMessage: (msg: string) => {},
         getParcialAverage,
         getFinalAverage,
         isParcialClosed,

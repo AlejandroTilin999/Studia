@@ -62,7 +62,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             s.code,
             s.name,
             s.tipo,
-            s.area || 'N/A',
+            (s as any).area || 'N/A',
             s.tipo === 'General' ? 'Todas' : s.specialties.map(sp => sp.name).join(', '),
             s.teacherName,
             s.linkedGroups.join(', ') || 'Sin grupos'
@@ -84,7 +84,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             s.code,
             s.name,
             s.tipo,
-            s.area || 'N/A',
+            (s as any).area || 'N/A',
             s.teacherName
         ]);
 
@@ -191,9 +191,9 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             breadcrumb="Materias"
             isLoading={materias.length === 0}
             metrics={[
-                { code: "T1", label: "Materias totales", value: materias.length > 0 ? totalSubjectsCount : null },
-                { code: "T3", label: "En ciclo actual", value: materias.length > 0 ? formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length : null },
-                { code: "T4", label: "Sin docente", value: materias.length > 0 ? formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length : null }
+                { code: "T1", label: "Materias totales", value: materias.length > 0 ? totalSubjectsCount : 0 },
+                { code: "T3", label: "En ciclo actual", value: materias.length > 0 ? formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length : 0 },
+                { code: "T4", label: "Sin docente", value: materias.length > 0 ? formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length : 0 }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },

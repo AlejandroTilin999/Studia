@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 interface StudentCalendarCardProps {
     // En el futuro podrías pasar eventos reales aquí
     events?: Record<string, 'examen' | 'tarea' | 'urgente'>;
+    calendarDays?: number[];
 }
 
 export default function StudentCalendarCard({ events = {} }: StudentCalendarCardProps) {

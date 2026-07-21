@@ -169,7 +169,7 @@ export default function CargasIndex({
                 reset();
                 SwalHelper.success('¡Hecho!', 'La materia ha sido asignada correctamente.');
             },
-            onError: (errs) => {
+            onError: (errs: any) => {
                 SwalHelper.error('Error', Object.values(errs)[0] as string || 'No se pudo crear la asignación.');
             }
         });
@@ -184,7 +184,7 @@ export default function CargasIndex({
                 setIsEditModalOpen(false);
                 SwalHelper.success('¡Actualizado!', 'Los cambios han sido guardados.');
             },
-            onError: (errs) => {
+            onError: (errs: any) => {
                 SwalHelper.error('Error', Object.values(errs)[0] as string || 'No se pudo actualizar la asignación.');
             }
         });
@@ -221,9 +221,9 @@ export default function CargasIndex({
             toastMessage={toastMessage}
             isLoading={loads.length === 0}
             metrics={[
-                { code: "T1", label: "Asignaciones", value: loads.length > 0 ? totalLoadsCount : null },
-                { code: "T3", label: "Ciclos activos", value: loads.length > 0 ? activeCyclesCount : null },
-                { code: "T4", label: "Grupos cubiertos", value: loads.length > 0 ? coveredGroupsCount : null }
+                { code: "T1", label: "Asignaciones", value: loads.length > 0 ? totalLoadsCount : 0 },
+                { code: "T3", label: "Ciclos activos", value: loads.length > 0 ? activeCyclesCount : 0 },
+                { code: "T4", label: "Grupos cubiertos", value: loads.length > 0 ? coveredGroupsCount : 0 }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },

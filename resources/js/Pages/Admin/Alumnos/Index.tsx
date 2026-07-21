@@ -304,13 +304,10 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             breadcrumb="Alumnos"
             toastMessage={toastMessage}
             isLoading={alumnos.length === 0}
-            breadcrumb="Alumnos"
-            toastMessage={toastMessage}
-            isLoading={alumnos.length === 0}
             metrics={[
-                { code: "T1", label: "Alumnos totales", value: alumnos.length > 0 ? totalCount : null },
-                { code: "T3", label: "Activos", value: alumnos.length > 0 ? activeCount : null },
-                { code: "T4", label: "De baja", value: alumnos.length > 0 ? inactiveCount : null }
+                { code: "T1", label: "Alumnos totales", value: alumnos.length > 0 ? totalCount : 0 },
+                { code: "T3", label: "Activos", value: alumnos.length > 0 ? activeCount : 0 },
+                { code: "T4", label: "De baja", value: alumnos.length > 0 ? inactiveCount : 0 }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },

@@ -265,7 +265,7 @@ export default function AlumnoDashboard({
                                             setCurrentView('tareas');
                                             setSelectedSubject(sub);
                                             setSelectedTask(task);
-                                            if (task.parcial) setSelectedParcial(task.parcial);
+                                            if ((task as any).parcial) setSelectedParcial((task as any).parcial);
                                         }
                                     }}
                                 />

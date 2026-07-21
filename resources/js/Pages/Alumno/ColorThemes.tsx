@@ -7,6 +7,9 @@ interface GroupColorTheme {
     badgeBg: string;
     strokeColor: string;
     dotBg: string;
+    borderHover?: string;
+    bgSoft?: string;
+    textDark?: string;
 }
 
 export const COLOR_THEMES: Record<string, GroupColorTheme> = {

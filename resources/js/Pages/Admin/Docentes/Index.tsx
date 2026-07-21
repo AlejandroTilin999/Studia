@@ -38,7 +38,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             area: t.area || '',
             assignments: t.materias?.map(m => ({
                 subject: m.nombre,
-                groupName: m.nombre_group || m.nombre_grupo || 'Asignado'
+                groupName: (m as any).nombre_group || m.nombre_grupo || 'Asignado'
             })) || []
         };
     });
@@ -213,16 +213,16 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
 
     return (
         <AdminPageLayout
-            headTitle="Gestión de Profesores"
-            title="Gestión de profesores"
-            subtitle="Consulta, edita y registra expedientes de personal docente"
-            breadcrumb="Profesores"
+            headTitle="Gestión de Docentes"
+            title="Gestión de docentes"
+            subtitle="Consulta, edita y registra expedientes de profesores de la plantilla"
+            breadcrumb="Docentes"
             toastMessage={toastMessage}
             isLoading={backendTeachers.length === 0}
             metrics={[
-                { code: "T1", label: "Docentes totales", value: backendTeachers.length > 0 ? totalTeachersCount : null },
-                { code: "T3", label: "Especialidades", value: backendTeachers.length > 0 ? specialtyCount : null },
-                { code: "T4", label: "Activos en ciclo", value: backendTeachers.length > 0 ? totalTeachersCount : null }
+                { code: "T1", label: "Docentes totales", value: backendTeachers.length > 0 ? totalTeachersCount : 0 },
+                { code: "T3", label: "Especialidades", value: backendTeachers.length > 0 ? specialtyCount : 0 },
+                { code: "T4", label: "Activos en ciclo", value: backendTeachers.length > 0 ? totalTeachersCount : 0 }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },

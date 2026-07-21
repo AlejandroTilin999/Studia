@@ -27,6 +27,7 @@ interface StudentInfo {
     ciclo: string;
     periodo: string;
     subjectsCount?: number;
+    specialty?: string;
 }
 
 interface StudentDashboardCardsProps {

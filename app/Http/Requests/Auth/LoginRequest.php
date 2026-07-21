@@ -49,9 +49,18 @@ class LoginRequest extends FormRequest
 
         if ($user) {
             $profileType = $this->input('profile_type');
+            $userRole = strtolower(trim($user->rol ?? ''));
+
+            // Validar cuenta activa
+            if (isset($user->activo) && ($user->activo === false || $user->activo === 0 || $user->activo === '0')) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'email' => 'Esta cuenta se encuentra desactivada. Contacta al administrador.',
+                ]);
+            }
 
             // Validar si eligió la pestaña "Estudiante" pero NO tiene rol de alumno
-            if ($profileType === 'student' && $user->rol !== 'alumno') {
+            if ($profileType === 'student' && $userRole !== 'alumno') {
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([
                     'email' => 'Este correo no pertenece a una cuenta de estudiante.',
@@ -59,7 +68,7 @@ class LoginRequest extends FormRequest
             }
 
             // Validar si eligió la pestaña "Personal" pero NO es docente ni admin
-            if ($profileType === 'staff' && !in_array($user->rol, ['docente', 'admin'])) {
+            if ($profileType === 'staff' && !in_array($userRole, ['docente', 'admin'])) {
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([
                     'email' => 'Este correo no pertenece al personal docente o administrativo.',
