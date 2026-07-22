@@ -26,7 +26,16 @@ class UserController extends Controller
                         'telefono' => $u->telefono ?? '',
                     ];
                 });
-            })
+            }),
+            'resetRequests' => \App\Models\PasswordResetRequest::where('status', 'pendiente')
+                ->with('user')
+                ->get()
+                ->map(fn($r) => [
+                    'id' => $r->id,
+                    'nombre' => $r->user->nombre_completo ?? 'Usuario desconocido',
+                    'email' => $r->email,
+                    'fecha' => $r->created_at->diffForHumans(),
+                ])
         ]);
     }
 
@@ -117,5 +126,27 @@ class UserController extends Controller
         $user->save();
 
         return redirect()->back()->with('message', 'Contraseña restablecida a: Prepahid2026');
+    }
+
+    public function approveReset($id)
+    {
+        $request = \App\Models\PasswordResetRequest::findOrFail($id);
+        $user = $request->user;
+
+        DB::transaction(function () use ($request, $user) {
+            $user->update([
+                'password' => Hash::make('Prepahid2026'),
+                'password_changed' => false,
+            ]);
+
+            $request->update(['status' => 'resuelto']);
+
+            // Limpiar notificaciones de reset para este usuario
+            \App\Models\Notificacion::where('titulo', 'Solicitud de Restablecimiento')
+                ->where('mensaje', 'LIKE', "%{$user->email}%")
+                ->delete();
+        });
+
+        return redirect()->back()->with('message', "Contraseña de {$user->nombre} restablecida con éxito.");
     }
 }

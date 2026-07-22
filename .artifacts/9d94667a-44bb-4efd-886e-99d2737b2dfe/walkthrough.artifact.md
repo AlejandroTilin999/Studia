@@ -1,23 +1,21 @@
-# Rediseño Premium Unificado: Welcome & Login
+# Centro de Notificaciones y Reversión de Base de Datos
 
-Se ha transformado la experiencia de inicio del sistema **Studia**, unificando el lenguaje visual y simplificando el acceso para los usuarios.
+Se ha completado la limpieza de la base de datos para eliminar la complejidad académica (ciclos cerrados, planes de estudio), regresando al modelo original pero manteniendo el nuevo **Centro de Notificaciones**.
 
 ## Cambios Realizados
 
-### Coherencia Visual (Welcome + Login)
-- **Ondas SVG Orgánicas:** Se rediseñó la página de inicio en [Welcome.tsx](file:///C:/xampp/htdocs/Studia/resources/js/Pages/Welcome.tsx) para integrar la misma gran onda azul que el login. Ahora ambas páginas se sienten como parte de un mismo entorno premium y fluido.
-- **Paleta Unificada:** Se eliminaron los fondos celestes por un blanco puro con acentos en azul institucional (`#0266E0`), logrando un contraste más profesional.
+### 1. Sistema de Notificaciones (Mantenido)
+- **Backend:** Conteo global de notificaciones y controlador para gestión de alertas.
+- **Frontend:** Badge rojo en el Sidebar y panel administrativo de notificaciones en [Index.tsx](file:///C:/xampp/htdocs/Studia/resources/js/Pages/Admin/Notificaciones/Index.tsx).
 
-### Acceso Directo e Inteligente
-- **Dualidad de Acceso:** En [Hero.tsx](file:///C:/xampp/htdocs/Studia/resources/js/Components/Hero.tsx), el botón único de "Inicia sesión" se sustituyó por dos botones de acceso rápido:
-    - **Acceso Alumnos:** Sólido y vibrante.
-    - **Acceso Personal:** Estilo limpio con borde.
-- **Salto de Paso (Skip Step):** Se implementó una lógica en [Login.tsx](file:///C:/xampp/htdocs/Studia/resources/js/Pages/Auth/Login.tsx) que detecta automáticamente si vienes de "Alumnos" o "Personal". Si es así, el sistema se salta la pantalla de selección y te muestra directamente el formulario de credenciales.
+### 2. Reversión de Tablas Académicas
+- **Limpieza:** Se ejecutó un rollback de los últimos 3 lotes de migraciones para eliminar las tablas de `planes_estudio`, `plan_materias`, `historial_promociones` y las columnas de control en ciclos y grupos.
+- **Sincronización:** La base de datos ahora está perfectamente alineada con el código PHP simplificado (Estado: Batch 31).
 
 ## Verificación
 
-> [!TIP]
-> Al ahorrarle un paso al usuario, hemos reducido la fricción de entrada en un 33%, mejorando significativamente la UX del sistema escolar.
-
 > [!IMPORTANT]
-> El sistema sigue siendo robusto: si alguien entra directamente a la URL `/login`, seguirá viendo la opción de selección de perfil como mecanismo de respaldo.
+> **Base de Datos Original:** Se ha confirmado que las tablas como `inscripciones` y `ciclos_escolares` han vuelto a su estructura inicial de práctica académica.
+
+> [!TIP]
+> El sistema es ahora más sencillo de manejar para tu práctica, conservando únicamente la mejora visual y funcional de las notificaciones de administrador.

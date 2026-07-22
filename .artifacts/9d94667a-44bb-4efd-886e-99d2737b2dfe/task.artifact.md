@@ -1,4 +1,10 @@
-- [x] Rediseñar `Welcome.tsx` con ondas SVG fluidas y consistentes con el login
-- [x] Actualizar `Hero.tsx` con dos botones de acceso (Alumnos/Personal) y parámetros de rol
-- [x] Modificar `Login.tsx` para detectar el rol en la URL y saltar la selección de perfil
-- [x] Verificar el flujo completo y la responsividad de la página de inicio
+- [x] Compartir `unreadNotificationsCount` en `HandleInertiaRequests.php`
+- [x] Crear `NotificacionController.php` con lógica de listado y lectura
+- [x] Registrar rutas en `web.php`
+- [x] Actualizar `Sidebar.tsx` con ítem de Notificaciones e icono de campana con badge
+- [x] Crear la página `Admin/Notificaciones/Index.tsx`
+- [x] Verificar el flujo completo
+- [x] Restaurar lógica de `down()` en archivos de migración
+- [x] Ejecutar `php artisan migrate:rollback --step=3` (Reversión académica)
+- [x] Eliminar archivos de migración innecesarios
+- [x] Verificar limpieza de base de datos (Estado: Batch 31)

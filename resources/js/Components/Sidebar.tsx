@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   PanelLeft,
+  Bell,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -97,6 +98,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       name: "Usuarios",
       icon: User,
       path: "/admin/usuarios",
+      roles: ["ADMIN"]
+    },
+    {
+      name: "Notificaciones",
+      icon: Bell,
+      path: "/admin/notificaciones",
       roles: ["ADMIN"]
     },
   ];
@@ -248,7 +255,17 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     isActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-bold"
                   )}
                 >
-                  <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-slate-300 group-hover:text-slate-500")} />
+                  <div className="relative">
+                    <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-slate-300 group-hover:text-slate-500")} />
+                    {item.name === 'Notificaciones' && user?.unreadNotificationsCount > 0 && (
+                      <span className={cn(
+                        "absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white border-2 border-white",
+                        !isMenuExpanded && "h-3 w-3 -top-0.5 -right-0.5"
+                      )}>
+                        {user.unreadNotificationsCount > 9 ? '9+' : user.unreadNotificationsCount}
+                      </span>
+                    )}
+                  </div>
                   {isMenuExpanded && (
                     <>
                       <span className={cn("text-[14px] ml-1 transition-all duration-300", isActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold group-hover:text-slate-600")}>{item.name}</span>

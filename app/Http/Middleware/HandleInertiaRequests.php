@@ -33,6 +33,9 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
+        // Notificaciones sin leer (solo si hay usuario)
+        $unreadCount = $user ? \App\Models\Notificacion::where('usuario_id', $user->id)->where('leido', false)->count() : 0;
+
         // Caché para el ciclo activo (Casi estático)
         $activePeriod = \Cache::remember('active_academic_period', 1800, function() {
             return \App\Models\AcademicPeriod::where('activo', true)->first();
@@ -54,6 +57,7 @@ class HandleInertiaRequests extends Middleware
                     'nombre_completo' => $user->nombre_completo,
                     'email' => $user->email,
                     'rol' => strtoupper($user->rol ?? ''),
+                    'unreadNotificationsCount' => $unreadCount,
                     // Cargamos esto con un tiempo de vida mayor
                     'docenteGroups' => $this->getDocenteGroups($user),
                     'alumnoGroups' => $this->getAlumnoGroups($user),

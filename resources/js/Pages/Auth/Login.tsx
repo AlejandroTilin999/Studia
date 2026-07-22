@@ -31,6 +31,12 @@ export default function LoginPage() {
     post('/login');
   };
 
+  const handleSwitchProfile = (newRole: "student" | "staff") => {
+    setProfile(newRole);
+    setData("profile_type", newRole);
+    window.history.replaceState(null, '', `/login?role=${newRole}`);
+  };
+
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row font-body bg-white lg:h-screen lg:overflow-hidden relative">
       <Head title="Inicio de Sesión" />
@@ -42,24 +48,24 @@ export default function LoginPage() {
       `}</style>
 
       {/* COLUMNA IZQUIERDA (Formulario y Selección de Perfil) */}
-      <div className="w-full lg:w-[60%] bg-white relative flex flex-col justify-center items-center px-6 py-12 lg:px-24 min-h-[500px] lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
-
-        {/* Botón superior de regresar (Estilo Minimalista) */}
-        <div className="absolute top-8 left-8 lg:top-12 lg:left-24 z-30">
-          <Link
-            href="/"
-            className="text-[11px] lg:text-[12px] text-slate-400 hover:text-[#0266E0] font-black flex items-center gap-2 transition-all cursor-pointer group uppercase tracking-widest"
-          >
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            Volver al inicio
-          </Link>
-        </div>
+      <div className="w-full lg:w-[55%] bg-white relative flex flex-col justify-center items-center px-6 md:px-12 xl:px-24 py-6 md:py-8 lg:py-8 xl:py-12 lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
 
         <div className="w-full max-w-[500px] relative">
+          {/* Botón superior de regresar (Alineado con el contenido) */}
+          <div className="mb-4 lg:mb-6">
+            <Link
+              href="/"
+              className="text-[11px] lg:text-[12px] text-slate-400 hover:text-[#0266E0] font-black flex items-center gap-2 transition-all cursor-pointer group uppercase tracking-widest"
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+              Volver al inicio
+            </Link>
+          </div>
+
           {/* Formulario */}
           <div className="w-full animate-in fade-in slide-in-from-left-4 duration-500">
             {/* Logotipo Azul/Color */}
-            <div className="mb-10 justify-start flex w-full">
+            <div className="mb-4 lg:mb-6 justify-start flex w-full">
               <img
                 src="/assets/phid_logo.png"
                 alt="Logo PREPAHID"
@@ -67,15 +73,15 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="mb-14">
+            <div className="mb-4 lg:mb-6">
               <h2 className="text-4xl lg:text-5xl font-black text-slate-800 tracking-tighter mb-3 leading-none">
-                {profile === "student" ? "Portal Alumnos" : "Portal Personal"}
+                {profile === "student" ? "Portal Alumnos" : "Portal Docentes y Administrativos"}
               </h2>
               <p className="text-base font-semibold text-slate-400">Ingresa tus credenciales para continuar.</p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-8 w-full">
-                <div className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-6 lg:space-y-8 w-full">
+                <div className="space-y-4 lg:space-y-6">
                   <div className="relative">
                     <input
                       required
@@ -128,12 +134,12 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
-                  <button
-                    type="button"
-                    className="text-[#0266E0] text-sm font-black hover:underline underline-offset-4 decoration-2 transition-all uppercase tracking-widest"
+                  <Link
+                    href={route('password.request')}
+                    className="text-[#0266E0] text-sm font-black hover:underline underline-offset-4 decoration-2 transition-all uppercase tracking-widest cursor-pointer text-center sm:text-left"
                   >
                     ¿Olvidaste tu contraseña?
-                  </button>
+                  </Link>
                   <ButtonLogin
                     type="submit"
                     disabled={processing}
@@ -143,33 +149,48 @@ export default function LoginPage() {
                   </ButtonLogin>
                 </div>
               </form>
+
+              {/* Botón de alternar portal/recuperación */}
+              <div className="mt-6 lg:mt-8 text-center text-sm font-semibold text-slate-400">
+                ¿Eres {profile === "student" ? "docente o administrativo" : "alumno"}?{' '}
+                <button
+                  type="button"
+                  onClick={() => handleSwitchProfile(profile === "student" ? "staff" : "student")}
+                  className="text-[#0266E0] hover:underline font-black cursor-pointer"
+                >
+                  Ingresa aquí
+                </button>
+              </div>
             </div>
         </div>
       </div>
 
-      {/* COLUMNA VISUAL (Sección Visual Adaptada para Responsive) */}
-      <div className="w-full lg:w-[40%] relative overflow-hidden h-64 sm:h-80 lg:h-screen shrink-0 bg-[#0266E0] order-1 lg:order-2">
+      <div className="w-full lg:w-[45%] relative h-20 sm:h-24 lg:h-screen shrink-0 bg-[#0266E0] order-1 lg:order-2 lg:overflow-hidden">
 
         {/* Capa de la imagen de la chica */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden hidden lg:block">
           <img
-            src={profile === "student" ? "/assets/alumna.png" : "/assets/docente.png"}
+            src="/assets/alumna.png"
             alt="Login Visual"
-            className={`absolute bottom-0 right-0 w-full h-full opacity-100 brightness-105 transition-all duration-500 ${profile === "student" ? 'object-contain h-full lg:h-full lg:scale-125 lg:origin-right-bottom lg:object-right-bottom object-center' : 'object-cover lg:object-right-bottom object-center'}`}
+            className="absolute bottom-0 right-0 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 lg:translate-x-16 object-bottom"
           />
           {/* Degradado para integrar la imagen al azul */}
           <div className="absolute inset-0 bg-gradient-to-b lg:bg-gradient-to-l from-transparent via-transparent to-[#0266E0]/40"></div>
         </div>
 
         {/* Onda Divisoria Responsive (Vertical en móvil, Horizontal en desktop) */}
-        <div className="absolute bottom-0 left-0 w-full h-12 lg:top-0 lg:left-0 lg:h-full lg:w-24 z-10">
+        <div className="absolute bottom-[-4px] left-0 w-full h-12 lg:top-0 lg:left-[-4px] lg:bottom-auto lg:h-full lg:w-24 z-10">
           {/* Onda para Escritorio */}
           <svg
             className="hidden lg:block h-full w-full fill-white"
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
           >
-            <path d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z" />
+            <path 
+              d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z" 
+              stroke="white"
+              strokeWidth="3"
+            />
           </svg>
 
           {/* Onda para Móvil */}
@@ -178,7 +199,11 @@ export default function LoginPage() {
             viewBox="0 0 1000 100"
             preserveAspectRatio="none"
           >
-            <path d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z" />
+            <path 
+              d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z" 
+              stroke="white"
+              strokeWidth="3"
+            />
           </svg>
         </div>
 

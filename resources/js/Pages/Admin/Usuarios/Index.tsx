@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router, Deferred } from '@inertiajs/react';
-import { GraduationCap, Users, FileText } from 'lucide-react';
+import { GraduationCap, Users, FileText, Key, AlertCircle } from 'lucide-react';
 import UserTable, { MockUser } from './UserTable';
 import UserTableControls from './UserTableControls';
 import UserFormModal from './UserFormModal';
@@ -8,11 +8,19 @@ import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
-interface UsersIndexProps {
-    dbUsers?: MockUser[];
+interface ResetRequest {
+    id: number;
+    nombre: string;
+    email: string;
+    fecha: string;
 }
 
-export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
+interface UsersIndexProps {
+    dbUsers?: MockUser[];
+    resetRequests?: ResetRequest[];
+}
+
+export default function UsersIndex({ dbUsers = [], resetRequests = [] }: UsersIndexProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
 
@@ -125,6 +133,28 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
         });
     };
 
+    const handleApproveReset = (req: ResetRequest) => {
+        SwalHelper.confirm(
+            '¿Aprobar Restablecimiento?',
+            `Se cambiará la contraseña de ${req.nombre} a la predeterminada (Prepahid2026).`,
+            'Sí, Aprobar',
+            'Cancelar',
+            'info'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Procesando...', 'Actualizando credenciales del usuario.');
+                router.post(`/admin/usuarios/solicitudes-reset/${req.id}/aprobar`, {}, {
+                    onSuccess: () => {
+                        SwalHelper.success('¡Hecho!', 'La contraseña ha sido restablecida.');
+                    },
+                    onError: () => {
+                        SwalHelper.error('Error', 'No se pudo procesar la solicitud.');
+                    }
+                });
+            }
+        });
+    };
+
     const totalCount = dbUsers.length;
     const adminCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'admin').length;
     const teacherCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'docente').length;
@@ -155,6 +185,41 @@ export default function UsersIndex({ dbUsers = [] }: UsersIndexProps) {
                 { name: "Inactivos", count: totalCount - activeCount, color: "#f43f5e", bulletClass: "bg-rose-500" }
             ]}
         >
+            {/* Sección de Solicitudes de Restablecimiento */}
+            {resetRequests.length > 0 && (
+                <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-2 text-slate-800 mb-2">
+                        <AlertCircle size={20} className="text-blue-600" />
+                        <h3 className="text-sm font-black uppercase tracking-widest">Solicitudes de Restablecimiento</h3>
+                        <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            {resetRequests.length}
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {resetRequests.map((req) => (
+                            <div key={req.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col justify-between group hover:border-blue-200 transition-all duration-300">
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="font-bold text-slate-900 text-sm truncate max-w-[150px]">{req.nombre}</p>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{req.fecha}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium truncate mb-4">{req.email}</p>
+                                </div>
+                                <button
+                                    onClick={() => handleApproveReset(req)}
+                                    className="w-full py-2.5 bg-white border border-slate-200 text-blue-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    <Key size={14} />
+                                    Aprobar Reset
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="h-px bg-slate-100 w-full my-8" />
+                </div>
+            )}
+
             <UserTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}

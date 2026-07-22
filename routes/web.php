@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -98,6 +99,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/usuarios/{id}', [UserController::class, 'update'])->name('admin.users.update');
             Route::post('/usuarios/{id}/toggle', [UserController::class, 'toggleStatus'])->name('admin.users.toggle');
             Route::post('/usuarios/{id}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset_password');
+            Route::post('/usuarios/solicitudes-reset/{id}/aprobar', [UserController::class, 'approveReset'])->name('admin.users.reset_requests.approve');
+            Route::delete('/usuarios/solicitudes/{id}', [UserController::class, 'deleteResetRequest'])->name('admin.users.delete_reset_request');
 
             Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
             Route::get('/alumnos/{id}/kardex', [StudentController::class, 'getKardex'])->name('admin.alumnos.kardex');
@@ -132,6 +135,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/especialidades/{id}', [SpecialtyController::class, 'destroy'])->name('admin.especialidades.destroy');
 
             Route::get('/reportes', [ReportController::class, 'index'])->name('admin.reportes.index');
+
+            // Notificaciones
+            Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('admin.notificaciones.index');
+            Route::post('/notificaciones/{id}/leer', [NotificacionController::class, 'markAsRead'])->name('admin.notificaciones.read');
+            Route::post('/notificaciones/leer-todas', [NotificacionController::class, 'markAllAsRead'])->name('admin.notificaciones.read_all');
         });
 
         // ------------------------------------------
