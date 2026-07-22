@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cambiar-contrasena', [PasswordChangeController::class, 'show'])->name('password.change_view');
     Route::post('/cambiar-contrasena', [PasswordChangeController::class, 'update'])->name('password.force_update');
 
+    Route::middleware(['force.password.change'])->group(function () {
         Route::get('/dashboard', function (Request $request) {
             $user = $request->user();
             $role = $user->rol ?? 'admin';
@@ -309,5 +310,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     });
+});
 
 require __DIR__.'/auth.php';

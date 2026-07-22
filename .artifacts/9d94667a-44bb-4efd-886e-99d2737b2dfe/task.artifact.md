@@ -1,4 +1,4 @@
-- [x] Renombrar carpeta `Profile` a `Perfil`
-- [x] Actualizar `ProfileController.php` para apuntar a la nueva carpeta
-- [x] Agregar validación para apellidos en `ProfileUpdateRequest.php`
-- [x] Implementar campos de nombre completo y deshabilitar email en `UpdateProfileInformationForm.tsx`
+- [x] Rediseñar `Welcome.tsx` con ondas SVG fluidas y consistentes con el login
+- [x] Actualizar `Hero.tsx` con dos botones de acceso (Alumnos/Personal) y parámetros de rol
+- [x] Modificar `Login.tsx` para detectar el rol en la URL y saltar la selección de perfil
+- [x] Verificar el flujo completo y la responsividad de la página de inicio
