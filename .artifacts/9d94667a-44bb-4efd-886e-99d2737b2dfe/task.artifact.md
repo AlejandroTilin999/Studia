@@ -1,0 +1,6 @@
+- [ ] Potenciar Estadísticas y Animaciones en Reportes
+    - [ ] Actualizar `ReportController.php` para desglosar todos los tipos y usar `Inertia::defer`.
+    - [ ] Configurar `isLoading` dinámico en `Index.tsx`.
+    - [ ] Expandir la lista de métricas (T1 a T4).
+    - [ ] Actualizar la gráfica de dona con todos los segmentos.
+- [ ] Verificar que los "dots" aparezcan correctamente al cargar.

@@ -135,6 +135,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/especialidades/{id}', [SpecialtyController::class, 'destroy'])->name('admin.especialidades.destroy');
 
             Route::get('/reportes', [ReportController::class, 'index'])->name('admin.reportes.index');
+            Route::get('/reportes/asistencia-data/{grupo_id}/{ciclo_id}', [ReportController::class, 'getAttendanceData'])->name('admin.reportes.asistencia_data');
+            Route::get('/reportes/constancia-data/{matricula}', [ReportController::class, 'getCertificateData'])->name('admin.reportes.constancia_data');
+            Route::get('/reportes/boleta-data/{matricula}/{periodId}', [ReportController::class, 'getGradeReportData'])->name('admin.reportes.boleta_data');
+            Route::get('/reportes/kardex-data-full/{matricula}', [ReportController::class, 'getFullKardexData'])->name('admin.reportes.kardex_data_full');
+            Route::post('/reportes/log-download', [ReportController::class, 'logDownload'])->name('admin.reportes.log_download');
+            Route::post('/reportes/batch-data', [ReportController::class, 'getBatchData'])->name('admin.reportes.batch_data');
+            Route::delete('/reportes/log/{id}', [ReportController::class, 'destroyDownload'])->name('admin.reportes.log_destroy');
+            Route::delete('/reportes/history/clear', [ReportController::class, 'clearDownloadHistory'])->name('admin.reportes.history_clear');
 
             // Notificaciones
             Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('admin.notificaciones.index');

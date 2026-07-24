@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { RotateCcw, Users, User, Calendar } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
+import { FormSelect } from '@/Components/forms/FormSelect';
 import { cn } from '@/lib/utils';
 
 interface StudentItem {
@@ -53,13 +54,19 @@ export default function ReportParams({
     const showStudent = selectedReport === 'constancia' || selectedReport === 'boleta' || selectedReport === 'kardex';
     const showPeriod = selectedReport === 'asistencia' || selectedReport === 'boleta' || selectedReport === 'kardex';
 
-    // Validación de formulario completo
+    // Validación de formulario completo según el tipo de reporte
     const isFormValid = useMemo(() => {
-        if (!groupFilter) return false;
-        if (showStudent && !selectedStudentMatricula) return false;
-        if (showPeriod && !periodFilter) return false;
-        return true;
-    }, [groupFilter, selectedStudentMatricula, periodFilter, showStudent, showPeriod]);
+        if (selectedReport === 'asistencia') {
+            return !!groupFilter && !!periodFilter;
+        }
+        if (selectedReport === 'constancia') {
+            return !!selectedStudentMatricula; // El grupo es solo para filtrar la lista
+        }
+        if (selectedReport === 'boleta' || selectedReport === 'kardex') {
+            return !!selectedStudentMatricula && !!periodFilter;
+        }
+        return false;
+    }, [selectedReport, groupFilter, selectedStudentMatricula, periodFilter]);
 
     // Verificar si hay algún filtro seleccionado para habilitar el reset
     const isAnyFilterSelected = useMemo(() => {
@@ -83,16 +90,16 @@ export default function ReportParams({
                             Grupo académico <span className="text-red-500 font-bold ml-0.5">*</span>
                         </label>
                     </div>
-                    <select
+                    <FormSelect
                         value={groupFilter}
                         onChange={e => onGroupChange(e.target.value)}
-                        className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-1 focus:ring-[#0266E0]/10 focus:border-slate-200 text-[13.5px] font-normal text-slate-700 cursor-pointer transition-all"
+                        className="h-11 bg-slate-50 border-slate-100 rounded-xl text-[13.5px] text-slate-700"
                     >
                         <option value="">Seleccionar grupo...</option>
                         {groups.map((g) => (
                             <option key={g.id} value={g.id.toString()}>{g.nombre}</option>
                         ))}
-                    </select>
+                    </FormSelect>
                 </div>
 
                 {/* 2. ALUMNO (Opcional) */}
@@ -104,16 +111,16 @@ export default function ReportParams({
                                 Estudiante seleccionado <span className="text-red-500 font-bold ml-0.5">*</span>
                             </label>
                         </div>
-                        <select
+                        <FormSelect
                             value={selectedStudentMatricula}
                             onChange={e => setSelectedStudentMatricula(e.target.value)}
-                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-1 focus:ring-[#0266E0]/10 focus:border-slate-200 text-[13.5px] font-normal text-slate-700 cursor-pointer transition-all"
+                            className="h-11 bg-slate-50 border-slate-100 rounded-xl text-[13.5px] text-slate-700"
                         >
                             <option value="">Seleccionar alumno...</option>
                             {filteredStudents.map((s) => (
                                 <option key={s.matricula} value={s.matricula}>{s.nombre}</option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                 )}
 
@@ -126,16 +133,16 @@ export default function ReportParams({
                                 Periodo vigente <span className="text-red-500 font-bold ml-0.5">*</span>
                             </label>
                         </div>
-                        <select
+                        <FormSelect
                             value={periodFilter}
                             onChange={e => setPeriodFilter(e.target.value)}
-                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-1 focus:ring-[#0266E0]/10 focus:border-slate-200 text-[13.5px] font-normal text-slate-700 cursor-pointer transition-all"
+                            className="h-11 bg-slate-50 border-slate-100 rounded-xl text-[13.5px] text-slate-700"
                         >
                             <option value="">Seleccionar ciclo...</option>
                             {periods.map((p) => (
                                 <option key={p.id} value={p.id.toString()}>{p.nombre}</option>
                             ))}
-                        </select>
+                        </FormSelect>
                     </div>
                 )}
             </div>

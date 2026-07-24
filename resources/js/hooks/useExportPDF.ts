@@ -35,7 +35,7 @@ export function useExportPDF() {
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
                     body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; }
-                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0266E0; padding-bottom: 20px; margin-bottom: 30px; }
+                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 20px; margin-bottom: 30px; }
                     .logo { height: 50px; }
                     .institution-info { text-align: right; }
                     .institution-name { font-weight: 900; font-size: 14px; color: #0266E0; margin: 0; text-transform: uppercase; }
@@ -80,14 +80,14 @@ export function useExportPDF() {
                 <div class="header">
                     <img src="${logoUrl}" class="logo" />
                     <div class="institution-info">
-                        <p class="institution-name">Preparatoria Hidalgo</p>
+                        <p class="institution-name">Preparatoria Particular Hidalgo</p>
                         <p class="report-date">Generado el ${dateStr} a las ${timeStr} hrs.</p>
                     </div>
                 </div>
 
                 <div class="title-section">
                     <h1 class="main-title">${title}</h1>
-                    <p class="sub-title">Sistema de Control Escolar Studia | Documento Informativo Interno</p>
+                    <p class="sub-title">SISTEMA DE CONTROL ESCOLAR PREPAHID | Documento Informativo Interno</p>
                 </div>
 
                 <table>
@@ -103,17 +103,8 @@ export function useExportPDF() {
                             </tr>
                         `).join('')}
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="${headers.length}" class="footer-spacer" style="border:none;"></td>
-                        </tr>
                     </tfoot>
                 </table>
-
-                <div class="footer">
-                    <span>© ${new Date().getFullYear()} PREPARATORIA HIDALGO - CONTROL ESCOLAR</span>
-                    <span>Documento oficial generado digitalmente.</span>
-                </div>
             </body>
             </html>
         `;

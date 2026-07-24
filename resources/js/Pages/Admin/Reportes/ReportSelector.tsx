@@ -28,7 +28,7 @@ export default function ReportSelector({
         },
         {
             id: 'kardex',
-            title: 'Kardex académico',
+            title: 'Historial académico',
             icon: Dock
         }
     ];

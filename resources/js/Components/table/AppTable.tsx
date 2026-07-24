@@ -57,6 +57,7 @@ return (
   <div className="
     border
     border-slate-100
+    rounded-xl
     overflow-hidden
     bg-white
     overflow-x-auto

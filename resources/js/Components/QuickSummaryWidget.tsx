@@ -22,7 +22,7 @@ export default function QuickSummaryWidget({ title = "Resumen rápido", metrics,
           const isLastOdd = metrics.length % 2 !== 0 && index === metrics.length - 1;
 
           // Si el valor es null o isLoading es true, mostramos el cargador
-          const showSkeleton = isLoading || item.value === null || (item.value === 0 && metrics.every(m => m.value === 0 || m.value === '0'));
+          const showSkeleton = isLoading || item.value === null;
 
           return (
             <div

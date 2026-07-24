@@ -96,7 +96,7 @@ export function useExportExcel() {
                     <!-- Información Adicional -->
                     <tr>
                         <td colspan="${headers.length}" class="info-text" style="border:none;">
-                            Sistema de Control Escolar Studia | Campus Hidalgo
+                            SISTEMA DE CONTROL ESCOLAR PREPAHID | CAMPUS HIDALGO
                         </td>
                     </tr>
                     <tr>
@@ -120,15 +120,6 @@ export function useExportExcel() {
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
-
-                <table>
-                    <tr><td colspan="${headers.length}" style="border:none; height:30px;"></td></tr>
-                    <tr>
-                        <td colspan="${headers.length}" style="border:none; text-align:center; color:#94a3b8; font-size:8pt;">
-                            © ${new Date().getFullYear()} PREPARATORIA HIDALGO. Documento oficial generado digitalmente.
-                        </td>
-                    </tr>
                 </table>
             </body>
             </html>
