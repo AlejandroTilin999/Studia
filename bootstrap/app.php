@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
+            'captura.abierta' => \App\Http\Middleware\EnsureCapturaHabilitada::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

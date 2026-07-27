@@ -111,14 +111,14 @@ export default function AdminPageLayout({
 
                     {/* Workspace panel container */}
                     <div className="p-3 md:p-6 flex-1 lg:overflow-y-auto flex flex-col lg:min-h-0">
-                        <div className="bg-white rounded-2xl md:rounded-xl p-4 md:p-8 shadow-sm border border-slate-100 flex flex-col flex-1">
+                        <div className="bg-white rounded-lg md:rounded-lg p-4 md:p-8 shadow-none border border-slate-100 flex flex-col flex-1">
                             {children}
                         </div>
                     </div>
                 </div>
 
                 {/* Right Side: Sidebar Widgets */}
-                <div className="w-full lg:w-[330px] xl:w-[380px] 2xl:w-[420px] bg-white border-l border-slate-50 p-5 lg:p-6 xl:p-8 2xl:p-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-between transition-all duration-500 ease-in-out">
+                <div className="w-full lg:w-[330px] xl:w-[380px] 2xl:w-[420px] bg-white border-l border-slate-50 p-5 lg:p-6 xl:p-8 2xl:p-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-between">
                     <div className="space-y-8 xl:space-y-10 2xl:space-y-12">
                         <QuickSummaryWidget metrics={metrics} isLoading={isLoading} />
                         <QuickActionsWidget actions={quickActions} />

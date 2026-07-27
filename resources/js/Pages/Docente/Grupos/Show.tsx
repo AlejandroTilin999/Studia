@@ -15,7 +15,7 @@ import TaskGradesModal from './Show/components/TaskGradesModal';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
 export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
-    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, saveTasks, activeTab, setActiveTab, students, studentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid } = useGroupClass();
+    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, saveTasks, activeTab, setActiveTab, students, studentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid, isReadOnly, lockReason } = useGroupClass();
 
     const parcialLabel = activeParcial ? PARCIALES.find(p => p.num === activeParcial)?.label : '';
     const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];
@@ -47,6 +47,18 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                                     <span className="text-[#1e88e5]">Configurar criterios</span>
                                 </>
                             )}
+                        </div>
+                    )}
+
+                    {isReadOnly && activeParcial && (
+                        <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
+                            <div className="bg-white p-2 rounded-xl text-amber-600 shadow-sm border border-amber-100">
+                                <LockKeyhole size={18} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Periodo Bloqueado (Solo Lectura)</p>
+                                <p className="text-[11px] text-amber-700 font-medium">{lockReason || 'El periodo de captura ha concluido o el ciclo se encuentra cerrado.'}</p>
+                            </div>
                         </div>
                     )}
 
@@ -134,13 +146,13 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                             <CriteriaGrid activeCriteria={activeCriteria} />
                             <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                             <div className="flex-grow">
-                                {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} />}
-                                {activeTab === 'tasks' && <TasksTab tasks={tasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} />}
+                                {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} isReadOnly={isReadOnly} />}
+                                {activeTab === 'tasks' && <TasksTab tasks={tasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} isReadOnly={isReadOnly} />}
                                 {activeTab === 'activities' && (
                                     selectedTaskId !== null ? (
-                                        <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} />
+                                        <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} isReadOnly={isReadOnly} />
                                     ) : (
-                                        <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} />
+                                        <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} isReadOnly={isReadOnly} />
                                     )
                                 )}
                             </div>

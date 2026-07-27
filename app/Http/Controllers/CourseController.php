@@ -12,44 +12,62 @@ use Inertia\Inertia;
 
 class CourseController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
+
         return Inertia::render('Admin/Materias/Index', [
-            'materias' => Inertia::defer(function () {
-                $coursesRaw = Course::with(['teacher', 'groups', 'specialties'])->get();
-                return $coursesRaw->map(function ($course) {
-                    return [
-                        'id' => $course->id,
-                        'codigo' => $course->codigo,
-                        'nombre' => $course->nombre,
-                        'semestre' => $course->semestre ?? 1,
-                        'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
-                        'tipo' => $course->tipo ?? 'General',
-                        'area' => $course->area ?? '',
-                        'docente_id' => $course->docente_id,
-                        'profesor' => $course->teacher ? $course->teacher->name : 'Sin profesor asignado',
-                        'grupos' => $course->groups ? $course->groups->pluck('codigo')->unique()->toArray() : [],
-                        'especialidades' => $course->specialties ? $course->specialties->map(fn($s) => [
-                            'id' => $s->id,
-                            'nombre' => $s->nombre,
-                        ])->toArray() : [],
-                    ];
-                });
+            'materias' => Inertia::defer(function () use ($search) {
+                $query = Course::query();
+
+                if ($search) {
+                    $query->where(function($q) use ($search) {
+                        $q->where('nombre', 'like', "%{$search}%")
+                          ->orWhere('codigo', 'like', "%{$search}%")
+                          ->orWhere('tipo', 'like', "%{$search}%")
+                          ->orWhere('area', 'like', "%{$search}%");
+                    });
+                }
+
+                return $query->with(['teacher.user', 'groups', 'specialties'])
+                    ->paginate(50)
+                    ->through(function ($course) {
+                        return [
+                            'id' => $course->id,
+                            'codigo' => $course->codigo,
+                            'nombre' => $course->nombre,
+                            'semestre' => $course->semestre ?? 1,
+                            'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
+                            'tipo' => $course->tipo ?? 'General',
+                            'area' => $course->area ?? '',
+                            'docente_id' => $course->docente_id,
+                            'profesor' => ($course->teacher && $course->teacher->user) ? $course->teacher->user->nombre_completo : 'Sin profesor asignado',
+                            'grupos' => $course->groups ? $course->groups->pluck('codigo')->unique()->toArray() : [],
+                            'especialidades' => $course->specialties ? $course->specialties->map(fn($s) => [
+                                'id' => $s->id,
+                                'nombre' => $s->nombre,
+                            ])->toArray() : [],
+                        ];
+                    })
+                    ->withQueryString();
             }),
-            'profesores' => \App\Models\Teacher::all()->map(fn($t) => [
+            'profesores' => Inertia::defer(fn() => \App\Models\Teacher::with('user')->get()->map(fn($t) => [
                 'id' => $t->id,
-                'nombre_completo' => $t->name,
-            ]),
-            'grupos' => AcademicGroup::all()->map(fn($g) => [
+                'nombre_completo' => $t->user->nombre_completo ?? 'N/A',
+            ])),
+            'grupos' => Inertia::defer(fn() => AcademicGroup::all()->map(fn($g) => [
                 'id' => $g->id,
                 'codigo' => $g->codigo,
                 'nombre' => $g->nombre,
-            ]),
-            'especialidades' => Specialty::all()->map(fn($s) => [
+            ])),
+            'especialidades' => Inertia::defer(fn() => Specialty::all()->map(fn($s) => [
                 'id' => $s->id,
                 'nombre' => $s->nombre,
                 'codigo' => $s->codigo,
-            ]),
+            ])),
+            'filters' => [
+                'search' => $search
+            ]
         ]);
     }
 

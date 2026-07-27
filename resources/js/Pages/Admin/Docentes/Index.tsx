@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, FileText } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
@@ -16,12 +16,18 @@ import TeacherTable from "./components/TeacherTable";
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { DocentesIndexProps, TeacherFormatted, TeacherFromBackend } from './types';
 
-export default function DocentesIndex({ teachers: backendTeachers = [] }: DocentesIndexProps) {
+export default function DocentesIndex({ teachers, filters = { search: '' } }: any) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
 
-    const formattedTeachers: TeacherFormatted[] = backendTeachers.map((t: TeacherFromBackend) => {
+    // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
+    const teacherData = useMemo(() => {
+        if (Array.isArray(teachers)) return teachers;
+        return teachers?.data || [];
+    }, [teachers]);
+
+    const formattedTeachers: TeacherFormatted[] = useMemo(() => teacherData.map((t: TeacherFromBackend) => {
         const nombreCompleto = `${t.nombre || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.trim() || 'Sin nombre';
         const correoDocente = t.usuario?.email || t.email || (t.codigo_empleado ? `${t.codigo_empleado.toLowerCase()}@prepahidalgo.edu.mx` : 'docente@prepahidalgo.edu.mx');
 
@@ -41,10 +47,26 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
                 groupName: (m as any).nombre_group || m.nombre_grupo || 'Asignado'
             })) || []
         };
-    });
+    }), [teacherData]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
+
+    // Sincronización con el servidor (Debounce)
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (searchQuery !== (filters.search || '')) {
+                router.get(window.location.pathname, {
+                    search: searchQuery
+                }, {
+                    preserveState: true,
+                    replace: true,
+                    only: ['teachers']
+                });
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
@@ -94,7 +116,7 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
     }, [data.nombre, data.apellido_paterno, data.apellido_materno, modalMode, randomSuffix]);
 
     const handleExportExcel = () => {
-        const rows = filteredTeachers.map(t => [
+        const rows = formattedTeachers.map(t => [
             t.matricula,
             t.name,
             t.email,
@@ -125,15 +147,16 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
         exportToPDF("Reporte de Personal Docente", headers, rows, "reporte_docentes");
     };
 
-    const filteredTeachers = formattedTeachers.filter(teacher =>
+    // Búsqueda local residual (por si el usuario quiere filtrar rápido lo ya cargado)
+    const filteredTeachers = useMemo(() => formattedTeachers.filter(teacher =>
         teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.matricula.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    ), [formattedTeachers, searchQuery]);
 
-    const totalTeachersCount = formattedTeachers.length;
-    const specialtyCount = Array.from(new Set(formattedTeachers.map(t => t.specialty))).length;
+    const totalTeachersCount = useMemo(() => (teachers === null || teachers === undefined ? null : (Array.isArray(teachers) ? teachers.length : teachers?.total || 0)), [teachers]);
+    const specialtyCount = useMemo(() => (teachers === null || teachers === undefined) ? null : Array.from(new Set(formattedTeachers.map(t => t.specialty))).length, [formattedTeachers, teachers]);
 
     const openCreateModal = () => {
         setModalMode('create');
@@ -218,11 +241,11 @@ export default function DocentesIndex({ teachers: backendTeachers = [] }: Docent
             subtitle="Consulta, edita y registra expedientes de profesores de la plantilla"
             breadcrumb="Docentes"
             toastMessage={toastMessage}
-            isLoading={backendTeachers.length === 0}
+            isLoading={teachers === null || teachers === undefined}
             metrics={[
-                { code: "T1", label: "Docentes totales", value: backendTeachers.length > 0 ? totalTeachersCount : 0 },
-                { code: "T3", label: "Especialidades", value: backendTeachers.length > 0 ? specialtyCount : 0 },
-                { code: "T4", label: "Activos en ciclo", value: backendTeachers.length > 0 ? totalTeachersCount : 0 }
+                { code: "T1", label: "Docentes totales", value: totalTeachersCount },
+                { code: "T3", label: "Especialidades", value: specialtyCount },
+                { code: "T4", label: "Activos en ciclo", value: totalTeachersCount }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },

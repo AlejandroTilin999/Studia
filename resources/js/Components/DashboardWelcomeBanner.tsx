@@ -105,24 +105,24 @@ export default function DashboardWelcomeBanner({
                         {/* Date Pill Badge */}
                         <div className="relative z-20 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-lg text-blue-700 select-none">
                             <Calendar size={13} className="text-blue-600" />
-                            <span className="text-[10px] md:text-xs font-bold tracking-wide uppercase">
+                            <span className="text-[10px] md:text-xs font-semibold tracking-wide uppercase">
                                 {formattedDate}
                             </span>
                         </div>
 
                         <div className="space-y-2 w-full">
-                            <p className="text-xs sm:text-sm font-extrabold tracking-widest uppercase text-blue-600">
+                            <p className="text-xs sm:text-sm font-semibold tracking-widest uppercase text-blue-600">
                                 {greeting}
                             </p>
-                            <h2 className="text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-black text-[#0a0f1d] tracking-tight leading-tight">
+                            <h2 className="text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-semibold text-[#0a0f1d] tracking-tight leading-tight">
                                 {title}
                             </h2>
                             {subtitle && (
-                                <p className="text-sm sm:text-base font-extrabold text-blue-900 mt-1">
+                                <p className="text-sm sm:text-base font-semibold text-blue-900 mt-1">
                                     {subtitle}
                                 </p>
                             )}
-                            <p className="text-xs sm:text-sm font-semibold text-slate-500 max-w-md sm:max-w-lg lg:max-w-2xl xl:max-w-3xl leading-relaxed pt-1 mx-auto lg:mx-0">
+                            <p className="text-xs sm:text-sm font-normal text-slate-500 max-w-md sm:max-w-lg lg:max-w-2xl xl:max-w-3xl leading-relaxed pt-1 mx-auto lg:mx-0">
                                 {getRoleDescription()}
                             </p>
                         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { router, Deferred } from '@inertiajs/react';
 import { GraduationCap, Users, FileText, Key, AlertCircle } from 'lucide-react';
 import UserTable, { MockUser } from './UserTable';
@@ -16,24 +16,49 @@ interface ResetRequest {
 }
 
 interface UsersIndexProps {
-    dbUsers?: MockUser[];
+    dbUsers?: any;
     resetRequests?: ResetRequest[];
+    filters?: {
+        search: string;
+    };
 }
 
-export default function UsersIndex({ dbUsers = [], resetRequests = [] }: UsersIndexProps) {
-    const [searchQuery, setSearchQuery] = useState('');
+export default function UsersIndex({ dbUsers, resetRequests = [], filters = { search: '' }, userStats }: any) {
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [roleFilter, setRoleFilter] = useState<string>('all');
+
+    // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
+    const userData = useMemo(() => {
+        if (Array.isArray(dbUsers)) return dbUsers;
+        return dbUsers?.data || [];
+    }, [dbUsers]);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (searchQuery !== (filters.search || '')) {
+                router.get(window.location.pathname, {
+                    search: searchQuery
+                }, {
+                    preserveState: true,
+                    replace: true,
+                    only: ['dbUsers']
+                });
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
 
-    const filteredUsers = dbUsers.filter(user => {
+    const filteredUsers = useMemo(() => userData.filter(user => {
+        const matchesRole = roleFilter === 'all' || user.rol === roleFilter;
+        // Búsqueda local residual
         const matchesSearch = user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
                              user.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === 'all' || user.rol === roleFilter;
         return matchesSearch && matchesRole;
-    });
+    }), [userData, roleFilter, searchQuery]);
 
     const openCreateModal = () => {
         setModalMode('create');
@@ -155,11 +180,11 @@ export default function UsersIndex({ dbUsers = [], resetRequests = [] }: UsersIn
         });
     };
 
-    const totalCount = dbUsers.length;
-    const adminCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'admin').length;
-    const teacherCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'docente').length;
-    const studentCount = dbUsers.filter(u => u.rol?.toLowerCase() === 'alumno').length;
-    const activeCount = dbUsers.filter(u => u.estatus === 'active').length;
+    const totalCount = useMemo(() => (userStats === null || userStats === undefined) ? null : (userStats?.total || 0), [userStats]);
+    const adminCount = useMemo(() => (userStats === null || userStats === undefined) ? null : (userStats?.admins || 0), [userStats]);
+    const teacherCount = useMemo(() => (userStats === null || userStats === undefined) ? null : (userStats?.teachers || 0), [userStats]);
+    const studentCount = useMemo(() => (userStats === null || userStats === undefined) ? null : (userStats?.students || 0), [userStats]);
+    const activeCount = useMemo(() => (userStats === null || userStats === undefined) ? null : (userStats?.active || 0), [userStats]);
 
     return (
         <AdminPageLayout
@@ -167,6 +192,7 @@ export default function UsersIndex({ dbUsers = [], resetRequests = [] }: UsersIn
             title="Gestión de Cuentas"
             subtitle="Administra los accesos y credenciales globales de PrepaHid"
             breadcrumb="Usuarios"
+            isLoading={userStats === null || userStats === undefined}
             metrics={[
                 { code: "T1", label: "Usuarios totales", value: totalCount },
                 { code: "T3", label: "Administradores", value: adminCount },
@@ -181,44 +207,46 @@ export default function UsersIndex({ dbUsers = [], resetRequests = [] }: UsersIn
             donutChartTitle="Estado de Cuentas"
             donutChartLabel="usuarios"
             donutChartSegments={[
-                { name: "Activos", count: activeCount, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
-                { name: "Inactivos", count: totalCount - activeCount, color: "#f43f5e", bulletClass: "bg-rose-500" }
+                { name: "Activos", count: activeCount || 0, color: "#1e88e5", bulletClass: "bg-[#1e88e5]" },
+                { name: "Inactivos", count: (totalCount && activeCount) ? (totalCount - activeCount) : 0, color: "#f43f5e", bulletClass: "bg-rose-500" }
             ]}
         >
             {/* Sección de Solicitudes de Restablecimiento */}
-            {resetRequests.length > 0 && (
-                <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="flex items-center gap-2 text-slate-800 mb-2">
-                        <AlertCircle size={20} className="text-blue-600" />
-                        <h3 className="text-sm font-black uppercase tracking-widest">Solicitudes de Restablecimiento</h3>
-                        <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            {resetRequests.length}
-                        </span>
-                    </div>
+            <Deferred data="resetRequests" fallback={null}>
+                {resetRequests.length > 0 && (
+                    <div className="mb-8 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center gap-2 text-slate-800 mb-2">
+                            <AlertCircle size={20} className="text-blue-600" />
+                            <h3 className="text-sm font-black uppercase tracking-widest">Solicitudes de Restablecimiento</h3>
+                            <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {resetRequests.length}
+                            </span>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {resetRequests.map((req) => (
-                            <div key={req.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col justify-between group hover:border-blue-200 transition-all duration-300">
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="font-bold text-slate-900 text-sm truncate max-w-[150px]">{req.nombre}</p>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{req.fecha}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {resetRequests.map((req) => (
+                                <div key={req.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col justify-between group hover:border-blue-200 transition-all duration-300">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <p className="font-bold text-slate-900 text-sm truncate max-w-[150px]">{req.nombre}</p>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{req.fecha}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-medium truncate mb-4">{req.email}</p>
                                     </div>
-                                    <p className="text-xs text-slate-500 font-medium truncate mb-4">{req.email}</p>
+                                    <button
+                                        onClick={() => handleApproveReset(req)}
+                                        className="w-full py-2.5 bg-white border border-slate-200 text-blue-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                                    >
+                                        <Key size={14} />
+                                        Aprobar Reset
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => handleApproveReset(req)}
-                                    className="w-full py-2.5 bg-white border border-slate-200 text-blue-600 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm"
-                                >
-                                    <Key size={14} />
-                                    Aprobar Reset
-                                </button>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+                        <div className="h-px bg-slate-100 w-full my-8" />
                     </div>
-                    <div className="h-px bg-slate-100 w-full my-8" />
-                </div>
-            )}
+                )}
+            </Deferred>
 
             <UserTableControls
                 searchQuery={searchQuery}

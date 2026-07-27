@@ -7,13 +7,15 @@ interface TasksTabProps {
     studentGrades: StudentGrade[];
     getStudentTasksAverage: (studentId: number) => string;
     saveTasks: (newTasks: Task[]) => void;
+    isReadOnly?: boolean;
 }
 
 export default function TasksTab({
     tasks,
     studentGrades,
     getStudentTasksAverage,
-    saveTasks
+    saveTasks,
+    isReadOnly = false
 }: TasksTabProps) {
 
     function handleTaskGradeChange(taskId: number, studentId: number, scoreVal: string) {
@@ -70,10 +72,11 @@ export default function TasksTab({
                                             step="0.1"
                                             min="0"
                                             max={t.puntos || 10}
+                                            disabled={isReadOnly}
                                             value={t.calificaciones[r.id] ?? ''}
                                             onChange={e => handleTaskGradeChange(t.id, r.id, e.target.value)}
                                             placeholder="—"
-                                            className="w-16 text-center text-sm py-1.5 px-1 bg-slate-50 border border-transparent rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-slate-700 transition-all outline-none"
+                                            className={`w-16 text-center text-sm py-1.5 px-1 bg-slate-50 border border-transparent rounded-lg focus:bg-white focus:ring-1 focus:ring-[#1e88e5] text-slate-700 transition-all outline-none ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
                                         />
                                     </div>
                                 )

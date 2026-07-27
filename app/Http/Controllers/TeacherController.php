@@ -11,15 +11,28 @@ use Inertia\Inertia;
 
 class TeacherController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
+
         return Inertia::render('Admin/Docentes/Index', [
-            'teachers' => Inertia::defer(function () {
-                // Esta consulta pesada se ejecutará DESPUÉS de que la página abra
-                return Teacher::whereHas('user')
-                    ->with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])
-                    ->get()
-                    ->map(function ($t) {
+            'teachers' => Inertia::defer(function () use ($search) {
+                $query = Teacher::whereHas('user');
+
+                if ($search) {
+                    $query->where(function($q) use ($search) {
+                        $q->where('codigo_empleado', 'like', "%{$search}%")
+                          ->orWhereHas('user', function($qu) use ($search) {
+                              $qu->where('nombre', 'like', "%{$search}%")
+                                 ->orWhere('apellido_paterno', 'like', "%{$search}%")
+                                 ->orWhere('email', 'like', "%{$search}%");
+                          });
+                    });
+                }
+
+                return $query->with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])
+                    ->paginate(50)
+                    ->through(function ($t) {
                         return [
                             'id'                => $t->id,
                             'codigo_empleado'   => $t->codigo_empleado,
@@ -37,8 +50,12 @@ class TeacherController extends Controller
                                 'nombre_grupo'   => $l->academicGroup->nombre ?? 'N/A',
                             ])->values()->toArray(),
                         ];
-                    });
-            })
+                    })
+                    ->withQueryString();
+            }),
+            'filters' => [
+                'search' => $search
+            ]
         ]);
     }
 

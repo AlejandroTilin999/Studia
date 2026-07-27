@@ -19,6 +19,24 @@ class SpecialtyController extends Controller
                         'codigo' => $s->codigo,
                     ];
                 });
+            }),
+            'specialtyDistribution' => Inertia::defer(function () {
+                return \DB::table('inscripciones')
+                    ->join('grupos', 'inscripciones.grupo_id', '=', 'grupos.id')
+                    ->select('grupos.especialidad as name', \DB::raw('count(*) as count'))
+                    ->where('inscripciones.estatus', 'active')
+                    ->groupBy('grupos.especialidad')
+                    ->get()
+                    ->map(function($item, $index) {
+                        $colors = ['#0266E0', '#4db6ac', '#ab47bc', '#ffa726', '#ef5350'];
+                        $color = $colors[$index % count($colors)];
+                        return [
+                            'name' => $item->name ?: 'General',
+                            'count' => (int)$item->count,
+                            'color' => $color,
+                            'bulletClass' => 'bg-[' . $color . ']'
+                        ];
+                    });
             })
         ]);
     }

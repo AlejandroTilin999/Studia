@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, Users } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
@@ -7,8 +7,10 @@ import DotsLoader from '@/Components/ui/DotsLoader';
 import GroupTable from './components/GroupTable';
 import GroupTableControls from './components/GroupTableControls';
 import GroupFormModal from './components/GroupFormModal';
+import PromotionModal from './components/PromotionModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
+import axios from 'axios';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
 import { useExportPDF } from '@/hooks/useExportPDF';
@@ -16,28 +18,55 @@ import { groupService } from './services/groupService';
 import { GruposIndexProps, GroupFormatted } from './types';
 
 export default function GruposIndex({
-    grupos = [],
+    grupos,
     profesores = [],
     materias = [],
-    especialidades = []
-}: GruposIndexProps) {
-    const formattedGroups: GroupFormatted[] = (grupos || []).map(g => ({
+    especialidades = [],
+    cycles = [],
+    filters = { search: '' }
+}: any) {
+    // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
+    const groupDataList = useMemo(() => {
+        if (Array.isArray(grupos)) return grupos;
+        return grupos?.data || [];
+    }, [grupos]);
+
+    const formattedGroups: GroupFormatted[] = useMemo(() => groupDataList.map((g: any) => ({
         id: g.id,
         code: g.codigo || 'S/C',
         name: g.nombre || 'Sin nombre',
+        semestre: g.semestre || 1,
+        generacion: g.generacion || 'N/A',
         shift: g.turno || 'Matutino',
         teacherName: g.profesor || 'Pendiente de Asignación',
         teacher_id: (g as any).docente_tutor_id,
         specialty: g.especialidad || 'General',
         activo: g.activo ?? true
-    }));
+    })), [groupDataList]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [specialtyFilter, setSpecialtyFilter] = useState('all');
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (searchQuery !== (filters.search || '')) {
+                router.get(window.location.pathname, {
+                    search: searchQuery
+                }, {
+                    preserveState: true,
+                    replace: true,
+                    only: ['grupos']
+                });
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<GroupFormatted | null>(null);
+    const [isProcessingPromote, setIsPromoteProcessing] = useState(false);
 
     const { triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
@@ -48,6 +77,8 @@ export default function GruposIndex({
         codigo: '',
         nombre: '',
         turno: 'Matutino',
+        semestre: 1,
+        generacion: '',
         especialidad: '',
         docente_tutor_id: '' as string | number,
         activo: true
@@ -85,18 +116,16 @@ export default function GruposIndex({
         exportToPDF("Reporte de Grupos Académicos", headers, rows, "reporte_grupos");
     };
 
-    const filteredGroups = filteredGroupsList(formattedGroups, searchQuery, specialtyFilter);
-
-    function filteredGroupsList(list: GroupFormatted[], search: string, filter: string) {
-        const query = search.toLowerCase();
-        return list.filter(g => {
+    const filteredGroups = useMemo(() => {
+        const query = searchQuery.toLowerCase();
+        return formattedGroups.filter(g => {
             const matchesSearch = (g.name?.toLowerCase() || '').includes(query) ||
                 (g.code?.toLowerCase() || '').includes(query) ||
                 (g.teacherName?.toLowerCase() || '').includes(query);
-            const matchesSpecialty = filter === 'all' || g.specialty === filter;
+            const matchesSpecialty = specialtyFilter === 'all' || g.specialty === specialtyFilter;
             return matchesSearch && matchesSpecialty;
         });
-    }
+    }, [formattedGroups, searchQuery, specialtyFilter]);
 
     const openCreateModal = () => {
         if (!especialidades || especialidades.length === 0) {
@@ -119,6 +148,8 @@ export default function GruposIndex({
             codigo: group.code,
             nombre: group.name,
             turno: group.shift,
+            semestre: group.semestre ?? 1,
+            generacion: group.generacion ?? '',
             especialidad: group.specialty,
             docente_tutor_id: group.teacher_id ?? '',
             activo: group.activo ?? true
@@ -179,7 +210,26 @@ export default function GruposIndex({
         }
     };
 
-    const totalGroupsCount = formattedGroups.length;
+    const handlePromoteSubmit = async (promoteData: any) => {
+        setIsPromoteProcessing(true);
+        SwalHelper.loading("Procesando Promoción", "Generando nuevas inscripciones y actualizando historial...");
+
+        try {
+            await axios.post(route('admin.promociones.promote'), promoteData);
+            SwalHelper.success("¡Promoción Exitosa!", "Los alumnos han sido movidos al nuevo nivel académico.");
+            setIsPromoteModalOpen(false);
+            router.reload();
+        } catch (error: any) {
+            console.error(error);
+            SwalHelper.error("Error", error.response?.data?.error || "No se pudo procesar la promoción.");
+        } finally {
+            setIsPromoteProcessing(false);
+        }
+    };
+
+    const totalGroupsCount = useMemo(() => (grupos === null || grupos === undefined ? null : (Array.isArray(grupos) ? grupos.length : grupos?.total || 0)), [grupos]);
+    const assignedGroupsCount = useMemo(() => (grupos === null || grupos === undefined) ? null : formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length, [formattedGroups, grupos]);
+
 
     return (
         <AdminPageLayout
@@ -187,11 +237,12 @@ export default function GruposIndex({
             title="Gestión de grupos"
             subtitle="Consulta, edita y registra grupos académicos y tutores"
             breadcrumb="Grupos"
-            isLoading={grupos.length === 0}
+            isLoading={grupos === null || grupos === undefined}
             metrics={[
-                { code: "T1", label: "Grupos totales", value: grupos.length > 0 ? totalGroupsCount : 0 },
-                { code: "T4", label: "Asignados", value: grupos.length > 0 ? formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length : 0 }
+                { code: "T1", label: "Grupos totales", value: totalGroupsCount },
+                { code: "T4", label: "Asignados", value: assignedGroupsCount }
             ]}
+
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
@@ -222,9 +273,23 @@ export default function GruposIndex({
                 <GroupTable
                     groups={filteredGroups}
                     onOpenEditModal={openEditModal}
+                    onOpenPromoteModal={(group) => {
+                        setSelectedGroup(group);
+                        setIsPromoteModalOpen(true);
+                    }}
                     onDelete={handleDeleteGroup}
                 />
             </Deferred>
+
+            <PromotionModal
+                isOpen={isPromoteModalOpen}
+                onClose={() => setIsPromoteModalOpen(false)}
+                sourceGroup={selectedGroup}
+                cycles={cycles}
+                groups={formattedGroups}
+                onConfirm={handlePromoteSubmit}
+                processing={isProcessingPromote}
+            />
 
             <GroupFormModal
                 isOpen={isCreateModalOpen}
@@ -235,9 +300,7 @@ export default function GruposIndex({
                 mode="create"
                 group={null}
                 profesores={profesores}
-                materiasList={materias}
                 specialties={especialidades}
-                groupsList={formattedGroups}
                 data={data}
                 setData={setData}
                 errors={errors}
@@ -253,9 +316,7 @@ export default function GruposIndex({
                 mode="edit"
                 group={selectedGroup}
                 profesores={profesores}
-                materiasList={materias}
                 specialties={especialidades}
-                groupsList={formattedGroups}
                 data={data}
                 setData={setData}
                 errors={errors}

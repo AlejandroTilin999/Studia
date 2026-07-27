@@ -1,38 +1,30 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, BookOpen, Hash, Layers } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
 import { FormTextarea } from '@/Components/forms/FormTextarea';
 import { FormSelect } from '@/Components/forms/FormSelect';
-
-import { AcademicGroupProp } from '../../Alumnos/types';
 import { GENERAL_AREAS } from '../../Alumnos/constants';
 
 interface SubjectFormModalProps {
     isOpen: boolean;
     onClose: () => void;
     mode: 'create' | 'edit';
-    subject: any;
     data: {
         codigo: string;
         nombre: string;
-        semestre: number;
+        semestre: number | string;
         descripcion: string;
         tipo: 'General' | 'Especialidad';
         area: string;
-        linked_groups: string[];
         specialty_ids: number[];
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
-    profesores: any[];
-    grupos: any[];
     specialties: any[];
-    existingCodes?: string[];
-    activePeriod?: any;
 }
 
 export default function SubjectFormModal({
@@ -45,8 +37,6 @@ export default function SubjectFormModal({
     processing,
     onSubmit,
     specialties = [],
-    existingCodes = [],
-    activePeriod,
 }: SubjectFormModalProps) {
 
     const generateSubjectCode = (name: string) => {
@@ -69,20 +59,8 @@ export default function SubjectFormModal({
             prefix = mainWords[0].slice(0, 1) + mainWords[1].slice(0, 1) + mainWords[2].slice(0, 1);
         }
 
-        const generateRandomSuffix = () => {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            for (let i = 0; i < 4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return result;
-        };
-
-        let candidate = `${prefix}-${generateRandomSuffix()}`;
-        let attempts = 0;
-        while (existingCodes.includes(candidate) && attempts < 10) {
-            candidate = `${prefix}-${generateRandomSuffix()}`;
-            attempts++;
-        }
-        return candidate;
+        const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `${prefix}-${suffix}`;
     };
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,84 +84,75 @@ export default function SubjectFormModal({
             showFooter={false}
             fullBleed={true}
         >
-            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[280px] h-full text-left relative">
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[460px] max-h-[90vh] md:max-h-none overflow-y-auto md:overflow-visible h-full text-left relative">
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
+                    className="fixed md:absolute top-4 right-4 z-50 p-1.5 rounded-lg text-white md:text-slate-400 hover:bg-white/10 md:hover:bg-slate-100 md:hover:text-slate-700 transition-all focus:outline-none"
                 >
                     <X size={16} className="stroke-[2.5]" />
                 </button>
 
-                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
+                {/* Left Panel */}
+                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none shrink-0">
                     <div className="space-y-6">
                         <div>
-                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
-                            <h3 className="text-xl font-bold text-white leading-tight">
-                                {mode === 'create' ? 'Registrar Nueva Materia' : 'Modificar Información de la Materia'}
+                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-8 md:h-10 w-auto object-contain mb-4 md:mb-6" />
+                            <h3 className="text-lg md:text-xl font-bold text-white leading-tight flex items-center gap-2">
+                                <BookOpen size={20} />
+                                {mode === 'create' ? 'Nueva Materia' : 'Editar Materia'}
                             </h3>
                         </div>
                         <div className="space-y-4">
-                            <p className="text-xs text-blue-100 leading-relaxed font-normal">
+                            <p className="text-[11px] md:text-xs text-blue-100 leading-relaxed font-normal">
                                 {mode === 'create'
-                                    ? 'Crea una nueva materia escolar. Configura el temario y vincúlala con los grupos correspondientes.'
-                                    : 'Actualiza la clave, el temario o la vinculación con la especialidad.'}
+                                    ? 'Registra una asignatura oficial en el catálogo. Define su tipo, área y los bachilleratos donde se imparte.'
+                                    : 'Modifica la estructura curricular o el temario de la asignatura.'}
                             </p>
                         </div>
                     </div>
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
-                        Prepahid Campus Escolar
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6 uppercase tracking-widest">
+                        Catálogo Curricular PH
                     </div>
                 </div>
 
-                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative">
-                    <div className="space-y-4 flex-1 pr-2">
+                {/* Right Panel */}
+                <div className="col-span-1 md:col-span-3 p-5 md:p-6 flex flex-col justify-between min-h-0 md:min-h-[440px] relative bg-white rounded-b-[10px] md:rounded-r-[10px] md:rounded-bl-none">
+                    <div className="space-y-5 flex-1 flex flex-col justify-center">
                         <div className="grid grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel required>Código / Clave</FormLabel>
                                 <FormInput
                                     readOnly
-                                    placeholder="AUTOGENERADO"
                                     value={data.codigo || 'PROCESANDO...'}
-                                    className="bg-slate-50 border border-slate-200 hover:border-slate-200 text-slate-500 font-mono focus:border-slate-200 focus:ring-0 cursor-not-allowed select-none h-9 text-xs"
+                                    className="bg-slate-50 border border-slate-200 text-slate-500 font-mono focus:ring-0 cursor-not-allowed h-9 text-xs"
+                                    icon={<Hash size={13} />}
                                 />
-                                {errors.codigo && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.codigo}</span>}
                             </div>
                             <div className="space-y-1.5">
-                                <FormLabel required>Semestre</FormLabel>
+                                <FormLabel required>Grado / Semestre</FormLabel>
                                 <FormSelect
                                     value={data.semestre}
-                                    onChange={e => setData('semestre', Number(e.target.value))}
-                                    className="h-9 text-xs"
+                                    onChange={e => setData('semestre', e.target.value)}
+                                    className="h-9 text-xs font-normal"
                                 >
-                                    {[1, 2, 3, 4, 5, 6].map(s => <option key={s} value={s}>{s}° Semestre</option>)}
+                                    <option value="">Selecciona...</option>
+                                    {[1, 2, 3, 4, 5, 6].map(s => (
+                                        <option key={s} value={s}>{s}° Semestre</option>
+                                    ))}
                                 </FormSelect>
-                                {errors.semestre && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.semestre}</span>}
                             </div>
                         </div>
 
                         <div className="space-y-1.5 text-left">
                             <FormLabel required>Nombre de la Asignatura</FormLabel>
                             <FormInput
-                                required
-                                placeholder="Ej: Matemáticas I"
+                                placeholder="Ej: Álgebra Superior"
                                 value={data.nombre}
                                 onChange={handleNameChange}
-                                className="h-9 text-xs"
+                                className="h-9 text-xs font-bold"
                             />
-                            {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.nombre}</span>}
-                        </div>
-
-                        <div className="space-y-1.5 text-left">
-                            <FormLabel>Descripción / Temario resumido</FormLabel>
-                            <FormTextarea
-                                placeholder="Escribe el alcance o temas clave..."
-                                value={data.descripcion}
-                                onChange={e => setData('descripcion', e.target.value)}
-                                rows={2}
-                                className="text-xs"
-                            />
-                            {errors.descripcion && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.descripcion}</span>}
+                            {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -199,8 +168,8 @@ export default function SubjectFormModal({
                                     }}
                                     className="h-9 text-xs"
                                 >
-                                    <option value="General">General</option>
-                                    <option value="Especialidad">Especialidad</option>
+                                    <option value="General">General (Tronco Común)</option>
+                                    <option value="Especialidad">De Especialidad</option>
                                 </FormSelect>
                             </div>
 
@@ -217,15 +186,25 @@ export default function SubjectFormModal({
                                             <option key={area} value={area}>{area}</option>
                                         ))}
                                     </FormSelect>
-                                    {errors.area && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.area}</span>}
                                 </div>
                             )}
                         </div>
 
+                        <div className="space-y-1.5 text-left">
+                            <FormLabel>Descripción / Objetivo</FormLabel>
+                            <FormTextarea
+                                placeholder="Alcance de la materia..."
+                                value={data.descripcion}
+                                onChange={e => setData('descripcion', e.target.value)}
+                                rows={2}
+                                className="text-xs"
+                            />
+                        </div>
+
                         {data.tipo === 'Especialidad' && (
                             <div className="space-y-1.5 text-left pt-1 animate-in slide-in-from-top-1 duration-200">
-                                <FormLabel required>Carreras / Especialidades asociadas</FormLabel>
-                                <div className="grid grid-cols-2 gap-3 max-h-[100px] overflow-y-auto border border-slate-100 p-3 rounded-xl bg-slate-50/50">
+                                <FormLabel required>Bachilleratos Asociados</FormLabel>
+                                <div className="grid grid-cols-2 gap-2 max-h-[100px] overflow-y-auto border border-slate-100 p-3 rounded-xl bg-slate-50/50">
                                     {specialties.map(spec => {
                                         const isChecked = data.specialty_ids.includes(spec.id);
                                         return (
@@ -237,9 +216,9 @@ export default function SubjectFormModal({
                                                         if (isChecked) setData('specialty_ids', data.specialty_ids.filter(id => id !== spec.id));
                                                         else setData('specialty_ids', [...data.specialty_ids, spec.id]);
                                                     }}
-                                                    className="rounded-md border-slate-300 text-[#1e88e5] focus:ring-[#1e88e5] h-4 w-4 transition-all"
+                                                    className="rounded border-slate-300 text-[#0266E0] focus:ring-[#0266E0] h-3.5 w-3.5 transition-all"
                                                 />
-                                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 truncate">{spec.nombre}</span>
+                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-800 truncate">{spec.nombre}</span>
                                             </label>
                                         );
                                     })}
@@ -248,20 +227,21 @@ export default function SubjectFormModal({
                         )}
                     </div>
 
-                    <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
+                    {/* Footer */}
+                    <div className="mt-8 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 h-9 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                            className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={processing || !isFormValid}
-                            className="px-5 h-9 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none active:scale-[0.98]"
+                            className="px-5 py-2 bg-[#0266E0] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none flex items-center gap-2"
                         >
-                            {processing ? 'Guardando...' : mode === 'create' ? 'Registrar' : 'Guardar'}
+                            {processing ? 'Guardando...' : (mode === 'create' ? 'Crear Materia' : 'Guardar')}
                         </button>
                     </div>
                 </div>

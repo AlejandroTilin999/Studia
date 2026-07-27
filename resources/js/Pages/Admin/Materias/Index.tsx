@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
 import { FileSpreadsheet, Layers, Users } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
@@ -15,8 +15,14 @@ import { useExportPDF } from '@/hooks/useExportPDF';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
-export default function MateriasIndex({ materias = [], profesores = [], grupos = [], especialidades = [], activePeriod }: any) {
-    const formattedSubjects: SubjectFormatted[] = materias.map((course: any) => ({
+export default function MateriasIndex({ materias, profesores = [], grupos = [], especialidades = [], activePeriod, filters = { search: '' } }: any) {
+    // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
+    const subjectDataList = useMemo(() => {
+        if (Array.isArray(materias)) return materias;
+        return materias?.data || [];
+    }, [materias]);
+
+    const formattedSubjects: SubjectFormatted[] = useMemo(() => subjectDataList.map((course: any) => ({
         id: course.id,
         code: course.codigo || 'S/C',
         name: course.nombre || 'Sin nombre',
@@ -26,15 +32,30 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         teacherName: course.profesor || 'Pendiente de Asignación',
         teacher_id: course.docente_id,
         linkedGroups: course.grupos || [],
-        description: course.descripcion || 'Sin descripción disponible.',
+        description: course.description || 'Sin descripción disponible.',
         specialties: course.especialidades?.map((e: any) => ({ id: e.id, name: e.nombre })) || []
-    }));
+    })), [subjectDataList]);
 
-    const groupsList = grupos.map((g: any) => g.codigo);
+    const groupsList = useMemo(() => grupos.map((g: any) => g.codigo), [grupos]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [groupFilter, setGroupFilter] = useState('all');
     const [parityFilter, setParityFilter] = useState<'all' | 'current' | 'other'>('all');
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (searchQuery !== (filters.search || '')) {
+                router.get(window.location.pathname, {
+                    search: searchQuery
+                }, {
+                    preserveState: true,
+                    replace: true,
+                    only: ['materias']
+                });
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -91,7 +112,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         exportToPDF("Catálogo Académico de Materias", headers, rows, "reporte_materias");
     };
 
-    const filteredSubjects = formattedSubjects.filter(subject => {
+    const filteredSubjects = useMemo(() => formattedSubjects.filter(subject => {
         const matchesSearch = subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             subject.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             subject.teacherName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -105,7 +126,7 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         }
 
         return matchesSearch && matchesGroup && matchesParity;
-    });
+    }), [formattedSubjects, searchQuery, groupFilter, parityFilter, activePeriod]);
 
     const openCreateModal = () => {
         setModalMode('create');
@@ -181,7 +202,9 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
         });
     };
 
-    const totalSubjectsCount = formattedSubjects.length;
+    const totalSubjectsCount = useMemo(() => (materias === null || materias === undefined ? null : (Array.isArray(materias) ? materias.length : materias?.total || 0)), [materias]);
+    const subjectsInCycleCount = useMemo(() => (materias === null || materias === undefined) ? null : formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length, [formattedSubjects, materias, activePeriod]);
+    const subjectsWithoutTeacherCount = useMemo(() => (materias === null || materias === undefined) ? null : formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length, [formattedSubjects, materias]);
 
     return (
         <AdminPageLayout
@@ -189,12 +212,14 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
             title="Gestión de materias"
             subtitle={activePeriod ? `Ciclo Activo: ${activePeriod.nombre} (${activePeriod.es_nones ? 'Semestres Nones' : 'Semestres Pares'})` : "Consulta, edita y registra planes de estudio"}
             breadcrumb="Materias"
-            isLoading={materias.length === 0}
+            isLoading={materias === null || materias === undefined}
+
             metrics={[
-                { code: "T1", label: "Materias totales", value: materias.length > 0 ? totalSubjectsCount : 0 },
-                { code: "T3", label: "En ciclo actual", value: materias.length > 0 ? formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length : 0 },
-                { code: "T4", label: "Sin docente", value: materias.length > 0 ? formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length : 0 }
+                { code: "T1", label: "Materias totales", value: totalSubjectsCount },
+                { code: "T3", label: "En ciclo actual", value: subjectsInCycleCount },
+                { code: "T4", label: "Sin docente", value: subjectsWithoutTeacherCount }
             ]}
+
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
@@ -235,17 +260,12 @@ export default function MateriasIndex({ materias = [], profesores = [], grupos =
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 mode={modalMode}
-                subject={selectedSubject}
                 data={data}
                 setData={setData}
                 errors={errors}
                 processing={processing}
                 onSubmit={handleSubmit}
-                profesores={profesores}
-                grupos={grupos}
                 specialties={especialidades}
-                existingCodes={formattedSubjects.map(s => s.code)}
-                activePeriod={activePeriod}
             />
         </AdminPageLayout>
     );

@@ -81,7 +81,7 @@ export default function ConfirmActionModal({
             onClick={handleBackdropClick}
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 select-none animate-in fade-in duration-200"
         >
-            <div className="bg-white w-full max-w-md rounded-[24px] border border-slate-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col relative">
+            <div className="bg-white w-full max-w-md rounded-lg border border-slate-100 shadow-none overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col relative">
 
                 {currentStatus !== 'idle' ? (
                     <div className="p-6">
@@ -207,10 +207,10 @@ export default function ConfirmActionModal({
                                 <button
                                     type="submit"
                                     disabled={!isMatch}
-                                    className={`px-5 py-2.5 text-xs font-bold rounded-xl transition-colors shadow-sm ${isMatch
+                                    className={`px-5 py-2.5 text-xs font-bold rounded-lg transition-colors ${isMatch
                                             ? confirmButtonVariant === 'danger'
-                                                ? 'bg-[#c23c1a] hover:bg-[#a63013] text-white cursor-pointer active:scale-[0.98]'
-                                                : 'bg-[#1e88e5] hover:bg-blue-700 text-white cursor-pointer active:scale-[0.98]'
+                                                ? 'bg-[#c23c1a] hover:bg-[#a63013] text-white cursor-pointer'
+                                                : 'bg-[#1e88e5] hover:bg-blue-700 text-white cursor-pointer'
                                             : 'bg-[#f1f3f5] text-[#8a99a8] cursor-not-allowed border border-slate-150'
                                         }`}
                                 >
@@ -219,7 +219,7 @@ export default function ConfirmActionModal({
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors shadow-sm"
+                                    className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-lg transition-colors"
                                 >
                                     Cancelar
                                 </button>

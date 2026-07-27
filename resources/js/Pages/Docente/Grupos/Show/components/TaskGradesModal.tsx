@@ -16,6 +16,7 @@ interface TaskGradesModalProps {
     isPdfModalOpen: boolean;
     setIsPdfModalOpen: (open: boolean) => void;
     saveTasks: (newTasks: Task[]) => void;
+    isReadOnly?: boolean;
 }
 
 export default function TaskGradesModal({
@@ -31,7 +32,8 @@ export default function TaskGradesModal({
     sendPrivateMessage,
     isPdfModalOpen,
     setIsPdfModalOpen,
-    saveTasks
+    saveTasks,
+    isReadOnly = false
 }: TaskGradesModalProps) {
     const selectedTask = tasks.find(t => t.id === selectedTaskId);
     if (!selectedTask) return null;
@@ -136,10 +138,14 @@ export default function TaskGradesModal({
                                 ))
                             )}
                         </div>
-                        <form onSubmit={e => { e.preventDefault(); currentStudentId && sendPrivateMessage(chatKey); }} className="flex gap-2">
-                            <input type="text" value={chatInputText} onChange={e => setChatInputText(e.target.value)} placeholder="Escribe un mensaje privado..." className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 font-semibold outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] transition-all" />
-                            <button type="submit" className="bg-[#1e88e5] hover:bg-blue-700 text-white px-5 rounded-xl font-extrabold text-xs transition-all">Enviar</button>
-                        </form>
+                        {!isReadOnly ? (
+                            <form onSubmit={e => { e.preventDefault(); currentStudentId && sendPrivateMessage(chatKey); }} className="flex gap-2">
+                                <input type="text" value={chatInputText} onChange={e => setChatInputText(e.target.value)} placeholder="Escribe un mensaje privado..." className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 font-semibold outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] transition-all" />
+                                <button type="submit" className="bg-[#1e88e5] hover:bg-blue-700 text-white px-5 rounded-xl font-extrabold text-xs transition-all">Enviar</button>
+                            </form>
+                        ) : (
+                            <div className="p-3 bg-slate-50 rounded-xl text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest border border-slate-100/50">El foro de mensajes está cerrado</div>
+                        )}
                     </div>
                 </div>
 
@@ -156,8 +162,9 @@ export default function TaskGradesModal({
                                 <div className="flex items-center gap-1.5">
                                     <select
                                         value={activeStudent ? (selectedTask.calificaciones[activeStudent.id] ?? '') : ''}
+                                        disabled={isReadOnly}
                                         onChange={e => activeStudent && handleTaskGradeChange(selectedTask.id, activeStudent.id, e.target.value)}
-                                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-800 outline-none focus:ring-1 focus:ring-[#1e88e5] transition-all cursor-pointer"
+                                        className={`bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-800 outline-none focus:ring-1 focus:ring-[#1e88e5] transition-all cursor-pointer ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
                                     >
                                         <option value="">— Sin Calificar —</option>
                                         {(() => {

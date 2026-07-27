@@ -10,7 +10,7 @@ export const FormSelect = React.forwardRef<HTMLSelectElement, FormSelectProps>(
                 <select
                     ref={ref}
                     className={cn(
-                        "w-full px-3.5 pr-10 bg-white border border-slate-200 hover:border-slate-350 rounded-lg text-xs font-medium text-slate-800 h-10 transition-all focus:border-[#1e88e5] focus:ring-1 focus:ring-[#1e88e5] focus:outline-none cursor-pointer shadow-none appearance-none bg-none",
+                        "w-full px-3.5 pr-10 bg-white border border-slate-200 hover:border-slate-350 rounded-lg text-xs font-normal text-slate-800 h-10 transition-all focus:border-[#1e88e5] focus:ring-1 focus:ring-[#1e88e5] focus:outline-none cursor-pointer shadow-none appearance-none bg-none",
                         className
                     )}
                     {...props}

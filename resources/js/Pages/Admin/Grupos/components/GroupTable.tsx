@@ -5,12 +5,14 @@ import { TableActions, TableActionButton } from '@/Components/TableActions';
 interface GroupTableProps {
     groups: GroupFormatted[];
     onOpenEditModal: (group: GroupFormatted) => void;
+    onOpenPromoteModal: (group: GroupFormatted) => void;
     onDelete: (id: number, name: string) => void;
 }
 
 export default function GroupTable({
     groups,
     onOpenEditModal,
+    onOpenPromoteModal,
     onDelete,
 }: GroupTableProps) {
     return (
@@ -21,8 +23,13 @@ export default function GroupTable({
             columns={[
                 {
                     header: "Código",
-                    accessor: (row) => row.code,
-                    className: "text-slate-500 font-medium text-[13px] text-left",
+                    accessor: (row) => (
+                        <div className="flex flex-col">
+                            <span className="text-slate-800 font-bold text-[13px]">{row.code}</span>
+                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{row.generacion}</span>
+                        </div>
+                    ),
+                    className: "text-left",
                 },
                 {
                     header: "Nombre del grupo",
@@ -34,7 +41,16 @@ export default function GroupTable({
                     ),
                 },
                 {
-                    header: "Tutor / Profesor Asignado",
+                    header: "Semestre",
+                    accessor: (row) => (
+                        <span className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-black text-slate-600">
+                            {row.semestre}°
+                        </span>
+                    ),
+                    align: "center",
+                },
+                {
+                    header: "Tutor / Profesor",
                     accessor: (row) => row.teacherName,
                     className: "text-slate-500 font-medium text-[13px] text-left",
                 },
@@ -42,6 +58,12 @@ export default function GroupTable({
                     header: "Acciones",
                     accessor: (row) => (
                         <TableActions align="start">
+                            <TableActionButton
+                                onClick={() => onOpenPromoteModal(row)}
+                                title="Promover Alumnos"
+                                icon="promote"
+                                variant="success"
+                            />
                             <TableActionButton
                                 onClick={() => onOpenEditModal(row)}
                                 title="Editar Grupo"

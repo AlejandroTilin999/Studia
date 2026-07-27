@@ -14,27 +14,27 @@ class ReportController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Reportes/Index', [
-            'groups' => AcademicGroup::all()->map(function ($g) {
+            'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(function ($g) {
                 return [
                     'id' => $g->id,
                     'nombre' => $g->nombre,
                 ];
-            }),
-            'students' => Enrollment::with('user')->get()->map(function ($e) {
+            })),
+            'students' => Inertia::defer(fn() => Enrollment::with('user')->get()->map(function ($e) {
                 return [
                     'matricula' => $e->codigo_alumno,
                     'nombre' => $e->user?->nombre_completo ?? 'Sin nombre',
                     'grupo_id' => $e->grupo_id,
                 ];
-            }),
-            'periods' => AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
+            })),
+            'periods' => Inertia::defer(fn() => AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
                 return [
                     'id' => $p->id,
                     'nombre' => $p->nombre,
                 ];
-            }),
-            'stats' => $this->getReportStats(),
-            'recentDownloads' => $this->getRecentDownloads()
+            })),
+            'stats' => Inertia::defer(fn() => $this->getReportStats()),
+            'recentDownloads' => Inertia::defer(fn() => $this->getRecentDownloads())
         ]);
     }
 
@@ -103,9 +103,16 @@ class ReportController extends Controller
      */
     public function destroyDownload($id)
     {
-        \DB::transaction(function () use ($id) {
-            \DB::table('reporte_descargas')->where('id', $id)->delete();
-        });
+        $download = ReportDownload::find($id);
+        if ($download) {
+            \App\Models\AdminAuditLog::create([
+                'usuario_id' => auth()->id(),
+                'accion' => 'ELIMINAR_REPORTE',
+                'descripcion' => "Se eliminó el folio de reporte {$download->folio} del historial.",
+                'metadata' => ['id' => $id, 'folio' => $download->folio]
+            ]);
+            $download->delete();
+        }
 
         return redirect()->route('admin.reportes.index');
     }
@@ -117,6 +124,11 @@ class ReportController extends Controller
     {
         \DB::transaction(function () {
             \DB::table('reporte_descargas')->delete();
+            \App\Models\AdminAuditLog::create([
+                'usuario_id' => auth()->id(),
+                'accion' => 'LIMPIAR_HISTORIAL_REPORTES',
+                'descripcion' => "Se vació completamente el historial de descargas de reportes.",
+            ]);
         });
 
         return redirect()->route('admin.reportes.index');

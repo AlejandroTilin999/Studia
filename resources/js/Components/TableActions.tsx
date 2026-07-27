@@ -1,10 +1,10 @@
 import React from 'react';
-import { Edit, Trash2, Key, FileText, Plus, UserMinus, UserPlus } from 'lucide-react';
+import { Edit, Trash2, Key, FileText, Plus, UserMinus, UserPlus, TrendingUp } from 'lucide-react';
 
 interface ActionButtonProps {
     onClick: (e: React.MouseEvent) => void;
     title: string;
-    icon: 'edit' | 'delete' | 'reset-password' | 'kardex' | 'activate' | 'plus' | 'suspend';
+    icon: 'edit' | 'delete' | 'reset-password' | 'kardex' | 'activate' | 'plus' | 'suspend' | 'promote';
     variant?: 'default' | 'danger' | 'success' | 'warning';
 }
 
@@ -25,6 +25,8 @@ export function TableActionButton({ onClick, title, icon, variant = 'default' }:
                 return <UserPlus size={16} />;
             case 'plus':
                 return <Plus size={16} />;
+            case 'promote':
+                return <TrendingUp size={16} />;
             default:
                 return null;
         }

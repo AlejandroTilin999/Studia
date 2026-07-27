@@ -8,6 +8,7 @@ use App\Models\Grade;
 use App\Models\Tarea;
 use App\Models\EntregaTarea;
 use App\Models\Enrollment;
+use App\Services\AcademicPeriodService;
 use Illuminate\Http\Request;
 
 class DocenteClassroomController extends Controller
@@ -17,8 +18,11 @@ class DocenteClassroomController extends Controller
      */
     public function getConfig(Request $request, $uuid)
     {
-        $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
+        $load = AcademicLoad::with('academicPeriod')->where('uuid', $uuid)->firstOrFail();
         $parcial = (int) $request->query('parcial', 1);
+
+        // Validar si la captura está habilitada
+        $lockInfo = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial);
 
         // 1. Obtener criterios
         $criteria = CriterioEvaluacion::where('carga_id', $load->id)
@@ -42,21 +46,33 @@ class DocenteClassroomController extends Controller
             ->with('user')
             ->get();
 
+        $studentIds = $enrollments->pluck('usuario_id');
+        $criteriaIds = $criteria->pluck('id');
+
+        // [OPTIMIZACIÓN] Obtener todas las calificaciones de una vez para evitar N+1
+        $allGrades = Grade::whereIn('usuario_id', $studentIds)
+            ->whereIn('criterio_id', $criteriaIds)
+            ->get()
+            ->groupBy('usuario_id');
+
+        // [OPTIMIZACIÓN] Obtener todos los promedios consolidados de una vez
+        $allConsolidados = Grade::whereIn('usuario_id', $studentIds)
+            ->where('carga_id', $load->id)
+            ->whereNull('criterio_id')
+            ->get()
+            ->keyBy('usuario_id');
+
         $gradesData = [];
         foreach ($enrollments as $enrollment) {
             $studentScores = [];
+            $studentGrades = $allGrades->get($enrollment->usuario_id, collect());
+
             foreach ($criteria as $c) {
-                $grade = Grade::where('criterio_id', $c['id'])
-                    ->where('usuario_id', $enrollment->usuario_id)
-                    ->first();
+                $grade = $studentGrades->where('criterio_id', $c['id'])->first();
                 $studentScores[$c['id']] = $grade ? $grade->calificacion : '';
             }
 
-            // [OPTIMIZACIÓN] Obtener promedios ya consolidados (criterio_id es null para el resumen)
-            $consolidado = Grade::where('usuario_id', $enrollment->usuario_id)
-                ->where('carga_id', $load->id)
-                ->whereNull('criterio_id')
-                ->first();
+            $consolidado = $allConsolidados->get($enrollment->usuario_id);
 
             $gradesData[] = [
                 'id' => $enrollment->usuario_id,
@@ -77,7 +93,8 @@ class DocenteClassroomController extends Controller
             'configurado' => $configurado,
             'criterios' => $criteria,
             'alumnos' => $gradesData,
-            'color_tema' => $load->color_tema ?? 'blue'
+            'color_tema' => $load->color_tema ?? 'blue',
+            'lock_info' => $lockInfo
         ]);
     }
 
@@ -203,14 +220,14 @@ class DocenteClassroomController extends Controller
 
         $tareas = Tarea::where('carga_id', $load->id)
             ->where('parcial', $parcial)
+            ->with('entregas')
             ->orderBy('id', 'asc')
             ->get();
 
         $tasksData = [];
         foreach ($tareas as $t) {
             $grades = [];
-            $entregas = EntregaTarea::where('tarea_id', $t->id)->get();
-            foreach ($entregas as $entrega) {
+            foreach ($t->entregas as $entrega) {
                 $grades[$entrega->usuario_id] = $entrega->calificacion;
             }
             $tasksData[] = [

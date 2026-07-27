@@ -2,6 +2,8 @@ export interface GrupoBackend {
     id: number;
     codigo: string;
     nombre: string;
+    semestre: number;
+    generacion: string;
     turno: string;
     especialidad: string;
     tutor_teacher_id: number | null;
@@ -23,8 +25,14 @@ export interface MateriaSelect {
 
 export interface SpecialtySelect {
     id: number;
-    name: string;
-    code: string;
+    nombre: string;
+    codigo: string;
+}
+
+export interface CycleItem {
+    id: number;
+    nombre: string;
+    activo: boolean;
 }
 
 export interface GruposIndexProps {
@@ -32,12 +40,15 @@ export interface GruposIndexProps {
     profesores?: ProfesorSelect[];
     materias?: MateriaSelect[];
     especialidades?: SpecialtySelect[];
+    cycles?: CycleItem[];
 }
 
 export interface GroupFormatted {
     id: number;
     code: string;
     name: string;
+    semestre: number;
+    generacion: string;
     shift: string;
     teacherName: string;
     teacher_id: number | null;

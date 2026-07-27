@@ -66,33 +66,75 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('admin')->middleware('role:admin')->group(function () {
             Route::get('/', function () {
                 $cycles = \App\Models\AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
+                    $formatDate = fn($d) => $d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d;
+
                     return [
                         'id' => $p->id,
                         'nombre' => $p->nombre,
-                        'fecha_inicio' => $p->fecha_inicio instanceof \DateTimeInterface ? $p->fecha_inicio->format('Y-m-d') : $p->fecha_inicio,
-                        'fecha_fin' => $p->fecha_fin instanceof \DateTimeInterface ? $p->fecha_fin->format('Y-m-d') : $p->fecha_fin,
+                        'fecha_inicio' => $formatDate($p->fecha_inicio),
+                        'fecha_fin' => $formatDate($p->fecha_fin),
                         'activo' => (bool)$p->activo,
+                        // [FIX v2.9.3] Formatear fechas de parciales para evitar "Invalid Date"
+                        'p1_inicio' => $formatDate($p->p1_inicio), 'p1_fin' => $formatDate($p->p1_fin), 'p1_activo' => (bool)$p->p1_activo,
+                        'p2_inicio' => $formatDate($p->p2_inicio), 'p2_fin' => $formatDate($p->p2_fin), 'p2_activo' => (bool)$p->p2_activo,
+                        'p3_inicio' => $formatDate($p->p3_inicio), 'p3_fin' => $formatDate($p->p3_fin), 'p3_activo' => (bool)$p->p3_activo,
                     ];
                 });
 
-                // Contadores Globales - Consultas Directas
-                $studentsCount = \DB::table('alumnos')->where('estatus', 'active')->count();
-                $teachersCount = \DB::table('docentes')->count();
-                $groupsCount   = \DB::table('grupos')->count();
-                $coursesCount  = \DB::table('materias')->count();
+                // [OPTIMIZACIÓN v3.3] Conteos Diferidos para mostrar cargadores en el Dashboard
+                $studentsCount = Inertia::defer(fn() => \DB::table('alumnos')->where('estatus', 'active')->count());
+                $teachersCount = Inertia::defer(fn() => \DB::table('docentes')->count());
+                $groupsCount   = Inertia::defer(fn() => \DB::table('grupos')->count());
+                $coursesCount  = Inertia::defer(fn() => \DB::table('materias')->count());
+                $specialtiesCount = Inertia::defer(fn() => \DB::table('especialidades')->count());
+                $usersCount    = Inertia::defer(fn() => \DB::table('users')->count());
 
-                return Inertia::render('Admin/Dashboard', [
+                // Actividades Recientes (Auditoría)
+                $recentActivities = \App\Models\AdminAuditLog::with('user:id,nombre,apellido_paterno')
+                    ->orderBy('created_at', 'desc')
+                    ->limit(20)
+                    ->get()
+                    ->map(function($log) {
+                        // [FORMAT v2.9.4] Mapeo de acciones técnicas a etiquetas legibles
+                        $actionLabel = match($log->accion) {
+                            'TOGGLE_PARCIAL' => isset($log->metadata['nuevo_estado'])
+                                ? (($log->metadata['nuevo_estado'] === 'abierto' ? 'Abrió ' : 'Cerró ') . 'Parcial ' . ($log->metadata['parcial'] ?? ''))
+                                : 'Cambió Parcial',
+                            'APERTURA_CICLO'   => 'Apertura de Ciclo',
+                            'ACTIVAR_CICLO'    => 'Activó Ciclo',
+                            'CONCLUIR_CICLO'   => 'Concluyó Ciclo',
+                            'ELIMINAR_REPORTE' => 'Eliminó Reporte',
+                            'LIMPIAR_HISTORIAL_REPORTES' => 'Limpió Historial',
+                            default => str_replace('_', ' ', $log->accion)
+                        };
+
+                        return [
+                            'id' => $log->id,
+                            'action' => $actionLabel,
+                            'description' => $log->descripcion, // [NEW] Para mayor detalle
+                            'user' => $log->user ? $log->user->nombre_completo : 'Sistema',
+                            'time' => $log->created_at->isoFormat('D/MM/YYYY - h:mm A'),
+                        ];
+                    });
+
+                return Inertia::render('Admin/Dashboard/Index', [
                     'cycles' => $cycles,
                     'studentsCount' => $studentsCount,
                     'teachersCount' => $teachersCount,
                     'groupsCount' => $groupsCount,
                     'coursesCount' => $coursesCount,
+                    'specialtiesCount' => $specialtiesCount,
+                    'usersCount' => $usersCount,
+                    'recentActivities' => $recentActivities,
                 ]);
             })->name('admin.dashboard');
 
             Route::post('/cycles', [AcademicPeriodController::class, 'store'])->name('admin.cycles.store');
+            Route::put('/cycles/{id}', [AcademicPeriodController::class, 'update'])->name('admin.cycles.update');
             Route::post('/cycles/{id}/activate', [AcademicPeriodController::class, 'activate'])->name('admin.cycles.activate');
             Route::post('/cycles/{id}/close', [AcademicPeriodController::class, 'close'])->name('admin.cycles.close');
+            Route::post('/cycles/{id}/toggle-parcial', [AcademicPeriodController::class, 'toggleParcial'])->name('admin.cycles.toggle_parcial');
+            Route::delete('/audit-logs/{id}', [AcademicPeriodController::class, 'destroyLog'])->name('admin.audit_logs.destroy');
 
             Route::get('/usuarios', [UserController::class, 'index'])->name('admin.users.index');
             Route::post('/usuarios', [UserController::class, 'store'])->name('admin.users.store');
@@ -133,6 +175,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/especialidades', [SpecialtyController::class, 'store'])->name('admin.especialidades.store');
             Route::put('/especialidades/{id}', [SpecialtyController::class, 'update'])->name('admin.especialidades.update');
             Route::delete('/especialidades/{id}', [SpecialtyController::class, 'destroy'])->name('admin.especialidades.destroy');
+
+            // Gestión de Promociones y Cargas
+            Route::post('/promociones/procesar', [\App\Http\Controllers\PromotionController::class, 'promote'])->name('admin.promociones.promote');
+            Route::post('/cargas/importar', [AcademicLoadController::class, 'cloneLoad'])->name('admin.loads.import');
 
             Route::get('/reportes', [ReportController::class, 'index'])->name('admin.reportes.index');
             Route::get('/reportes/asistencia-data/{grupo_id}/{ciclo_id}', [ReportController::class, 'getAttendanceData'])->name('admin.reportes.asistencia_data');
@@ -227,10 +273,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/clases/{uuid}/config', [App\Http\Controllers\DocenteClassroomController::class, 'getConfig']);
             Route::post('/clases/{uuid}/theme', [App\Http\Controllers\DocenteClassroomController::class, 'updateTheme']);
-            Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
-            Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
+
+            Route::middleware('captura.abierta')->group(function() {
+                Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
+                Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
+                Route::post('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'saveTareas']);
+            });
+
             Route::get('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'getTareas']);
-            Route::post('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'saveTareas']);
         });
 
         // ------------------------------------------

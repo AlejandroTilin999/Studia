@@ -12,30 +12,57 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
+
         return Inertia::render('Admin/Usuarios/Index', [
-            'dbUsers' => Inertia::defer(function () {
-                return User::orderBy('created_at', 'desc')->get()->map(function ($u) {
-                    return [
-                        'id' => $u->id,
-                        'nombre' => $u->nombre_completo,
-                        'email' => $u->email,
-                        'rol' => $u->rol ?? 'admin',
-                        'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
-                        'telefono' => $u->telefono ?? '',
-                    ];
-                });
+            'dbUsers' => Inertia::defer(function () use ($search) {
+                $query = User::query();
+
+                if ($search) {
+                    $query->where(function($q) use ($search) {
+                        $q->where('nombre', 'like', "%{$search}%")
+                          ->orWhere('apellido_paterno', 'like', "%{$search}%")
+                          ->orWhere('email', 'like', "%{$search}%");
+                    });
+                }
+
+                return $query->orderBy('created_at', 'desc')
+                    ->paginate(50)
+                    ->through(function ($u) {
+                        return [
+                            'id' => $u->id,
+                            'nombre' => $u->nombre_completo,
+                            'email' => $u->email,
+                            'rol' => $u->rol ?? 'admin',
+                            'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
+                            'telefono' => $u->telefono ?? '',
+                        ];
+                    })
+                    ->withQueryString();
             }),
-            'resetRequests' => \App\Models\PasswordResetRequest::where('status', 'pendiente')
-                ->with('user')
+            'resetRequests' => Inertia::defer(fn() => \App\Models\PasswordResetRequest::where('status', 'pendiente')
+                ->with('user:id,nombre,apellido_paterno,apellido_materno')
+                ->latest()
                 ->get()
                 ->map(fn($r) => [
                     'id' => $r->id,
                     'nombre' => $r->user->nombre_completo ?? 'Usuario desconocido',
                     'email' => $r->email,
                     'fecha' => $r->created_at->diffForHumans(),
-                ])
+                ])),
+            'filters' => [
+                'search' => $search
+            ],
+            // [NEW v3.3] Conteos diferidos para cargadores
+            'userStats' => Inertia::defer(fn() => [
+                'total' => User::count(),
+                'admins' => User::where('rol', 'admin')->count(),
+                'teachers' => User::where('rol', 'docente')->count(),
+                'students' => User::where('rol', 'alumno')->count(),
+                'active' => User::where('activo', true)->count(),
+            ])
         ]);
     }
 

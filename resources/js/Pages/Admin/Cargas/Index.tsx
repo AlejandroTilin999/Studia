@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useForm, Deferred } from '@inertiajs/react';
-import { FileSpreadsheet } from 'lucide-react';
+import { useForm, Deferred, router } from '@inertiajs/react';
+import { FileSpreadsheet, Download } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { RiFileExcel2Fill } from 'react-icons/ri';
 import LoadFormModal from './components/LoadFormModal';
 import LoadTable from './components/LoadTable';
 import LoadTableControls from './components/LoadTableControls';
+import ImportLoadModal from './components/ImportLoadModal';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
@@ -14,15 +15,17 @@ import { useExportPDF } from '@/hooks/useExportPDF';
 import { loadService } from './services/loadService';
 import { CargasIndexProps, AcademicLoadItem } from './types';
 import DotsLoader from '@/Components/ui/DotsLoader';
+import axios from 'axios';
 
 export default function CargasIndex({
-    loads = [],
+    loads,
     periods = [],
     groups = [],
     courses = [],
-    teachers = []
-}: CargasIndexProps) {
-    const [searchQuery, setSearchQuery] = useState('');
+    teachers = [],
+    filters = { search: '' }
+}: any) {
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
@@ -34,15 +37,38 @@ export default function CargasIndex({
     const [periodFilter, setPeriodFilter] = useState('all');
 
     useEffect(() => {
-        if (activePeriod) {
+        if (activePeriod && periodFilter === 'all') {
             setPeriodFilter(activePeriod.id.toString());
         }
     }, [activePeriod]);
 
+    // [OPTIMIZACIÓN] Soportar paginación y búsqueda en servidor
+    const loadData = useMemo(() => {
+        if (Array.isArray(loads)) return loads;
+        return loads?.data || [];
+    }, [loads]);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (searchQuery !== (filters.search || '')) {
+                router.get(window.location.pathname, {
+                    search: searchQuery
+                }, {
+                    preserveState: true,
+                    replace: true,
+                    only: ['loads']
+                });
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery]);
+
     const [groupFilter, setGroupFilter] = useState('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [selectedLoad, setSelectedLoad] = useState<AcademicLoadItem | null>(null);
+    const [isProcessingImport, setIsImportProcessing] = useState(false);
 
     const { data, setData, reset, processing, errors } = useForm({
         ciclo_id: '' as string | number,
@@ -65,25 +91,26 @@ export default function CargasIndex({
     };
 
     const filteredLoads = useMemo(() => {
-        return loads.filter(load => {
+        return loadData.filter(load => {
+            const matchesPeriod = periodFilter === 'all' || load.ciclo_id.toString() === periodFilter;
+            const matchesGroup = groupFilter === 'all' || load.grupo_id.toString() === groupFilter;
+
+            // Búsqueda local complementaria
             const matchesSearch =
                 load.nombre_materia.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 load.codigo_materia.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 load.nombre_docente.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 load.nombre_grupo.toLowerCase().includes(searchQuery.toLowerCase());
 
-            const matchesPeriod = periodFilter === 'all' || load.ciclo_id.toString() === periodFilter;
-            const matchesGroup = groupFilter === 'all' || load.grupo_id.toString() === groupFilter;
-
             return matchesSearch && matchesPeriod && matchesGroup;
         });
-    }, [loads, searchQuery, periodFilter, groupFilter]);
+    }, [loadData, searchQuery, periodFilter, groupFilter]);
 
-    const totalLoadsCount = loads.length;
-    const activeCyclesCount = periods.filter((p: any) => p.activo).length;
-    const coveredGroupsCount = new Set(loads.map(l => l.grupo_id)).size;
+    const totalLoadsCount = useMemo(() => (loads === null || loads === undefined ? null : (Array.isArray(loads) ? loads.length : loads?.total || 0)), [loads]);
+    const coveredGroupsCount = useMemo(() => (loads === null || loads === undefined) ? null : new Set(loadData.map(l => l.grupo_id)).size, [loadData, loads]);
 
     const handleExportExcel = () => {
+
         const headers = ["Grupo", "Materia (Clave)", "Materia (Nombre)", "Docente"];
         const rows = filteredLoads.map(l => [
             l.nombre_grupo,
@@ -124,7 +151,7 @@ export default function CargasIndex({
                 const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
                 if (!matchesParity) return false;
 
-                const alreadyAssigned = loads.some(l =>
+                const alreadyAssigned = loadData.some(l =>
                     l.grupo_id.toString() === g.id.toString() &&
                     l.ciclo_id.toString() === activePeriod.id.toString()
                 );
@@ -190,6 +217,23 @@ export default function CargasIndex({
         });
     };
 
+    const handleImportSubmit = async (importData: any) => {
+        setIsImportProcessing(true);
+        SwalHelper.loading("Importando Carga", "Clonando materias y docentes del ciclo anterior...");
+
+        try {
+            await axios.post(route('admin.loads.import'), importData);
+            SwalHelper.success("¡Importación Exitosa!", "La carga académica ha sido clonada correctamente.");
+            setIsImportModalOpen(false);
+            router.reload();
+        } catch (error: any) {
+            console.error(error);
+            SwalHelper.error("Error", error.response?.data?.error || "No se pudo importar la carga académica.");
+        } finally {
+            setIsImportProcessing(false);
+        }
+    };
+
     const handleDeleteLoad = (load: AcademicLoadItem) => {
         SwalHelper.confirm(
             '¿Eliminar Asignación?',
@@ -219,13 +263,15 @@ export default function CargasIndex({
             subtitle={activePeriod ? `Gestionando asignaciones para el periodo: ${activePeriod.nombre}` : "Asocia grupos, materias y docentes"}
             breadcrumb="Asignaciones"
             toastMessage={toastMessage}
-            isLoading={loads.length === 0}
+            isLoading={loads === null || loads === undefined}
+
             metrics={[
-                { code: "T1", label: "Asignaciones", value: loads.length > 0 ? totalLoadsCount : 0 },
-                { code: "T3", label: "Ciclos activos", value: loads.length > 0 ? activeCyclesCount : 0 },
-                { code: "T4", label: "Grupos cubiertos", value: loads.length > 0 ? coveredGroupsCount : 0 }
+                { code: "T1", label: "Asignaciones", value: totalLoadsCount },
+                { code: "T4", label: "Grupos cubiertos", value: coveredGroupsCount }
             ]}
+
             quickActions={[
+                { label: "Importar Carga", onClick: () => setIsImportModalOpen(true), icon: Download },
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf }
             ]}
@@ -268,7 +314,7 @@ export default function CargasIndex({
                 }}
                 mode={isCreateModalOpen ? 'create' : 'edit'}
                 load={selectedLoad}
-                existingLoads={loads}
+                existingLoads={loadData}
                 periods={periods}
                 groups={groups}
                 courses={courses}
@@ -278,6 +324,15 @@ export default function CargasIndex({
                 errors={errors}
                 processing={processing}
                 onSubmit={isCreateModalOpen ? handleCreateSubmit : handleEditSubmit}
+            />
+
+            <ImportLoadModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                periods={periods}
+                groups={groups}
+                onConfirm={handleImportSubmit}
+                processing={isProcessingImport}
             />
         </AdminPageLayout>
     );

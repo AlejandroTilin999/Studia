@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Layers, Hash } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
@@ -48,7 +48,7 @@ export default function SpecialtyFormModal({
             showFooter={false}
             fullBleed={true}
         >
-            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[280px] h-full text-left relative">
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[300px] h-full text-left relative">
                 <button
                     type="button"
                     onClick={onClose}
@@ -57,59 +57,61 @@ export default function SpecialtyFormModal({
                     <X size={16} className="stroke-[2.5]" />
                 </button>
 
+                {/* Left Panel */}
                 <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
                     <div className="space-y-6">
                         <div>
                             <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-10 w-auto object-contain mb-4 md:mb-6" />
-                            <h3 className="text-xl font-bold text-white leading-tight">
-                                {mode === 'create' ? 'Nueva Especialidad' : 'Modificar Especialidad'}
+                            <h3 className="text-xl font-bold text-white leading-tight flex items-center gap-2">
+                                <Layers size={22} />
+                                {mode === 'create' ? 'Nueva Carrera' : 'Editar Especialidad'}
                             </h3>
                         </div>
-
                         <div className="space-y-4">
-                            <p className="text-xs text-blue-100 leading-relaxed font-normal">
-                                Define una nueva carrera técnica o especialidad. Las asignaturas y grupos se organizarán bajo esta especialidad.
+                            <p className="text-[11px] md:text-xs text-blue-100 leading-relaxed font-normal">
+                                {mode === 'create'
+                                    ? 'Define un nuevo bachillerato técnico o especialidad académica para la oferta educativa.'
+                                    : 'Actualiza el nombre oficial o la clave de identificación del bachillerato.'}
                             </p>
                         </div>
                     </div>
-
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block">
-                        Prepahid Campus Escolar
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6">
+                        Oferta Educativa Prepahid
                     </div>
                 </div>
 
-                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[260px] relative">
-                    <div className="space-y-4 flex-1 pr-2">
+                {/* Right Panel */}
+                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative bg-white">
+                    <div className="space-y-5 flex-1 flex flex-col justify-center">
                         <div className="space-y-1.5 text-left">
-                            <FormLabel required>Nombre de la Especialidad</FormLabel>
+                            <FormLabel required>Nombre del Bachillerato</FormLabel>
                             <FormInput
-                                type="text"
-                                placeholder="Ej: Informática"
+                                placeholder="Ej: Gastronomía"
                                 value={data.nombre}
                                 onChange={e => setData('nombre', e.target.value)}
-                                maxLength={50}
+                                className="h-10 text-sm font-normal"
                             />
                             {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                         </div>
 
                         <div className="space-y-1.5 text-left">
-                            <FormLabel required>Código / Abreviación</FormLabel>
+                            <FormLabel required>Clave / Abreviación (3-4 letras)</FormLabel>
                             <FormInput
-                                type="text"
-                                placeholder="Ej: INF"
+                                placeholder="Ej: GAS"
                                 value={data.codigo}
                                 onChange={e => setData('codigo', e.target.value.toUpperCase())}
-                                maxLength={10}
+                                className="h-10 text-sm font-black font-mono tracking-widest"
+                                icon={<Hash size={14} />}
                             />
-                            {errors.codigo && <span className="text-red-500 text-[10px] mt-1 block">{errors.codigo}</span>}
+                            {errors.codigo && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.codigo}</span>}
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
+                    <div className="mt-8 flex justify-end items-center gap-2 border-t border-slate-100 pt-4 select-none">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-55 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                            className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
                         >
                             Cancelar
                         </button>
@@ -117,9 +119,9 @@ export default function SpecialtyFormModal({
                         <button
                             type="submit"
                             disabled={processing || !isFormValid}
-                            className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none active:scale-[0.98]"
+                            className="px-6 py-2 bg-[#0266E0] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold transition-all focus:outline-none flex items-center gap-2"
                         >
-                            {processing ? 'Guardando...' : mode === 'create' ? 'Crear Especialidad' : 'Guardar'}
+                            {processing ? 'Guardando...' : (mode === 'create' ? 'Registrar Carrera' : 'Guardar')}
                         </button>
                     </div>
                 </div>

@@ -14,8 +14,8 @@ import { specialtyService } from './services/specialtyService';
 import { SpecialtiesIndexProps, Specialty } from './types';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
-export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesIndexProps) {
-    const [searchQuery, setSearchQuery] = useState('');
+export default function SpecialtiesIndex({ especialidades, specialtyDistribution, filters = { search: '' } }: any) {
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
@@ -133,7 +133,10 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
         });
     };
 
-    const totalSpecialtiesCount = especialidades.length;
+    const totalSpecialtiesCount = (especialidades === null || especialidades === undefined) ? null : especialidades.length;
+    const activeMatricula = (specialtyDistribution === null || specialtyDistribution === undefined) ? null : specialtyDistribution.reduce((acc: number, curr: any) => acc + curr.count, 0);
+
+    const isDataLoading = especialidades === undefined || specialtyDistribution === undefined;
 
     return (
         <AdminPageLayout
@@ -141,14 +144,18 @@ export default function SpecialtiesIndex({ especialidades = [] }: SpecialtiesInd
             title="Gestión de Especialidades"
             subtitle="Consulta, edita y registra especialidades y carreras técnicas"
             breadcrumb="Especialidades"
+            isLoading={isDataLoading}
             metrics={[
-                { code: "E1", label: "Especialidades", value: totalSpecialtiesCount }
+                { code: "E1", label: "Especialidades", value: totalSpecialtiesCount },
+                { code: "E2", label: "Matrícula Activa", value: activeMatricula }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
                 { label: "Gestionar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers }
             ]}
+            donutChartLabel="alumnos"
+            donutChartSegments={specialtyDistribution}
         >
             {/* Controls */}
             <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">

@@ -142,7 +142,7 @@ export default function BaseModal({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-[8px] text-xs font-semibold transition-all focus:outline-none"
+                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
                 >
                     {cancelLabel}
                 </button>
@@ -151,7 +151,7 @@ export default function BaseModal({
                         type="submit"
                         disabled={isConfirmDisabled}
                         className={cn(
-                            "px-5 py-2 rounded-[8px] text-xs font-semibold text-white transition-all focus:outline-none active:scale-[0.98]",
+                            "px-5 py-2 rounded-lg text-xs font-semibold text-white transition-all focus:outline-none",
                             isConfirmDisabled
                                 ? "bg-slate-200 text-slate-455 cursor-not-allowed border border-slate-100"
                                 : type === 'error' || type === 'warning'
@@ -182,8 +182,8 @@ export default function BaseModal({
             className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/35 backdrop-blur-[2px] p-2 sm:p-4 animate-in fade-in duration-150 overflow-y-auto"
         >
             <div className={cn(
-                "bg-white w-full rounded-[10px] overflow-hidden animate-in fade-in zoom-in-98 duration-150 relative my-auto",
-                fullBleed ? "p-0 border-0 shadow-2xl" : "p-6 pt-7 border border-slate-200/90 shadow-none",
+                "bg-white w-full rounded-lg overflow-hidden animate-in fade-in zoom-in-98 duration-150 relative my-auto shadow-none",
+                fullBleed ? "p-0 border-0" : "p-6 pt-7 border border-slate-200/90",
                 maxWidthClass
             )}>
                 {/* Accent stripe only if not full bleed */}

@@ -8,6 +8,7 @@ interface GradesTabProps {
     getStudentTasksAverage: (studentId: number) => string;
     setScore: (studentId: number, criterionId: number, val: string) => void;
     handleAsentarCalificaciones: () => void;
+    isReadOnly?: boolean;
 }
 
 export default function GradesTab({
@@ -15,7 +16,8 @@ export default function GradesTab({
     activeCriteria,
     getStudentTasksAverage,
     setScore,
-    handleAsentarCalificaciones
+    handleAsentarCalificaciones,
+    isReadOnly = false
 }: GradesTabProps) {
     return (
         <div>
@@ -63,12 +65,13 @@ export default function GradesTab({
                                                         step="0.1"
                                                         min="0"
                                                         max="10"
+                                                        disabled={isReadOnly}
                                                         value={val}
                                                         onChange={e => setScore(r.id, c.id, e.target.value)}
                                                         placeholder="—"
                                                         className={`w-12 text-center text-sm bg-transparent border-0 border-b ${
                                                             val === '' ? 'border-slate-200' : 'border-transparent'
-                                                            } focus:border-[#1e88e5] focus:ring-0 text-slate-800 outline-none transition-all py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                                            } focus:border-[#1e88e5] focus:ring-0 text-slate-800 outline-none transition-all py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
                                                     />
                                                     <span className="text-[10px] text-slate-400">/ 10</span>
                                                 </div>
@@ -104,15 +107,17 @@ export default function GradesTab({
             </div>
 
             {/* Guardar */}
-            <div className="flex justify-end mt-5">
-                <button
-                    onClick={handleAsentarCalificaciones}
-                    className="flex items-center gap-2 bg-[#1e88e5] hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]"
-                >
-                    <Folder size={14} />
-                    Guardar calificaciones
-                </button>
-            </div>
+            {!isReadOnly && (
+                <div className="flex justify-end mt-5">
+                    <button
+                        onClick={handleAsentarCalificaciones}
+                        className="flex items-center gap-2 bg-[#1e88e5] hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]"
+                    >
+                        <Folder size={14} />
+                        Guardar calificaciones
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

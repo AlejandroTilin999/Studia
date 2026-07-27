@@ -13,13 +13,32 @@ use Inertia\Inertia;
 
 class AcademicLoadController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
+
         return Inertia::render('Admin/Cargas/Index', [
-            'loads' => Inertia::defer(function () {
-                return AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user'])
-                    ->get()
-                    ->map(function ($l) {
+            'loads' => Inertia::defer(function () use ($search) {
+                $query = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user']);
+
+                if ($search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->whereHas('course', function ($sq) use ($search) {
+                            $sq->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('codigo', 'like', "%{$search}%");
+                        })->orWhereHas('academicGroup', function ($sq) use ($search) {
+                            $sq->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('codigo', 'like', "%{$search}%");
+                        })->orWhereHas('teacher.user', function ($sq) use ($search) {
+                            $sq->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('apellido_paterno', 'like', "%{$search}%");
+                        });
+                    });
+                }
+
+                return $query->orderBy('id', 'desc')
+                    ->paginate(50)
+                    ->through(function ($l) {
                         return [
                             'id' => $l->id,
                             'ciclo_id' => $l->ciclo_id,
@@ -36,8 +55,7 @@ class AcademicLoadController extends Controller
                             'area_materia' => $l->course->area ?? '',
                         ];
                     })
-                    ->sortBy('nombre_grupo')
-                    ->values();
+                    ->withQueryString();
             }),
             'periods' => Inertia::defer(fn() => AcademicPeriod::all()->map(fn($p) => [
                 'id' => $p->id,
@@ -69,7 +87,10 @@ class AcademicLoadController extends Controller
                     'area' => $t->area ?? '',
                 ])
                 ->values()
-            )
+            ),
+            'filters' => [
+                'search' => $search
+            ]
         ]);
     }
 
@@ -174,5 +195,56 @@ class AcademicLoadController extends Controller
         $load->delete();
 
         return redirect()->back()->with('message', 'Asignación eliminada con éxito.');
+    }
+
+    /**
+     * Clona la carga académica de un grupo/ciclo anterior al actual.
+     */
+    public function cloneLoad(Request $request)
+    {
+        $request->validate([
+            'grupo_origen_id' => 'required|exists:grupos,id',
+            'ciclo_origen_id' => 'required|exists:ciclos_escolares,id',
+            'grupo_destino_id' => 'required|exists:grupos,id',
+            'ciclo_destino_id' => 'required|exists:ciclos_escolares,id',
+            'incluir_docentes' => 'boolean'
+        ]);
+
+        $sourceLoads = AcademicLoad::where('grupo_id', $request->grupo_origen_id)
+            ->where('ciclo_id', $request->ciclo_origen_id)
+            ->get();
+
+        if ($sourceLoads->isEmpty()) {
+            return response()->json(['error' => 'El grupo origen no tiene materias asignadas.'], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($request, $sourceLoads) {
+                foreach ($sourceLoads as $load) {
+                    AcademicLoad::updateOrCreate(
+                        [
+                            'grupo_id' => $request->grupo_destino_id,
+                            'ciclo_id' => $request->ciclo_destino_id,
+                            'materia_id' => $load->materia_id,
+                        ],
+                        [
+                            'docente_id' => $request->incluir_docentes ? $load->docente_id : null
+                        ]
+                    );
+                }
+
+                AdminAuditLog::create([
+                    'usuario_id' => auth()->id(),
+                    'accion' => 'CLONACION_CARGA',
+                    'descripcion' => "Se importó la carga académica del grupo con ID {$request->grupo_origen_id} al grupo con ID {$request->grupo_destino_id}.",
+                    'metadata' => $request->all()
+                ]);
+            });
+
+            return response()->json(['message' => 'Carga importada con éxito.']);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al clonar la carga: ' . $e->getMessage()], 500);
+        }
     }
 }

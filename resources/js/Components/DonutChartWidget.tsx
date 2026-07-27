@@ -87,7 +87,7 @@ export default function DonutChartWidget({
         {/* Inner label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {isLoading ? (
-            <div className="h-6 w-10 bg-slate-100 animate-pulse rounded" />
+            <div className="dots-loader scale-50"></div>
           ) : (
             <span className="text-3xl 2xl:text-[32px] font-black text-[#0266E0] leading-none transition-all">
               {displayValue}

@@ -101,21 +101,21 @@ export default function BatchDownloadModal({
                                 <button
                                     type="button"
                                     onClick={() => setTipo('boleta')}
-                                    className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center ${tipo === 'boleta' ? 'border-[#0266E0] bg-blue-50/50 ring-1 ring-[#0266E0]/10' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+                                    className={`p-3 rounded-lg border transition-all text-center flex flex-col items-center justify-center ${tipo === 'boleta' ? 'border-[#0266E0] bg-blue-50/50 ring-1 ring-[#0266E0]/10' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
                                 >
                                     <span className={`text-[10px] font-black uppercase tracking-tight ${tipo === 'boleta' ? 'text-[#0266E0]' : 'text-slate-600'}`}>Boletas</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setTipo('constancia')}
-                                    className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center ${tipo === 'constancia' ? 'border-[#0266E0] bg-blue-50/50 ring-1 ring-[#0266E0]/10' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+                                    className={`p-3 rounded-lg border transition-all text-center flex flex-col items-center justify-center ${tipo === 'constancia' ? 'border-[#0266E0] bg-blue-50/50 ring-1 ring-[#0266E0]/10' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
                                 >
                                     <span className={`text-[10px] font-black uppercase tracking-tight ${tipo === 'constancia' ? 'text-[#0266E0]' : 'text-slate-600'}`}>Constancias</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setTipo('asistencia')}
-                                    className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center ${tipo === 'asistencia' ? 'border-[#0266E0] bg-blue-50/50 ring-1 ring-[#0266E0]/10' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+                                    className={`p-3 rounded-lg border transition-all text-center flex flex-col items-center justify-center ${tipo === 'asistencia' ? 'border-[#0266E0] bg-blue-50/50 ring-1 ring-[#0266E0]/10' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
                                 >
                                     <span className={`text-[10px] font-black uppercase tracking-tight ${tipo === 'asistencia' ? 'text-[#0266E0]' : 'text-slate-600'}`}>Asistencias</span>
                                 </button>
@@ -142,7 +142,7 @@ export default function BatchDownloadModal({
                                 <FormSelect
                                     value={grupoId}
                                     onChange={e => setGrupoId(e.target.value)}
-                                    className="h-10 text-xs font-bold"
+                                    className="h-10 text-xs font-normal"
                                 >
                                     <option value="">Seleccionar grupo...</option>
                                     <option value="all" className="text-[#0266E0] font-black">--- TODOS LOS GRUPOS ---</option>
@@ -165,7 +165,7 @@ export default function BatchDownloadModal({
                         <button
                             type="submit"
                             disabled={!isFormValid || processing}
-                            className="px-6 py-2 bg-[#0266E0] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all focus:outline-none active:scale-[0.98] shadow-sm flex items-center gap-2"
+                            className="px-6 py-2 bg-[#0266E0] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all focus:outline-none flex items-center gap-2"
                         >
                             {processing ? (
                                 <>

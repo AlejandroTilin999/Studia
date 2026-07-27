@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, Calendar, FileText, ChevronRight, Paperclip, Download, Bell, Upload, Clock, Pencil } from 'lucide-react';
 import { Task } from '../services/constants';
 import { SwalHelper } from '@/utils/SwalHelper';
+import { cn } from '@/lib/utils';
 
 interface ActivityFormProps {
     editingTask: Task | null;
@@ -216,9 +217,10 @@ interface ActivityCardProps {
     onEdit: (task: Task) => void;
     onDelete: (id: number) => void;
     onSelectTask: (id: number) => void;
+    isReadOnly?: boolean;
 }
 
-function ActivityCard({ task, index, onEdit, onDelete, onSelectTask }: ActivityCardProps) {
+function ActivityCard({ task, index, onEdit, onDelete, onSelectTask, isReadOnly = false }: ActivityCardProps) {
     const isTask = task.type !== 'material';
 
     return (
@@ -230,10 +232,12 @@ function ActivityCard({ task, index, onEdit, onDelete, onSelectTask }: ActivityC
                     </span>
                     <h4 className="text-base font-black text-slate-800 tracking-tight">{task.nombre}</h4>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button onClick={() => onEdit(task)} className="text-slate-350 hover:text-[#1e88e5] p-2 rounded-xl transition-all"><Pencil size={14} /></button>
-                    <button onClick={() => onDelete(task.id)} className="text-slate-350 hover:text-rose-500 p-2 rounded-xl transition-all"><Trash2 size={14} /></button>
-                </div>
+                {!isReadOnly && (
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => onEdit(task)} className="text-slate-350 hover:text-[#1e88e5] p-2 rounded-xl transition-all"><Pencil size={14} /></button>
+                        <button onClick={() => onDelete(task.id)} className="text-slate-350 hover:text-rose-500 p-2 rounded-xl transition-all"><Trash2 size={14} /></button>
+                    </div>
+                )}
             </div>
 
             <div className="flex flex-wrap gap-3.5 text-xs text-slate-455 font-normal uppercase tracking-wide">
@@ -288,12 +292,14 @@ interface ActivitiesTabProps {
     setSelectedTaskId: (id: number | null) => void;
     grupo: string;
     materia: string;
+    isReadOnly?: boolean;
 }
 
 export default function ActivitiesTab({
     tasks,
     saveTasks,
     setSelectedTaskId,
+    isReadOnly = false
 }: ActivitiesTabProps) {
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
     const editingTask = editingTaskId !== null ? tasks.find(t => t.id === editingTaskId) || null : null;
@@ -321,17 +327,29 @@ export default function ActivitiesTab({
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
-            <div className="lg:col-span-4 h-fit">
-                <ActivityForm editingTask={editingTask} onSave={handleSaveTask} onCancelEdit={() => setEditingTaskId(null)} />
-            </div>
-            <div className="lg:col-span-8 space-y-4 max-h-[620px] overflow-y-auto pr-2 scrollbar-hide">
+            {!isReadOnly && (
+                <div className="lg:col-span-4 h-fit">
+                    <ActivityForm editingTask={editingTask} onSave={handleSaveTask} onCancelEdit={() => setEditingTaskId(null)} />
+                </div>
+            )}
+            <div className={cn("space-y-4 max-h-[620px] overflow-y-auto pr-2 scrollbar-hide", isReadOnly ? "lg:col-span-12" : "lg:col-span-8")}>
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5 sticky top-0 bg-white/50 backdrop-blur-sm py-1 z-10">
                     <FileText size={16} className="text-slate-500" /> Muro de Actividades ({tasks.length})
                 </h3>
                 {tasks.length === 0 ? (
                     <div className="bg-white border border-slate-100 p-12 text-center text-slate-400 font-normal text-sm rounded-2xl">No hay actividades publicadas.</div>
                 ) : (
-                    tasks.map((t, idx) => <ActivityCard key={t.id} task={t} index={idx} onEdit={() => setEditingTaskId(t.id)} onDelete={handleDeleteTask} onSelectTask={setSelectedTaskId} />)
+                    tasks.map((t, idx) => (
+                        <ActivityCard
+                            key={t.id}
+                            task={t}
+                            index={idx}
+                            onEdit={() => setEditingTaskId(t.id)}
+                            onDelete={handleDeleteTask}
+                            onSelectTask={setSelectedTaskId}
+                            isReadOnly={isReadOnly}
+                        />
+                    ))
                 )}
             </div>
         </div>

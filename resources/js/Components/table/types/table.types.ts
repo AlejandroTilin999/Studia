@@ -27,7 +27,7 @@ export interface AppTableProps<T> {
     index: number
   ) => string | number;
 
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
 
   className?: string;
 
@@ -36,8 +36,8 @@ export interface AppTableProps<T> {
     index: number
   ) => void;
 
-  rowClassName?: 
-    string | 
+  rowClassName?:
+    string |
     ((item: T,index:number)=>string);
 
   defaultPageSize?: number;

@@ -13,14 +13,36 @@ use Inertia\Inertia;
 
 class StudentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->query('search');
+        $group = $request->query('group');
+
         return Inertia::render('Admin/Alumnos/Index', [
-            'alumnos' => Inertia::defer(function () {
-                return Student::whereHas('user')
-                    ->with(['user', 'enrollment.academicGroup'])
-                    ->get()
-                    ->map(function ($student) {
+            'alumnos' => Inertia::defer(function () use ($search, $group) {
+                $query = Student::whereHas('user')
+                    ->with(['user', 'enrollment.academicGroup']);
+
+                if ($search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('matricula', 'like', "%{$search}%")
+                            ->orWhereHas('user', function ($qu) use ($search) {
+                                $qu->where('nombre', 'like', "%{$search}%")
+                                    ->orWhere('apellido_paterno', 'like', "%{$search}%")
+                                    ->orWhere('apellido_materno', 'like', "%{$search}%")
+                                    ->orWhere('email', 'like', "%{$search}%");
+                            });
+                    });
+                }
+
+                if ($group && $group !== 'all') {
+                    $query->whereHas('enrollment', function ($q) use ($group) {
+                        $q->where('grupo_id', $group);
+                    });
+                }
+
+                return $query->paginate(50)
+                    ->through(function ($student) {
                         return [
                             'id' => $student->id,
                             'usuario_id' => $student->usuario_id,
@@ -39,16 +61,21 @@ class StudentController extends Controller
                             'estatus' => $student->estatus ?? 'active',
                             'calificaciones' => [],
                         ];
-                    });
+                    })
+                    ->withQueryString();
             }),
-            'groups' => AcademicGroup::all()->map(function ($g) {
+            'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(function ($g) {
                 return [
                     'id' => $g->id,
                     'nombre' => $g->nombre,
                     'codigo' => $g->codigo,
                     'especialidad' => $g->especialidad,
                 ];
-            })
+            })),
+            'filters' => [
+                'search' => $search,
+                'group' => $group
+            ]
         ]);
     }
 

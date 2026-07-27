@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileSpreadsheet, Layers, FileText } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa";
 import { RiFileExcel2Fill } from "react-icons/ri";
@@ -16,13 +16,19 @@ import StudentFormModal from './components/StudentFormModal';
 import StudentKardexModal from './components/StudentKardexModal';
 import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } from './types';
 
-export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndexProps) {
+export default function AlumnosIndex({ alumnos, groups = [], filters = { search: '', group: 'all' } }: any) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
 
+    // Soportar tanto array directo como objeto de paginación de Laravel
+    const studentData = useMemo(() => {
+        if (Array.isArray(alumnos)) return alumnos;
+        return alumnos?.data || [];
+    }, [alumnos]);
+
     // Mapeamos los datos simplificados directamente de la tabla única de alumnos
-    const formattedStudents: StudentFormatted[] = alumnos.map((student: BackendStudent) => ({
+    const formattedStudents: StudentFormatted[] = useMemo(() => studentData.map((student: BackendStudent) => ({
         id: student.id,
         matricula: student.matricula || 'S/M',
         name: student.nombre || 'Sin nombre asignado',
@@ -41,13 +47,28 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             score: g.score,
             period: g.period || '2026-A'
         })) || []
-    }));
+    })), [studentData]);
 
-
-
-    const [searchQuery, setSearchQuery] = useState('');
-    const [groupFilter, setGroupFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [groupFilter, setGroupFilter] = useState(filters.group || 'all');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
+
+    // [OPTIMIZACIÓN] Sincronización con el servidor para búsqueda y filtrado
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (searchQuery !== (filters.search || '') || groupFilter !== (filters.group || 'all')) {
+                router.get(window.location.pathname, {
+                    search: searchQuery,
+                    group: groupFilter
+                }, {
+                    preserveState: true,
+                    replace: true,
+                    only: ['alumnos']
+                });
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery, groupFilter]);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
@@ -67,6 +88,8 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         grupo_id: '',
         estatus: 'active' as 'active' | 'inactive' | 'suspended'
     });
+
+    // ... (Efecto de generación de matrícula/email se mantiene igual) ...
     useEffect(() => {
         if (modalMode === 'create') {
             const nombre = data.nombre.trim();
@@ -112,10 +135,10 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 }
             }
         }
-    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, data.fecha_nacimiento, modalMode, groups, randomSuffix]);;
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, data.fecha_nacimiento, modalMode, groups, randomSuffix]);
 
     const handleExportExcel = () => {
-        const rows = filteredStudents.map(s => [
+        const rows = formattedStudents.map(s => [
             s.matricula,
             s.name,
             s.email,
@@ -135,7 +158,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
 
     const handleExportPDF = () => {
         const headers = ["Matrícula", "Nombre Completo", "Correo Electrónico", "Grupo", "Estado"];
-        const rows = filteredStudents.map(s => [
+        const rows = formattedStudents.map(s => [
             s.matricula,
             s.name,
             s.email,
@@ -146,17 +169,11 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
         exportToPDF("Reporte General de Alumnos", headers, rows, "reporte_alumnos");
     };
 
-    const filteredStudents = formattedStudents.filter(student => {
-        const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.matricula.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesGroup = groupFilter === 'all' || student.groupId.toString() === groupFilter;
-        return matchesSearch && matchesGroup;
-    });
+    // [OPTIMIZACIÓN] Las métricas y el filtrado local se memorizan
+    const totalCount = useMemo(() => (alumnos === null || alumnos === undefined ? null : (Array.isArray(alumnos) ? alumnos.length : alumnos?.total || 0)), [alumnos]);
+    const activeCount = useMemo(() => alumnos === null || alumnos === undefined ? null : formattedStudents.filter(s => s.status === 'active').length, [formattedStudents, alumnos]);
+    const inactiveCount = useMemo(() => alumnos === null || alumnos === undefined ? null : formattedStudents.filter(s => s.status === 'suspended').length, [formattedStudents, alumnos]);
 
-    const activeCount = formattedStudents.filter(s => s.status === 'active').length;
-    const inactiveCount = formattedStudents.filter(s => s.status === 'suspended').length;
-    const totalCount = formattedStudents.length;
 
     const openCreateModal = () => {
         if (!groups || groups.length === 0) {
@@ -303,11 +320,11 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
             subtitle="Consulta, edita y registra expedientes e inscripciones escolares"
             breadcrumb="Alumnos"
             toastMessage={toastMessage}
-            isLoading={alumnos.length === 0}
+            isLoading={alumnos === null || alumnos === undefined}
             metrics={[
-                { code: "T1", label: "Alumnos totales", value: alumnos.length > 0 ? totalCount : 0 },
-                { code: "T3", label: "Activos", value: alumnos.length > 0 ? activeCount : 0 },
-                { code: "T4", label: "De baja", value: alumnos.length > 0 ? inactiveCount : 0 }
+                { code: "T1", label: "Alumnos totales", value: totalCount },
+                { code: "T3", label: "Activos", value: activeCount },
+                { code: "T4", label: "De baja", value: inactiveCount }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
@@ -340,7 +357,7 @@ export default function AlumnosIndex({ alumnos = [], groups = [] }: AlumnosIndex
                 />
             }>
                 <StudentTable
-                    students={filteredStudents}
+                    students={formattedStudents}
                     onOpenEditModal={openEditModal}
                     onOpenBajaModal={handleToggleStatus}
                     onOpenKardexModal={openKardexModal}

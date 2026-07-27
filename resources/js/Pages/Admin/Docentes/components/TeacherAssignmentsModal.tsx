@@ -26,7 +26,7 @@ export default function TeacherAssignmentsModal({
             showFooter={false}
         >
             {/* Información del profesor */}
-            <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] text-left">
+            <div className="p-5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] text-left">
                 <span className="text-slate-400 font-bold uppercase tracking-wider block">
                     Profesor
                 </span>
@@ -48,10 +48,10 @@ export default function TeacherAssignmentsModal({
                         {teacher.assignments.map((assignment, index) => (
                             <div
                                 key={index}
-                                className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100/50 transition-all animate-none"
+                                className="flex justify-between items-center p-4 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100/50 transition-all animate-none"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-white p-2 rounded-xl text-slate-600 border border-slate-100">
+                                    <div className="bg-white p-2 rounded-lg text-slate-600 border border-slate-100">
                                         <GraduationCap size={16} />
                                     </div>
                                     <div>
@@ -63,7 +63,7 @@ export default function TeacherAssignmentsModal({
                                         </span>
                                     </div>
                                 </div>
-                                <span className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold rounded-xl">
+                                <span className="px-2.5 py-1 bg-slate-900 text-white text-xs font-bold rounded-lg">
                                     Grupo {assignment.groupName}
                                 </span>
                             </div>
@@ -81,7 +81,7 @@ export default function TeacherAssignmentsModal({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition-all focus:outline-none"
+                    className="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition-all focus:outline-none"
                 >
                     Cerrar
                 </button>

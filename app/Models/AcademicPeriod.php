@@ -9,10 +9,30 @@ class AcademicPeriod extends Model
     const UPDATED_AT = null;
 
     protected $table = 'ciclos_escolares';
-    protected $fillable = ['nombre', 'fecha_inicio', 'fecha_fin', 'activo'];
+    protected $fillable = [
+        'nombre', 'fecha_inicio', 'fecha_fin', 'activo',
+        'p1_inicio', 'p1_fin', 'p1_activo',
+        'p2_inicio', 'p2_fin', 'p2_activo',
+        'p3_inicio', 'p3_fin', 'p3_activo'
+    ];
 
     protected $casts = [
         'activo' => 'boolean',
+        'p1_activo' => 'boolean',
+        'p2_activo' => 'boolean',
+        'p3_activo' => 'boolean',
+        'p1_inicio' => 'date',
+        'p1_fin' => 'date',
+        'p2_inicio' => 'date',
+        'p2_fin' => 'date',
+        'p3_inicio' => 'date',
+        'p3_fin' => 'date',
+    ];
+
+    protected $attributes = [
+        'p1_activo' => true,
+        'p2_activo' => false,
+        'p3_activo' => false,
     ];
 
     // Un ciclo escolar alberga muchas inscripciones de alumnos

@@ -520,12 +520,12 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             subtitle="Generación y consulta de expedientes grupales y personales"
             breadcrumb="Reportes"
             metrics={[
-                { code: "T1", label: "Descargas totales", value: stats?.total || 0 },
-                { code: "T2", label: "Asistencia", value: stats?.asistencia || 0 },
-                { code: "T3", label: "Boletas", value: stats?.boleta || 0 },
-                { code: "T4", label: "Constancias", value: stats?.constancia || 0 }
+                { code: "T1", label: "Descargas totales", value: (stats === null || stats === undefined) ? null : (stats?.total || 0) },
+                { code: "T2", label: "Asistencia", value: (stats === null || stats === undefined) ? null : (stats?.asistencia || 0) },
+                { code: "T3", label: "Boletas", value: (stats === null || stats === undefined) ? null : (stats?.boleta || 0) },
+                { code: "T4", label: "Constancias", value: (stats === null || stats === undefined) ? null : (stats?.constancia || 0) }
             ]}
-            isLoading={false}
+            isLoading={stats === null || stats === undefined}
             quickActions={[
                 {
                     label: "Descarga por Lote",

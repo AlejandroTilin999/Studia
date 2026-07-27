@@ -1,6 +1,6 @@
 interface Props{
 
-message:string;
+message:React.ReactNode;
 
 colSpan:number;
 

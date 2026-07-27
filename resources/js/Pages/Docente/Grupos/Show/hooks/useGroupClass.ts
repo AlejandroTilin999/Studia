@@ -111,6 +111,7 @@ export function useGroupClass() {
     });
     const [configs, setConfigs] = useState<Record<number, ParcialConfig>>({});
     const [allGrades, setAllGrades] = useState<Record<number, StudentGrade[]>>({});
+    const [lockInfos, setLockInfos] = useState<Record<number, { allowed: boolean, reason: string }>>({});
 
     // 3.1 Sincronizar URL
     useEffect(() => {
@@ -138,12 +139,16 @@ export function useGroupClass() {
         PARCIALES.forEach(({ num }) => {
             axios.get(`/docente/clases/${loadId}/config?parcial=${num}`)
                 .then(res => {
-                    const { configurado, criterios, alumnos, color_tema } = res.data;
+                    const { configurado, criterios, alumnos, color_tema, lock_info } = res.data;
                     const currentParams = new URLSearchParams(window.location.search);
                     const isCurrentInUrl = currentParams.get('parcial') === num.toString();
 
                     if (color_tema && COLOR_THEMES[color_tema]) {
                         setThemeKey(color_tema);
+                    }
+
+                    if (lock_info) {
+                        setLockInfos(prev => ({ ...prev, [num]: lock_info }));
                     }
 
                     if (configurado) {
@@ -514,6 +519,11 @@ export function useGroupClass() {
         return count === 0 ? "—" : parseFloat((sum / count).toFixed(1));
     }
 
+    const isReadOnly = useMemo(() => {
+        if (!activeParcial) return false;
+        return lockInfos[activeParcial]?.allowed === false;
+    }, [activeParcial, lockInfos]);
+
     return {
         loadId,
         grupo,
@@ -571,6 +581,8 @@ export function useGroupClass() {
         getFinalAverage,
         isParcialClosed,
         totalPct,
-        pctValid
+        pctValid,
+        isReadOnly,
+        lockReason: activeParcial ? lockInfos[activeParcial]?.reason : ''
     };
 }

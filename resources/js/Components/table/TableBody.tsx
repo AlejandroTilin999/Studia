@@ -20,7 +20,7 @@ keyExtractor:
 onRowClick?:
 (item:T,index:number)=>void;
 
-emptyMessage:string;
+emptyMessage:React.ReactNode;
 
 }
 

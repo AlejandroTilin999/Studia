@@ -187,7 +187,7 @@ export default function StudentKardexModal({
                         </button>
                         <button
                             type="submit"
-                            className="bg-[#1e88e5] hover:bg-blue-700 text-white font-normal h-10 px-6 rounded-lg text-[12.5px] transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-100/50 outline-none min-w-[150px]"
+                            className="bg-[#1e88e5] hover:bg-blue-700 text-white font-normal h-10 px-6 rounded-lg text-[12.5px] transition-all flex items-center justify-center gap-2 outline-none min-w-[150px]"
                         >
                             <FileText size={14} />
                             Descargar PDF

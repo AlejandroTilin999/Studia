@@ -31,7 +31,13 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const { url } = usePage();
   const pathname = url.split('?')[0];
 
-  const { auth, alumnoGroups: propAlumnoGroups } = usePage().props as any;
+  const {
+    auth,
+    alumnoGroups: deferredAlumnoGroups,
+    docenteGroups: deferredDocenteGroups,
+    unreadNotificationsCount: deferredUnreadCount
+  } = usePage().props as any;
+
   const user = auth?.user;
   const userRole = (user?.rol || user?.role || '').toUpperCase();
 
@@ -73,7 +79,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Grupos",
       icon: Layers,
-      path: role === "ADMIN" ? "/admin/grupos" : (user?.docenteGroups?.length > 0 ? `/docente/grupos/show?id=${user.docenteGroups[0].id}` : '/docente'),
+      path: role === "ADMIN" ? "/admin/grupos" : (deferredDocenteGroups?.length > 0 ? `/docente/grupos/show?id=${deferredDocenteGroups[0].id}` : '/docente'),
       roles: ["ADMIN", "DOCENTE"]
     },
     {
@@ -109,8 +115,9 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   ];
 
   const filteredItems = menuItems.filter(item => item.roles.includes(role));
-  const docenteGroups = user?.docenteGroups || [];
-  const alumnoGroups = propAlumnoGroups || user?.alumnoGroups || [];
+  const docenteGroups = deferredDocenteGroups || [];
+  const alumnoGroups = deferredAlumnoGroups || [];
+  const unreadCount = deferredUnreadCount || 0;
 
   const [gruposOpen, setGruposOpen] = useState(() => url.startsWith('/docente/grupos') || role === 'DOCENTE');
   const [materiasOpen, setMateriasOpen] = useState(() => (url.startsWith('/alumno') && url.includes('tab=tasks')) || role === 'ALUMNO');
@@ -257,12 +264,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 >
                   <div className="relative">
                     <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-slate-300 group-hover:text-slate-500")} />
-                    {item.name === 'Notificaciones' && user?.unreadNotificationsCount > 0 && (
+                    {item.name === 'Notificaciones' && unreadCount > 0 && (
                       <span className={cn(
                         "absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white border-2 border-white",
                         !isMenuExpanded && "h-3 w-3 -top-0.5 -right-0.5"
                       )}>
-                        {user.unreadNotificationsCount > 9 ? '9+' : user.unreadNotificationsCount}
+                        {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
                   </div>
