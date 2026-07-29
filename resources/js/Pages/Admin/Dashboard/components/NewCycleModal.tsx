@@ -80,8 +80,12 @@ export default function NewCycleModal({
             p3_inicio: m === 'A' ? `${year}-11-` : `${year}-05-`,
             p3_fin: m === 'A' ? `${year}-12-` : `${year}-07-`,
             p3_activo: false,
-            activo: true
         };
+
+        // Solo forzar 'falso' en creación. En edición respetamos lo que ya tiene.
+        if (mode === 'create') {
+            updates.activo = false;
+        }
 
         setData({ ...data, ...updates });
     };
@@ -300,6 +304,56 @@ export default function NewCycleModal({
                                         <button type="button" onClick={() => handleModalitySelect('A', baseYear)} className={cn("flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all", modalidad === 'A' ? "bg-[#0266E0] text-white shadow-none" : "text-slate-400 hover:text-slate-600 hover:bg-white")}>Periodo A</button>
                                         <button type="button" onClick={() => handleModalitySelect('B', baseYear)} className={cn("flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all", modalidad === 'B' ? "bg-[#0266E0] text-white shadow-none" : "text-slate-400 hover:text-slate-600 hover:bg-white")}>Periodo B</button>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* [NUEVO v3.9] Selector de Modo de Apertura */}
+                            <div className="space-y-3 text-left">
+                                <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-widest ml-1">
+                                    {mode === 'create' ? 'Estado Inicial del Ciclo' : 'Estado de Vigencia'}
+                                </FormLabel>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('activo', false)}
+                                        className={cn(
+                                            "flex flex-col gap-1 p-4 rounded-xl border-2 transition-all text-left",
+                                            !data.activo ? "border-[#0266E0] bg-blue-50/50" : "border-slate-100 bg-white hover:border-slate-200"
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className={cn("text-[11px] font-black uppercase tracking-widest", !data.activo ? "text-[#0266E0]" : "text-slate-500")}>
+                                                {mode === 'create' ? 'Modo Planeación' : 'Poner en Planeación'}
+                                            </span>
+                                            {!data.activo && <CheckCircle2 size={14} className="text-[#0266E0]" />}
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 leading-tight">
+                                            {mode === 'create'
+                                                ? 'Recomendado. Permite inscribir y organizar antes de iniciar el periodo.'
+                                                : 'Mueve el ciclo a modo preparación (útil para corregir datos base).'}
+                                        </p>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('activo', true)}
+                                        className={cn(
+                                            "flex flex-col gap-1 p-4 rounded-xl border-2 transition-all text-left",
+                                            data.activo ? "border-emerald-500 bg-emerald-50/30" : "border-slate-100 bg-white hover:border-slate-200"
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className={cn("text-[11px] font-black uppercase tracking-widest", data.activo ? "text-emerald-600" : "text-slate-500")}>
+                                                {mode === 'create' ? 'Activar Inmediatamente' : 'Marcar como Vigente'}
+                                            </span>
+                                            {data.activo && <CheckCircle2 size={14} className="text-emerald-500" />}
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 leading-tight">
+                                            {mode === 'create'
+                                                ? 'El ciclo entra en vigor hoy. Cierra automáticamente el ciclo anterior.'
+                                                : 'Activa el ciclo para permitir la captura de calificaciones y tareas.'}
+                                        </p>
+                                    </button>
                                 </div>
                             </div>
 

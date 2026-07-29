@@ -8,6 +8,7 @@ interface Cycle {
     fecha_inicio: string;
     fecha_fin: string;
     activo: boolean;
+    status: 'planificacion' | 'activo' | 'cerrado';
     p1_inicio?: string;
     p1_fin?: string;
     p1_activo?: boolean;
@@ -25,6 +26,8 @@ interface ParcialControlGridProps {
 }
 
 export default function ParcialControlGrid({ activeCycle, onToggle }: ParcialControlGridProps) {
+    const isLocked = activeCycle.status !== 'activo';
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((p) => {
@@ -33,7 +36,10 @@ export default function ParcialControlGrid({ activeCycle, onToggle }: ParcialCon
                 const fin = activeCycle[`p${p}_fin` as keyof Cycle] as string;
 
                 return (
-                    <div key={p} className="bg-white border border-slate-100 rounded-lg p-5 space-y-4 shadow-none group hover:border-blue-100 transition-all">
+                    <div key={p} className={cn(
+                        "bg-white border rounded-lg p-5 space-y-4 shadow-none group transition-all",
+                        isLocked ? "border-slate-100 opacity-80" : "border-slate-100 hover:border-blue-100"
+                    )}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                                 <div>
@@ -42,10 +48,13 @@ export default function ParcialControlGrid({ activeCycle, onToggle }: ParcialCon
                                 </div>
                             </div>
                             <button
-                                onClick={() => onToggle(p, isActive)}
+                                onClick={() => !isLocked && onToggle(p, isActive)}
+                                disabled={isLocked}
+                                title={isLocked ? "Debes activar el ciclo escolar para habilitar la captura" : ""}
                                 className={cn(
                                     "w-10 h-6 rounded-full relative transition-all duration-300",
-                                    isActive ? "bg-[#0266E0]" : "bg-slate-200"
+                                    isActive ? "bg-[#0266E0]" : "bg-slate-200",
+                                    isLocked && "cursor-not-allowed grayscale-[0.5] opacity-50"
                                 )}
                             >
                                 <div className={cn(
@@ -60,11 +69,18 @@ export default function ParcialControlGrid({ activeCycle, onToggle }: ParcialCon
                                 <span className="text-slate-400 font-normal uppercase tracking-wider">Estado de Captura</span>
                                 <span className={cn(
                                     "px-2.5 py-0.5 rounded-lg font-bold uppercase text-[9px] tracking-widest",
-                                    isActive ? "bg-blue-50 text-[#0266E0]" : "bg-slate-50 text-slate-500"
+                                    isActive ? "bg-blue-50 text-[#0266E0]" : "bg-slate-50 text-slate-500",
+                                    isLocked && "bg-slate-100/50 text-slate-400"
                                 )}>
-                                    {isActive ? 'Abierta' : 'Cerrada'}
+                                    {isLocked ? 'Bloqueada' : (isActive ? 'Abierta' : 'Cerrada')}
                                 </span>
                             </div>
+
+                            {isLocked && (
+                                <p className="text-[9px] text-amber-600 font-bold uppercase tracking-tighter animate-pulse">
+                                    Requiere activación de ciclo
+                                </p>
+                            )}
 
                             <div className="pt-3 border-t border-slate-50 space-y-2">
                                 <div className="flex justify-between items-center">

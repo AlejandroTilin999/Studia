@@ -220,6 +220,7 @@ export default function AdminDashboardIndex() {
                         totalCycles={cycles.length}
                         onOpenNewCycle={openCreateModal}
                         onEditCycle={openEditModal}
+                        onActivateCycle={handleActivateCycle}
                         onCloseCycle={handleCloseActiveCycle}
                         onOpenHistory={() => setIsHistoryModalOpen(true)}
                     />

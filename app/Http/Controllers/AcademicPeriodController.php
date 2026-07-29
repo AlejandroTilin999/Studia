@@ -68,6 +68,7 @@ class AcademicPeriodController extends Controller
             'nombre'       => 'required|string|max:100',
             'fecha_inicio' => 'required|date',
             'fecha_fin'    => 'required|date|after:fecha_inicio',
+            'activo'       => 'boolean',
             'p1_inicio'    => 'nullable|date',
             'p1_fin'       => 'nullable|date|after_or_equal:p1_inicio',
             'p2_inicio'    => 'nullable|date',
@@ -76,9 +77,23 @@ class AcademicPeriodController extends Controller
             'p3_fin'       => 'nullable|date|after_or_equal:p3_inicio',
         ]);
 
-        $period->update($validated);
+        DB::transaction(function () use ($validated, $period) {
+            // Si el ciclo está pasando a activo, cerrar los demás
+            if (isset($validated['activo']) && $validated['activo'] && $period->status !== AcademicPeriod::STATUS_ACTIVE) {
+                AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->update([
+                    'status' => AcademicPeriod::STATUS_CLOSED,
+                    'activo' => false
+                ]);
+                $validated['status'] = AcademicPeriod::STATUS_ACTIVE;
+            } elseif (isset($validated['activo']) && !$validated['activo'] && $period->status === AcademicPeriod::STATUS_ACTIVE) {
+                // [FIX v3.11] Si regresamos de Activo a Inactivo, ponerlo en Planeación (no Cerrarlo)
+                $validated['status'] = AcademicPeriod::STATUS_PLANNING;
+            }
 
-        return redirect()->back()->with('message', 'Ciclo escolar actualizado.');
+            $period->update($validated);
+        });
+
+        return redirect()->back()->with('message', 'Ciclo escolar actualizado correctamente.');
     }
 
     /**

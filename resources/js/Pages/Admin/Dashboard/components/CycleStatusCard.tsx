@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Unlock, Lock, Archive, Calendar } from 'lucide-react';
+import { Clock, Unlock, Lock, Archive, Calendar, Zap } from 'lucide-react';
 
 interface Cycle {
     id: number;
@@ -15,6 +15,7 @@ interface CycleStatusCardProps {
     totalCycles: number;
     onOpenNewCycle: () => void;
     onEditCycle: (cycle: Cycle) => void;
+    onActivateCycle: (id: number) => void;
     onCloseCycle: () => void;
     onOpenHistory: () => void;
 }
@@ -24,6 +25,7 @@ export default function CycleStatusCard({
     totalCycles,
     onOpenNewCycle,
     onEditCycle,
+    onActivateCycle,
     onCloseCycle,
     onOpenHistory
 }: CycleStatusCardProps) {
@@ -70,12 +72,21 @@ export default function CycleStatusCard({
                 </p>
             </div>
             <div className="flex flex-col gap-2 w-full xl:w-72 mt-2 xl:mt-0">
-                <button
-                    onClick={onOpenNewCycle}
-                    className="w-full bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-10 px-4 rounded-lg text-[11px] uppercase tracking-widest transition-all shadow-none flex items-center justify-center gap-2"
-                >
-                    <Unlock className="w-3.5 h-3.5" /> Abrir Nuevo Ciclo
-                </button>
+                {activeCycle?.status === 'planificacion' ? (
+                    <button
+                        onClick={() => onActivateCycle(activeCycle.id)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 px-4 rounded-lg text-[11px] uppercase tracking-widest transition-all shadow-none flex items-center justify-center gap-2 animate-in zoom-in duration-300"
+                    >
+                        <Zap className="w-3.5 h-3.5 fill-current" /> Activar Ciclo Oficial
+                    </button>
+                ) : (
+                    <button
+                        onClick={onOpenNewCycle}
+                        className="w-full bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-10 px-4 rounded-lg text-[11px] uppercase tracking-widest transition-all shadow-none flex items-center justify-center gap-2"
+                    >
+                        <Unlock className="w-3.5 h-3.5" /> Abrir Nuevo Ciclo
+                    </button>
+                )}
 
                 <div className="grid grid-cols-3 gap-2">
                     <button
