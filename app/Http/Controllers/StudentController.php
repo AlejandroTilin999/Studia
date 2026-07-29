@@ -159,7 +159,9 @@ class StudentController extends Controller
             $counter++;
         }
 
-        DB::transaction(function () use ($request, $generatedEmail, $finalMatricula) {
+        $targetCycleId = $targetCycle->id;
+
+        DB::transaction(function () use ($request, $generatedEmail, $finalMatricula, $targetCycleId) {
             // 1. Crear el usuario correspondiente
             $user = User::create([
                 'nombre'           => $request->nombre,
@@ -183,7 +185,7 @@ class StudentController extends Controller
             Enrollment::create([
                 'usuario_id'    => $user->id,
                 'grupo_id'      => $request->grupo_id,
-                'ciclo_id'      => $targetCycle->id,
+                'ciclo_id'      => $targetCycleId,
                 'codigo_alumno' => $finalMatricula,
                 'estatus'       => 'active',
             ]);

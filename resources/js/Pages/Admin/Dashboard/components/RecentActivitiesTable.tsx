@@ -73,10 +73,10 @@ export default function RecentActivitiesTable({ activities = [] }: RecentActivit
                     {
                         header: "Actividad",
                         accessor: (row) => (
-                            <div className="flex flex-col py-1">
-                                <span className="font-semibold text-slate-700">{row.action}</span>
+                            <div className="flex flex-col py-1 text-left">
+                                <span className="font-normal text-slate-700">{row.action}</span>
                                 {row.description && (
-                                    <span className="text-[10px] text-slate-400 line-clamp-1">{row.description}</span>
+                                    <span className="text-[10px] text-slate-400 line-clamp-1 font-normal">{row.description}</span>
                                 )}
                             </div>
                         ),
@@ -85,7 +85,7 @@ export default function RecentActivitiesTable({ activities = [] }: RecentActivit
                     {
                         header: "Usuario",
                         accessor: "user",
-                        className: "text-slate-500 font-medium text-sm"
+                        className: "text-slate-500 font-normal text-sm"
                     },
                     {
                         header: "Fecha y hora",

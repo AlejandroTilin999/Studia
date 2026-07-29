@@ -33,12 +33,12 @@ export default function UserTable({
                     header: "Usuario",
                     accessor: (row) => (
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-650">
+                            <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-normal text-slate-650">
                                 {row.nombre?.charAt(0).toUpperCase() || 'U'}
                             </div>
                             <div className="text-left">
-                                <span className="font-medium text-slate-700 block leading-tight text-[13px]">{row.nombre}</span>
-                                <span className="text-xs text-slate-400 block mt-0.5">{row.email}</span>
+                                <span className="font-normal text-slate-700 block leading-tight text-[13px]">{row.nombre}</span>
+                                <span className="text-xs text-slate-400 block mt-0.5 font-normal">{row.email}</span>
                             </div>
                         </div>
                     ),

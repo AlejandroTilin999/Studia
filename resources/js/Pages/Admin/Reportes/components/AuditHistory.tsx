@@ -114,7 +114,7 @@ export default function AuditHistory({ downloads = [], onViewItem, onDeleteItem,
                         {
                             header: "Folio Único",
                             accessor: (row) => (
-                                <span className="text-[13px] font-medium text-slate-600">
+                                <span className="text-[13px] font-normal text-slate-600">
                                     {row.folio}
                                 </span>
                             ),
@@ -131,8 +131,8 @@ export default function AuditHistory({ downloads = [], onViewItem, onDeleteItem,
                                     >
                                         <FaFilePdf size={18} />
                                     </button>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[13px] font-medium text-slate-700 capitalize leading-tight">
+                                    <div className="flex flex-col min-w-0 text-left">
+                                        <span className="text-[13px] font-normal text-slate-700 capitalize leading-tight">
                                             {row.tipo === 'lote' ? 'Paquete Grupal' : row.tipo}
                                         </span>
                                         <span className="text-[10px] text-slate-400 font-normal uppercase truncate">
@@ -145,9 +145,9 @@ export default function AuditHistory({ downloads = [], onViewItem, onDeleteItem,
                         {
                             header: "Destinatario / Sujeto",
                             accessor: (row) => (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 text-left">
                                     <User size={13} className="text-slate-300 shrink-0" />
-                                    <span className="text-[13px] font-medium text-slate-600 uppercase truncate max-w-[300px]">
+                                    <span className="text-[13px] font-normal text-slate-600 uppercase truncate max-w-[300px]">
                                         {row.sujeto}
                                     </span>
                                 </div>
@@ -156,7 +156,7 @@ export default function AuditHistory({ downloads = [], onViewItem, onDeleteItem,
                         {
                             header: "Fecha de Emisión",
                             accessor: (row) => (
-                                <span className="text-[13px] font-medium text-slate-500 whitespace-nowrap">
+                                <span className="text-[13px] font-normal text-slate-500 whitespace-nowrap">
                                     {row.fecha}
                                 </span>
                             ),

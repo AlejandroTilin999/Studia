@@ -15,7 +15,7 @@ import { useExportPDF } from '@/hooks/useExportPDF';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
-export default function MateriasIndex({ materias, profesores = [], grupos = [], especialidades = [], activePeriod, filters = { search: '' }, isCycleActive }: any) {
+export default function MateriasIndex({ materias, profesores = [], grupos = [], especialidades = [], activePeriod, filters = { search: '' }, isCycleActive, canRegister }: any) {
     // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
     const subjectDataList = useMemo(() => {
         if (Array.isArray(materias)) return materias;
@@ -32,7 +32,7 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
         teacherName: course.profesor || 'Pendiente de Asignación',
         teacher_id: course.docente_id,
         linkedGroups: course.grupos || [],
-        description: course.description || 'Sin descripción disponible.',
+        description: course.descripcion || '',
         specialties: course.especialidades?.map((e: any) => ({ id: e.id, name: e.nombre })) || []
     })), [subjectDataList]);
 
@@ -127,6 +127,14 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
     }), [formattedSubjects, searchQuery, groupFilter, activePeriod]);
 
     const openCreateModal = () => {
+        if (!especialidades || especialidades.length === 0) {
+            SwalHelper.alert(
+                'Sin Especialidades',
+                'No puedes registrar materias porque no existen bachilleratos o especialidades técnicas en el sistema. Por favor, agrega al menos una primero.',
+                'warning'
+            );
+            return;
+        }
         setModalMode('create');
         reset();
         if (activePeriod) setData('semestre', activePeriod.es_nones ? 1 : 2);
@@ -140,7 +148,7 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
             codigo: subject.code,
             nombre: subject.name,
             semestre: subject.semestre || 1,
-            descripcion: subject.description === 'Sin descripción disponible.' ? '' : subject.description,
+            descripcion: subject.description || '',
             tipo: subject.tipo || 'General',
             area: (subject as any).area || '',
             linked_groups: subject.linkedGroups || [],
@@ -230,17 +238,26 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
                 { name: "Sin docente", count: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
-            {!isCycleActive && (
+            {!isCycleActive && canRegister && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest leading-none mb-1">Modo Planeación</p>
+                        <p className="text-[11px] text-blue-700 font-medium">Configurando el próximo periodo escolar. Puedes gestionar el catálogo de materias y preparar la oferta académica, pero el ciclo aún no está vigente.</p>
+                    </div>
+                </div>
+            )}
+
+            {!canRegister && (
                 <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
                     <div className="flex-1 text-left">
                         <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Modo Solo Catálogo</p>
-                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo. Puedes gestionar el catálogo de materias, pero las asignaciones y configuraciones de grupos están suspendidas.</p>
+                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo ni en planeación. Puedes gestionar el catálogo de materias, pero las asignaciones y configuraciones de grupos están suspendidas.</p>
                     </div>
                     <button
                         onClick={() => router.visit(route('admin.dashboard'))}
                         className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-all shrink-0"
                     >
-                        Abrir Ciclo
+                        Crear Ciclo
                     </button>
                 </div>
             )}

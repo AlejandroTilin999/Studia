@@ -70,6 +70,7 @@ class AcademicLoadController extends Controller
                 'id' => $p->id,
                 'nombre' => $p->nombre,
                 'activo' => (bool)$p->activo,
+                'status' => $p->status,
                 'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
             ])),
             'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(fn($g) => [

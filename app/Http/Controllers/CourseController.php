@@ -15,7 +15,10 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
+        $activePeriod = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
+        $planningPeriod = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_PLANNING)->first();
+
+        $workingPeriod = $activePeriod ?: $planningPeriod;
 
         return Inertia::render('Admin/Materias/Index', [
             'materias' => Inertia::defer(function () use ($search) {
@@ -38,7 +41,7 @@ class CourseController extends Controller
                             'codigo' => $course->codigo,
                             'nombre' => $course->nombre,
                             'semestre' => $course->semestre ?? 1,
-                            'descripcion' => $course->descripcion ?? 'Sin descripción disponible',
+                            'descripcion' => $course->descripcion,
                             'tipo' => $course->tipo ?? 'General',
                             'area' => $course->area ?? '',
                             'docente_id' => $course->docente_id,
@@ -65,13 +68,15 @@ class CourseController extends Controller
                 'id' => $s->id,
                 'nombre' => $s->nombre,
                 'codigo' => $s->codigo,
+                'sub_areas' => $s->sub_areas ?? [],
             ])),
-            'activePeriod' => $activePeriod ? [
-                'id' => $activePeriod->id,
-                'nombre' => $activePeriod->nombre,
-                'es_nones' => \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8,
+            'activePeriod' => $workingPeriod ? [
+                'id' => $workingPeriod->id,
+                'nombre' => $workingPeriod->nombre,
+                'es_nones' => \Carbon\Carbon::parse($workingPeriod->fecha_inicio)->month >= 8,
             ] : null,
             'isCycleActive' => (bool)$activePeriod,
+            'canRegister' => (bool)$workingPeriod,
             'filters' => [
                 'search' => $search
             ]
@@ -80,6 +85,13 @@ class CourseController extends Controller
 
     public function store(Request $request)
     {
+        // [SAFETY LOCK v3.15] No permitir registrar materias sin especialidades
+        if (\App\Models\Specialty::count() === 0) {
+            return redirect()->back()->withErrors([
+                'nombre' => 'No existen bachilleratos o especialidades técnicas en el sistema. Debes registrar al menos una antes de crear materias.'
+            ]);
+        }
+
         $validated = $request->validate([
             'codigo' => 'required|string|unique:materias,codigo|max:20',
             'nombre' => 'required|string|max:255',
@@ -116,6 +128,7 @@ class CourseController extends Controller
         $course = Course::findOrFail($id);
 
         $validated = $request->validate([
+            'codigo' => "required|string|max:20|unique:materias,codigo,{$id}",
             'nombre' => 'required|string|max:255',
             'semestre' => 'required|integer|min:1|max:6',
             'descripcion' => 'nullable|string',
@@ -128,6 +141,7 @@ class CourseController extends Controller
 
         DB::transaction(function () use ($validated, $request, $course) {
             $course->update([
+                'codigo' => $validated['codigo'],
                 'nombre' => $validated['nombre'],
                 'semestre' => $validated['semestre'],
                 'descripcion' => $validated['descripcion'],

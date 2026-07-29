@@ -172,7 +172,7 @@ export default function NewCycleModal({
 
         return (
             <div className="space-y-2">
-                <FormLabel required={required} className="text-[11px] font-normal text-slate-400 uppercase tracking-widest ml-1">{label}</FormLabel>
+                <FormLabel required={required} className="text-[11px] font-normal text-slate-400 uppercase tracking-normal ml-1">{label}</FormLabel>
                 <div className="grid grid-cols-3 gap-2">
                     <FormSelect disabled={disabled} value={d} onChange={e => handleDatePartChange(field, 'day', e.target.value)} className={cn("h-11 font-normal", disabled && "bg-slate-50 cursor-not-allowed opacity-60")}>
                         <option value="">Día</option>
@@ -222,17 +222,17 @@ export default function NewCycleModal({
                     </div>
                     <div className="space-y-1">
                         {isFirst && (
-                            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wider ml-1 animate-pulse">
+                            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-normal ml-1 animate-pulse">
                                 * Inicia automáticamente con el ciclo escolar.
                             </p>
                         )}
                         {!isFirst && (
-                            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wider ml-1">
+                            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-normal ml-1">
                                 * Inicia el día siguiente al cierre del parcial anterior.
                             </p>
                         )}
                         {isLast && (
-                            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wider ml-1 animate-pulse">
+                            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-normal ml-1 animate-pulse">
                                 * Concluye automáticamente con el ciclo escolar.
                             </p>
                         )}
@@ -293,13 +293,13 @@ export default function NewCycleModal({
                         <div className="space-y-6 flex-1 flex flex-col justify-center animate-in fade-in zoom-in-95 duration-500">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
                                 <div className="space-y-2 text-left">
-                                    <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-widest ml-1">Año de Referencia</FormLabel>
+                                    <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-normal ml-1">Año de Referencia</FormLabel>
                                     <FormSelect value={baseYear} onChange={e => setBaseYear(e.target.value)} className="h-11 font-normal text-sm border-2 border-slate-100">
                                         {YEARS.map(y => <option key={y} value={y}>Ciclo {y}</option>)}
                                     </FormSelect>
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-widest ml-1">Modalidad Académica</FormLabel>
+                                    <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-normal ml-1">Modalidad Académica</FormLabel>
                                     <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100 gap-1.5">
                                         <button type="button" onClick={() => handleModalitySelect('A', baseYear)} className={cn("flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all", modalidad === 'A' ? "bg-[#0266E0] text-white shadow-none" : "text-slate-400 hover:text-slate-600 hover:bg-white")}>Periodo A</button>
                                         <button type="button" onClick={() => handleModalitySelect('B', baseYear)} className={cn("flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all", modalidad === 'B' ? "bg-[#0266E0] text-white shadow-none" : "text-slate-400 hover:text-slate-600 hover:bg-white")}>Periodo B</button>
@@ -309,7 +309,7 @@ export default function NewCycleModal({
 
                             {/* [NUEVO v3.9] Selector de Modo de Apertura */}
                             <div className="space-y-3 text-left">
-                                <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-widest ml-1">
+                                <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-normal ml-1">
                                     {mode === 'create' ? 'Estado Inicial del Ciclo' : 'Estado de Vigencia'}
                                 </FormLabel>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -322,7 +322,7 @@ export default function NewCycleModal({
                                         )}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className={cn("text-[11px] font-black uppercase tracking-widest", !data.activo ? "text-[#0266E0]" : "text-slate-500")}>
+                                            <span className={cn("text-[11px] font-black uppercase tracking-normal", !data.activo ? "text-[#0266E0]" : "text-slate-500")}>
                                                 {mode === 'create' ? 'Modo Planeación' : 'Poner en Planeación'}
                                             </span>
                                             {!data.activo && <CheckCircle2 size={14} className="text-[#0266E0]" />}
@@ -343,7 +343,7 @@ export default function NewCycleModal({
                                         )}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className={cn("text-[11px] font-black uppercase tracking-widest", data.activo ? "text-emerald-600" : "text-slate-500")}>
+                                            <span className={cn("text-[11px] font-black uppercase tracking-normal", data.activo ? "text-emerald-600" : "text-slate-500")}>
                                                 {mode === 'create' ? 'Activar Inmediatamente' : 'Marcar como Vigente'}
                                             </span>
                                             {data.activo && <CheckCircle2 size={14} className="text-emerald-500" />}
@@ -358,7 +358,7 @@ export default function NewCycleModal({
                             </div>
 
                             <div className="space-y-2 text-left">
-                                <FormLabel className="text-[11px] font-normal text-slate-400 uppercase tracking-widest ml-1">Nombre Oficial del Ciclo</FormLabel>
+                                <FormLabel className="text-[11px] font-normal text-slate-400 uppercase tracking-normal ml-1">Nombre Oficial del Ciclo</FormLabel>
                                 <FormInput value={data.nombre} onChange={e => setData('nombre', e.target.value)} placeholder="Ej: Ciclo Escolar 2026-2027 / Periodo A" className="h-11 text-sm font-normal border-slate-200 focus:border-[#0266E0] rounded-lg transition-all" icon={<Calendar size={18} className="text-slate-400" />} />
                                 {errors.nombre && <span className="text-red-500 text-[11px] font-bold mt-1 block pl-2">{errors.nombre}</span>}
                             </div>
@@ -385,7 +385,7 @@ export default function NewCycleModal({
                         <button
                             type="button"
                             onClick={step > 1 ? () => setStep(step - 1) : onClose}
-                            className="px-8 py-3 text-slate-500 font-bold text-xs uppercase tracking-widest hover:text-slate-800 transition-all"
+                            className="px-8 py-3 text-slate-500 font-bold text-xs uppercase tracking-normal hover:text-slate-800 transition-all"
                         >
                             {step > 1 ? "Atrás" : "Cancelar"}
                         </button>
@@ -395,7 +395,7 @@ export default function NewCycleModal({
                             onClick={step < 4 ? () => setStep(step + 1) : onSubmit}
                             disabled={processing || (step === 1 && !isStep1Valid)}
                             className={cn(
-                                "px-10 py-4 bg-[#0266E0] text-white rounded-lg font-bold text-xs uppercase tracking-[0.15em] transition-all flex items-center gap-2",
+                                "px-10 py-4 bg-[#0266E0] text-white rounded-lg font-bold text-xs uppercase tracking-normal transition-all flex items-center gap-2",
                                 (step === 1 && !isStep1Valid) ? "opacity-30 grayscale cursor-not-allowed" : "hover:bg-blue-700 active:scale-[0.98]"
                             )}
                         >

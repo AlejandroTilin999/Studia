@@ -66,10 +66,9 @@ export default function SubjectFormModal({
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newName = e.target.value;
         setData('nombre', newName);
-        if (mode === 'create') {
-            const autoCode = generateSubjectCode(newName);
-            setData('codigo', autoCode);
-        }
+        // [SINCRONIZACIÓN v3.18] Actualizar código automáticamente al cambiar nombre
+        const autoCode = generateSubjectCode(newName);
+        setData('codigo', autoCode);
     };
 
     const isFormValid = data.codigo.trim() !== '' && data.nombre.trim() !== '';
@@ -125,8 +124,7 @@ export default function SubjectFormModal({
                                 <FormInput
                                     readOnly
                                     value={data.codigo || 'PROCESANDO...'}
-                                    className="bg-slate-50 border border-slate-200 text-slate-500 font-mono focus:ring-0 cursor-not-allowed h-9 text-xs"
-                                    icon={<Hash size={13} />}
+                                    className="bg-slate-50 border border-slate-200 text-slate-500 font-normal focus:ring-0 cursor-not-allowed h-9 text-xs"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -150,31 +148,56 @@ export default function SubjectFormModal({
                                 placeholder="Ej: Álgebra Superior"
                                 value={data.nombre}
                                 onChange={handleNameChange}
-                                className="h-9 text-xs font-bold"
+                                className="h-9 text-xs font-normal"
                             />
                             {errors.nombre && <span className="text-red-500 text-[10px] mt-1 block">{errors.nombre}</span>}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5 text-left">
-                                <FormLabel required>Tipo de Materia</FormLabel>
-                                <FormSelect
-                                    value={data.tipo}
-                                    onChange={e => {
-                                        const val = e.target.value as 'General' | 'Especialidad';
-                                        setData('tipo', val);
-                                        if (val === 'General') setData('specialty_ids', []);
-                                        else setData('area', '');
-                                    }}
-                                    className="h-9 text-xs"
-                                >
-                                    <option value="General">General (Tronco Común)</option>
-                                    <option value="Especialidad">De Especialidad</option>
-                                </FormSelect>
-                            </div>
+                        <div className="space-y-1.5 text-left">
+                            <FormLabel required>Tipo de Materia</FormLabel>
+                            <FormSelect
+                                value={data.tipo}
+                                onChange={e => {
+                                    const val = e.target.value as 'General' | 'Especialidad';
+                                    setData('tipo', val);
+                                    if (val === 'General') setData('specialty_ids', []);
+                                    else setData('area', '');
+                                }}
+                                className="h-9 text-xs"
+                            >
+                                <option value="General">General (Tronco Común)</option>
+                                <option value="Especialidad">De Especialidad</option>
+                            </FormSelect>
+                        </div>
 
-                            {data.tipo === 'General' && (
-                                <div className="space-y-1.5 text-left animate-in slide-in-from-top-1 duration-200">
+                        {data.tipo === 'Especialidad' && (
+                            <div className="space-y-1.5 text-left pt-1 animate-in slide-in-from-top-1 duration-200">
+                                <FormLabel required>Bachilleratos Asociados</FormLabel>
+                                <div className="grid grid-cols-1 gap-2 max-h-[120px] overflow-y-auto border border-slate-100 p-3 rounded-xl bg-slate-50/50">
+                                    {specialties.map(spec => {
+                                        const isChecked = data.specialty_ids.includes(spec.id);
+                                        return (
+                                            <label key={spec.id} className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={() => {
+                                                        if (isChecked) setData('specialty_ids', data.specialty_ids.filter(id => id !== spec.id));
+                                                        else setData('specialty_ids', [...data.specialty_ids, spec.id]);
+                                                    }}
+                                                    className="rounded border-slate-300 text-[#0266E0] focus:ring-[#0266E0] h-3.5 w-3.5 transition-all"
+                                                />
+                                                <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-800 truncate">{spec.nombre}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5 text-left">
+                            {data.tipo === 'General' ? (
+                                <div className="animate-in slide-in-from-top-1 duration-200">
                                     <FormLabel required>Área de Conocimiento</FormLabel>
                                     <FormSelect
                                         value={data.area}
@@ -183,6 +206,25 @@ export default function SubjectFormModal({
                                     >
                                         <option value="">Seleccionar área...</option>
                                         {GENERAL_AREAS.map(area => (
+                                            <option key={area} value={area}>{area}</option>
+                                        ))}
+                                    </FormSelect>
+                                </div>
+                            ) : (
+                                <div className="animate-in slide-in-from-top-1 duration-200">
+                                    <FormLabel required>Rama / Área Técnica</FormLabel>
+                                    <FormSelect
+                                        value={data.area}
+                                        onChange={e => setData('area', e.target.value)}
+                                        className="h-9 text-xs"
+                                        disabled={data.specialty_ids.length === 0}
+                                    >
+                                        <option value="">{data.specialty_ids.length === 0 ? 'Elige bachillerato primero...' : 'Seleccionar área técnica...'}</option>
+                                        {Array.from(new Set(
+                                            specialties
+                                                .filter(s => data.specialty_ids.includes(s.id))
+                                                .flatMap(s => s.sub_areas || [])
+                                        )).map((area: string) => (
                                             <option key={area} value={area}>{area}</option>
                                         ))}
                                     </FormSelect>
@@ -200,31 +242,6 @@ export default function SubjectFormModal({
                                 className="text-xs"
                             />
                         </div>
-
-                        {data.tipo === 'Especialidad' && (
-                            <div className="space-y-1.5 text-left pt-1 animate-in slide-in-from-top-1 duration-200">
-                                <FormLabel required>Bachilleratos Asociados</FormLabel>
-                                <div className="grid grid-cols-2 gap-2 max-h-[100px] overflow-y-auto border border-slate-100 p-3 rounded-xl bg-slate-50/50">
-                                    {specialties.map(spec => {
-                                        const isChecked = data.specialty_ids.includes(spec.id);
-                                        return (
-                                            <label key={spec.id} className="flex items-center gap-2 cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={() => {
-                                                        if (isChecked) setData('specialty_ids', data.specialty_ids.filter(id => id !== spec.id));
-                                                        else setData('specialty_ids', [...data.specialty_ids, spec.id]);
-                                                    }}
-                                                    className="rounded border-slate-300 text-[#0266E0] focus:ring-[#0266E0] h-3.5 w-3.5 transition-all"
-                                                />
-                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-800 truncate">{spec.nombre}</span>
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Footer */}

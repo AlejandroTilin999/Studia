@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { X, Layers, Hash } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Layers, Hash, Plus, Trash2 } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
+import { cn } from '@/lib/utils';
 
 interface SpecialtyFormModalProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface SpecialtyFormModalProps {
     data: {
         nombre: string;
         codigo: string;
+        sub_areas: string[];
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -28,13 +30,37 @@ export default function SpecialtyFormModal({
     processing,
     onSubmit,
 }: SpecialtyFormModalProps) {
+    const [newArea, setNewArea] = useState('');
 
     useEffect(() => {
-        if (isOpen && mode === 'create') {
-            setData('nombre', '');
-            setData('codigo', '');
+        if (isOpen) {
+            if (mode === 'create') {
+                setData({
+                    nombre: '',
+                    codigo: '',
+                    sub_areas: []
+                });
+            }
         }
     }, [isOpen, mode]);
+
+    const addArea = () => {
+        if (newArea.trim() && !data.sub_areas.includes(newArea.trim())) {
+            setData('sub_areas', [...data.sub_areas, newArea.trim()]);
+            setNewArea('');
+        }
+    };
+
+    const removeArea = (index: number) => {
+        setData('sub_areas', data.sub_areas.filter((_, i) => i !== index));
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addArea();
+        }
+    };
 
     const isFormValid = data.nombre.trim() !== '' && data.codigo.trim() !== '';
 
@@ -48,7 +74,7 @@ export default function SpecialtyFormModal({
             showFooter={false}
             fullBleed={true}
         >
-            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[300px] h-full text-left relative">
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[400px] h-full text-left relative">
                 <button
                     type="button"
                     onClick={onClose}
@@ -70,8 +96,8 @@ export default function SpecialtyFormModal({
                         <div className="space-y-4">
                             <p className="text-[11px] md:text-xs text-blue-100 leading-relaxed font-normal">
                                 {mode === 'create'
-                                    ? 'Define un nuevo bachillerato técnico o especialidad académica para la oferta educativa.'
-                                    : 'Actualiza el nombre oficial o la clave de identificación del bachillerato.'}
+                                    ? 'Define un nuevo bachillerato técnico y agrega sus áreas o ramas de especialidad.'
+                                    : 'Actualiza la información de la especialidad y gestiona sus áreas técnicas.'}
                             </p>
                         </div>
                     </div>
@@ -81,8 +107,8 @@ export default function SpecialtyFormModal({
                 </div>
 
                 {/* Right Panel */}
-                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[280px] relative bg-white">
-                    <div className="space-y-5 flex-1 flex flex-col justify-center">
+                <div className="col-span-1 md:col-span-3 p-6 flex flex-col justify-between min-h-0 md:min-h-[380px] relative bg-white overflow-y-auto">
+                    <div className="space-y-6 flex-1 flex flex-col">
                         <div className="space-y-1.5 text-left">
                             <FormLabel required>Nombre del Bachillerato</FormLabel>
                             <FormInput
@@ -100,10 +126,60 @@ export default function SpecialtyFormModal({
                                 placeholder="Ej: GAS"
                                 value={data.codigo}
                                 onChange={e => setData('codigo', e.target.value.toUpperCase())}
-                                className="h-10 text-sm font-black font-mono tracking-widest"
-                                icon={<Hash size={14} />}
+                                className="h-10 text-sm font-normal"
                             />
                             {errors.codigo && <span className="text-red-500 text-[10px] mt-1 block font-bold leading-tight">{errors.codigo}</span>}
+                        </div>
+
+                        {/* [REDiseño v3.16] Gestión de Sub-áreas */}
+                        <div className="space-y-3 pt-2">
+                            <FormLabel className="text-slate-400 font-normal">Áreas Técnicas / Ramas de Especialidad</FormLabel>
+
+                            <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-4">
+                                <div className="flex gap-2">
+                                    <FormInput
+                                        placeholder="Nueva área (ej: Programación)"
+                                        value={newArea}
+                                        onChange={e => setNewArea(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        className="h-10 text-xs bg-white border-slate-100"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addArea}
+                                        className="px-4 bg-[#0266E0] text-white rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center shadow-sm active:scale-95"
+                                    >
+                                        <Plus size={18} />
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 min-h-[40px]">
+                                    {data.sub_areas && data.sub_areas.length > 0 ? (
+                                        data.sub_areas.map((area, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center gap-2 pl-3 pr-1 py-1.5 bg-white border border-slate-100 text-slate-600 rounded-xl text-[11px] font-normal transition-all hover:border-blue-200 hover:shadow-sm animate-in zoom-in duration-300 group"
+                                            >
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#0266E0]/40 group-hover:bg-[#0266E0] transition-colors" />
+                                                <span className="uppercase tracking-normal">{area}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeArea(idx)}
+                                                    className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all ml-1"
+                                                >
+                                                    <X size={13} />
+                                                </button>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="w-full py-4 text-center">
+                                            <p className="text-[11px] text-slate-400 font-normal">
+                                                No has definido ramas técnicas todavía.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

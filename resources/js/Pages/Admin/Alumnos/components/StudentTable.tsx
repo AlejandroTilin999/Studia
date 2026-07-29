@@ -24,14 +24,14 @@ export default function StudentTable({
             header: "Matrícula",
             accessor: (student: StudentFormatted) => student.matricula,
             align: "left",
-            className: "text-slate-500 font-medium text-[13px] h-16",
+            className: "text-slate-500 font-normal text-[13px] h-16",
         },
         {
             header: "Nombre",
             accessor: (student: StudentFormatted) => (
                 <div className="leading-tight">
                     <span className="text-slate-700 font-normal text-[14px] block">{student.name}</span>
-                    <span className="text-[10.5px] text-slate-400 font-medium">{student.email}</span>
+                    <span className="text-[10.5px] text-slate-400 font-normal">{student.email}</span>
                 </div>
             ),
             align: "left",
@@ -41,7 +41,7 @@ export default function StudentTable({
             header: "Grado y grupo",
             accessor: (student: StudentFormatted) => student.groupName,
             align: "left",
-            className: "text-slate-500 font-medium text-[13px]",
+            className: "text-slate-500 font-normal text-[13px]",
         },
         {
             header: "Kardex",

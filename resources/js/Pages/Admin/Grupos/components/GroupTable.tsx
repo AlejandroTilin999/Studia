@@ -24,9 +24,9 @@ export default function GroupTable({
                 {
                     header: "Código",
                     accessor: (row) => (
-                        <div className="flex flex-col">
-                            <span className="text-slate-800 font-bold text-[13px]">{row.code}</span>
-                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{row.generacion}</span>
+                        <div className="flex flex-col text-left">
+                            <span className="text-slate-700 font-normal text-[13px]">{row.code}</span>
+                            <span className="text-[10px] text-slate-400 font-normal uppercase tracking-widest">{row.generacion}</span>
                         </div>
                     ),
                     className: "text-left",
@@ -36,14 +36,14 @@ export default function GroupTable({
                     accessor: (row) => (
                         <div className="leading-tight text-left">
                             <span className="text-slate-700 text-[13px] block font-normal">{row.name}</span>
-                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">{row.specialty}</span>
+                            <span className="text-[10px] text-slate-400 font-normal block mt-0.5">{row.specialty}</span>
                         </div>
                     ),
                 },
                 {
                     header: "Semestre",
                     accessor: (row) => (
-                        <span className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-black text-slate-600">
+                        <span className="px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-normal text-slate-600">
                             {row.semestre}°
                         </span>
                     ),
@@ -52,7 +52,7 @@ export default function GroupTable({
                 {
                     header: "Tutor / Profesor",
                     accessor: (row) => row.teacherName,
-                    className: "text-slate-500 font-medium text-[13px] text-left",
+                    className: "text-slate-500 font-normal text-[13px] text-left",
                 },
                 {
                     header: "Acciones",

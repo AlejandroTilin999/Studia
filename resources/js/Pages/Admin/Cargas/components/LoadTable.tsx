@@ -46,7 +46,7 @@ export default function LoadTable({
                     header: 'Asignatura / Materia',
                     accessor: (row) => (
                         <div className="leading-normal text-left">
-                            <div className="text-[13px] font-medium text-slate-600">
+                            <div className="text-[13px] font-normal text-slate-600">
                                 {row.nombre_materia}
                             </div>
                             <div className="text-[10px] font-normal text-slate-400 mt-0.5">
@@ -60,9 +60,9 @@ export default function LoadTable({
                     header: 'Profesor Titular',
                     accessor: (row) => (
                         <div className="leading-tight text-left">
-                            <span className="text-[13px] font-medium text-slate-600 block">{row.nombre_docente}</span>
+                            <span className="text-[13px] font-normal text-slate-600 block">{row.nombre_docente}</span>
                             {row.area_docente && (
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">ÁREA: {row.area_docente}</span>
+                                <span className="text-[10px] text-slate-400 font-normal uppercase tracking-tight">ÁREA: {row.area_docente}</span>
                             )}
                         </div>
                     ),
@@ -75,7 +75,7 @@ export default function LoadTable({
 
                         if (isHistorical) {
                             return (
-                                <span className="text-[10px] text-slate-400 font-bold italic italic-select-none">Lectura únicamente</span>
+                                <span className="text-[10px] text-slate-400 font-normal">Lectura únicamente</span>
                             );
                         }
 

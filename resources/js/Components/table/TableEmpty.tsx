@@ -25,7 +25,7 @@ className="
 h-24
 text-center
 text-slate-400
-font-medium
+font-normal
 text-xs
 "
 

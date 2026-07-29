@@ -112,6 +112,7 @@ export function useGroupClass() {
     const [configs, setConfigs] = useState<Record<number, ParcialConfig>>({});
     const [allGrades, setAllGrades] = useState<Record<number, StudentGrade[]>>({});
     const [lockInfos, setLockInfos] = useState<Record<number, { allowed: boolean, reason: string }>>({});
+    const [configLockInfos, setConfigLockInfos] = useState<Record<number, { allowed: boolean, reason: string }>>({});
 
     // 3.1 Sincronizar URL
     useEffect(() => {
@@ -139,7 +140,7 @@ export function useGroupClass() {
         PARCIALES.forEach(({ num }) => {
             axios.get(`/docente/clases/${loadId}/config?parcial=${num}`)
                 .then(res => {
-                    const { configurado, criterios, alumnos, color_tema, lock_info } = res.data;
+                    const { configurado, criterios, alumnos, color_tema, lock_info, lock_config } = res.data;
                     const currentParams = new URLSearchParams(window.location.search);
                     const isCurrentInUrl = currentParams.get('parcial') === num.toString();
 
@@ -149,6 +150,10 @@ export function useGroupClass() {
 
                     if (lock_info) {
                         setLockInfos(prev => ({ ...prev, [num]: lock_info }));
+                    }
+
+                    if (lock_config) {
+                        setConfigLockInfos(prev => ({ ...prev, [num]: lock_config }));
                     }
 
                     if (configurado) {

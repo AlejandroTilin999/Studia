@@ -27,13 +27,15 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
     const { data, setData, post, put, reset, processing, errors, clearErrors } = useForm({
         nombre: '',
         codigo: '',
+        sub_areas: [] as string[],
     });
 
     const handleExportExcel = () => {
-        const headers = ["Código / Abreviación", "Nombre de la Especialidad"];
+        const headers = ["Código / Abreviación", "Nombre de la Especialidad", "Áreas Técnicas"];
         const rows = filteredSpecialties.map(s => [
             s.codigo,
-            s.nombre
+            s.nombre,
+            s.sub_areas ? s.sub_areas.join(', ') : 'N/A'
         ]);
 
         exportToExcel(
@@ -47,10 +49,11 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
     };
 
     const handleExportPDF = () => {
-        const headers = ["Código / Abreviación", "Nombre de la Especialidad"];
+        const headers = ["Código", "Especialidad", "Ramas Técnicas"];
         const rows = filteredSpecialties.map(s => [
             s.codigo,
-            s.nombre
+            s.nombre,
+            s.sub_areas ? s.sub_areas.join(', ') : 'Sin áreas'
         ]);
 
         exportToPDF("Catálogo de Especialidades y Carreras", headers, rows, "reporte_especialidades");
@@ -73,6 +76,7 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
         setData({
             nombre: specialty.nombre,
             codigo: specialty.codigo,
+            sub_areas: specialty.sub_areas || [],
         });
         setIsEditModalOpen(true);
     };

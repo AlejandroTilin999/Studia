@@ -21,8 +21,9 @@ class DocenteClassroomController extends Controller
         $load = AcademicLoad::with('academicPeriod')->where('uuid', $uuid)->firstOrFail();
         $parcial = (int) $request->query('parcial', 1);
 
-        // Validar si la captura está habilitada
-        $lockInfo = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial);
+        // [DETALLE v3.19] Separar bloqueo de configuración y operación
+        $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, 'config');
+        $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, 'operacion');
 
         // 1. Obtener criterios
         $criteria = CriterioEvaluacion::where('carga_id', $load->id)
@@ -94,7 +95,8 @@ class DocenteClassroomController extends Controller
             'criterios' => $criteria,
             'alumnos' => $gradesData,
             'color_tema' => $load->color_tema ?? 'blue',
-            'lock_info' => $lockInfo
+            'lock_info' => $lockOperacion,
+            'lock_config' => $lockConfig
         ]);
     }
 

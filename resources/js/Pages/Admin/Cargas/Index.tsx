@@ -32,17 +32,20 @@ export default function CargasIndex({
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
 
-    const activePeriod = useMemo(() => {
-        return periods.find((p: any) => p.activo);
+    const workingPeriod = useMemo(() => {
+        // Prioridad: 1. Ciclo Activo, 2. Ciclo en Planeación
+        const active = periods.find((p: any) => p.activo);
+        if (active) return active;
+        return periods.find((p: any) => p.status === 'planificacion');
     }, [periods]);
 
     const [periodFilter, setPeriodFilter] = useState('all');
 
     useEffect(() => {
-        if (activePeriod && periodFilter === 'all') {
-            setPeriodFilter(activePeriod.id.toString());
+        if (workingPeriod && periodFilter === 'all') {
+            setPeriodFilter(workingPeriod.id.toString());
         }
-    }, [activePeriod]);
+    }, [workingPeriod]);
 
     // [OPTIMIZACIÓN] Soportar paginación y búsqueda en servidor
     const loadData = useMemo(() => {
@@ -146,8 +149,8 @@ export default function CargasIndex({
         }
 
         // Validar si quedan grupos disponibles para asignación masiva
-        if (activePeriod) {
-            const isOddCycle = activePeriod.mes_inicio ? (activePeriod.mes_inicio >= 8 || activePeriod.mes_inicio === 1) : true;
+        if (workingPeriod) {
+            const isOddCycle = workingPeriod.mes_inicio ? (workingPeriod.mes_inicio >= 8 || workingPeriod.mes_inicio === 1) : true;
             const availableGroups = groups.filter(g => {
                 const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
                 const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
@@ -155,7 +158,7 @@ export default function CargasIndex({
 
                 const alreadyAssigned = loadData.some(l =>
                     l.grupo_id.toString() === g.id.toString() &&
-                    l.ciclo_id.toString() === activePeriod.id.toString()
+                    l.ciclo_id.toString() === workingPeriod.id.toString()
                 );
                 return !alreadyAssigned;
             });
@@ -171,9 +174,13 @@ export default function CargasIndex({
         }
 
         reset();
-        if (activePeriod) {
-            setData('ciclo_id', activePeriod.id);
-        }
+        setData({
+            ciclo_id: workingPeriod?.id || '',
+            grupo_id: '',
+            materia_id: '',
+            docente_id: '',
+            assignments: [],
+        });
         setIsCreateModalOpen(true);
     };
 
@@ -262,7 +269,7 @@ export default function CargasIndex({
         <AdminPageLayout
             headTitle="Asignaciones"
             title="Asignaciones de Materias"
-            subtitle={activePeriod ? `Gestionando asignaciones para el periodo: ${activePeriod.nombre}` : "Asocia grupos, materias y docentes"}
+            subtitle={workingPeriod ? `Gestionando asignaciones para el periodo: ${workingPeriod.nombre}` : "Asocia grupos, materias y docentes"}
             breadcrumb="Asignaciones"
             toastMessage={toastMessage}
             isLoading={loads === null || loads === undefined}
@@ -331,7 +338,7 @@ export default function CargasIndex({
                     loads={filteredLoads}
                     onOpenEditModal={openEditModal}
                     onOpenDeleteModal={handleDeleteLoad}
-                    activePeriodId={activePeriod?.id}
+                    activePeriodId={workingPeriod?.id}
                 />
             </Deferred>
 

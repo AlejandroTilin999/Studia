@@ -29,8 +29,8 @@ export default function TablePagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3 text-xs text-slate-500">
-      <div>
-        Mostrando <b className="mx-1">{startRecord}</b> al <b className="mx-1">{endRecord}</b> de <b className="mx-1">{totalRecords}</b> registros
+      <div className="font-normal text-slate-400">
+        Mostrando <span className="mx-1 text-slate-500">{startRecord}</span> al <span className="mx-1 text-slate-500">{endRecord}</span> de <span className="mx-1 text-slate-500">{totalRecords}</span> registros
       </div>
 
       <div className="flex items-center gap-3">

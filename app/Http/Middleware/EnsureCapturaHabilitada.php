@@ -35,7 +35,12 @@ class EnsureCapturaHabilitada
         }
 
         if ($parcial) {
-            $validation = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial);
+            // [INTELIGENCIA v3.19] Detectar si es una ruta de configuración o de operación
+            // Las rutas de criterios son para configurar, el resto (notas/tareas) son operativas
+            $isConfigRoute = $request->is('*/criterios*');
+            $tipo = $isConfigRoute ? 'config' : 'operacion';
+
+            $validation = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, $tipo);
 
             if (!$validation['allowed']) {
                 if ($request->expectsJson()) {

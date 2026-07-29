@@ -23,16 +23,16 @@ export default function TeacherTable({
                 {
                     header: "Matrícula",
                     accessor: (row) => row.matricula,
-                    className: "text-slate-500 font-medium text-[12.5px]",
+                    className: "text-slate-500 font-normal text-[12.5px]",
                 },
                 {
                     header: "Nombre",
                     accessor: (row) => (
                         <div className="leading-tight text-left">
-                            <span className="text-slate-500 font-medium text-[13px] block">
+                            <span className="text-slate-500 font-normal text-[13px] block">
                                 {row.name}
                             </span>
-                            <span className="text-[12.5px] text-slate-400 font-medium block mt-0.5">
+                            <span className="text-[12.5px] text-slate-400 font-normal block mt-0.5">
                                 {row.specialty} {(row as any).area ? ` - ${(row as any).area}` : ''}
                             </span>
                         </div>
@@ -42,11 +42,11 @@ export default function TeacherTable({
                     header: "Contacto",
                     accessor: (row) => (
                         <div className="leading-tight text-left">
-                            <span className="text-slate-500 font-medium text-[13px] block">
+                            <span className="text-slate-500 font-normal text-[13px] block">
                                 {row.email}
                             </span>
 
-                            <span className="text-[11px] text-slate-400 font-bold block mt-0.5">
+                            <span className="text-[11px] text-slate-400 font-normal block mt-0.5">
                                 {row.phone}
                             </span>
                         </div>

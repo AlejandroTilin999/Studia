@@ -17,6 +17,7 @@ class SpecialtyController extends Controller
                         'id' => $s->id,
                         'nombre' => $s->nombre,
                         'codigo' => $s->codigo,
+                        'sub_areas' => $s->sub_areas ?? [],
                         'courses_count' => $s->courses_count,
                     ];
                 });
@@ -49,8 +50,9 @@ class SpecialtyController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre' => 'required|string|unique:especialidades,nombre|max:50',
-            'codigo' => 'required|string|unique:especialidades,codigo|max:10',
+            'nombre'    => 'required|string|unique:especialidades,nombre|max:50',
+            'codigo'    => 'required|string|unique:especialidades,codigo|max:10',
+            'sub_areas' => 'nullable|array',
         ], [
             'nombre.unique' => 'Esta especialidad ya existe (el nombre ya está registrado).',
             'codigo.unique' => 'Esta especialidad ya existe (el código ya está registrado).',
@@ -66,8 +68,9 @@ class SpecialtyController extends Controller
         $specialty = Specialty::findOrFail($id);
 
         $validated = $request->validate([
-            'nombre' => 'required|string|unique:especialidades,nombre,' . $specialty->id . '|max:50',
-            'codigo' => 'required|string|unique:especialidades,codigo,' . $specialty->id . '|max:10',
+            'nombre'    => 'required|string|unique:especialidades,nombre,' . $specialty->id . '|max:50',
+            'codigo'    => 'required|string|unique:especialidades,codigo,' . $specialty->id . '|max:10',
+            'sub_areas' => 'nullable|array',
         ], [
             'nombre.unique' => 'Esta especialidad ya existe (el nombre ya está registrado).',
             'codigo.unique' => 'Esta especialidad ya existe (el código ya está registrado).',

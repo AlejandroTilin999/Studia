@@ -23,14 +23,33 @@ export default function SpecialtyTable({
                 {
                     header: "Código / Abreviación",
                     accessor: (row) => row.codigo,
-                    className: "text-slate-500 font-medium text-[13px] text-left",
+                    className: "text-slate-500 font-normal text-[13px] text-left",
                 },
                 {
                     header: "Nombre de la Especialidad",
                     accessor: (row) => (
-                        <span className="text-slate-500 text-[13px] rounded-lg block w-fit text-left">
+                        <span className="text-slate-700 font-normal text-[13px] rounded-lg block w-fit text-left">
                             {row.nombre}
                         </span>
+                    ),
+                },
+                {
+                    header: "Áreas Técnicas / Ramas",
+                    accessor: (row) => (
+                        <div className="flex flex-wrap gap-1.5 max-w-[400px]">
+                            {row.sub_areas && row.sub_areas.length > 0 ? (
+                                row.sub_areas.map((area, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="px-2 py-0.5 bg-blue-50 text-[#0266E0] rounded-md text-[10px] font-normal uppercase tracking-normal border border-blue-100/50"
+                                    >
+                                        {area}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-slate-400 text-[11px]">Sin áreas definidas</span>
+                            )}
+                        </div>
                     ),
                 },
                 {

@@ -22,17 +22,17 @@ export default function SubjectTable({
                 {
                     header: "Código",
                     accessor: (row) => row.code,
-                    className: "text-slate-500 font-medium text-[13px] text-left leading-tight text-left",
+                    className: "text-slate-500 font-normal text-[13px] text-left leading-tight",
                 },
                 {
                     header: "Materia",
                     accessor: (row) => row.name,
-                    className: "text-slate-700 text-[13px] text-left leading-tight text-left font-normal",
+                    className: "text-slate-700 text-[13px] text-left leading-tight font-normal",
                 },
                 {
                     header: "Sem.",
                     accessor: (row) => (
-                        <span className="text-slate-500 font-bold text-xs">{row.semestre}°</span>
+                        <span className="text-slate-500 font-normal text-xs">{row.semestre}°</span>
                     ),
                     className: "text-center",
                 },
@@ -51,23 +51,28 @@ export default function SubjectTable({
                         if (row.tipo === 'General') {
                             return (
                                 <div className="leading-tight text-left">
-                                    <span className="text-slate-500 font-medium text-xs block">Todas las Carreras</span>
+                                    <span className="text-slate-500 font-normal text-xs block">Todas las Carreras</span>
                                     {(row as any).area && (
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Área: {(row as any).area}</span>
+                                        <span className="text-[10px] text-slate-400 font-normal uppercase tracking-tight">Área: {(row as any).area}</span>
                                     )}
                                 </div>
                             );
                         }
                         if (!row.specialties || row.specialties.length === 0) {
-                            return <span className="text-slate-500 font-semibold text-xs">Sin asignar</span>;
+                            return <span className="text-slate-500 font-normal text-xs">Sin asignar</span>;
                         }
                         return (
-                            <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                {row.specialties.map(spec => (
-                                    <span key={spec.id} className="text-slate-500 font-medium text-xs" title={spec.name}>
-                                        {spec.name}
-                                    </span>
-                                ))}
+                            <div className="flex flex-col text-left gap-0.5 max-w-[200px]">
+                                <div className="flex flex-wrap gap-1">
+                                    {row.specialties.map(spec => (
+                                        <span key={spec.id} className="text-slate-500 font-normal text-xs" title={spec.name}>
+                                            {spec.name}
+                                        </span>
+                                    ))}
+                                </div>
+                                {(row as any).area && (
+                                    <span className="text-[10px] text-[#0266E0] font-normal uppercase tracking-tight">Rama: {(row as any).area}</span>
+                                )}
                             </div>
                         );
                     },
@@ -76,7 +81,7 @@ export default function SubjectTable({
                 {
                     header: "Descripción",
                     accessor: (row) => {
-                        const desc = row.description || "Sin descripción";
+                        const desc = row.description || "Sin descripción disponible";
                         return desc.length > 50 ? desc.slice(0, 50) + '...' : desc;
                     },
                     className: "text-slate-500 text-[12.5px] text-left max-w-sm whitespace-normal break-words",
