@@ -55,12 +55,32 @@ class TeacherController extends Controller
             }),
             'filters' => [
                 'search' => $search
-            ]
+            ],
+            'isCycleActive' => \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->exists(),
+            'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
+                \App\Models\AcademicPeriod::STATUS_PLANNING,
+                \App\Models\AcademicPeriod::STATUS_ACTIVE
+            ])->exists(),
+            'activeCycleTeachersCount' => Inertia::defer(function() {
+                $activeCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
+                if (!$activeCycle) return 0;
+                return \DB::table('cargas_academicas')->where('ciclo_id', $activeCycle->id)->distinct('docente_id')->count();
+            })
         ]);
     }
 
     public function store(Request $request)
     {
+        // [SAFETY LOCK v3.6] Permitir registros si hay ciclo activo o en planeación
+        if (!\App\Models\AcademicPeriod::whereIn('status', [
+            \App\Models\AcademicPeriod::STATUS_PLANNING,
+            \App\Models\AcademicPeriod::STATUS_ACTIVE
+        ])->exists()) {
+            return redirect()->back()->withErrors([
+                'nombre' => 'Operación bloqueada. Debes tener un Ciclo Escolar vigente o en modo Planeación para registrar docentes.'
+            ]);
+        }
+
         $request->validate([
             'nombre'           => 'required|string|max:255',
             'apellido_paterno' => 'required|string|max:255',

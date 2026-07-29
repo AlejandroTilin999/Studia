@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
 import { AcademicGroupProp } from '../types';
+import { cn } from "@/lib/utils";
 import Button from "@/Components/ui/button";
 
 interface StudentTableControlsProps {
@@ -12,6 +13,7 @@ interface StudentTableControlsProps {
     onOpenCreateModal: () => void;
     showFiltersDropdown: boolean;
     setShowFiltersDropdown: (show: boolean) => void;
+    isCycleActive?: boolean;
 }
 
 export default function StudentTableControls({
@@ -22,7 +24,8 @@ export default function StudentTableControls({
     groups,
     onOpenCreateModal,
     showFiltersDropdown,
-    setShowFiltersDropdown
+    setShowFiltersDropdown,
+    isCycleActive
 }: StudentTableControlsProps) {
     return (
         <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
@@ -40,7 +43,12 @@ export default function StudentTableControls({
 
                 <button
                     onClick={onOpenCreateModal}
-                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
+                    disabled={!isCycleActive}
+                    title={!isCycleActive ? "Debes abrir un ciclo escolar para registrar inscripciones" : ""}
+                    className={cn(
+                        "bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2",
+                        !isCycleActive && "opacity-50 cursor-not-allowed grayscale"
+                    )}
                 >
                     <Plus className="w-4 h-4" />
                     Registrar alumno

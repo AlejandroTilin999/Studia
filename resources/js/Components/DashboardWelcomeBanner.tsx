@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Calendar } from 'lucide-react';
 import { usePage, router } from '@inertiajs/react';
+import { cn } from '@/lib/utils';
 
 interface DashboardWelcomeBannerProps {
     greeting: string;
@@ -19,6 +20,7 @@ export default function DashboardWelcomeBanner({
     wrapperClassName = "pt-0 pb-6 md:pb-10"
 }: DashboardWelcomeBannerProps) {
     const { url } = usePage();
+    const [imageLoaded, setImageLoaded] = React.useState(false);
 
     // Resolve role based on path
     let role = 'ADMIN';
@@ -33,6 +35,11 @@ export default function DashboardWelcomeBanner({
         : role === 'DOCENTE'
             ? '/assets/docente-dashboard.png'
             : '/assets/persona-dashboard.webp';
+
+    // Reiniciar el estado de carga cuando cambia la imagen (ej: cambio de rol)
+    React.useEffect(() => {
+        setImageLoaded(false);
+    }, [imageSrc]);
 
     const currentDate = new Date().toLocaleDateString('es-ES', {
         weekday: 'long',
@@ -98,10 +105,10 @@ export default function DashboardWelcomeBanner({
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e88e505_1px,transparent_1px),linear-gradient(to_bottom,#1e88e505_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0"></div>
 
                 {/* --- CONTENT GRID --- */}
-                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+                <div className="relative z-10 flex flex-col items-center min-[1352px]:flex-row min-[1352px]:items-center min-[1352px]:justify-between gap-8 h-full">
 
-                    {/* Left Column: Text & Button */}
-                    <div className="col-span-1 lg:col-span-8 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4 relative z-10">
+                    {/* Left Side: Text & Button */}
+                    <div className="flex flex-col items-center min-[1352px]:items-start text-center min-[1352px]:text-left space-y-4 relative z-10 flex-1 w-full">
                         {/* Date Pill Badge */}
                         <div className="relative z-20 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-lg text-blue-700 select-none">
                             <Calendar size={13} className="text-blue-600" />
@@ -122,7 +129,7 @@ export default function DashboardWelcomeBanner({
                                     {subtitle}
                                 </p>
                             )}
-                            <p className="text-xs sm:text-sm font-normal text-slate-500 max-w-md sm:max-w-lg lg:max-w-2xl xl:max-w-3xl leading-relaxed pt-1 mx-auto lg:mx-0">
+                            <p className="text-xs sm:text-sm font-normal text-slate-500 max-w-md sm:max-w-lg lg:max-w-xl xl:max-w-2xl leading-relaxed pt-1 mx-auto min-[1352px]:lg:mx-0">
                                 {getRoleDescription()}
                             </p>
                         </div>
@@ -136,14 +143,26 @@ export default function DashboardWelcomeBanner({
                         </button>
                     </div>
 
-                    {/* Right Column: Image */}
-                    <div className="col-span-1 lg:col-span-4 flex justify-center lg:justify-end">
-                        <div className="relative w-full max-w-[180px] sm:max-w-[220px] md:max-w-[260px] lg:max-w-[340px] xl:max-w-[380px] h-40 sm:h-48 md:h-56 lg:h-[280px] xl:h-[320px] flex items-end justify-center">
+                    {/* Right Side: Image (Below on screens < 1352px, beside on larger) */}
+                    <div className="w-full min-[1352px]:w-auto flex justify-center min-[1352px]:justify-end items-center">
+                        <div className="relative w-full max-w-[130px] sm:max-w-[150px] md:max-w-[170px] lg:max-w-[210px] min-[1352px]:max-w-[230px] flex items-center justify-center">
+
+                            {/* Loader central cuando la imagen aún no está lista */}
+                            {!imageLoaded && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="dots-loader scale-75 opacity-60" />
+                                </div>
+                            )}
+
                             <img
                                 src={imageSrc}
                                 alt="Personaje Dashboard"
                                 draggable="false"
-                                className="h-full w-auto object-contain pointer-events-none select-none"
+                                onLoad={() => setImageLoaded(true)}
+                                className={cn(
+                                    "w-full h-auto object-contain pointer-events-none select-none transition-opacity duration-500",
+                                    imageLoaded ? "opacity-100" : "opacity-0"
+                                )}
                             />
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FileSpreadsheet, Layers, FileText } from "lucide-react";
+import { FileSpreadsheet, Layers, FileText, Home, Users } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa";
 import { RiFileExcel2Fill } from "react-icons/ri";
 import { useForm, router, Deferred } from '@inertiajs/react';
@@ -16,7 +16,7 @@ import StudentFormModal from './components/StudentFormModal';
 import StudentKardexModal from './components/StudentKardexModal';
 import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } from './types';
 
-export default function AlumnosIndex({ alumnos, groups = [], filters = { search: '', group: 'all' } }: any) {
+export default function AlumnosIndex({ alumnos, groups = [], filters = { search: '', group: 'all' }, isCycleActive, canRegister }: any) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
@@ -329,15 +329,39 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
-                { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
-                { label: "Ver reportes escolares", onClick: () => router.visit('/admin/reportes'), icon: FileText }
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Gestionar Grupos", onClick: () => router.visit(route('groups.index')), icon: Layers }
             ]}
             donutChartLabel="alumnos"
             donutChartSegments={[
-                { name: "Activos", count: activeCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
-                { name: "De baja", count: inactiveCount, color: "#e2e8f0", bulletClass: "bg-slate-200" }
+                { name: "Activos", count: activeCount || 0, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
+                { name: "De baja", count: inactiveCount || 0, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
+            {!isCycleActive && canRegister && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest leading-none mb-1">Modo Planeación</p>
+                        <p className="text-[11px] text-blue-700 font-medium">El ciclo escolar se encuentra en preparación. Las inscripciones están habilitadas para organizar el periodo, pero la operación académica iniciará al activar el ciclo.</p>
+                    </div>
+                </div>
+            )}
+
+            {!canRegister && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Modo Solo Catálogo</p>
+                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo ni en planeación. Las inscripciones y registros operativos están deshabilitados hasta que se cree un nuevo periodo.</p>
+                    </div>
+                    <button
+                        onClick={() => router.visit(route('admin.dashboard'))}
+                        className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-all shrink-0"
+                    >
+                        Crear Ciclo
+                    </button>
+                </div>
+            )}
+
             {/* Controls: Search and Actions */}
             <StudentTableControls
                 searchQuery={searchQuery}
@@ -348,6 +372,7 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
                 onOpenCreateModal={openCreateModal}
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
+                isCycleActive={canRegister}
             />
 
             <Deferred data="alumnos" fallback={

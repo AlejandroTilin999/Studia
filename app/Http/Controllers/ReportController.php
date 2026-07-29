@@ -184,17 +184,19 @@ class ReportController extends Controller
     /**
      * Obtiene los datos para la constancia de estudios.
      */
-    public function getCertificateData($matricula)
+    public function getCertificateData($matricula, $enrollment = null)
     {
-        return response()->json($this->makeCertificateData($matricula));
+        return response()->json($this->makeCertificateData($matricula, $enrollment));
     }
 
-    protected function makeCertificateData($matricula)
+    protected function makeCertificateData($matricula, $enrollment = null)
     {
-        $enrollment = Enrollment::where('codigo_alumno', $matricula)
-            ->where('estatus', 'active')
-            ->with(['user', 'academicGroup', 'academicPeriod'])
-            ->firstOrFail();
+        if (!$enrollment) {
+            $enrollment = Enrollment::where('codigo_alumno', $matricula)
+                ->where('estatus', 'active')
+                ->with(['user', 'academicGroup', 'academicPeriod'])
+                ->firstOrFail();
+        }
 
         $user = $enrollment->user;
         $group = $enrollment->academicGroup;
@@ -229,17 +231,19 @@ class ReportController extends Controller
     /**
      * Obtiene los datos para la boleta de calificaciones.
      */
-    public function getGradeReportData($matricula, $periodId)
+    public function getGradeReportData($matricula, $periodId, $enrollment = null)
     {
-        return response()->json($this->makeGradeReportData($matricula, $periodId));
+        return response()->json($this->makeGradeReportData($matricula, $periodId, $enrollment));
     }
 
-    protected function makeGradeReportData($matricula, $periodId)
+    protected function makeGradeReportData($matricula, $periodId, $enrollment = null)
     {
-        $enrollment = Enrollment::where('codigo_alumno', $matricula)
-            ->where('ciclo_id', $periodId)
-            ->with(['user', 'academicGroup', 'academicPeriod'])
-            ->firstOrFail();
+        if (!$enrollment) {
+            $enrollment = Enrollment::where('codigo_alumno', $matricula)
+                ->where('ciclo_id', $periodId)
+                ->with(['user', 'academicGroup', 'academicPeriod'])
+                ->firstOrFail();
+        }
 
         $userId = $enrollment->usuario_id;
         $user = $enrollment->user;
@@ -284,9 +288,16 @@ class ReportController extends Controller
         $student = \App\Models\Student::where('matricula', $matricula)->with('user')->firstOrFail();
         $userId = $student->usuario_id;
 
-        // Obtener todas las inscripciones (ciclos que ha cursado)
+        // [OPTIMIZACIÓN] Eager Loading masivo para evitar N+1 anidados
         $enrollments = Enrollment::where('usuario_id', $userId)
-            ->with(['academicGroup', 'academicPeriod'])
+            ->with([
+                'academicGroup',
+                'academicPeriod',
+                'academicGroup.academicLoads.course',
+                'academicGroup.academicLoads.criterios',
+                'academicGroup.academicLoads.tareas.entregas' => fn($q) => $q->where('usuario_id', $userId),
+                'academicGroup.academicLoads.grades' => fn($q) => $q->where('usuario_id', $userId)
+            ])
             ->get();
 
         $history = [];
@@ -295,19 +306,14 @@ class ReportController extends Controller
 
         foreach ($enrollments as $enrollment) {
             $periodName = $enrollment->academicPeriod->nombre ?? 'N/A';
-
-            // Obtener materias y calificaciones de este ciclo
-            $loads = \App\Models\AcademicLoad::where('grupo_id', $enrollment->grupo_id)
-                ->where('ciclo_id', $enrollment->ciclo_id)
-                ->with('course')
-                ->get();
+            $loads = $enrollment->academicGroup->academicLoads ?? collect();
 
             foreach ($loads as $load) {
-                $gradeRecord = \App\Models\Grade::where('usuario_id', $userId)
-                    ->where('carga_id', $load->id)
-                    ->whereNull('criterio_id')
-                    ->first();
+                // Solo procesar si la carga pertenece al ciclo de la inscripción
+                if ($load->ciclo_id != $enrollment->ciclo_id) continue;
 
+                // Buscar el registro consolidado (criterio_id = null)
+                $gradeRecord = $load->grades->where('criterio_id', null)->first();
                 $finalGrade = $gradeRecord ? \App\Services\GradeService::formatGrade($gradeRecord->final) : '—';
 
                 if ($finalGrade !== '—') {
@@ -331,7 +337,7 @@ class ReportController extends Controller
             'student' => [
                 'nombre' => mb_strtoupper($student->user->nombre_completo),
                 'matricula' => $student->matricula,
-                'especialidad' => mb_strtoupper($enrollments->last()->academicGroup->especialidad ?? 'GENERAL'),
+                'especialidad' => $enrollments->isNotEmpty() ? mb_strtoupper($enrollments->last()->academicGroup->especialidad ?? 'GENERAL') : 'GENERAL',
             ],
             'history' => $history,
             'globalGpa' => $globalGpa,
@@ -376,17 +382,24 @@ class ReportController extends Controller
                     $batchData[] = $this->makeAttendanceData($group->id, $periodId);
                 } catch (\Exception $e) { continue; }
             } else {
+                // [OPTIMIZACIÓN] Eager load masivo para lote
                 $enrollments = Enrollment::where('grupo_id', $group->id)
                     ->where('ciclo_id', $periodId)
                     ->where('estatus', 'active')
+                    ->with([
+                        'user',
+                        'academicGroup',
+                        'academicPeriod',
+                        // Cargamos todo lo necesario para GradeService::getStudentKardex de forma anticipada
+                    ])
                     ->get();
 
                 foreach ($enrollments as $enrollment) {
                     try {
                         if ($tipo === 'boleta') {
-                            $batchData[] = $this->makeGradeReportData($enrollment->codigo_alumno, $periodId);
+                            $batchData[] = $this->makeGradeReportData($enrollment->codigo_alumno, $periodId, $enrollment);
                         } else {
-                            $batchData[] = $this->makeCertificateData($enrollment->codigo_alumno);
+                            $batchData[] = $this->makeCertificateData($enrollment->codigo_alumno, $enrollment);
                         }
                     } catch (\Exception $e) { continue; }
                 }

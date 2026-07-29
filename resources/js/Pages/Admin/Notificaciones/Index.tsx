@@ -1,6 +1,6 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
-import { Bell, CheckCheck, Clock, ShieldCheck } from 'lucide-react';
+import { Bell, CheckCheck, Clock, ShieldCheck, Home, FileText } from 'lucide-react';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { cn } from '@/lib/utils';
@@ -58,7 +58,9 @@ export default function NotificacionesIndex({ notificaciones, notifStats }: Inde
                 { code: "N2", label: "Sin leer", value: (notifStats === null || notifStats === undefined) ? null : (notifStats?.unread || 0) },
             ]}
             quickActions={[
-                { label: "Marcar todas como leídas", onClick: handleMarkAllAsRead, icon: CheckCheck }
+                { label: "Marcar todas como leídas", onClick: handleMarkAllAsRead, icon: CheckCheck },
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Historial de Reportes", onClick: () => router.visit(route('admin.reportes.index')), icon: FileText }
             ]}
         >
             <div className="space-y-4 max-w-4xl mx-auto py-4">
@@ -68,9 +70,9 @@ export default function NotificacionesIndex({ notificaciones, notifStats }: Inde
                     </div>
                 ) : (
                     notifData.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                             <Bell size={48} className="mb-4 opacity-20" />
-                            <p className="font-bold uppercase tracking-widest text-xs">No tienes notificaciones</p>
+                            <p className="font-black uppercase tracking-[0.2em] text-[13px]">No tienes notificaciones</p>
                         </div>
                     ) : (
                         notifData.map((n:any) => (

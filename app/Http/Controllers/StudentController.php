@@ -17,11 +17,23 @@ class StudentController extends Controller
     {
         $search = $request->query('search');
         $group = $request->query('group');
+        $activeCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
+        $planningCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_PLANNING)->first();
+
+        $workingCycle = $activeCycle ?: $planningCycle;
 
         return Inertia::render('Admin/Alumnos/Index', [
-            'alumnos' => Inertia::defer(function () use ($search, $group) {
+            'alumnos' => Inertia::defer(function () use ($search, $group, $workingCycle) {
+                // Si no hay ciclo de trabajo, no hay alumnos operativos
+                if (!$workingCycle) return ['data' => [], 'total' => 0];
+
                 $query = Student::whereHas('user')
-                    ->with(['user', 'enrollment.academicGroup']);
+                    ->whereHas('enrollments', function($q) use ($workingCycle) {
+                        $q->where('ciclo_id', $workingCycle->id);
+                    })
+                    ->with(['user', 'enrollments' => function($q) use ($workingCycle) {
+                        $q->where('ciclo_id', $workingCycle->id)->with('academicGroup');
+                    }]);
 
                 if ($search) {
                     $query->where(function ($q) use ($search) {
@@ -43,6 +55,8 @@ class StudentController extends Controller
 
                 return $query->paginate(50)
                     ->through(function ($student) {
+                        $currentEnrollment = $student->enrollments->first();
+
                         return [
                             'id' => $student->id,
                             'usuario_id' => $student->usuario_id,
@@ -54,11 +68,11 @@ class StudentController extends Controller
                             'matricula' => $student->matricula,
                             'telefono' => $student->user->telefono ?? '',
                             'fecha_nacimiento' => $student->fecha_nacimiento ?? '',
-                            'grupo' => $student->enrollment && $student->enrollment->academicGroup ? [
-                                'id' => $student->enrollment->academicGroup->id,
-                                'nombre' => $student->enrollment->academicGroup->nombre,
+                            'grupo' => $currentEnrollment && $currentEnrollment->academicGroup ? [
+                                'id' => $currentEnrollment->academicGroup->id,
+                                'nombre' => $currentEnrollment->academicGroup->nombre,
                             ] : null,
-                            'estatus' => $student->estatus ?? 'active',
+                            'estatus' => $currentEnrollment->estatus ?? 'active',
                             'calificaciones' => [],
                         ];
                     })
@@ -75,12 +89,29 @@ class StudentController extends Controller
             'filters' => [
                 'search' => $search,
                 'group' => $group
-            ]
+            ],
+            'isCycleActive' => (bool)$activeCycle,
+            'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
+                \App\Models\AcademicPeriod::STATUS_ACTIVE,
+                \App\Models\AcademicPeriod::STATUS_PLANNING
+            ])->exists()
         ]);
     }
 
     public function store(Request $request)
     {
+        // [SAFETY LOCK v3.6] Permitir inscripciones en ciclos Activos o en Planeación
+        $targetCycle = \App\Models\AcademicPeriod::whereIn('status', [
+            \App\Models\AcademicPeriod::STATUS_ACTIVE,
+            \App\Models\AcademicPeriod::STATUS_PLANNING
+        ])->first();
+
+        if (!$targetCycle) {
+            return redirect()->back()->withErrors([
+                'grupo_id' => 'Operación bloqueada. Debes tener un Ciclo Escolar vigente o en modo Planeación para inscribir alumnos.'
+            ]);
+        }
+
         $request->validate([
             'nombre'            => 'required|string|max:255',
             'apellido_paterno'  => 'required|string|max:255',
@@ -149,13 +180,10 @@ class StudentController extends Controller
             ]);
 
             // 3. Registrar su inscripción en el grupo
-            $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
-            $periodId = $activePeriod ? $activePeriod->id : null;
-
             Enrollment::create([
                 'usuario_id'    => $user->id,
                 'grupo_id'      => $request->grupo_id,
-                'ciclo_id'      => $periodId,
+                'ciclo_id'      => $targetCycle->id,
                 'codigo_alumno' => $finalMatricula,
                 'estatus'       => 'active',
             ]);
@@ -212,8 +240,12 @@ class StudentController extends Controller
             ]);
 
             // 3. Actualizar inscripción (traslado con historial o asignación inicial)
-            $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
-            $periodId = $activePeriod ? $activePeriod->id : null;
+            $targetCycle = \App\Models\AcademicPeriod::whereIn('status', [
+                \App\Models\AcademicPeriod::STATUS_ACTIVE,
+                \App\Models\AcademicPeriod::STATUS_PLANNING
+            ])->first();
+
+            $periodId = $targetCycle ? $targetCycle->id : null;
 
             if ($student->enrollment) {
                 $student->enrollment->update([

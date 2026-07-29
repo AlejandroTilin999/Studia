@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 class AcademicPeriodController extends Controller
 {
     /**
-     * Crea un nuevo ciclo escolar.
+     * Crea un nuevo ciclo escolar (Inicia en modo Planificación por defecto).
      */
     public function store(Request $request)
     {
@@ -17,7 +17,7 @@ class AcademicPeriodController extends Controller
             'nombre'       => 'required|string|max:100',
             'fecha_inicio' => 'required|date',
             'fecha_fin'    => 'required|date|after:fecha_inicio',
-            'activo'       => 'boolean',
+            'activo'       => 'boolean', // Si viene true, se activa de inmediato
             'p1_inicio'    => 'nullable|date',
             'p1_fin'       => 'nullable|date|after_or_equal:p1_inicio',
             'p1_activo'    => 'boolean',
@@ -30,22 +30,31 @@ class AcademicPeriodController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            if (isset($validated['activo']) && $validated['activo']) {
-                AcademicPeriod::where('activo', true)->update(['activo' => false]);
+            $isImmediateActive = isset($validated['activo']) && $validated['activo'];
+
+            if ($isImmediateActive) {
+                // Desactivar otros ciclos si este será el vigente
+                AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->update([
+                    'status' => AcademicPeriod::STATUS_CLOSED,
+                    'activo' => false
+                ]);
             }
 
-            $period = AcademicPeriod::create($validated);
+            $period = AcademicPeriod::create(array_merge($validated, [
+                'status' => $isImmediateActive ? AcademicPeriod::STATUS_ACTIVE : AcademicPeriod::STATUS_PLANNING,
+                'activo' => $isImmediateActive
+            ]));
 
             // Registrar en Auditoría
             \App\Models\AdminAuditLog::create([
                 'usuario_id' => auth()->id(),
                 'accion' => 'APERTURA_CICLO',
-                'descripcion' => "Se realizó la apertura del ciclo escolar: {$period->nombre}.",
-                'metadata' => ['ciclo_id' => $period->id]
+                'descripcion' => "Se realizó la apertura del ciclo escolar: {$period->nombre} en modo " . ($isImmediateActive ? 'VIGENTE' : 'PLANEACIÓN') . ".",
+                'metadata' => ['ciclo_id' => $period->id, 'status' => $period->status]
             ]);
         });
 
-        return redirect()->back()->with('message', 'Ciclo escolar creado con éxito.');
+        return redirect()->back()->with('message', 'Ciclo escolar registrado correctamente.');
     }
 
     /**
@@ -106,15 +115,24 @@ class AcademicPeriodController extends Controller
     public function activate($id)
     {
         DB::transaction(function () use ($id) {
-            AcademicPeriod::where('activo', true)->update(['activo' => false]);
+            // 1. Cerrar el ciclo que estuviera activo anteriormente
+            AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->update([
+                'status' => AcademicPeriod::STATUS_CLOSED,
+                'activo' => false
+            ]);
+
+            // 2. Activar el nuevo ciclo
             $period = AcademicPeriod::findOrFail($id);
-            $period->update(['activo' => true]);
+            $period->update([
+                'status' => AcademicPeriod::STATUS_ACTIVE,
+                'activo' => true
+            ]);
 
             // Registrar en Auditoría
             \App\Models\AdminAuditLog::create([
                 'usuario_id' => auth()->id(),
                 'accion' => 'ACTIVAR_CICLO',
-                'descripcion' => "Se activó el ciclo escolar: {$period->nombre}.",
+                'descripcion' => "Se activó formalmente el ciclo escolar: {$period->nombre}. El sistema ahora opera bajo este periodo.",
                 'metadata' => ['ciclo_id' => $id]
             ]);
         });
@@ -123,12 +141,13 @@ class AcademicPeriodController extends Controller
     }
 
     /**
-     * Cierra un ciclo escolar (lo marca como inactivo).
+     * Cierra un ciclo escolar (lo marca como concluido).
      */
     public function close($id)
     {
         $period = AcademicPeriod::findOrFail($id);
         $period->update([
+            'status' => AcademicPeriod::STATUS_CLOSED,
             'activo' => false,
             'p1_activo' => false,
             'p2_activo' => false,
@@ -143,7 +162,7 @@ class AcademicPeriodController extends Controller
             'metadata' => ['ciclo_id' => $id]
         ]);
 
-        return redirect()->back()->with('message', 'Ciclo escolar concluido y periodos de captura cerrados.');
+        return redirect()->back()->with('message', 'Ciclo escolar concluido y archivado.');
     }
 
     /**

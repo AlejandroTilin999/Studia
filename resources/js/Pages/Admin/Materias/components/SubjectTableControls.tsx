@@ -8,8 +8,6 @@ interface SubjectTableControlsProps {
     setGroupFilter: (group: string) => void;
     groupsList: string[];
     onOpenCreateModal: () => void;
-    parityFilter: 'all' | 'current';
-    setParityFilter: (filter: 'all' | 'current') => void;
 }
 
 export default function SubjectTableControls({
@@ -19,8 +17,6 @@ export default function SubjectTableControls({
     setGroupFilter,
     groupsList,
     onOpenCreateModal,
-    parityFilter,
-    setParityFilter,
 }: SubjectTableControlsProps) {
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
@@ -75,32 +71,6 @@ export default function SubjectTableControls({
                             </select>
                         </div>
                     )}
-                </div>
-
-                {/* Segmented Control Toggle (Matching Login Style) */}
-                <div className="flex bg-slate-100 rounded-lg overflow-hidden w-full lg:w-64 h-12 shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => setParityFilter('all')}
-                        className={`flex-1 py-3 text-[14px] font-bold transition-all flex items-center justify-center outline-none ${
-                            parityFilter === "all"
-                                ? "bg-[#0266E0] text-white shadow-sm"
-                                : "bg-transparent text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        Todas
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setParityFilter('current')}
-                        className={`flex-1 py-3 text-[14px] font-bold transition-all flex items-center justify-center outline-none ${
-                            parityFilter === "current"
-                                ? "bg-[#0266E0] text-white shadow-sm"
-                                : "bg-transparent text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        Ciclo Actual
-                    </button>
                 </div>
             </div>
         </div>

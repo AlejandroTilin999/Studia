@@ -12,19 +12,24 @@ class SpecialtyController extends Controller
     {
         return Inertia::render('Admin/Especialidades/Index', [
             'especialidades' => Inertia::defer(function () {
-                return Specialty::all()->map(function ($s) {
+                return Specialty::withCount('courses')->get()->map(function ($s) {
                     return [
                         'id' => $s->id,
                         'nombre' => $s->nombre,
                         'codigo' => $s->codigo,
+                        'courses_count' => $s->courses_count,
                     ];
                 });
             }),
             'specialtyDistribution' => Inertia::defer(function () {
+                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+                if (!$activeCycle) return [];
+
                 return \DB::table('inscripciones')
                     ->join('grupos', 'inscripciones.grupo_id', '=', 'grupos.id')
                     ->select('grupos.especialidad as name', \DB::raw('count(*) as count'))
                     ->where('inscripciones.estatus', 'active')
+                    ->where('inscripciones.ciclo_id', $activeCycle->id)
                     ->groupBy('grupos.especialidad')
                     ->get()
                     ->map(function($item, $index) {

@@ -9,8 +9,13 @@ class AcademicPeriod extends Model
     const UPDATED_AT = null;
 
     protected $table = 'ciclos_escolares';
+
+    const STATUS_PLANNING = 'planificacion';
+    const STATUS_ACTIVE = 'activo';
+    const STATUS_CLOSED = 'cerrado';
+
     protected $fillable = [
-        'nombre', 'fecha_inicio', 'fecha_fin', 'activo',
+        'nombre', 'fecha_inicio', 'fecha_fin', 'activo', 'status',
         'p1_inicio', 'p1_fin', 'p1_activo',
         'p2_inicio', 'p2_fin', 'p2_activo',
         'p3_inicio', 'p3_fin', 'p3_activo'

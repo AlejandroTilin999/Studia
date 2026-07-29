@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { FileSpreadsheet, Layers, Plus, Search } from 'lucide-react';
+import { FileSpreadsheet, Layers, Plus, Search, Home, BookOpen } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { RiFileExcel2Fill } from 'react-icons/ri';
 import SpecialtyTable from './components/SpecialtyTable';
@@ -133,29 +133,35 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
         });
     };
 
-    const totalSpecialtiesCount = (especialidades === null || especialidades === undefined) ? null : especialidades.length;
-    const activeMatricula = (specialtyDistribution === null || specialtyDistribution === undefined) ? null : specialtyDistribution.reduce((acc: number, curr: any) => acc + curr.count, 0);
+    const totalSpecialtiesCount = useMemo(() => (especialidades === null || especialidades === undefined) ? null : especialidades.length, [especialidades]);
+    const linkedSpecialtiesCount = useMemo(() => (especialidades === null || especialidades === undefined) ? null : especialidades.filter((s: any) => s.courses_count > 0).length, [especialidades]);
+    const unlinkedSpecialtiesCount = useMemo(() => (especialidades === null || especialidades === undefined) ? null : especialidades.filter((s: any) => s.courses_count === 0).length, [especialidades]);
 
-    const isDataLoading = especialidades === undefined || specialtyDistribution === undefined;
+    const isDataLoading = especialidades === undefined;
 
     return (
         <AdminPageLayout
             headTitle="Gestión de Especialidades"
-            title="Gestión de Especialidades"
+            title="Gestión de especialidades"
             subtitle="Consulta, edita y registra especialidades y carreras técnicas"
             breadcrumb="Especialidades"
             isLoading={isDataLoading}
             metrics={[
-                { code: "E1", label: "Especialidades", value: totalSpecialtiesCount },
-                { code: "E2", label: "Matrícula Activa", value: activeMatricula }
+                { code: "T1", label: "Especialidades totales", value: totalSpecialtiesCount },
+                { code: "T4", label: "Con materias", value: linkedSpecialtiesCount }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
-                { label: "Gestionar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers }
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Catálogo de Materias", onClick: () => router.visit(route('admin.materias.index')), icon: BookOpen }
             ]}
-            donutChartLabel="alumnos"
-            donutChartSegments={specialtyDistribution}
+            donutChartTitle="Estado del Catálogo"
+            donutChartLabel="especialidades"
+            donutChartSegments={[
+                { name: "Con materias", count: linkedSpecialtiesCount || 0, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
+                { name: "Sin materias", count: unlinkedSpecialtiesCount || 0, color: "#e2e8f0", bulletClass: "bg-slate-200" }
+            ]}
         >
             {/* Controls */}
             <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">

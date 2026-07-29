@@ -5,7 +5,7 @@ import ReportParams from './ReportParams';
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { useToast } from '@/hooks/useToast';
-import { Download, FileText, FilePlus, History } from 'lucide-react';
+import { Download, FileText, FilePlus, History, Home, Users } from 'lucide-react';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
@@ -313,12 +313,12 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
                 SwalHelper.alert('Filtros requeridos', 'Debes seleccionar un Grupo y un Ciclo Escolar para generar la lista de asistencia.', 'warning');
                 return;
             }
-        } else if (selectedReport === 'constancia') {
+        } else if (selectedReport === 'constancia' || selectedReport === 'kardex') {
             if (!selectedStudentMatricula) {
-                SwalHelper.alert('Alumno requerido', 'Por favor, selecciona a un alumno para generar su constancia.', 'warning');
+                SwalHelper.alert('Alumno requerido', 'Por favor, selecciona a un alumno para generar este documento.', 'warning');
                 return;
             }
-        } else if (selectedReport === 'boleta' || selectedReport === 'kardex') {
+        } else if (selectedReport === 'boleta') {
             if (!selectedStudentMatricula || !periodFilter) {
                 SwalHelper.alert('Filtros requeridos', 'Debes seleccionar un alumno y un periodo para generar este documento.', 'warning');
                 return;
@@ -533,9 +533,14 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
                     icon: Download
                 },
                 {
-                    label: "Historial Reciente",
-                    onClick: () => setActiveTab('historial'),
-                    icon: FileText
+                    label: "Panel de Control",
+                    onClick: () => router.visit(route('admin.dashboard')),
+                    icon: Home
+                },
+                {
+                    label: "Control de Alumnos",
+                    onClick: () => router.visit(route('admin.alumnos.index')),
+                    icon: Users
                 }
             ]}
             donutChartTitle="Formato de Descargas"

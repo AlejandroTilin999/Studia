@@ -52,17 +52,17 @@ export default function ReportParams({
     if (!selectedReport) return null;
 
     const showStudent = selectedReport === 'constancia' || selectedReport === 'boleta' || selectedReport === 'kardex';
-    const showPeriod = selectedReport === 'asistencia' || selectedReport === 'boleta' || selectedReport === 'kardex';
+    const showPeriod = selectedReport === 'asistencia' || selectedReport === 'boleta';
 
     // Validación de formulario completo según el tipo de reporte
     const isFormValid = useMemo(() => {
         if (selectedReport === 'asistencia') {
             return !!groupFilter && !!periodFilter;
         }
-        if (selectedReport === 'constancia') {
-            return !!selectedStudentMatricula; // El grupo es solo para filtrar la lista
+        if (selectedReport === 'constancia' || selectedReport === 'kardex') {
+            return !!selectedStudentMatricula;
         }
-        if (selectedReport === 'boleta' || selectedReport === 'kardex') {
+        if (selectedReport === 'boleta') {
             return !!selectedStudentMatricula && !!periodFilter;
         }
         return false;
@@ -130,7 +130,7 @@ export default function ReportParams({
                         <div className="flex items-center gap-2 mb-2.5">
                             <Calendar size={14} className="text-slate-400 shrink-0" />
                             <label className="text-[13px] font-normal text-slate-500 truncate">
-                                Periodo vigente <span className="text-red-500 font-bold ml-0.5">*</span>
+                                Periodo escolar <span className="text-red-500 font-bold ml-0.5">*</span>
                             </label>
                         </div>
                         <FormSelect

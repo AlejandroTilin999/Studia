@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useForm, Deferred, router } from '@inertiajs/react';
-import { FileSpreadsheet, Download } from 'lucide-react';
+import { FileSpreadsheet, Download, Home, GraduationCap } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { RiFileExcel2Fill } from 'react-icons/ri';
 import LoadFormModal from './components/LoadFormModal';
@@ -23,7 +23,9 @@ export default function CargasIndex({
     groups = [],
     courses = [],
     teachers = [],
-    filters = { search: '' }
+    filters = { search: '' },
+    isCycleActive,
+    canRegister
 }: any) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const { toastMessage, triggerToast } = useToast();
@@ -273,13 +275,39 @@ export default function CargasIndex({
             quickActions={[
                 { label: "Importar Carga", onClick: () => setIsImportModalOpen(true), icon: Download },
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
-                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf }
+                { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Plantilla Docente", onClick: () => router.visit(route('admin.docentes.index')), icon: GraduationCap }
             ]}
             donutChartLabel="asignaciones"
             donutChartSegments={[
                 { name: "Asignadas", count: totalLoadsCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" }
             ]}
         >
+            {!isCycleActive && canRegister && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest leading-none mb-1">Modo Planeación</p>
+                        <p className="text-[11px] text-blue-700 font-medium">Configurando la carga académica para el próximo ciclo. Las asignaciones de materias y docentes están habilitadas para preparar el periodo escolar.</p>
+                    </div>
+                </div>
+            )}
+
+            {!canRegister && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Modo Solo Catálogo</p>
+                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo ni en planeación. La asignación de materias y el registro de cargas académicas están bloqueados.</p>
+                    </div>
+                    <button
+                        onClick={() => router.visit(route('admin.dashboard'))}
+                        className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-all shrink-0"
+                    >
+                        Crear Ciclo
+                    </button>
+                </div>
+            )}
+
             <LoadTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -290,6 +318,7 @@ export default function CargasIndex({
                 periods={periods}
                 groups={groups}
                 onOpenCreateModal={openCreateModal}
+                isCycleActive={canRegister}
             />
 
             <Deferred data="loads" fallback={

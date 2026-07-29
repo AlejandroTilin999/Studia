@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { FileSpreadsheet, Layers, FileText } from 'lucide-react';
+import { FileSpreadsheet, Layers, FileText, Home, Folder } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { RiFileExcel2Fill } from 'react-icons/ri';
 import DotsLoader from '@/Components/ui/DotsLoader';
@@ -16,7 +16,7 @@ import TeacherTable from "./components/TeacherTable";
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { DocentesIndexProps, TeacherFormatted, TeacherFromBackend } from './types';
 
-export default function DocentesIndex({ teachers, filters = { search: '' } }: any) {
+export default function DocentesIndex({ teachers, filters = { search: '' }, activeCycleTeachersCount, isCycleActive, canRegister }: any) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
@@ -245,25 +245,50 @@ export default function DocentesIndex({ teachers, filters = { search: '' } }: an
             metrics={[
                 { code: "T1", label: "Docentes totales", value: totalTeachersCount },
                 { code: "T3", label: "Especialidades", value: specialtyCount },
-                { code: "T4", label: "Activos en ciclo", value: totalTeachersCount }
+                { code: "T4", label: "Activos en ciclo", value: activeCycleTeachersCount }
             ]}
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
-                { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
-                { label: "Ver materias activas", onClick: () => router.visit('/admin/materias'), icon: FileText }
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Asignar Materias", onClick: () => router.visit(route('admin.loads.index')), icon: Folder }
             ]}
             donutChartLabel="profesores"
             donutChartSegments={[
                 { name: "Asignados", count: totalTeachersCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" }
             ]}
         >
+            {!isCycleActive && canRegister && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest leading-none mb-1">Modo Planeación</p>
+                        <p className="text-[11px] text-blue-700 font-medium">Preparando la plantilla docente para el próximo ciclo. Los registros están habilitados para organizar las asignaciones, pero el periodo aún no es vigente.</p>
+                    </div>
+                </div>
+            )}
+
+            {!canRegister && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Modo Solo Catálogo</p>
+                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo ni en planeación. Los registros de plantilla docente y asignaciones están deshabilitados.</p>
+                    </div>
+                    <button
+                        onClick={() => router.visit(route('admin.dashboard'))}
+                        className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-all shrink-0"
+                    >
+                        Crear Ciclo
+                    </button>
+                </div>
+            )}
+
             <TeacherTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 onCreate={openCreateModal}
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
+                isCycleActive={canRegister}
             />
 
             <Deferred data="teachers" fallback={

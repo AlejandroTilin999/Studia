@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Check, BookOpen, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Calendar, Check, BookOpen, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react';
 import StudentRightSidebar from '@/Components/StudentRightSidebar';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import StudentDashboardCards from './StudentDashboardCards';
@@ -56,6 +56,7 @@ interface AlumnoDashboardProps {
     taskList?: Task[];
     kardex?: any[];
     alumnoGroups?: any[];
+    isCycleActive?: boolean;
 }
 
 export default function AlumnoDashboard({
@@ -63,7 +64,8 @@ export default function AlumnoDashboard({
     studentInfo: propStudentInfo,
     taskList: propTaskList,
     kardex = [],
-    alumnoGroups: propAlumnoGroups = []
+    alumnoGroups: propAlumnoGroups = [],
+    isCycleActive = true
 }: AlumnoDashboardProps) {
     const { auth } = usePage().props as any;
     const { url: currentUrl } = usePage();
@@ -253,6 +255,15 @@ export default function AlumnoDashboard({
                                 subtitle="Portal del Alumno"
                                 wrapperClassName="pb-2"
                             />
+
+                            {!isCycleActive && (
+                                <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex-1 text-left">
+                                        <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Receso Académico / Fin de Ciclo</p>
+                                        <p className="text-[11px] text-amber-700 font-medium">No existe un ciclo escolar activo. Puedes consultar tu Kardex histórico, pero el acceso a tareas vigentes y registro de actividades está suspendido.</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-6">
                                 <StudentDashboardCards

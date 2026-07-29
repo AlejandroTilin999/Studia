@@ -50,9 +50,9 @@ export default function CycleHistoryModal({
                 {/* Right Content */}
                 <div className="col-span-1 md:col-span-7 p-8 md:p-12 flex flex-col bg-white rounded-b-lg md:rounded-r-lg">
                     <div className="flex items-center justify-between mb-8">
-                        <h5 className="text-xs font-normal uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
-                            <div className="w-1.5 h-4 bg-[#0266E0] rounded-full" /> Registros Académicos
-                        </h5>
+                        <h4 className="text-xs font-normal uppercase text-slate-400 tracking-[0.2em]">
+                            Registros Académicos
+                        </h4>
                         <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
                             {cycles.length} Periodos
                         </span>
@@ -62,7 +62,7 @@ export default function CycleHistoryModal({
                         {cycles.length === 0 ? (
                             <div className="py-20 text-center space-y-3">
                                 <Archive size={40} className="mx-auto text-slate-200" />
-                                <p className="text-slate-400 font-normal italic text-sm">No hay ciclos registrados en el historial.</p>
+                                <p className="text-slate-400 font-normal text-sm">No hay ciclos registrados en el historial.</p>
                             </div>
                         ) : (
                             cycles.map((c) => (

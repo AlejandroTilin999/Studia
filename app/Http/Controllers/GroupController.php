@@ -17,6 +17,7 @@ class GroupController extends Controller
 
         return Inertia::render('Admin/Grupos/Index', [
             'grupos' => Inertia::defer(function () use ($search) {
+                // [INTELIGENCIA v3.6] Mostrar grupos en planificación o activos
                 $query = AcademicGroup::query();
 
                 if ($search) {
@@ -66,12 +67,24 @@ class GroupController extends Controller
             ])),
             'filters' => [
                 'search' => $search
-            ]
+            ],
+            'isCycleActive' => AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->exists(),
+            'canRegister' => AcademicPeriod::whereIn('status', [
+                AcademicPeriod::STATUS_ACTIVE,
+                AcademicPeriod::STATUS_PLANNING
+            ])->exists()
         ]);
     }
 
     public function store(Request $request)
     {
+        // [SAFETY LOCK v3.6] Permitir crear grupos si hay un ciclo activo o en planeación
+        if (!AcademicPeriod::whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])->exists()) {
+            return redirect()->back()->withErrors([
+                'codigo' => 'No se pueden registrar grupos si no existe un Ciclo Escolar activo o en modo Planeación.'
+            ]);
+        }
+
         $validated = $request->validate([
             'codigo' => 'required|string|unique:grupos,codigo',
             'nombre' => 'required|string|unique:grupos,nombre|max:20',

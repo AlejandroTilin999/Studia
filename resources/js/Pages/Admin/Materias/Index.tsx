@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { FileSpreadsheet, Layers, Users } from 'lucide-react';
+import { FileSpreadsheet, Layers, Users, Home, Layout } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { RiFileExcel2Fill } from 'react-icons/ri';
 import DotsLoader from '@/Components/ui/DotsLoader';
@@ -15,7 +15,7 @@ import { useExportPDF } from '@/hooks/useExportPDF';
 import { subjectService } from './services/subjectService';
 import { MateriasIndexProps, SubjectFormatted } from './types';
 
-export default function MateriasIndex({ materias, profesores = [], grupos = [], especialidades = [], activePeriod, filters = { search: '' } }: any) {
+export default function MateriasIndex({ materias, profesores = [], grupos = [], especialidades = [], activePeriod, filters = { search: '' }, isCycleActive }: any) {
     // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
     const subjectDataList = useMemo(() => {
         if (Array.isArray(materias)) return materias;
@@ -40,7 +40,6 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [groupFilter, setGroupFilter] = useState('all');
-    const [parityFilter, setParityFilter] = useState<'all' | 'current' | 'other'>('all');
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -118,15 +117,14 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
             subject.teacherName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesGroup = groupFilter === 'all' || subject.linkedGroups.includes(groupFilter);
 
+        // [AUTO-FILTRO v2.4] Solo mostrar materias que corresponden a la paridad del ciclo activo (Nones/Pares)
         let matchesParity = true;
-        if (parityFilter === 'current' && activePeriod) {
+        if (activePeriod) {
             matchesParity = activePeriod.es_nones ? subject.semestre % 2 !== 0 : subject.semestre % 2 === 0;
-        } else if (parityFilter === 'other' && activePeriod) {
-            matchesParity = activePeriod.es_nones ? subject.semestre % 2 === 0 : subject.semestre % 2 !== 0;
         }
 
         return matchesSearch && matchesGroup && matchesParity;
-    }), [formattedSubjects, searchQuery, groupFilter, parityFilter, activePeriod]);
+    }), [formattedSubjects, searchQuery, groupFilter, activePeriod]);
 
     const openCreateModal = () => {
         setModalMode('create');
@@ -203,7 +201,7 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
     };
 
     const totalSubjectsCount = useMemo(() => (materias === null || materias === undefined ? null : (Array.isArray(materias) ? materias.length : materias?.total || 0)), [materias]);
-    const subjectsInCycleCount = useMemo(() => (materias === null || materias === undefined) ? null : formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : true).length, [formattedSubjects, materias, activePeriod]);
+    const subjectsInCycleCount = useMemo(() => (materias === null || materias === undefined) ? null : formattedSubjects.filter(s => activePeriod ? (activePeriod.es_nones ? s.semestre % 2 !== 0 : s.semestre % 2 === 0) : false).length, [formattedSubjects, materias, activePeriod]);
     const subjectsWithoutTeacherCount = useMemo(() => (materias === null || materias === undefined) ? null : formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length, [formattedSubjects, materias]);
 
     return (
@@ -223,8 +221,8 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
-                { label: "Estructurar grupos", onClick: () => router.visit('/admin/grupos'), icon: Layers },
-                { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Gestionar Especialidades", onClick: () => router.visit(route('admin.especialidades.index')), icon: Layout }
             ]}
             donutChartLabel="materias"
             donutChartSegments={[
@@ -232,6 +230,21 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
                 { name: "Sin docente", count: formattedSubjects.filter(s => s.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
+            {!isCycleActive && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Modo Solo Catálogo</p>
+                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo. Puedes gestionar el catálogo de materias, pero las asignaciones y configuraciones de grupos están suspendidas.</p>
+                    </div>
+                    <button
+                        onClick={() => router.visit(route('admin.dashboard'))}
+                        className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-all shrink-0"
+                    >
+                        Abrir Ciclo
+                    </button>
+                </div>
+            )}
+
             <SubjectTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -239,8 +252,6 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
                 groupFilter={groupFilter}
                 setGroupFilter={setGroupFilter}
                 groupsList={groupsList}
-                parityFilter={parityFilter === 'all' ? 'all' : 'current'}
-                setParityFilter={(val) => setParityFilter(val as any)}
             />
 
             <Deferred data="materias" fallback={

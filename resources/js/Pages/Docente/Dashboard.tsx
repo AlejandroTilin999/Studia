@@ -5,7 +5,8 @@ import {
     Clock,
     ChevronRight,
     Layers,
-    BookOpen
+    BookOpen,
+    AlertCircle
 } from 'lucide-react';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import TeacherInfoCard from '@/Components/TeacherInfoCard';
@@ -29,11 +30,13 @@ interface DocenteDashboardProps {
         email: string;
     };
     assignedLoad?: AssignedLoadItem[];
+    isCycleActive?: boolean;
 }
 
 export default function DocenteDashboard({
     teacherInfo: propTeacherInfo,
-    assignedLoad: propAssignedLoad
+    assignedLoad: propAssignedLoad,
+    isCycleActive = true
 }: DocenteDashboardProps) {
     // 1. Datos del docente con fallback seguro
     const teacherInfo = {
@@ -66,6 +69,15 @@ export default function DocenteDashboard({
                         subtitle="Portal Docente"
                         wrapperClassName="pb-0"
                     />
+
+                    {!isCycleActive && (
+                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex-1 text-left">
+                                <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Receso Académico / Ciclo Cerrado</p>
+                                <p className="text-[11px] text-amber-700 font-medium">Actualmente no existe un ciclo escolar activo. Puedes consultar el historial de tus clases, pero la captura de calificaciones y tareas se encuentra deshabilitada.</p>
+                            </div>
+                        </div>
+                    )}
 
                     <Deferred data={['teacherInfo', 'assignedLoad']} fallback={
                         <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">

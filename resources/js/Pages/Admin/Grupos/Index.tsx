@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm, router, Deferred } from '@inertiajs/react';
-import { FileSpreadsheet, Layers, Users } from 'lucide-react';
+import { FileSpreadsheet, Layers, Users, Home } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { RiFileExcel2Fill } from 'react-icons/ri';
 import DotsLoader from '@/Components/ui/DotsLoader';
@@ -23,7 +23,9 @@ export default function GruposIndex({
     materias = [],
     especialidades = [],
     cycles = [],
-    filters = { search: '' }
+    filters = { search: '' },
+    isCycleActive,
+    canRegister
 }: any) {
     // [OPTIMIZACIÓN v2.3] Soportar paginación y búsqueda en servidor
     const groupDataList = useMemo(() => {
@@ -246,8 +248,8 @@ export default function GruposIndex({
             quickActions={[
                 { label: "Exportar listado (Excel)", onClick: handleExportExcel, icon: RiFileExcel2Fill },
                 { label: "Exportar listado (PDF)", onClick: handleExportPDF, icon: FaFilePdf },
-                { label: "Gestionar materias", onClick: () => router.visit('/admin/materias'), icon: Layers },
-                { label: "Gestionar profesores", onClick: () => router.visit('/admin/docentes'), icon: Users }
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Control de Alumnos", onClick: () => router.visit(route('admin.alumnos.index')), icon: Users }
             ]}
             donutChartLabel="grupos"
             donutChartSegments={[
@@ -255,6 +257,30 @@ export default function GruposIndex({
                 { name: "Sin tutor", count: formattedGroups.filter(g => g.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
+            {!isCycleActive && canRegister && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest leading-none mb-1">Modo Planeación</p>
+                        <p className="text-[11px] text-blue-700 font-medium">Configurando el próximo periodo escolar. Puedes registrar grupos y estructurar la oferta académica, pero el ciclo aún no está vigente.</p>
+                    </div>
+                </div>
+            )}
+
+            {!canRegister && (
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 text-left">
+                        <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest leading-none mb-1">Modo Solo Catálogo</p>
+                        <p className="text-[11px] text-amber-700 font-medium">No existe un Ciclo Escolar activo ni en planeación. La creación de grupos y gestión de semestres está restringida.</p>
+                    </div>
+                    <button
+                        onClick={() => router.visit(route('admin.dashboard'))}
+                        className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-all shrink-0"
+                    >
+                        Crear Ciclo
+                    </button>
+                </div>
+            )}
+
             <GroupTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -262,6 +288,7 @@ export default function GruposIndex({
                 setSpecialtyFilter={setSpecialtyFilter}
                 onOpenCreateModal={openCreateModal}
                 specialties={especialidades}
+                isCycleActive={canRegister}
             />
 
             <Deferred data="grupos" fallback={

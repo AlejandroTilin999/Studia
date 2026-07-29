@@ -16,10 +16,19 @@ class AcademicLoadController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $activeCycle = AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->first();
+        $planningCycle = AcademicPeriod::where('status', AcademicPeriod::STATUS_PLANNING)->first();
+
+        $workingCycle = $activeCycle ?: $planningCycle;
 
         return Inertia::render('Admin/Cargas/Index', [
-            'loads' => Inertia::defer(function () use ($search) {
+            'loads' => Inertia::defer(function () use ($search, $workingCycle) {
                 $query = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user']);
+
+                // [AUTO-FILTRO v3.6] Mostrar cargas del ciclo de trabajo (Activo o Planeación)
+                if ($workingCycle && !$search) {
+                    $query->where('ciclo_id', $workingCycle->id);
+                }
 
                 if ($search) {
                     $query->where(function ($q) use ($search) {
@@ -90,12 +99,24 @@ class AcademicLoadController extends Controller
             ),
             'filters' => [
                 'search' => $search
-            ]
+            ],
+            'isCycleActive' => AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->exists(),
+            'canRegister' => AcademicPeriod::whereIn('status', [
+                AcademicPeriod::STATUS_ACTIVE,
+                AcademicPeriod::STATUS_PLANNING
+            ])->exists()
         ]);
     }
 
     public function store(Request $request)
     {
+        // [SAFETY LOCK v3.6] Permitir asignar materias en ciclos Activos o en Planeación
+        if (!AcademicPeriod::whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])->exists()) {
+            return redirect()->back()->withErrors([
+                'ciclo_id' => 'Operación bloqueada. Debes tener un Ciclo Escolar vigente o en modo Planeación para realizar asignaciones.'
+            ]);
+        }
+
         // Soporte para asignación masiva (batch)
         if ($request->has('assignments') && is_array($request->assignments)) {
             $request->validate([

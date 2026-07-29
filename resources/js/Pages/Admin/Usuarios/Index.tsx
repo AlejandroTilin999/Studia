@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { router, Deferred } from '@inertiajs/react';
-import { GraduationCap, Users, FileText, Key, AlertCircle } from 'lucide-react';
+import { GraduationCap, Users, FileText, Key, AlertCircle, Home } from 'lucide-react';
 import UserTable, { MockUser } from './UserTable';
 import UserTableControls from './UserTableControls';
 import UserFormModal from './UserFormModal';
@@ -200,9 +200,8 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
                 { code: "T2", label: "Alumnos", value: studentCount }
             ]}
             quickActions={[
-                { label: "Ver docentes", onClick: () => router.visit('/admin/docentes'), icon: Users },
-                { label: "Ver alumnos", onClick: () => router.visit('/admin/alumnos'), icon: GraduationCap },
-                { label: "Ver reportes", onClick: () => router.visit('/admin/reportes'), icon: FileText }
+                { label: "Panel de Control", onClick: () => router.visit(route('admin.dashboard')), icon: Home },
+                { label: "Control de Alumnos", onClick: () => router.visit(route('admin.alumnos.index')), icon: GraduationCap }
             ]}
             donutChartTitle="Estado de Cuentas"
             donutChartLabel="usuarios"

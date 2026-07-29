@@ -40,7 +40,13 @@ class PromotionController extends Controller
                 $status = $request->marcar_egresados ? 'graduated' : 'active';
                 $count = 0;
 
+                // [OPTIMIZACIÓN] Obtener todas las matrículas de una vez
+                $matriculas = Enrollment::whereIn('usuario_id', $request->alumnos_ids)
+                    ->pluck('codigo_alumno', 'usuario_id');
+
                 foreach ($request->alumnos_ids as $userId) {
+                    $matricula = $matriculas[$userId] ?? 'S/M';
+
                     // 1. Crear nueva inscripción en el ciclo/grupo destino
                     Enrollment::updateOrCreate(
                         [
@@ -50,7 +56,7 @@ class PromotionController extends Controller
                         [
                             'grupo_id' => $grupoDestino->id,
                             'estatus' => $status,
-                            'codigo_alumno' => Enrollment::where('usuario_id', $userId)->value('codigo_alumno') // Mantener matrícula
+                            'codigo_alumno' => $matricula
                         ]
                     );
 

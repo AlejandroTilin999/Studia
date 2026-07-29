@@ -15,6 +15,7 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $activePeriod = \App\Models\AcademicPeriod::where('activo', true)->first();
 
         return Inertia::render('Admin/Materias/Index', [
             'materias' => Inertia::defer(function () use ($search) {
@@ -65,6 +66,12 @@ class CourseController extends Controller
                 'nombre' => $s->nombre,
                 'codigo' => $s->codigo,
             ])),
+            'activePeriod' => $activePeriod ? [
+                'id' => $activePeriod->id,
+                'nombre' => $activePeriod->nombre,
+                'es_nones' => \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8,
+            ] : null,
+            'isCycleActive' => (bool)$activePeriod,
             'filters' => [
                 'search' => $search
             ]

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface GroupTableControlsProps {
     searchQuery: string;
@@ -8,6 +9,7 @@ interface GroupTableControlsProps {
     setSpecialtyFilter: (specialty: string) => void;
     onOpenCreateModal: () => void;
     specialties?: any[];
+    isCycleActive?: boolean;
 }
 
 export default function GroupTableControls({
@@ -17,6 +19,7 @@ export default function GroupTableControls({
     setSpecialtyFilter,
     onOpenCreateModal,
     specialties = [],
+    isCycleActive
 }: GroupTableControlsProps) {
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
@@ -36,7 +39,11 @@ export default function GroupTableControls({
                 <button
                     type="button"
                     onClick={onOpenCreateModal}
-                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2"
+                    disabled={!isCycleActive}
+                    className={cn(
+                        "bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-lg flex-1 md:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2",
+                        !isCycleActive && "opacity-50 cursor-not-allowed grayscale"
+                    )}
                 >
                     <Plus className="w-4 h-4" />
                     Registrar grupo

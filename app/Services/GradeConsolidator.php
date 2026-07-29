@@ -15,11 +15,17 @@ class GradeConsolidator
      */
     public static function consolidate($userId, $cargaId)
     {
+        // [OPTIMIZACIÓN] Carga masiva de datos en memoria para evitar N+1
+        $criteria = CriterioEvaluacion::where('carga_id', $cargaId)->get();
+        $tasks = Tarea::where('carga_id', $cargaId)->get();
+        $grades = Grade::where('usuario_id', $userId)->where('carga_id', $cargaId)->get();
+        $submissions = EntregaTarea::where('usuario_id', $userId)->whereIn('tarea_id', $tasks->pluck('id'))->get();
+
         $averages = [];
         $totalParciales = 3;
 
         for ($p = 1; $p <= $totalParciales; $p++) {
-            $averages[$p] = self::calculateParcialAverage($userId, $cargaId, $p);
+            $averages[$p] = self::calculateParcialAverage($userId, $cargaId, $p, $criteria, $tasks, $grades, $submissions);
         }
 
         // Calcular promedio final (solo de los que tengan nota)
@@ -50,13 +56,11 @@ class GradeConsolidator
     }
 
     /**
-     * Calcula el promedio de un parcial específico para un alumno.
+     * Calcula el promedio de un parcial específico utilizando datos en memoria.
      */
-    private static function calculateParcialAverage($userId, $cargaId, $parcial)
+    private static function calculateParcialAverage($userId, $cargaId, $parcial, $allCriteria, $allTasks, $allGrades, $allSubmissions)
     {
-        $criteria = CriterioEvaluacion::where('carga_id', $cargaId)
-            ->where('parcial', $parcial)
-            ->get();
+        $criteria = $allCriteria->where('parcial', $parcial);
 
         if ($criteria->isEmpty()) {
             return null;
@@ -69,13 +73,11 @@ class GradeConsolidator
             $score = 0;
 
             if ($criterion->sincronizar_tareas) {
-                // Calcular promedio de tareas de la plataforma
-                $score = self::getPlatformTasksAverage($userId, $cargaId, $parcial);
+                // Calcular promedio de tareas de la plataforma en memoria
+                $score = self::getPlatformTasksAverage($userId, $cargaId, $parcial, $allTasks, $allSubmissions);
             } else {
-                // Obtener nota capturada manualmente
-                $grade = Grade::where('criterio_id', $criterion->id)
-                    ->where('usuario_id', $userId)
-                    ->first();
+                // Obtener nota capturada manualmente desde la colección en memoria
+                $grade = $allGrades->where('criterio_id', $criterion->id)->first();
 
                 if (!$grade || $grade->calificacion === '') {
                     $allCriteriaFilled = false;
@@ -91,13 +93,11 @@ class GradeConsolidator
     }
 
     /**
-     * Calcula el promedio de tareas (normalizado a escala 0-10) para la plataforma.
+     * Calcula el promedio de tareas (normalizado a escala 0-10) utilizando datos en memoria.
      */
-    private static function getPlatformTasksAverage($userId, $cargaId, $parcial)
+    private static function getPlatformTasksAverage($userId, $cargaId, $parcial, $allTasks, $allSubmissions)
     {
-        $tareas = Tarea::where('carga_id', $cargaId)
-            ->where('parcial', $parcial)
-            ->get();
+        $tareas = $allTasks->where('parcial', $parcial);
 
         if ($tareas->isEmpty()) {
             return 0;
@@ -107,9 +107,7 @@ class GradeConsolidator
         $count = 0;
 
         foreach ($tareas as $tarea) {
-            $entrega = EntregaTarea::where('tarea_id', $tarea->id)
-                ->where('usuario_id', $userId)
-                ->first();
+            $entrega = $allSubmissions->where('tarea_id', $tarea->id)->first();
 
             $score = $entrega ? (float)$entrega->calificacion : 0;
             $maxPoints = $tarea->puntos ?: 10;

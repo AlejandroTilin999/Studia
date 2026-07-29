@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Filter, Plus } from "lucide-react";
 import { SpecialtySelect } from '@/Components/SpecialtySelect';
+import { cn } from "@/lib/utils";
 
 interface TeacherTableControlsProps {
     searchQuery: string;
@@ -8,6 +9,7 @@ interface TeacherTableControlsProps {
     showFiltersDropdown: boolean;
     setShowFiltersDropdown: (show: boolean) => void;
     onCreate: () => void;
+    isCycleActive?: boolean;
 }
 
 export default function TeacherTableControls({
@@ -16,23 +18,29 @@ export default function TeacherTableControls({
     showFiltersDropdown,
     setShowFiltersDropdown,
     onCreate,
+    isCycleActive
 }: TeacherTableControlsProps) {
     return (
         <div className="flex flex-col md:flex-row items-center gap-4 mb-8 shrink-0">
-            <div className="relative flex-1 w-full">
+            <div className="relative flex-1 w-full text-left">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                     type="text"
                     placeholder="Buscar profesor por nombre, matrícula, correo o especialidad..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#0266E0] focus:outline-none text-slate-700 placeholder-slate-400"
+                    className="pl-12 pr-4 h-12 w-full bg-white border border-slate-200 rounded-lg text-sm focus:border-[#0266E0] focus:outline-none text-slate-700 placeholder-slate-400 font-medium"
                 />
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto relative">
                 <button
                     onClick={onCreate}
-                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm"
+                    disabled={!isCycleActive}
+                    title={!isCycleActive ? "Debes abrir un ciclo escolar para registrar personal docente" : ""}
+                    className={cn(
+                        "bg-[#0266E0] hover:bg-blue-700 text-white font-bold h-12 px-8 rounded-lg flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm transition-all",
+                        !isCycleActive && "opacity-50 cursor-not-allowed grayscale"
+                    )}
                 >
                     <Plus size={16} />
                     Registrar profesor

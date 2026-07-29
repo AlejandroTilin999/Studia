@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'fecha_inicio' => $formatDate($p->fecha_inicio),
                         'fecha_fin' => $formatDate($p->fecha_fin),
                         'activo' => (bool)$p->activo,
+                        'status' => $p->status,
                         // [FIX v2.9.3] Formatear fechas de parciales para evitar "Invalid Date"
                         'p1_inicio' => $formatDate($p->p1_inicio), 'p1_fin' => $formatDate($p->p1_fin), 'p1_activo' => (bool)$p->p1_activo,
                         'p2_inicio' => $formatDate($p->p2_inicio), 'p2_fin' => $formatDate($p->p2_fin), 'p2_activo' => (bool)$p->p2_activo,
@@ -81,11 +82,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ];
                 });
 
+                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+                $activeCycleId = $activeCycle ? $activeCycle->id : null;
+                $isNones = $activeCycle ? (\Carbon\Carbon::parse($activeCycle->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activeCycle->fecha_inicio)->month === 1) : null;
+
                 // [OPTIMIZACIÓN v3.3] Conteos Diferidos para mostrar cargadores en el Dashboard
-                $studentsCount = Inertia::defer(fn() => \DB::table('alumnos')->where('estatus', 'active')->count());
-                $teachersCount = Inertia::defer(fn() => \DB::table('docentes')->count());
-                $groupsCount   = Inertia::defer(fn() => \DB::table('grupos')->count());
-                $coursesCount  = Inertia::defer(fn() => \DB::table('materias')->count());
+                // [INTELIGENCIA v3.5] Conteos sensibles al ciclo activo
+                $studentsCount = Inertia::defer(fn() => $activeCycleId
+                    ? \DB::table('inscripciones')->where('ciclo_id', $activeCycleId)->where('estatus', 'active')->count()
+                    : 0
+                );
+
+                $teachersCount = Inertia::defer(fn() => $activeCycleId
+                    ? \DB::table('cargas_academicas')->where('ciclo_id', $activeCycleId)->distinct('docente_id')->count()
+                    : 0
+                );
+
+                $groupsCount = Inertia::defer(function() use ($activeCycle, $isNones) {
+                    if (!$activeCycle) return 0;
+                    $query = \DB::table('grupos');
+                    if ($isNones) $query->whereIn('semestre', [1, 3, 5]);
+                    else $query->whereIn('semestre', [2, 4, 6]);
+                    return $query->count();
+                });
+
+                $coursesCount = Inertia::defer(function() use ($activeCycle, $isNones) {
+                    if (!$activeCycle) return 0;
+                    $query = \DB::table('materias');
+                    if ($isNones) $query->whereIn('semestre', [1, 3, 5]);
+                    else $query->whereIn('semestre', [2, 4, 6]);
+                    return $query->count();
+                });
                 $specialtiesCount = Inertia::defer(fn() => \DB::table('especialidades')->count());
                 $usersCount    = Inertia::defer(fn() => \DB::table('users')->count());
 
@@ -203,12 +230,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/', function () {
                 $user = auth()->user();
                 $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
+                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
 
                 return Inertia::render('Docente/Dashboard', [
-                    'assignedLoad' => Inertia::defer(function() use ($teacher) {
-                        if (!$teacher) return [];
+                    'assignedLoad' => Inertia::defer(function() use ($teacher, $activeCycle) {
+                        if (!$teacher || !$activeCycle) return [];
 
                         return \App\Models\AcademicLoad::where('docente_id', $teacher->id)
+                            ->where('ciclo_id', $activeCycle->id)
                             ->with(['academicGroup', 'course'])
                             ->get()
                             ->map(fn($load) => [
@@ -217,6 +246,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                 'nombre_materia' => $load->course->nombre ?? 'N/A',
                                 'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
                                 'cantidad_alumnos' => \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+                                    ->where('ciclo_id', $activeCycle->id)
                                     ->where('estatus', 'active')
                                     ->count(),
                                 'turno' => 'Turno Matutino',
@@ -227,7 +257,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'nombre' => auth()->user()->nombre_completo,
                         'especialidad' => \App\Models\Teacher::where('usuario_id', auth()->id())->first()->especialidad ?? 'General',
                         'email' => auth()->user()->email,
-                    ])
+                    ]),
+                    'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('docente.dashboard');
 
@@ -290,9 +321,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/', function () {
                 $studentId = auth()->id();
                 $user = auth()->user();
+                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
 
                 // Optimizamos: Carga inmediata mínima para el esqueleto
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
+                    ->where('ciclo_id', $activeCycle?->id)
                     ->where('estatus', 'active')
                     ->with(['academicGroup.tutor.user', 'academicPeriod'])
                     ->first();
@@ -309,7 +342,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'registeredAt' => $enrollment?->created_at ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
                     'gpa' => '—', // Calculado en el cliente para velocidad instantánea
                     'tutor' => $enrollment?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo No Activo',
                 ];
 
                 return Inertia::render('Alumno/Dashboard', [
@@ -325,7 +358,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             'description' => $item['description'] ?? '',
                             'color_tema' => $item['color_tema'] ?? 'blue'
                         ], $k);
-                    })
+                    }),
+                    'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('alumno.dashboard');
 

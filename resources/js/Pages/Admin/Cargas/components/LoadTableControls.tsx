@@ -1,5 +1,6 @@
 import { Plus, Search } from 'lucide-react';
 import { CatalogItem, GroupCatalogItem } from '../types';
+import { cn } from '@/lib/utils';
 
 interface LoadTableControlsProps {
     searchQuery: string;
@@ -11,6 +12,7 @@ interface LoadTableControlsProps {
     periods: CatalogItem[];
     groups: GroupCatalogItem[];
     onOpenCreateModal: () => void;
+    isCycleActive?: boolean;
 }
 
 export default function LoadTableControls({
@@ -23,6 +25,7 @@ export default function LoadTableControls({
     periods,
     groups,
     onOpenCreateModal,
+    isCycleActive
 }: LoadTableControlsProps) {
     return (
         <div className="flex flex-col xl:flex-row items-center gap-4 mb-6 shrink-0">
@@ -40,7 +43,11 @@ export default function LoadTableControls({
             <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto relative">
                 <button
                     onClick={onOpenCreateModal}
-                    className="bg-[#0266E0] hover:bg-blue-700 text-white font-extrabold h-12 px-6 rounded-xl flex-1 xl:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]"
+                    disabled={!isCycleActive}
+                    className={cn(
+                        "bg-[#0266E0] hover:bg-blue-700 text-white font-extrabold h-12 px-6 rounded-xl flex-1 xl:flex-initial text-sm transition-all shadow-none flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]",
+                        !isCycleActive && "opacity-50 cursor-not-allowed grayscale"
+                    )}
                 >
                     <Plus className="w-4 h-4" />
                     Registrar Asignación

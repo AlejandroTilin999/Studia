@@ -48,7 +48,11 @@ export default function AdminDashboardIndex() {
     const [selectedCycleId, setSelectedCycleId] = useState<number | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-    const activeCycle = cycles.find((c: any) => c.activo);
+    const activeCycle = cycles.find((c: any) => c.status === 'activo');
+    const planningCycle = cycles.find((c: any) => c.status === 'planificacion');
+
+    // El ciclo que se muestra en la tarjeta principal (prioridad al activo)
+    const workingCycle = activeCycle || planningCycle;
 
     // Form for new cycle
     const { data, setData, reset, processing, errors, put, post } = useForm({
@@ -212,7 +216,7 @@ export default function AdminDashboardIndex() {
 
                     {/* Active Cycle Card */}
                     <CycleStatusCard
-                        activeCycle={activeCycle}
+                        activeCycle={workingCycle}
                         totalCycles={cycles.length}
                         onOpenNewCycle={openCreateModal}
                         onEditCycle={openEditModal}
@@ -220,10 +224,10 @@ export default function AdminDashboardIndex() {
                         onOpenHistory={() => setIsHistoryModalOpen(true)}
                     />
 
-                    {/* Parcial Controls (Only if cycle is active) */}
-                    {activeCycle && (
+                    {/* Parcial Controls (Only if cycle is active or planning) */}
+                    {workingCycle && (
                         <ParcialControlGrid
-                            activeCycle={activeCycle}
+                            activeCycle={workingCycle}
                             onToggle={handleToggleParcial}
                         />
                     )}

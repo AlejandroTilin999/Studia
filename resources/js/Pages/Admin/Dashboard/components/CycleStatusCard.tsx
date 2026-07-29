@@ -7,6 +7,7 @@ interface Cycle {
     fecha_inicio: string;
     fecha_fin: string;
     activo: boolean;
+    status: 'planificacion' | 'activo' | 'cerrado';
 }
 
 interface CycleStatusCardProps {
@@ -26,15 +27,30 @@ export default function CycleStatusCard({
     onCloseCycle,
     onOpenHistory
 }: CycleStatusCardProps) {
+    const getStatusLabel = () => {
+        if (!activeCycle) return { text: 'Sin Ciclo', color: 'text-slate-400', bg: 'bg-slate-50' };
+
+        switch (activeCycle.status) {
+            case 'planificacion':
+                return { text: 'En Planeación', color: 'text-blue-600', bg: 'bg-blue-50' };
+            case 'activo':
+                return { text: 'Vigente', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+            case 'cerrado':
+                return { text: 'Concluido', color: 'text-slate-500', bg: 'bg-slate-100' };
+            default:
+                return { text: 'Inactivo', color: 'text-rose-600', bg: 'bg-rose-50' };
+        }
+    };
+
+    const status = getStatusLabel();
+
     return (
         <div className="bg-white rounded-lg p-5 md:p-6 border border-slate-100 shadow-none flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 text-left font-body">
             <div className="space-y-1.5 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    {activeCycle ? (
-                        <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Activo</span>
-                    ) : (
-                        <span className="text-[10px] font-black uppercase text-rose-600 tracking-wider">Inactivo</span>
-                    )}
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${status.bg} ${status.color}`}>
+                        {status.text}
+                    </span>
                     <span className="text-slate-200 font-normal">|</span>
                     <span className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
                         Vigencia del Ciclo
