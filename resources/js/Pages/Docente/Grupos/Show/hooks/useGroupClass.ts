@@ -434,6 +434,13 @@ export function useGroupClass(classInfoProp?: any) {
                 const updatedTasks = res.data.tareas;
                 setAllTasks(prev => ({ ...prev, [activeParcial]: updatedTasks }));
                 setTasks(updatedTasks);
+
+                // Emite evento en tiempo real a alumnos y otras pestañas
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'TASKS_UPDATED' });
+                    bc.close();
+                } catch(e) {}
             })
             .catch(err => {
                 console.error("Error al guardar tareas:", err);

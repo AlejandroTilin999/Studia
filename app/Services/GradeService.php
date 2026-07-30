@@ -214,6 +214,7 @@ class GradeService
 
                     $tasksList[] = [
                         'id' => $task->id,
+                        'carga_id' => $load->uuid,
                         'subjectName' => $load->course?->nombre ?? 'Materia Desconocida',
                         'parcial' => $task->parcial,
                         'title' => $task->nombre,

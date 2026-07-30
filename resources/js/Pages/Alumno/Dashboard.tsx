@@ -173,7 +173,12 @@ export default function AlumnoDashboard({
     }, [taskList, activeParcialNum]);
 
     const currentSubjectTasks = useMemo(() => {
-        return (taskList || []).filter(t => selectedSubject && t.subjectName === selectedSubject.name);
+        if (!selectedSubject) return [];
+        const sName = (selectedSubject.name || '').trim().toLowerCase();
+        return (taskList || []).filter(t => {
+            const tName = (t.subjectName || '').trim().toLowerCase();
+            return tName === sName || (t.carga_id && (t.carga_id === selectedSubject.id || t.carga_id === selectedSubject.uuid));
+        });
     }, [taskList, selectedSubject]);
 
     const activeCriteria = useMemo(() => {
