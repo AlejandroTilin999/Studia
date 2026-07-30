@@ -32,7 +32,10 @@ export default function GradesTab({
     // Actualización instantánea para el promedio en la UI
     function handleInstantGrade(studentId: number, criterionId: number, val: string) {
         const updated = studentGrades.map(s =>
-            s.id === studentId ? { ...s, calificaciones: { ...s.calificaciones, [criterionId]: val } } : s
+            s.id === studentId ? {
+                ...s,
+                calificaciones: { ...(s.calificaciones || {}), [criterionId]: val }
+            } : s
         );
         setStudentGrades(updated);
     }
@@ -61,7 +64,7 @@ export default function GradesTab({
                 align: 'center' as const,
                 headerClassName: 'w-36',
                 accessor: (r: StudentGrade) => {
-                    const val = isSynced ? getStudentTasksAverage(r.id) : (r.calificaciones[c.id] ?? '');
+                    const val = isSynced ? getStudentTasksAverage(r.id) : (r.calificaciones?.[c.id] ?? '');
                     return (
                         <div
                             className={cn(

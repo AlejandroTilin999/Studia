@@ -603,7 +603,7 @@ export function useGroupClass(classInfoProp?: any) {
             if (c.sincronizar_tareas && activeParcial === parcialNum) {
                 return getStudentTasksAverage(studentId) !== '—';
             }
-            const val = sGrade.calificaciones[c.id];
+            const val = sGrade.calificaciones?.[c.id];
             return val !== undefined && val !== null && val !== '';
         });
 
@@ -614,7 +614,7 @@ export function useGroupClass(classInfoProp?: any) {
             if (c.sincronizar_tareas && activeParcial === parcialNum) {
                 scoreVal = getStudentTasksAverage(studentId);
             } else {
-                scoreVal = sGrade.calificaciones[c.id] || '0';
+                scoreVal = sGrade.calificaciones?.[c.id] || '0';
             }
             return sum + (parseFloat(scoreVal) * c.porcentaje / 100);
         }, 0);
