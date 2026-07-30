@@ -248,11 +248,11 @@ export default function AlumnoDashboard({
                                                             // [LÓGICA v6.5] Bloqueo sincronizado
                                                             const serverLocked = pData?.lock_info?.allowed === false;
 
-                                                            // Bloqueo por secuencia: Parcial 2 necesita el 1 calificado, etc.
+                                                            // Bloqueo por secuencia: Parcial 2 se desbloquea al estar configurado el Parcial 1, etc.
                                                             const sequenceLocked = num === 2
-                                                                ? (Array.isArray(kardex) && kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.average === '—')
+                                                                ? (Array.isArray(kardex) && !kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.configured)
                                                                 : num === 3
-                                                                    ? (Array.isArray(kardex) && (kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.average === '—' || kardex.find(k => k.subject === selectedSubject.name)?.details?.[2]?.average === '—'))
+                                                                    ? (Array.isArray(kardex) && (!kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.configured || !kardex.find(k => k.subject === selectedSubject.name)?.details?.[2]?.configured))
                                                                     : false;
 
                                                             // [MEJORA v6.8] Permitir acceso en modo lectura incluso si está bloqueado por el servidor

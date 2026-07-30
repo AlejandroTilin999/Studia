@@ -98,7 +98,8 @@ class HandleInertiaRequests extends Middleware
                     'nombre' => $load->course?->nombre ?? 'N/A',
                     'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
                     'descripcion' => $load->course?->descripcion ?? 'Sin descripción',
-                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A'
+                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A',
+                    'color_tema' => $load->color_tema ?? 'blue'
                 ])->toArray();
         });
     }

@@ -97,30 +97,6 @@ export default function SubjectHeader({
                                     <span className="text-[12px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">Activa</span>
                                 </div>
 
-                                {/* Sección de Criterios del Alumno */}
-                                {activeCriteria.length > 0 && (
-                                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-3 relative">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Esquema de Evaluación</p>
-                                        <div className="space-y-3 relative">
-                                            {activeCriteria.map((c, idx) => (
-                                                <div key={idx} className="relative flex items-center justify-between group/crit">
-                                                    {/* Línea conectora sutil */}
-                                                    {idx < activeCriteria.length - 1 && (
-                                                        <div className="absolute left-[7.5px] top-4 bottom-[-18px] w-0.5 bg-[#0266E0]/10" />
-                                                    )}
-
-                                                    <div className="flex items-center gap-2.5 max-w-[160px] relative z-10">
-                                                        <div className="w-4 h-4 rounded-full bg-[#0266E0] flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm">
-                                                            {idx + 1}
-                                                        </div>
-                                                        <span className="text-[11.5px] text-slate-900 font-normal truncate" title={c.name}>{c.name}</span>
-                                                    </div>
-                                                    <span className="text-[11.5px] text-slate-950 font-medium relative z-10">{c.percentage}%</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>

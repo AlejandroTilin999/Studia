@@ -99,6 +99,13 @@ export function useGroupClass(classInfoProp?: any) {
             axios.post(route('docente.clases.update_theme', { uuid: loadId }), { color: newKey })
                 .then(() => {
                     SwalHelper.toast('Apariencia de la clase actualizada', 'success');
+
+                    // Emite evento en tiempo real a alumnos y otras pestañas
+                    try {
+                        const bc = new BroadcastChannel('school-cycle-channel');
+                        bc.postMessage({ type: 'cycle-update', msg: 'THEME_UPDATED' });
+                        bc.close();
+                    } catch(e) {}
                 })
                 .catch(err => {
                     console.error("Error al guardar tema:", err);
@@ -311,6 +318,14 @@ export function useGroupClass(classInfoProp?: any) {
             })
             .then(res => {
                 SwalHelper.success('¡Configurado!', 'Los criterios han sido guardados correctamente.');
+                
+                // Emite evento en tiempo real a alumnos y otras pestañas
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'CRITERIA_UPDATED' });
+                    bc.close();
+                } catch(e) {}
+
                 refreshClassData(); // [OPTIMIZACIÓN] Recargar la Verdad Total
                 setScreen('grades');
             })
@@ -520,6 +535,14 @@ export function useGroupClass(classInfoProp?: any) {
             })
             .then(() => {
                 SwalHelper.success('¡Completado!', 'Calificaciones asentadas correctamente.');
+
+                // Emite evento en tiempo real a alumnos y otras pestañas
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'GRADES_UPDATED' });
+                    bc.close();
+                } catch(e) {}
+
                 refreshClassData(); // [OPTIMIZACIÓN] Recargar la Verdad Total de golpe
             })
             .catch(err => {

@@ -376,21 +376,21 @@ class DocenteClassroomController extends Controller
         ]);
 
         // [ThunderSync] Limpiar cache de alumnos para que vean el estatus de "Calificado"
-        $studentIds = Enrollment::where('grupo_id', $load->grupo_id)->where('estatus', 'active')->pluck('usuario_id');
-        foreach ($studentIds as $id) {
-            \Cache::forget("student_kardex_{$id}");
-            \Cache::forget("student_tasks_{$id}");
-        }
+        $this->clearStudentsCache($load);
 
         return response()->json(['message' => "Parcial {$parcial} concluido con éxito."]);
     }
 
     private function clearStudentsCache(AcademicLoad $load)
     {
+        // Incrementar versión de cache global de estudiantes para invalidar instantáneamente
+        \Cache::increment('student_cache_version');
+
         $studentIds = Enrollment::where('grupo_id', $load->grupo_id)->where('estatus', 'active')->pluck('usuario_id');
         foreach ($studentIds as $id) {
             \Cache::forget("student_kardex_{$id}");
             \Cache::forget("student_tasks_{$id}");
+            \Cache::forget("sidebar_alumno_{$id}");
         }
     }
 }
