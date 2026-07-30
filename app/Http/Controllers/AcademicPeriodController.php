@@ -9,6 +9,16 @@ use Illuminate\Support\Facades\DB;
 class AcademicPeriodController extends Controller
 {
     /**
+     * Invalida los datos cacheados de los alumnos para forzar refresco visual.
+     */
+    private function invalidateStudentCaches()
+    {
+        // [FIX v4.0] Primero limpiar, luego establecer la nueva versión
+        \Cache::flush();
+        \Cache::forever('student_cache_version', (string)time());
+    }
+
+    /**
      * Crea un nuevo ciclo escolar (Inicia en modo Planificación por defecto).
      */
     public function store(Request $request)
@@ -60,6 +70,7 @@ class AcademicPeriodController extends Controller
             return redirect()->back()->withErrors(['nombre' => 'Error interno al procesar el ciclo: ' . $e->getMessage()]);
         }
 
+        $this->invalidateStudentCaches();
         return redirect()->back()->with('message', 'Ciclo escolar registrado correctamente.');
     }
 
@@ -99,6 +110,7 @@ class AcademicPeriodController extends Controller
             $period->update($validated);
         });
 
+        $this->invalidateStudentCaches();
         return redirect()->back()->with('message', 'Ciclo escolar actualizado correctamente.');
     }
 
@@ -127,6 +139,7 @@ class AcademicPeriodController extends Controller
             'metadata' => ['ciclo_id' => $id, 'parcial' => $request->parcial, 'nuevo_estado' => $status]
         ]);
 
+        $this->invalidateStudentCaches();
         return redirect()->back()->with('message', "Parcial {$request->parcial} {$status}.");
     }
 
@@ -158,6 +171,7 @@ class AcademicPeriodController extends Controller
             ]);
         });
 
+        $this->invalidateStudentCaches();
         return redirect()->back()->with('message', 'Ciclo escolar activado correctamente.');
     }
 
@@ -183,6 +197,7 @@ class AcademicPeriodController extends Controller
             'metadata' => ['ciclo_id' => $id]
         ]);
 
+        $this->invalidateStudentCaches();
         return redirect()->back()->with('message', 'Ciclo escolar concluido y archivado.');
     }
 

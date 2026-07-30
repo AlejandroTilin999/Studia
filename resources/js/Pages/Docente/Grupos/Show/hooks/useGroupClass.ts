@@ -432,16 +432,22 @@ export function useGroupClass(classInfoProp?: any) {
     }, []);
 
     const getStudentTasksAverage = React.useCallback((studentId: number): string => {
-        if (!tasks || tasks.length === 0) return "0";
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) return "0";
         let sumNormalized = 0;
         let count = 0;
+
         tasks.forEach(t => {
-            const score = parseFloat(t.calificaciones[studentId] || '0');
+            // [SEGURIDAD v6.2] Validar existencia de calificaciones
+            if (!t.calificaciones) return;
+
+            const scoreStr = t.calificaciones[studentId];
+            const score = (scoreStr !== undefined && scoreStr !== null && scoreStr !== '') ? parseFloat(scoreStr) : 0;
             const maxPoints = t.puntos || 10;
             const normalized = (score / maxPoints) * 10;
             sumNormalized += normalized;
             count++;
         });
+
         if (count === 0) return "0";
         const avg = sumNormalized / count;
         return formatIntGrade(avg);
@@ -526,6 +532,43 @@ export function useGroupClass(classInfoProp?: any) {
             throw err;
         })
         .finally(() => setIsSaving(false));
+    }
+
+    function handleConcludeParcial() {
+        if (!loadId || !activeParcial) return;
+
+        // Validar que todos tengan calificación
+        const incomplete = students.some(s => getParcialAverage(s.id, activeParcial) === "—");
+
+        if (incomplete) {
+            SwalHelper.alert(
+                'Captura incompleta',
+                'No puedes concluir el parcial porque aún hay alumnos sin calificación final. Por favor, asegúrate de llenar todas las notas.',
+                'warning'
+            );
+            return;
+        }
+
+        SwalHelper.confirm(
+            '¿Concluir Parcial oficialmente?',
+            'Una vez concluido, el parcial se bloqueará para edición y las notas serán finales para los alumnos.',
+            'Sí, Concluir',
+            'Cancelar',
+            'info'
+        ).then((result) => {
+            if (result.isConfirmed) {
+                SwalHelper.loading('Concluyendo parcial...', 'Generando actas y notificando alumnos');
+                axios.post(`/docente/clases/${loadId}/conclude`, { parcial: activeParcial })
+                    .then(() => {
+                        SwalHelper.success('¡Parcial Concluido!', 'El periodo ha sido cerrado oficialmente.');
+                        refreshClassData();
+                    })
+                    .catch(err => {
+                        console.error("Error al concluir parcial:", err);
+                        SwalHelper.error('Error', 'No se pudo cerrar el parcial.');
+                    });
+            }
+        });
     }
 
     // 6. Modales y Estado de Chat/Selección
@@ -647,6 +690,7 @@ export function useGroupClass(classInfoProp?: any) {
         resetParcial,
         setScore,
         handleAsentarCalificaciones,
+        handleConcludeParcial,
         returnTaskGrade,
         selectedTaskId,
         setSelectedTaskId,

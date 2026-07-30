@@ -256,6 +256,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
                 Route::post('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'saveTareas']);
                 Route::post('/clases/{uuid}/return-grade', [App\Http\Controllers\DocenteClassroomController::class, 'returnGrade']);
+                Route::post('/clases/{uuid}/conclude', [App\Http\Controllers\DocenteClassroomController::class, 'concludeParcial'])->name('docente.clases.conclude');
             });
 
             Route::get('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'getTareas']);
@@ -270,27 +271,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $user = auth()->user();
                 $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
 
-                // Optimizamos: Carga inmediata mínima para el esqueleto
+                // [INTELIGENCIA v4.1] Mostrar inscripción activa más reciente (soporte para promociones)
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
-                    ->where('ciclo_id', $activeCycle?->id)
                     ->where('estatus', 'active')
                     ->with(['academicGroup.tutor.user', 'academicPeriod'])
+                    ->orderBy('ciclo_id', 'desc')
                     ->first();
 
-                $studentInfo = [
-                    'name' => $user->nombre_completo,
-                    'firstName' => $user->nombre,
-                    'lastNamePaternal' => $user->apellido_paterno,
-                    'lastNameMaternal' => $user->apellido_materno,
-                    'email' => $user->email,
-                    'matricula' => $enrollment?->codigo_alumno ?? 'ALU-' . $studentId,
-                    'groupName' => $enrollment?->academicGroup ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre) : 'Sin grupo',
-                    'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
-                    'registeredAt' => $enrollment?->created_at ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
-                    'gpa' => '—', // Calculado en el cliente para velocidad instantánea
-                    'tutor' => $enrollment?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
-                    'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo No Activo',
-                ];
+                    $cycleName = $enrollment?->academicPeriod?->nombre ?? 'Ciclo No Activo';
+                    $fullCicloLabel = str_starts_with($cycleName, 'Ciclo') ? $cycleName : "Ciclo Escolar " . $cycleName;
+
+                    $studentInfo = [
+                        'name' => $user->nombre_completo,
+                        'firstName' => $user->nombre,
+                        'lastNamePaternal' => $user->apellido_paterno,
+                        'lastNameMaternal' => $user->apellido_materno,
+                        'email' => $user->email,
+                        'matricula' => $enrollment?->codigo_alumno ?? 'ALU-' . $studentId,
+                        'groupName' => $enrollment?->academicGroup ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre) : 'Sin grupo',
+                        'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
+                        'registeredAt' => $enrollment?->created_at ? $enrollment->created_at->format('M Y') : 'Agosto 2025',
+                        'gpa' => '—', // Calculado en el cliente para velocidad instantánea
+                        'tutor' => $enrollment?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
+                        'ciclo' => $fullCicloLabel,
+                    ];
 
                 return Inertia::render('Alumno/Dashboard', [
                     'studentInfo' => $studentInfo,
@@ -313,10 +317,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/materias', function () {
                 $studentId = auth()->id();
                 $user = auth()->user();
+                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
 
+                // [INTELIGENCIA v4.1] Mostrar inscripción activa más reciente (soporte para promociones)
                 $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
                     ->where('estatus', 'active')
                     ->with(['academicGroup.tutor.user', 'academicPeriod'])
+                    ->orderBy('ciclo_id', 'desc')
                     ->first();
 
                 $studentInfo = [
@@ -348,7 +355,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             'description' => $item['description'] ?? '',
                             'color_tema' => $item['color_tema'] ?? 'blue'
                         ], $k);
-                    })
+                    }),
+                    'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('alumno.materias.index');
 

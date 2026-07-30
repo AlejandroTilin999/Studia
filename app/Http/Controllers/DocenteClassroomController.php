@@ -104,6 +104,15 @@ class DocenteClassroomController extends Controller
             if ($load->academicPeriod) {
                 $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config');
                 $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion');
+
+                // [NUEVO v6.0] Si el docente ya cerró manualmente, forzar bloqueo
+                $fieldCerrado = "p{$p}_cerrado";
+                if ($load->$fieldCerrado) {
+                    $lockOperacion = [
+                        'allowed' => false,
+                        'reason' => 'Este parcial ha sido concluido oficialmente por el docente.'
+                    ];
+                }
             }
 
             $fullData['parciales'][$p] = [
@@ -350,6 +359,39 @@ class DocenteClassroomController extends Controller
             'message' => 'Calificación devuelta correctamente',
             'score'   => $score
         ]);
+    }
+
+    /**
+     * Concluye oficialmente un parcial para una clase.
+     */
+    public function concludeParcial(Request $request, $uuid)
+    {
+        $request->validate([
+            'parcial' => 'required|integer|in:1,2,3'
+        ]);
+
+        $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
+        $parcial = $request->input('parcial');
+        $field = "p{$parcial}_cerrado";
+
+        $load->update([$field => true]);
+
+        // Registrar en Auditoría
+        \App\Models\AdminAuditLog::create([
+            'usuario_id' => auth()->id(),
+            'accion' => 'CONCLUIR_PARCIAL_DOCENTE',
+            'descripcion' => "El docente concluyó oficialmente el Parcial {$parcial} para la materia {$load->course->nombre}.",
+            'metadata' => ['carga_id' => $load->id, 'parcial' => $parcial]
+        ]);
+
+        // [ThunderSync] Limpiar cache de alumnos para que vean el estatus de "Calificado"
+        $studentIds = Enrollment::where('grupo_id', $load->grupo_id)->where('estatus', 'active')->pluck('usuario_id');
+        foreach ($studentIds as $id) {
+            \Cache::forget("student_kardex_{$id}");
+            \Cache::forget("student_tasks_{$id}");
+        }
+
+        return response()->json(['message' => "Parcial {$parcial} concluido con éxito."]);
     }
 
     private function clearStudentsCache(AcademicLoad $load)

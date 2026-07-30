@@ -58,14 +58,14 @@ class StudentController extends Controller
                 }
 
                 if ($group && $group !== 'all') {
-                    $query->whereHas('enrollment', function ($q) use ($group) {
-                        $q->where('grupo_id', $group);
+                    $query->whereHas('enrollments', function ($q) use ($group, $workingCycle) {
+                        $q->where('grupo_id', $group)->where('ciclo_id', $workingCycle->id);
                     });
                 }
 
                 return $query->paginate(50)
-                    ->through(function ($student) {
-                        $currentEnrollment = $student->enrollments->first();
+                    ->through(function ($student) use ($workingCycle) {
+                        $currentEnrollment = $student->enrollments->where('ciclo_id', $workingCycle->id)->first();
 
                         return [
                             'id' => $student->id,

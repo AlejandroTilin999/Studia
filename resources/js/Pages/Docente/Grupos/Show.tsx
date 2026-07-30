@@ -150,7 +150,7 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                             </div>
                             <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                             <div className="flex-grow">
-                                {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} setStudentGrades={setStudentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} isReadOnly={isReadOnly} isSaving={isSaving} />}
+                                {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} setStudentGrades={setStudentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} handleConcludeParcial={handleConcludeParcial} isReadOnly={isReadOnly} isSaving={isSaving} />}
                                 {activeTab === 'tasks' && <TasksTab tasks={tasks} setTasks={setTasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} isReadOnly={isReadOnly} isSaving={isSaving} />}
                                 {activeTab === 'activities' && (
                                     selectedTaskId !== null ? (

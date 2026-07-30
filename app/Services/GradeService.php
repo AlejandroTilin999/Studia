@@ -29,11 +29,27 @@ class GradeService
      */
     public static function getStudentKardex($userId)
     {
-        return \Cache::remember("student_kardex_{$userId}", 600, function() use ($userId) {
-            $enrollment = Enrollment::where('usuario_id', $userId)
-                ->where('estatus', 'active')
-                ->with(['academicGroup', 'academicPeriod'])
-                ->first();
+        $version = \Cache::get('student_cache_version', 1);
+        return \Cache::remember("student_kardex_{$userId}_v{$version}", 600, function() use ($userId) {
+            // [INTELIGENCIA v4.2] Priorizar la inscripción del ciclo VIGENTE primero
+            $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+
+            $enrollment = null;
+            if ($activeCycle) {
+                $enrollment = Enrollment::where('usuario_id', $userId)
+                    ->where('ciclo_id', $activeCycle->id)
+                    ->where('estatus', 'active')
+                    ->with(['academicGroup', 'academicPeriod'])
+                    ->first();
+            }
+
+            if (!$enrollment) {
+                $enrollment = Enrollment::where('usuario_id', $userId)
+                    ->where('estatus', 'active')
+                    ->with(['academicGroup', 'academicPeriod'])
+                    ->orderBy('ciclo_id', 'desc')
+                    ->first();
+            }
 
             if (!$enrollment) return [];
 
@@ -148,8 +164,26 @@ class GradeService
      */
     public static function getStudentTasks($userId)
     {
-        return \Cache::remember("student_tasks_{$userId}", 300, function() use ($userId) {
-            $enrollment = Enrollment::where('usuario_id', $userId)->where('estatus', 'active')->first();
+        $version = \Cache::get('student_cache_version', 1);
+        return \Cache::remember("student_tasks_{$userId}_v{$version}", 300, function() use ($userId) {
+            // [INTELIGENCIA v4.2] Priorizar la inscripción del ciclo VIGENTE primero
+            $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+
+            $enrollment = null;
+            if ($activeCycle) {
+                $enrollment = Enrollment::where('usuario_id', $userId)
+                    ->where('ciclo_id', $activeCycle->id)
+                    ->where('estatus', 'active')
+                    ->first();
+            }
+
+            if (!$enrollment) {
+                $enrollment = Enrollment::where('usuario_id', $userId)
+                    ->where('estatus', 'active')
+                    ->orderBy('ciclo_id', 'desc')
+                    ->first();
+            }
+
             if (!$enrollment) return [];
 
             $loads = AcademicLoad::where('grupo_id', $enrollment->grupo_id)
