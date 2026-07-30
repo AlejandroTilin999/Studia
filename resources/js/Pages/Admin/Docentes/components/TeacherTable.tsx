@@ -33,7 +33,7 @@ export default function TeacherTable({
                                 {row.name}
                             </span>
                             <span className="text-[12.5px] text-slate-400 font-normal block mt-0.5">
-                                {row.specialty} {(row as any).area ? ` - ${(row as any).area}` : ''}
+                                {row.specialty} {row.areas && row.areas.length > 0 ? ` - ${row.areas.join(', ')}` : ''}
                             </span>
                         </div>
                     ),

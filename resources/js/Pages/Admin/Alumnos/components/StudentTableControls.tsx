@@ -9,7 +9,10 @@ interface StudentTableControlsProps {
     setSearchQuery: (query: string) => void;
     groupFilter: string;
     setGroupFilter: (group: string) => void;
+    cycleFilter: string | number;
+    setCycleFilter: (cycle: string | number) => void;
     groups: AcademicGroupProp[];
+    availableCycles?: any[];
     onOpenCreateModal: () => void;
     showFiltersDropdown: boolean;
     setShowFiltersDropdown: (show: boolean) => void;
@@ -21,7 +24,10 @@ export default function StudentTableControls({
     setSearchQuery,
     groupFilter,
     setGroupFilter,
+    cycleFilter,
+    setCycleFilter,
     groups,
+    availableCycles = [],
     onOpenCreateModal,
     showFiltersDropdown,
     setShowFiltersDropdown,
@@ -64,21 +70,39 @@ export default function StudentTableControls({
 
                 {/* Dropdown Filters Selector */}
                 {showFiltersDropdown && (
-                    <div className="absolute right-0 top-14 w-52 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-3.5 space-y-2">
-                        <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Filtrar por grupo</span>
-                        <select
-                            value={groupFilter}
-                            onChange={e => {
-                                setGroupFilter(e.target.value);
-                                setShowFiltersDropdown(false);
-                            }}
-                            className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
-                        >
-                            <option value="all">Todos los Grupos</option>
-                            {groups.map(g => (
-                                <option key={g.id} value={g.id.toString()}>{g.nombre}</option>
-                            ))}
-                        </select>
+                    <div className="absolute right-0 top-14 w-60 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-4 space-y-4">
+                        <div className="space-y-2">
+                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Ciclo Escolar</span>
+                            <select
+                                value={cycleFilter}
+                                onChange={e => {
+                                    setCycleFilter(e.target.value);
+                                    setShowFiltersDropdown(false);
+                                }}
+                                className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
+                            >
+                                {availableCycles.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nombre} {c.status === 'activo' ? '(Vigente)' : '(Planeación)'}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Filtrar por grupo</span>
+                            <select
+                                value={groupFilter}
+                                onChange={e => {
+                                    setGroupFilter(e.target.value);
+                                    setShowFiltersDropdown(false);
+                                }}
+                                className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
+                            >
+                                <option value="all">Todos los Grupos</option>
+                                {groups.map(g => (
+                                    <option key={g.id} value={g.id.toString()}>{g.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 )}
             </div>

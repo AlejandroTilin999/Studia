@@ -38,18 +38,25 @@ export default function PromotionModal({
     const [students, setStudents] = useState<StudentItem[]>([]);
     const [loadingStudents, setLoadingStudents] = useState(false);
 
+    // [LÓGICA v7.0] Filtro estricto de grupos destino (Misma carrera, Semestre + 1, Misma Gen)
+    const filteredDestinationGroups = groups.filter(g =>
+        g.id !== sourceGroup?.id &&
+        g.semestre === (sourceGroup?.semestre || 0) + 1 &&
+        g.specialty === sourceGroup?.specialty &&
+        g.generacion === sourceGroup?.generacion
+    );
+
     // Cargar alumnos al abrir
     useEffect(() => {
         if (isOpen && sourceGroup) {
             fetchStudents();
-            // Sugerir grupo destino (N+1)
-            const nextSemestre = (sourceGroup.semestre || 0) + 1;
-            const suggestion = groups.find(g =>
-                g.id !== sourceGroup.id &&
-                g.semestre === nextSemestre &&
-                g.specialty === sourceGroup.specialty
-            );
-            if (suggestion) setTargetGroupId(suggestion.id.toString());
+
+            // Sugerir grupo destino (Auto-selección si solo hay uno válido)
+            if (filteredDestinationGroups.length === 1) {
+                setTargetGroupId(filteredDestinationGroups[0].id.toString());
+            } else {
+                setTargetGroupId('');
+            }
 
             // Sugerir ciclo activo o siguiente
             const activeCycle = cycles.find(c => c.activo);
@@ -149,13 +156,25 @@ export default function PromotionModal({
                                 </FormSelect>
                             </div>
                             <div className="space-y-1.5">
-                                <FormLabel required>{isLastSemester ? 'Grupo de Egreso' : 'Grupo Destino'}</FormLabel>
-                                <FormSelect value={targetGroupId} onChange={e => setTargetGroupId(e.target.value)} required>
-                                    <option value="">Seleccionar grupo...</option>
-                                    {groups.filter(g => g.id !== sourceGroup?.id).map(g => (
-                                        <option key={g.id} value={g.id}>{g.name} - {g.semestre}° Sem</option>
-                                    ))}
-                                </FormSelect>
+                                <FormLabel required>{isLastSemester ? 'Estatus de Egreso' : 'Grupo Destino'}</FormLabel>
+                                {isLastSemester ? (
+                                    <div className="h-10 flex items-center px-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-bold">
+                                        <CheckCircle2 size={14} className="mr-2" /> Graduación de Generación
+                                    </div>
+                                ) : (
+                                    <FormSelect value={targetGroupId} onChange={e => setTargetGroupId(e.target.value)} required>
+                                        <option value="">Seleccionar grupo...</option>
+                                        {filteredDestinationGroups.map(g => (
+                                            <option key={g.id} value={g.id}>{g.name} - {g.semestre}° Sem</option>
+                                        ))}
+                                    </FormSelect>
+                                )}
+                                {filteredDestinationGroups.length === 0 && !isLastSemester && (
+                                    <p className="text-[10px] text-rose-500 font-medium leading-tight">
+                                        No se encontró el grupo espejo de {(sourceGroup?.semestre || 0) + 1}° semestre.
+                                        Asegúrate de haber creado la escalera de grupos para esta generación.
+                                    </p>
+                                )}
                             </div>
                         </div>
 

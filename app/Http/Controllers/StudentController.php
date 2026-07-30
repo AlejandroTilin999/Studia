@@ -17,10 +17,20 @@ class StudentController extends Controller
     {
         $search = $request->query('search');
         $group = $request->query('group');
+        $selectedCycleId = $request->query('cycle');
+
         $activeCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
         $planningCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_PLANNING)->first();
 
-        $workingCycle = $activeCycle ?: $planningCycle;
+        // Determinar el ciclo de trabajo (Prioridad: Seleccionado > Activo > Planificación)
+        $workingCycle = null;
+        if ($selectedCycleId) {
+            $workingCycle = \App\Models\AcademicPeriod::find($selectedCycleId);
+        }
+
+        if (!$workingCycle) {
+            $workingCycle = $activeCycle ?: $planningCycle;
+        }
 
         return Inertia::render('Admin/Alumnos/Index', [
             'alumnos' => Inertia::defer(function () use ($search, $group, $workingCycle) {
@@ -88,8 +98,17 @@ class StudentController extends Controller
             })),
             'filters' => [
                 'search' => $search,
-                'group' => $group
+                'group' => $group,
+                'cycle' => $workingCycle ? $workingCycle->id : null
             ],
+            'availableCycles' => \App\Models\AcademicPeriod::whereIn('status', [
+                \App\Models\AcademicPeriod::STATUS_ACTIVE,
+                \App\Models\AcademicPeriod::STATUS_PLANNING
+            ])->orderBy('fecha_inicio', 'desc')->get()->map(fn($c) => [
+                'id' => $c->id,
+                'nombre' => $c->nombre,
+                'status' => $c->status
+            ]),
             'isCycleActive' => (bool)$activeCycle,
             'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
                 \App\Models\AcademicPeriod::STATUS_ACTIVE,
@@ -135,19 +154,25 @@ class StudentController extends Controller
             ]);
         }
 
-        // --- GENERACIÓN DE CORREO ÚNICO ---
-        $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
-        $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
-        // Limpiar acentos y caracteres especiales
-        $firstNamePart  = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $firstNamePart));
-        $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
+        // [ESTANDARIZACIÓN v4.0] Generación de correo profesional sugerido por el frontend
+        $generatedEmail = $request->email;
 
-        $emailBase      = "{$firstNamePart}.{$paternoPart}";
-        $generatedEmail = "{$emailBase}@prepahidalgo.edu.mx";
+        // Si por alguna razón no viene el correo o ya existe, lo generamos/ajustamos
+        if (empty($generatedEmail) || User::where('email', $generatedEmail)->exists()) {
+            $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
+            $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
+            $firstNamePart  = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $firstNamePart));
+            $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
 
-        while (User::where('email', $generatedEmail)->exists()) {
-            $randomSuffix = strtoupper(substr(md5(uniqid()), 0, 4));
-            $generatedEmail = "{$emailBase}.{$randomSuffix}@prepahidalgo.edu.mx";
+            $initials = substr($firstNamePart, 0, 1) . substr($paternoPart, 0, 1);
+            $emailBase = "{$firstNamePart}.{$paternoPart}.{$initials}";
+
+            // Buscar un número único
+            $counter = rand(10, 99);
+            do {
+                $generatedEmail = "{$emailBase}{$counter}@prepahidalgo.edu.mx";
+                $counter++;
+            } while (User::where('email', $generatedEmail)->exists());
         }
 
         // --- GARANTIZAR MATRÍCULA ÚNICA ---

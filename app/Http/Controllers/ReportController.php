@@ -156,6 +156,7 @@ class ReportController extends Controller
                 $formattedName = mb_strtoupper(trim("{$u->apellido_paterno} {$u->apellido_materno} {$u->nombre}"));
 
                 return [
+                    'usuario_id' => $e->usuario_id,
                     'matricula' => $e->codigo_alumno,
                     'nombre' => $formattedName,
                     'apellido_paterno' => $u->apellido_paterno,

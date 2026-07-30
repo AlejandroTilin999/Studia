@@ -7,6 +7,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Teacher;
 use App\Models\Specialty;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class GroupController extends Controller
@@ -65,10 +66,25 @@ class GroupController extends Controller
                 'nombre' => $c->nombre,
                 'activo' => (bool)$c->activo
             ])),
+            'currentYear' => (function() {
+                $activeCycle = AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->first()
+                            ?? AcademicPeriod::where('status', AcademicPeriod::STATUS_PLANNING)->first();
+                return $activeCycle ? (int)date('Y', strtotime($activeCycle->fecha_inicio)) : (int)date('Y');
+            })(),
             'filters' => [
                 'search' => $search
             ],
             'isCycleActive' => AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->exists(),
+            'activeParity' => (function() {
+                $activeCycle = AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->first()
+                            ?? AcademicPeriod::where('status', AcademicPeriod::STATUS_PLANNING)->first();
+                if (!$activeCycle || !$activeCycle->fecha_inicio) return 'odd'; // Fallback a nones
+
+                $month = (int)date('m', strtotime($activeCycle->fecha_inicio));
+                // Agosto(8) a Enero(1) -> Semestres Nones (1, 3, 5)
+                // Febrero(2) a Julio(7) -> Semestres Pares (2, 4, 6)
+                return ($month >= 8 || $month === 1) ? 'odd' : 'even';
+            })(),
             'canRegister' => AcademicPeriod::whereIn('status', [
                 AcademicPeriod::STATUS_ACTIVE,
                 AcademicPeriod::STATUS_PLANNING
@@ -85,26 +101,57 @@ class GroupController extends Controller
             ]);
         }
 
-        $validated = $request->validate([
-            'codigo' => 'required|string|unique:grupos,codigo',
-            'nombre' => 'required|string|unique:grupos,nombre|max:20',
-            'semestre' => 'required|integer|min:1|max:6',
-            'generacion' => 'required|string|max:50',
-            'turno' => 'nullable|string',
-            'especialidad' => 'required|string',
+        $request->validate([
+            'codigo'           => 'required|string|unique:grupos,codigo',
+            'nombre'           => 'required|string|unique:grupos,nombre|max:20',
+            'semestre'         => 'required|integer|min:1|max:6',
+            'generacion'       => 'required|string|max:50',
+            'turno'            => 'nullable|string',
+            'especialidad'     => 'required|string',
             'docente_tutor_id' => 'nullable',
-            'activo' => 'nullable|boolean',
+            'activo'           => 'nullable|boolean',
+            'crear_escalera'   => 'boolean'
         ], [
             'codigo.unique' => 'Este grupo ya existe (el código ya está registrado).',
             'nombre.unique' => 'Este grupo ya existe (el nombre del grupo ya está registrado).',
         ]);
 
-        $validated['docente_tutor_id'] = $validated['docente_tutor_id'] ?: null;
-        $validated['turno'] = $validated['turno'] ?? 'Matutino';
+        $baseData = $request->only(['codigo', 'nombre', 'semestre', 'generacion', 'turno', 'especialidad', 'docente_tutor_id', 'activo']);
+        $baseData['docente_tutor_id'] = $baseData['docente_tutor_id'] ?: null;
+        $baseData['turno'] = $baseData['turno'] ?? 'Matutino';
 
-        AcademicGroup::create($validated);
+        DB::transaction(function () use ($baseData, $request) {
+            // 1. Crear el grupo base
+            AcademicGroup::create($baseData);
 
-        return redirect()->back()->with('message', 'Grupo registrado con éxito.');
+            // 2. [LÓGICA ESCALERA v6.1] Crear semestres superiores con la MISMA GENERACIÓN
+            if ($request->crear_escalera && (int)$baseData['semestre'] === 1) {
+                $section = substr($baseData['codigo'], 1, 1);
+                $specialtyCode = explode('-', $baseData['codigo'])[1] ?? 'INF';
+                $majorName = $baseData['especialidad'];
+                $generation = $baseData['generacion']; // Heredar la misma generación
+
+                for ($s = 2; $s <= 6; $s++) {
+                    $code = "{$s}{$section}-{$specialtyCode}";
+                    $name = "{$s}°{$section} {$majorName}";
+
+                    // Solo crear si no existe
+                    if (!AcademicGroup::where('codigo', $code)->exists()) {
+                        AcademicGroup::create([
+                            'codigo'     => $code,
+                            'nombre'     => $name,
+                            'semestre'   => $s,
+                            'generacion' => $generation, // Misma generación para toda la escalera
+                            'turno'      => $baseData['turno'],
+                            'especialidad' => $majorName,
+                            'activo'     => true
+                        ]);
+                    }
+                }
+            }
+        });
+
+        return redirect()->back()->with('message', 'Grupo(s) registrado(s) con éxito.');
     }
 
     public function update(Request $request, $id)

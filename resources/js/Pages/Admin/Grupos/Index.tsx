@@ -23,6 +23,8 @@ export default function GruposIndex({
     materias = [],
     especialidades = [],
     cycles = [],
+    activeParity = 'odd',
+    currentYear = new Date().getFullYear(),
     filters = { search: '' },
     isCycleActive,
     canRegister
@@ -48,6 +50,7 @@ export default function GruposIndex({
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [specialtyFilter, setSpecialtyFilter] = useState('all');
+    const [showOnlyActive, setShowOnlyActive] = useState(true);
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -83,7 +86,8 @@ export default function GruposIndex({
         generacion: '',
         especialidad: '',
         docente_tutor_id: '' as string | number,
-        activo: true
+        activo: true,
+        crear_escalera: false,
     });
 
     const handleExportExcel = () => {
@@ -121,13 +125,38 @@ export default function GruposIndex({
     const filteredGroups = useMemo(() => {
         const query = searchQuery.toLowerCase();
         return formattedGroups.filter(g => {
+            // 1. Filtro de Búsqueda
             const matchesSearch = (g.name?.toLowerCase() || '').includes(query) ||
                 (g.code?.toLowerCase() || '').includes(query) ||
                 (g.teacherName?.toLowerCase() || '').includes(query);
+
+            // 2. Filtro de Especialidad
             const matchesSpecialty = specialtyFilter === 'all' || g.specialty === specialtyFilter;
-            return matchesSearch && matchesSpecialty;
+
+            // 3. [LÓGICA INTELIGENTE v6.5] Filtro de Grupos Activos (Paridad + Generación Real)
+            let isTimely = true;
+            if (showOnlyActive) {
+                const sNum = Number(g.semestre);
+
+                // 3.1 Validar Paridad (Nones en Periodo A, Pares en Periodo B)
+                const matchesParity = activeParity === 'odd' ? sNum % 2 !== 0 : sNum % 2 === 0;
+
+                // 3.2 Validar Generación (¿Le toca a esta generación cursar este semestre HOY?)
+                // Extraer año de inicio: "2026-2027" -> 2026
+                const genStartYear = parseInt(g.generacion.split('-')[0]);
+                if (!isNaN(genStartYear)) {
+                    // Año académico esperado para este semestre:
+                    // 1-2: GenStart + 0 | 3-4: GenStart + 1 | 5-6: GenStart + 2
+                    const expectedYear = genStartYear + Math.floor((sNum - 1) / 2);
+                    isTimely = matchesParity && expectedYear === currentYear;
+                } else {
+                    isTimely = matchesParity;
+                }
+            }
+
+            return matchesSearch && matchesSpecialty && isTimely;
         });
-    }, [formattedGroups, searchQuery, specialtyFilter]);
+    }, [formattedGroups, searchQuery, specialtyFilter, showOnlyActive, activeParity, currentYear]);
 
     const openCreateModal = () => {
         if (!especialidades || especialidades.length === 0) {
@@ -229,15 +258,44 @@ export default function GruposIndex({
         }
     };
 
-    const totalGroupsCount = useMemo(() => (grupos === null || grupos === undefined ? null : (Array.isArray(grupos) ? grupos.length : grupos?.total || 0)), [grupos]);
-    const assignedGroupsCount = useMemo(() => (grupos === null || grupos === undefined) ? null : formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length, [formattedGroups, grupos]);
+    const totalGroupsCount = useMemo(() => {
+        return formattedGroups.filter(g => {
+            if (!showOnlyActive) return true;
+            const sNum = Number(g.semestre);
+            const matchesParity = activeParity === 'odd' ? sNum % 2 !== 0 : sNum % 2 === 0;
+            const genStartYear = parseInt(g.generacion.split('-')[0]);
+            if (!isNaN(genStartYear)) {
+                const expectedYear = genStartYear + Math.floor((sNum - 1) / 2);
+                return matchesParity && expectedYear === currentYear;
+            }
+            return matchesParity;
+        }).length;
+    }, [formattedGroups, showOnlyActive, activeParity, currentYear]);
+
+    const assignedGroupsCount = useMemo(() => {
+        return formattedGroups.filter(g => {
+            const hasTeacher = g.teacherName !== 'Pendiente de Asignación';
+            if (!showOnlyActive) return hasTeacher;
+            const sNum = Number(g.semestre);
+            const matchesParity = activeParity === 'odd' ? sNum % 2 !== 0 : sNum % 2 === 0;
+            const genStartYear = parseInt(g.generacion.split('-')[0]);
+            if (!isNaN(genStartYear)) {
+                const expectedYear = genStartYear + Math.floor((sNum - 1) / 2);
+                return hasTeacher && matchesParity && expectedYear === currentYear;
+            }
+            return hasTeacher && matchesParity;
+        }).length;
+    }, [formattedGroups, showOnlyActive, activeParity, currentYear]);
 
 
     return (
         <AdminPageLayout
             headTitle="Gestión de Grupos"
             title="Gestión de grupos"
-            subtitle="Consulta, edita y registra grupos académicos y tutores"
+            subtitle={showOnlyActive
+                ? `Mostrando grupos activos del periodo (${activeParity === 'odd' ? 'Semestres Nones' : 'Semestres Pares'})`
+                : "Consulta, edita y registra todos los grupos de la institución"
+            }
             breadcrumb="Grupos"
             isLoading={grupos === null || grupos === undefined}
             metrics={[
@@ -253,8 +311,8 @@ export default function GruposIndex({
             ]}
             donutChartLabel="grupos"
             donutChartSegments={[
-                { name: "Asignados", count: formattedGroups.filter(g => g.teacherName !== 'Pendiente de Asignación').length, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
-                { name: "Sin tutor", count: formattedGroups.filter(g => g.teacherName === 'Pendiente de Asignación').length, color: "#e2e8f0", bulletClass: "bg-slate-200" }
+                { name: "Asignados", count: assignedGroupsCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" },
+                { name: "Sin tutor", count: totalGroupsCount - assignedGroupsCount, color: "#e2e8f0", bulletClass: "bg-slate-200" }
             ]}
         >
             {!isCycleActive && canRegister && (
@@ -286,6 +344,9 @@ export default function GruposIndex({
                 setSearchQuery={setSearchQuery}
                 specialtyFilter={specialtyFilter}
                 setSpecialtyFilter={setSpecialtyFilter}
+                showOnlyActive={showOnlyActive}
+                setShowOnlyActive={setShowOnlyActive}
+                activeParity={activeParity}
                 onOpenCreateModal={openCreateModal}
                 specialties={especialidades}
                 isCycleActive={canRegister}
@@ -333,6 +394,7 @@ export default function GruposIndex({
                 errors={errors}
                 processing={processing}
                 onSubmit={handleCreateSubmit}
+                currentYear={currentYear}
             />
 
             <GroupFormModal
@@ -349,6 +411,7 @@ export default function GruposIndex({
                 errors={errors}
                 processing={processing}
                 onSubmit={handleEditSubmit}
+                currentYear={currentYear}
             />
         </AdminPageLayout>
     );

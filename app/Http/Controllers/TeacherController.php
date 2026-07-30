@@ -14,9 +14,23 @@ class TeacherController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $selectedCycleId = $request->query('cycle');
+
+        $activeCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
+        $planningCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_PLANNING)->first();
+
+        // Determinar el ciclo de trabajo (Prioridad: Seleccionado > Activo > Planificación)
+        $workingCycle = null;
+        if ($selectedCycleId) {
+            $workingCycle = \App\Models\AcademicPeriod::find($selectedCycleId);
+        }
+
+        if (!$workingCycle) {
+            $workingCycle = $activeCycle ?: $planningCycle;
+        }
 
         return Inertia::render('Admin/Docentes/Index', [
-            'teachers' => Inertia::defer(function () use ($search) {
+            'teachers' => Inertia::defer(function () use ($search, $workingCycle) {
                 $query = Teacher::whereHas('user');
 
                 if ($search) {
@@ -30,7 +44,11 @@ class TeacherController extends Controller
                     });
                 }
 
-                return $query->with(['academicLoads.course', 'academicLoads.academicGroup', 'user'])
+                $loadsRelation = $workingCycle
+                    ? ['academicLoads' => fn($q) => $q->where('ciclo_id', $workingCycle->id)->with(['course', 'academicGroup'])]
+                    : ['academicLoads.course', 'academicLoads.academicGroup'];
+
+                return $query->with(array_merge($loadsRelation, ['user']))
                     ->paginate(50)
                     ->through(function ($t) {
                         return [
@@ -40,22 +58,36 @@ class TeacherController extends Controller
                             'apellido_paterno'  => $t->user->apellido_paterno ?? '',
                             'apellido_materno'  => $t->user->apellido_materno ?? '',
                             'especialidad'      => $t->especialidad,
-                            'area'              => $t->area ?? '',
+                            'areas'             => $t->areas ?? [],
                             'telefono'          => $t->user->telefono ?? '',
                             'usuario'           => $t->user ? ['email' => $t->user->email] : null,
                             'materias'          => $t->academicLoads->map(fn($l) => [
                                 'id'             => $l->course->id ?? null,
                                 'nombre'         => $l->course->nombre ?? 'N/A',
                                 'codigo'         => $l->course->codigo ?? '',
-                                'nombre_grupo'   => $l->academicGroup->nombre ?? 'N/A',
+                                'nombre_group'   => $l->academicGroup->nombre ?? 'N/A',
                             ])->values()->toArray(),
                         ];
                     })
                     ->withQueryString();
             }),
             'filters' => [
-                'search' => $search
+                'search' => $search,
+                'cycle' => $workingCycle ? $workingCycle->id : null
             ],
+            'availableCycles' => \App\Models\AcademicPeriod::whereIn('status', [
+                \App\Models\AcademicPeriod::STATUS_ACTIVE,
+                \App\Models\AcademicPeriod::STATUS_PLANNING
+            ])->orderBy('fecha_inicio', 'desc')->get()->map(fn($c) => [
+                'id' => $c->id,
+                'nombre' => $c->nombre,
+                'status' => $c->status
+            ]),
+            'especialidades' => \App\Models\Specialty::all()->map(fn($s) => [
+                'id' => $s->id,
+                'nombre' => $s->nombre,
+                'sub_areas' => $s->sub_areas ?? []
+            ]),
             'isCycleActive' => \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->exists(),
             'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
                 \App\Models\AcademicPeriod::STATUS_PLANNING,
@@ -86,7 +118,7 @@ class TeacherController extends Controller
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
             'especialidad'     => 'required|string|max:255',
-            'area'             => 'nullable|string|max:100',
+            'areas'            => 'nullable|array',
             'telefono'         => 'required|numeric|digits:10',
         ], [
             'nombre.required'           => 'El nombre es obligatorio.',
@@ -111,17 +143,26 @@ class TeacherController extends Controller
             $counter++;
         }
 
-        // Generar correo: nombre.apellido@prepahidalgo.edu.mx
-        $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
-        $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
-        $firstNamePart  = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $firstNamePart));
-        $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
-        $emailBase      = "{$firstNamePart}.{$paternoPart}";
-        $generatedEmail = "{$emailBase}@prepahidalgo.edu.mx";
+        // [ESTANDARIZACIÓN v4.0] Generación de correo profesional
+        // Usar el correo enviado por el frontend como sugerencia base
+        $generatedEmail = $request->email;
 
-        while (User::where('email', $generatedEmail)->exists()) {
-            $randomSuffix = strtoupper(substr(md5(uniqid()), 0, 4));
-            $generatedEmail = "{$emailBase}.{$randomSuffix}@prepahidalgo.edu.mx";
+        // Si por alguna razón no viene el correo o ya existe, lo generamos/ajustamos
+        if (empty($generatedEmail) || User::where('email', $generatedEmail)->exists()) {
+            $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
+            $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
+            $firstNamePart  = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $firstNamePart));
+            $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
+
+            $initials = substr($firstNamePart, 0, 1) . substr($paternoPart, 0, 1);
+            $emailBase = "{$firstNamePart}.{$paternoPart}.{$initials}";
+
+            // Buscar un número único
+            $counter = rand(10, 99);
+            do {
+                $generatedEmail = "{$emailBase}{$counter}@prepahidalgo.edu.mx";
+                $counter++;
+            } while (User::where('email', $generatedEmail)->exists());
         }
 
         DB::transaction(function () use ($request, $employeeCode, $generatedEmail) {
@@ -141,7 +182,7 @@ class TeacherController extends Controller
                 'usuario_id'       => $user->id,
                 'codigo_empleado'  => $employeeCode,
                 'especialidad'     => $request->especialidad,
-                'area'             => $request->area ?? null,
+                'areas'            => $request->areas ?? [],
             ]);
         });
 
@@ -156,13 +197,16 @@ class TeacherController extends Controller
             'nombre'           => 'required|string|max:255',
             'apellido_paterno' => 'required|string|max:255',
             'apellido_materno' => 'required|string|max:255',
+            'email'            => "required|string|email|max:255|unique:users,email,{$teacher->usuario_id}",
             'especialidad'     => 'required|string|max:255',
-            'area'             => 'nullable|string|max:100',
+            'areas'            => 'nullable|array',
             'telefono'         => 'required|numeric|digits:10',
         ], [
             'nombre.required'           => 'El nombre es obligatorio.',
             'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
             'apellido_materno.required' => 'El apellido materno es obligatorio.',
+            'email.required'            => 'El correo electrónico es obligatorio.',
+            'email.unique'              => 'Este correo electrónico ya está registrado por otro usuario.',
             'especialidad.required'     => 'La especialidad es obligatoria.',
             'telefono.required'         => 'El número de celular es obligatorio.',
             'telefono.numeric'          => 'El celular solo debe contener números.',
@@ -177,13 +221,14 @@ class TeacherController extends Controller
                     'apellido_paterno' => $request->apellido_paterno,
                     'apellido_materno' => $request->apellido_materno,
                     'telefono'         => $request->telefono,
+                    'email'            => $request->email,
                 ]);
             }
 
             // 2. Actualizar docente
             $teacher->update([
                 'especialidad'     => $request->especialidad,
-                'area'             => $request->area ?? null,
+                'areas'            => $request->areas ?? [],
             ]);
         });
 

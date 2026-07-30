@@ -111,7 +111,7 @@ export default function SubjectFormModal({
                         </div>
                     </div>
                     <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6 uppercase tracking-widest">
-                        Catálogo Curricular PH
+                        Prepahid · Campus Digital
                     </div>
                 </div>
 
@@ -165,7 +165,7 @@ export default function SubjectFormModal({
                                 }}
                                 className="h-9 text-xs"
                             >
-                                <option value="General">General (Tronco Común)</option>
+                                <option value="General">General</option>
                                 <option value="Especialidad">De Especialidad</option>
                             </FormSelect>
                         </div>

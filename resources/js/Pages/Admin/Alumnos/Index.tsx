@@ -16,7 +16,7 @@ import StudentFormModal from './components/StudentFormModal';
 import StudentKardexModal from './components/StudentKardexModal';
 import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } from './types';
 
-export default function AlumnosIndex({ alumnos, groups = [], filters = { search: '', group: 'all' }, isCycleActive, canRegister }: any) {
+export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [], filters = { search: '', group: 'all', cycle: null }, isCycleActive, canRegister }: any) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
@@ -51,15 +51,21 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [groupFilter, setGroupFilter] = useState(filters.group || 'all');
+    const [cycleFilter, setCycleFilter] = useState(filters.cycle || '');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
     // [OPTIMIZACIÓN] Sincronización con el servidor para búsqueda y filtrado
     useEffect(() => {
         const timeout = setTimeout(() => {
-            if (searchQuery !== (filters.search || '') || groupFilter !== (filters.group || 'all')) {
+            if (
+                searchQuery !== (filters.search || '') ||
+                groupFilter !== (filters.group || 'all') ||
+                cycleFilter?.toString() !== (filters.cycle || '').toString()
+            ) {
                 router.get(window.location.pathname, {
                     search: searchQuery,
-                    group: groupFilter
+                    group: groupFilter,
+                    cycle: cycleFilter
                 }, {
                     preserveState: true,
                     replace: true,
@@ -68,7 +74,7 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
             }
         }, 500);
         return () => clearTimeout(timeout);
-    }, [searchQuery, groupFilter]);
+    }, [searchQuery, groupFilter, cycleFilter]);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
@@ -89,13 +95,12 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
         estatus: 'active' as 'active' | 'inactive' | 'suspended'
     });
 
-    // ... (Efecto de generación de matrícula/email se mantiene igual) ...
+    // Efecto de generación de matrícula/email
     useEffect(() => {
         if (modalMode === 'create') {
             const nombre = data.nombre.trim();
             const paterno = data.apellido_paterno.trim();
             const materno = data.apellido_materno.trim();
-            const fecha = data.fecha_nacimiento;
 
             if (nombre === '' && paterno === '') {
                 if (data.matricula !== '' || data.email !== '') {
@@ -121,9 +126,10 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
                 firstNamePart = firstNamePart.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 paternalPart = paternalPart.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-                // Usamos el sufijo aleatorio generado al abrir el modal
+                // Formato: nombre.apellido.iniciales+numero@prepahidalgo.edu.mx
+                const emailInitials = `${firstInit.toLowerCase()}${paternalInit.toLowerCase()}`;
                 const generatedEmail = firstNamePart && paternalPart
-                    ? `${firstNamePart}.${paternalPart}.${randomSuffix}@prepahidalgo.edu.mx`
+                    ? `${firstNamePart}.${paternalPart}.${emailInitials}${randomSuffix}@prepahidalgo.edu.mx`
                     : '';
 
                 if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
@@ -135,7 +141,7 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
                 }
             }
         }
-    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, data.fecha_nacimiento, modalMode, groups, randomSuffix]);
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, modalMode, groups, randomSuffix]);
 
     const handleExportExcel = () => {
         const rows = formattedStudents.map(s => [
@@ -169,7 +175,6 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
         exportToPDF("Reporte General de Alumnos", headers, rows, "reporte_alumnos");
     };
 
-    // [OPTIMIZACIÓN] Las métricas y el filtrado local se memorizan
     const totalCount = useMemo(() => (alumnos === null || alumnos === undefined ? null : (Array.isArray(alumnos) ? alumnos.length : alumnos?.total || 0)), [alumnos]);
     const activeCount = useMemo(() => alumnos === null || alumnos === undefined ? null : formattedStudents.filter(s => s.status === 'active').length, [formattedStudents, alumnos]);
     const inactiveCount = useMemo(() => alumnos === null || alumnos === undefined ? null : formattedStudents.filter(s => s.status === 'suspended').length, [formattedStudents, alumnos]);
@@ -185,7 +190,7 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
             return;
         }
         setModalMode('create');
-        setRandomSuffix(Math.random().toString(36).substring(2, 6).toUpperCase());
+        setRandomSuffix(Math.floor(Math.random() * 90 + 10).toString());
         reset();
         setIsFormModalOpen(true);
     };
@@ -293,7 +298,6 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
         setSelectedStudent(student);
         setIsKardexModalOpen(true);
 
-        // Cargar Kardex real desde el servidor solo cuando se abre el modal
         try {
             const response = await fetch(`/admin/alumnos/${student.id}/kardex`);
             const result = await response.json();
@@ -313,11 +317,16 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
         }
     };
 
+    const currentCycleName = useMemo(() => {
+        const cycle = availableCycles.find((c: any) => c.id.toString() === cycleFilter?.toString());
+        return cycle ? cycle.nombre : '';
+    }, [availableCycles, cycleFilter]);
+
     return (
         <AdminPageLayout
             headTitle="Gestión de Alumnos"
             title="Gestión de alumnos"
-            subtitle="Consulta, edita y registra expedientes e inscripciones escolares"
+            subtitle={`Consultando expedientes e inscripciones para el periodo: ${currentCycleName}`}
             breadcrumb="Alumnos"
             toastMessage={toastMessage}
             isLoading={alumnos === null || alumnos === undefined}
@@ -362,13 +371,15 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
                 </div>
             )}
 
-            {/* Controls: Search and Actions */}
             <StudentTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 groupFilter={groupFilter}
                 setGroupFilter={setGroupFilter}
+                cycleFilter={cycleFilter}
+                setCycleFilter={setCycleFilter}
                 groups={groups}
+                availableCycles={availableCycles}
                 onOpenCreateModal={openCreateModal}
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
@@ -390,7 +401,6 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
                 />
             </Deferred>
 
-            {/* Modal: Add/Edit student */}
             <StudentFormModal
                 isOpen={isFormModalOpen}
                 onClose={() => setIsFormModalOpen(false)}
@@ -404,7 +414,6 @@ export default function AlumnosIndex({ alumnos, groups = [], filters = { search:
                 onSubmit={handleFormSubmit}
             />
 
-            {/* Modal: Kardex View */}
             <StudentKardexModal
                 isOpen={isKardexModalOpen}
                 onClose={() => setIsKardexModalOpen(false)}

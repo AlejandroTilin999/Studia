@@ -86,33 +86,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $activeCycleId = $activeCycle ? $activeCycle->id : null;
                 $isNones = $activeCycle ? (\Carbon\Carbon::parse($activeCycle->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activeCycle->fecha_inicio)->month === 1) : null;
 
-                // [OPTIMIZACIÓN v3.3] Conteos Diferidos para mostrar cargadores en el Dashboard
-                // [INTELIGENCIA v3.5] Conteos sensibles al ciclo activo
-                $studentsCount = Inertia::defer(fn() => $activeCycleId
-                    ? \DB::table('inscripciones')->where('ciclo_id', $activeCycleId)->where('estatus', 'active')->count()
-                    : 0
-                );
+                // [INTELIGENCIA v4.0] Resumen Global del Sistema (No restrictivo al ciclo activo)
+                $studentsCount = Inertia::defer(fn() => \DB::table('users')->where('rol', 'alumno')->count());
+                $teachersCount = Inertia::defer(fn() => \DB::table('users')->where('rol', 'docente')->count());
+                $groupsCount   = Inertia::defer(fn() => \DB::table('grupos')->where('activo', true)->count());
+                $coursesCount  = Inertia::defer(fn() => \DB::table('materias')->count());
 
-                $teachersCount = Inertia::defer(fn() => $activeCycleId
-                    ? \DB::table('cargas_academicas')->where('ciclo_id', $activeCycleId)->distinct('docente_id')->count()
-                    : 0
-                );
-
-                $groupsCount = Inertia::defer(function() use ($activeCycle, $isNones) {
-                    if (!$activeCycle) return 0;
-                    $query = \DB::table('grupos');
-                    if ($isNones) $query->whereIn('semestre', [1, 3, 5]);
-                    else $query->whereIn('semestre', [2, 4, 6]);
-                    return $query->count();
-                });
-
-                $coursesCount = Inertia::defer(function() use ($activeCycle, $isNones) {
-                    if (!$activeCycle) return 0;
-                    $query = \DB::table('materias');
-                    if ($isNones) $query->whereIn('semestre', [1, 3, 5]);
-                    else $query->whereIn('semestre', [2, 4, 6]);
-                    return $query->count();
-                });
                 $specialtiesCount = Inertia::defer(fn() => \DB::table('especialidades')->count());
                 $usersCount    = Inertia::defer(fn() => \DB::table('users')->count());
 

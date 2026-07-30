@@ -18,13 +18,14 @@ interface TeacherFormModalProps {
         apellido_materno: string;
         telefono: string;
         especialidad: string;
-        area: string;
+        areas: string[];
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
     processing: boolean;
     onClose: () => void;
     onSubmit: (e: React.FormEvent) => void;
+    specialties: any[];
 }
 
 export default function TeacherFormModal({
@@ -36,7 +37,26 @@ export default function TeacherFormModal({
     processing,
     onClose,
     onSubmit,
+    specialties = []
 }: TeacherFormModalProps) {
+    // Buscar la especialidad seleccionada para obtener sus sub_areas
+    const selectedSpecObj = specialties.find(s => s.nombre === data.especialidad);
+
+    // [LÓGICA v6.1] Soporte para Especialidad General y Áreas Múltiples
+    const availableSubAreas = data.especialidad.toLowerCase() === 'general'
+        ? GENERAL_AREAS
+        : (selectedSpecObj?.sub_areas || []);
+
+    const toggleArea = (area: string) => {
+        const currentAreas = [...data.areas];
+        const index = currentAreas.indexOf(area);
+        if (index > -1) {
+            currentAreas.splice(index, 1);
+        } else {
+            currentAreas.push(area);
+        }
+        setData('areas', currentAreas);
+    };
     return (
         <BaseModal
             isOpen={open}
@@ -74,8 +94,8 @@ export default function TeacherFormModal({
                             </p>
                         </div>
                     </div>
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 shrink-0 hidden md:block mt-6">
-                        Prepahid Plantilla Docente
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 shrink-0 hidden md:block mt-6 uppercase tracking-widest">
+                        Prepahid · Campus Digital
                     </div>
                 </div>
 
@@ -105,7 +125,7 @@ export default function TeacherFormModal({
                         </div>
 
                         <div className="space-y-1.5 text-left">
-                            <FormLabel required>Nombre Completo</FormLabel>
+                            <FormLabel required>Nombre(s)</FormLabel>
                             <FormInput
                                 required
                                 value={data.nombre}
@@ -157,32 +177,44 @@ export default function TeacherFormModal({
                                 {errors.telefono && <span className="text-red-500 text-[10px] mt-1 block">{errors.telefono}</span>}
                             </div>
                             <div className="space-y-1.5">
-                                <FormLabel required>Categoría</FormLabel>
-                                <SpecialtySelect
+                                <FormLabel required>Especialidad</FormLabel>
+                                <FormSelect
                                     required
                                     value={data.especialidad}
                                     onChange={e => {
                                         setData('especialidad', e.target.value);
-                                        if (e.target.value.toLowerCase() !== 'general') setData('area', '');
+                                        setData('areas', []); // Limpiar áreas al cambiar especialidad
                                     }}
                                     className="h-9 text-xs font-normal text-slate-700"
-                                />
+                                >
+                                    <option value="">Seleccionar especialidad...</option>
+                                    <option value="General">General</option>
+                                    {specialties.filter(s => s.nombre.toLowerCase() !== 'general').map(s => (
+                                        <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                                    ))}
+                                </FormSelect>
                             </div>
                         </div>
 
-                        {data.especialidad.toLowerCase() === 'general' && (
-                            <div className="space-y-1.5 text-left animate-in slide-in-from-top-1 duration-200">
-                                <FormLabel required>Área de Adscripción</FormLabel>
-                                <FormSelect
-                                    value={data.area}
-                                    onChange={e => setData('area', e.target.value)}
-                                    className="h-9 text-xs"
-                                >
-                                    <option value="">Seleccionar área...</option>
-                                    {GENERAL_AREAS.map(area => (
-                                        <option key={area} value={area}>{area}</option>
+                        {availableSubAreas.length > 0 && (
+                            <div className="space-y-3 text-left animate-in slide-in-from-top-1 duration-200">
+                                <FormLabel>Ramas Técnicas / Áreas de Dominio</FormLabel>
+                                <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    {availableSubAreas.map((area: string) => (
+                                        <label key={area} className="flex items-center gap-2 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.areas.includes(area)}
+                                                onChange={() => toggleArea(area)}
+                                                className="w-4 h-4 rounded border-slate-300 text-[#0266E0] focus:ring-[#0266E0]"
+                                            />
+                                            <span className={`text-xs transition-colors ${data.areas.includes(area) ? 'text-[#0266E0]' : 'text-slate-500 group-hover:text-slate-700'}`}>
+                                                {area}
+                                            </span>
+                                        </label>
                                     ))}
-                                </FormSelect>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-medium leading-none pl-1">Selecciona todas las áreas que el docente puede impartir.</p>
                             </div>
                         )}
                     </div>

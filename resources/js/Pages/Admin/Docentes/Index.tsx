@@ -16,7 +16,7 @@ import TeacherTable from "./components/TeacherTable";
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { DocentesIndexProps, TeacherFormatted, TeacherFromBackend } from './types';
 
-export default function DocentesIndex({ teachers, filters = { search: '' }, activeCycleTeachersCount, isCycleActive, canRegister }: any) {
+export default function DocentesIndex({ teachers, especialidades = [], availableCycles = [], filters = { search: '', cycle: null }, activeCycleTeachersCount, isCycleActive, canRegister }: any) {
     const { toastMessage, triggerToast } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
@@ -41,7 +41,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
             email: correoDocente,
             phone: t.telefono || 'Sin teléfono',
             specialty: t.especialidad || 'General',
-            area: t.area || '',
+            areas: (t as any).areas || [],
             assignments: t.materias?.map(m => ({
                 subject: m.nombre,
                 groupName: (m as any).nombre_group || m.nombre_grupo || 'Asignado'
@@ -50,14 +50,19 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
     }), [teacherData]);
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [cycleFilter, setCycleFilter] = useState(filters.cycle || '');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
     // Sincronización con el servidor (Debounce)
     useEffect(() => {
         const timeout = setTimeout(() => {
-            if (searchQuery !== (filters.search || '')) {
+            if (
+                searchQuery !== (filters.search || '') ||
+                cycleFilter?.toString() !== (filters.cycle || '').toString()
+            ) {
                 router.get(window.location.pathname, {
-                    search: searchQuery
+                    search: searchQuery,
+                    cycle: cycleFilter
                 }, {
                     preserveState: true,
                     replace: true,
@@ -66,7 +71,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
             }
         }, 500);
         return () => clearTimeout(timeout);
-    }, [searchQuery]);
+    }, [searchQuery, cycleFilter]);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
@@ -74,7 +79,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
     const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
     const [randomSuffix, setRandomSuffix] = useState('');
 
-    // FORMULARIO DE INERTIA (Campos en Español)
+    // FORMULARIO DE INERTIA
     const { data, setData, reset, processing, errors } = useForm({
         matricula: '',
         email: '',
@@ -83,7 +88,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
         apellido_materno: '',
         telefono: '',
         especialidad: '',
-        area: '',
+        areas: [] as string[],
     });
 
     // Auto-generar matrícula y correo
@@ -106,8 +111,10 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
         primerNombre  = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         primerPaterno = primerPaterno.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+        // Formato: nombre.apellido.iniciales+numero@prepahidalgo.edu.mx
+        const initials = `${firstInit.toLowerCase()}${paternoInit.toLowerCase()}`;
         const generatedEmail = primerNombre && primerPaterno
-            ? `${primerNombre}.${primerPaterno}.${randomSuffix}@prepahidalgo.edu.mx`
+            ? `${primerNombre}.${primerPaterno}.${initials}${randomSuffix}@prepahidalgo.edu.mx`
             : '';
 
         if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
@@ -147,7 +154,6 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
         exportToPDF("Reporte de Personal Docente", headers, rows, "reporte_docentes");
     };
 
-    // Búsqueda local residual (por si el usuario quiere filtrar rápido lo ya cargado)
     const filteredTeachers = useMemo(() => formattedTeachers.filter(teacher =>
         teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -160,7 +166,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
 
     const openCreateModal = () => {
         setModalMode('create');
-        setRandomSuffix(Math.random().toString(36).substring(2, 6).toUpperCase());
+        setRandomSuffix(Math.floor(Math.random() * 90 + 10).toString());
         reset();
         setIsFormModalOpen(true);
     };
@@ -176,7 +182,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
             apellido_materno: teacher.rawMaterno ?? '',
             telefono: teacher.phone === 'Sin teléfono' ? '' : teacher.phone,
             especialidad: teacher.specialty,
-            area: teacher.area || '',
+            areas: teacher.areas || [],
         });
         setIsFormModalOpen(true);
     };
@@ -234,11 +240,16 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
         });
     };
 
+    const currentCycleName = useMemo(() => {
+        const cycle = availableCycles.find((c: any) => c.id.toString() === cycleFilter?.toString());
+        return cycle ? cycle.nombre : '';
+    }, [availableCycles, cycleFilter]);
+
     return (
         <AdminPageLayout
             headTitle="Gestión de Docentes"
             title="Gestión de docentes"
-            subtitle="Consulta, edita y registra expedientes de profesores de la plantilla"
+            subtitle={`Consultando plantilla y asignaciones para el periodo: ${currentCycleName}`}
             breadcrumb="Docentes"
             toastMessage={toastMessage}
             isLoading={teachers === null || teachers === undefined}
@@ -255,9 +266,10 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
             ]}
             donutChartLabel="profesores"
             donutChartSegments={[
-                { name: "Asignados", count: totalTeachersCount, color: "#0266E0", bulletClass: "bg-[#0266E0]" }
+                { name: "Asignados", count: totalTeachersCount || 0, color: "#0266E0", bulletClass: "bg-[#0266E0]" }
             ]}
         >
+            {/* Cycle Alerts */}
             {!isCycleActive && canRegister && (
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center animate-in slide-in-from-top-2 duration-300">
                     <div className="flex-1 text-left">
@@ -285,6 +297,9 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
             <TeacherTableControls
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                cycleFilter={cycleFilter}
+                setCycleFilter={setCycleFilter}
+                availableCycles={availableCycles}
                 onCreate={openCreateModal}
                 showFiltersDropdown={showFiltersDropdown}
                 setShowFiltersDropdown={setShowFiltersDropdown}
@@ -313,6 +328,7 @@ export default function DocentesIndex({ teachers, filters = { search: '' }, acti
                 processing={processing}
                 onClose={() => setIsFormModalOpen(false)}
                 onSubmit={handleSubmit}
+                specialties={especialidades}
             />
         </AdminPageLayout>
     );

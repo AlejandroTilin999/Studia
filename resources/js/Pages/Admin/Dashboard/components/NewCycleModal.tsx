@@ -69,16 +69,16 @@ export default function NewCycleModal({
             nombre: m === 'A'
                 ? `Ciclo Escolar ${year}-${year + 1} / Periodo A`
                 : `Ciclo Escolar ${year - 1}-${year} / Periodo B`,
-            fecha_inicio: m === 'A' ? `${year}-08-` : `${year}-02-`, // Día vacío
-            fecha_fin: m === 'A' ? `${year}-12-` : `${year}-07-`,    // Día vacío
-            p1_inicio: m === 'A' ? `${year}-08-` : `${year}-02-`,
-            p1_fin: m === 'A' ? `${year}-09-` : `${year}-03-`,
+            fecha_inicio: m === 'A' ? `${year}-08-01` : `${year}-02-01`,
+            fecha_fin: m === 'A' ? `${year}-12-20` : `${year}-07-15`,
+            p1_inicio: m === 'A' ? `${year}-08-01` : `${year}-02-01`,
+            p1_fin: m === 'A' ? `${year}-09-30` : `${year}-03-31`,
             p1_activo: true,
-            p2_inicio: m === 'A' ? `${year}-10-` : `${year}-04-`,
-            p2_fin: m === 'A' ? `${year}-10-` : `${year}-04-`,
+            p2_inicio: m === 'A' ? `${year}-10-01` : `${year}-04-01`,
+            p2_fin: m === 'A' ? `${year}-10-31` : `${year}-04-30`,
             p2_activo: false,
-            p3_inicio: m === 'A' ? `${year}-11-` : `${year}-05-`,
-            p3_fin: m === 'A' ? `${year}-12-` : `${year}-07-`,
+            p3_inicio: m === 'A' ? `${year}-11-01` : `${year}-05-01`,
+            p3_fin: m === 'A' ? `${year}-12-20` : `${year}-07-15`,
             p3_activo: false,
         };
 
@@ -295,7 +295,10 @@ export default function NewCycleModal({
                                 <div className="space-y-2 text-left">
                                     <FormLabel required className="text-[11px] font-normal text-slate-400 uppercase tracking-normal ml-1">Año de Referencia</FormLabel>
                                     <FormSelect value={baseYear} onChange={e => setBaseYear(e.target.value)} className="h-11 font-normal text-sm border-2 border-slate-100">
-                                        {YEARS.map(y => <option key={y} value={y}>Ciclo {y}</option>)}
+                                        {YEARS.map(y => {
+                                            const yInt = parseInt(y);
+                                            return <option key={y} value={y}>Ciclo Escolar {yInt}-{yInt + 1}</option>
+                                        })}
                                     </FormSelect>
                                 </div>
                                 <div className="space-y-2 text-left">
@@ -393,10 +396,10 @@ export default function NewCycleModal({
                         <button
                             type="button"
                             onClick={step < 4 ? () => setStep(step + 1) : onSubmit}
-                            disabled={processing || (step === 1 && !isStep1Valid)}
+                            disabled={processing || !isStep1Valid}
                             className={cn(
                                 "px-10 py-4 bg-[#0266E0] text-white rounded-lg font-bold text-xs uppercase tracking-normal transition-all flex items-center gap-2",
-                                (step === 1 && !isStep1Valid) ? "opacity-30 grayscale cursor-not-allowed" : "hover:bg-blue-700 active:scale-[0.98]"
+                                !isStep1Valid ? "opacity-30 grayscale cursor-not-allowed" : "hover:bg-blue-700 active:scale-[0.98]"
                             )}
                         >
                             {processing ? 'Procesando...' : (

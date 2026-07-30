@@ -267,7 +267,7 @@ export default function AlumnoDashboard({
                                                                                     <div key={idx} className="flex justify-between items-center text-xs">
                                                                                         <span className="text-slate-500 truncate max-w-[140px] font-normal">{c.name}</span>
                                                                                         <div className="flex items-center gap-3">
-                                                                                            <span className="text-slate-400 font-medium">{c.percentage}%</span>
+                                                                                            <span className="text-slate-500 font-medium">{c.percentage}%</span>
                                                                                             <span className={`font-black ${isGraded ? 'text-slate-900' : 'text-slate-300'}`}>
                                                                                                 {c.score ?? '—'}
                                                                                             </span>
@@ -283,7 +283,7 @@ export default function AlumnoDashboard({
                                                                     </div>
 
                                                                     {/* Promedio Final (Minimalista) */}
-                                                                    <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
+                                                                    <div className="mt-auto pt-4 border-t border-slate-50">
                                                                         <div className="flex flex-col">
                                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Promedio Parcial</span>
                                                                             <span className={`text-2xl font-black ${isGraded ? 'text-slate-900' : 'text-slate-200'}`}>{avg}</span>

@@ -5,7 +5,7 @@ export interface TeacherFromBackend {
     apellido_paterno: string;
     apellido_materno: string | null;
     especialidad: string;
-    area: string | null;
+    areas: string[] | null;
     telefono: string | null;
     email?: string;
     usuario?: {
@@ -33,7 +33,7 @@ export interface TeacherFormatted {
     email: string;
     phone: string;
     specialty: string;
-    area: string;
+    areas: string[];
     assignments: {
         subject: string;
         groupName: string;

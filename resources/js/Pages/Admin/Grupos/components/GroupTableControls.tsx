@@ -7,6 +7,9 @@ interface GroupTableControlsProps {
     setSearchQuery: (query: string) => void;
     specialtyFilter: string;
     setSpecialtyFilter: (specialty: string) => void;
+    showOnlyActive: boolean;
+    setShowOnlyActive: (val: boolean) => void;
+    activeParity: 'odd' | 'even';
     onOpenCreateModal: () => void;
     specialties?: any[];
     isCycleActive?: boolean;
@@ -17,6 +20,9 @@ export default function GroupTableControls({
     setSearchQuery,
     specialtyFilter,
     setSpecialtyFilter,
+    showOnlyActive,
+    setShowOnlyActive,
+    activeParity,
     onOpenCreateModal,
     specialties = [],
     isCycleActive
@@ -60,23 +66,52 @@ export default function GroupTableControls({
                     </button>
 
                     {showFiltersDropdown && (
-                        <div className="absolute right-0 top-14 w-56 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-4 space-y-2.5 text-left animate-in fade-in slide-in-from-top-2 duration-150">
-                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Especialidad</span>
-                            <select
-                                value={specialtyFilter}
-                                onChange={e => {
-                                    setSpecialtyFilter(e.target.value);
-                                    setShowFiltersDropdown(false);
-                                }}
-                                className="w-full py-2 px-3 bg-slate-55 border border-slate-200 rounded-lg text-xs font-bold text-slate-650 focus:outline-none focus:border-blue-400 focus:ring-0"
-                            >
-                                <option value="all">Todas</option>
-                                {specialties.map((s) => (
-                                    <option key={s.id} value={s.nombre}>
-                                        {s.nombre}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="absolute right-0 top-14 w-64 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-4 space-y-4 text-left animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Periodo Académico</span>
+                                <button
+                                    onClick={() => {
+                                        setShowOnlyActive(!showOnlyActive);
+                                        setShowFiltersDropdown(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-[11px] font-bold",
+                                        showOnlyActive
+                                            ? "bg-blue-50 border-blue-100 text-[#0266E0]"
+                                            : "bg-slate-50 border-slate-200 text-slate-500"
+                                    )}
+                                >
+                                    <span>Solo activos ({activeParity === 'odd' ? 'Nones' : 'Pares'})</span>
+                                    <div className={cn(
+                                        "w-8 h-4 rounded-full relative transition-all",
+                                        showOnlyActive ? "bg-[#0266E0]" : "bg-slate-300"
+                                    )}>
+                                        <div className={cn(
+                                            "absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all",
+                                            showOnlyActive ? "right-0.5" : "left-0.5"
+                                        )} />
+                                    </div>
+                                </button>
+                            </div>
+
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Especialidad</span>
+                                <select
+                                    value={specialtyFilter}
+                                    onChange={e => {
+                                        setSpecialtyFilter(e.target.value);
+                                        setShowFiltersDropdown(false);
+                                    }}
+                                    className="w-full py-2 px-3 bg-slate-55 border border-slate-200 rounded-lg text-xs font-bold text-slate-650 focus:outline-none focus:border-blue-400 focus:ring-0"
+                                >
+                                    <option value="all">Todas</option>
+                                    {specialties.map((s) => (
+                                        <option key={s.id} value={s.nombre}>
+                                            {s.nombre}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     )}
                 </div>

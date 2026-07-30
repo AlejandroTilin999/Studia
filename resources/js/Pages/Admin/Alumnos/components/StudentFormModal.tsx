@@ -155,8 +155,8 @@ export default function StudentFormModal({
                         </div>
                     </div>
 
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6">
-                        Prepahid Campus Escolar
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6 uppercase tracking-widest">
+                        Prepahid · Campus Digital
                     </div>
                 </div>
 

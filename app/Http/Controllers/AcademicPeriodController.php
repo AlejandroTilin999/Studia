@@ -29,30 +29,36 @@ class AcademicPeriodController extends Controller
             'p3_activo'    => 'boolean',
         ]);
 
-        DB::transaction(function () use ($validated, $request) {
-            $isImmediateActive = isset($validated['activo']) && $validated['activo'];
+        try {
+            DB::transaction(function () use ($validated, $request) {
+                $isImmediateActive = isset($validated['activo']) && $validated['activo'];
 
-            if ($isImmediateActive) {
-                // Desactivar otros ciclos si este será el vigente
-                AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->update([
-                    'status' => AcademicPeriod::STATUS_CLOSED,
-                    'activo' => false
+                if ($isImmediateActive) {
+                    // Desactivar otros ciclos si este será el vigente
+                    AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->update([
+                        'status' => AcademicPeriod::STATUS_CLOSED,
+                        'activo' => false
+                    ]);
+                }
+
+                $period = AcademicPeriod::create(array_merge($validated, [
+                    'status' => $isImmediateActive ? AcademicPeriod::STATUS_ACTIVE : AcademicPeriod::STATUS_PLANNING,
+                    'activo' => $isImmediateActive
+                ]));
+
+                // Registrar en Auditoría
+                \App\Models\AdminAuditLog::create([
+                    'usuario_id' => auth()->id(),
+                    'accion' => 'APERTURA_CICLO',
+                    'descripcion' => "Se realizó la apertura del ciclo escolar: {$period->nombre} en modo " . ($isImmediateActive ? 'VIGENTE' : 'PLANEACIÓN') . ".",
+                    'metadata' => ['ciclo_id' => $period->id, 'status' => $period->status]
                 ]);
-            }
-
-            $period = AcademicPeriod::create(array_merge($validated, [
-                'status' => $isImmediateActive ? AcademicPeriod::STATUS_ACTIVE : AcademicPeriod::STATUS_PLANNING,
-                'activo' => $isImmediateActive
-            ]));
-
-            // Registrar en Auditoría
-            \App\Models\AdminAuditLog::create([
-                'usuario_id' => auth()->id(),
-                'accion' => 'APERTURA_CICLO',
-                'descripcion' => "Se realizó la apertura del ciclo escolar: {$period->nombre} en modo " . ($isImmediateActive ? 'VIGENTE' : 'PLANEACIÓN') . ".",
-                'metadata' => ['ciclo_id' => $period->id, 'status' => $period->status]
-            ]);
-        });
+            });
+        } catch (\Exception $e) {
+            \Log::error("Error al crear ciclo escolar: " . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return redirect()->back()->withErrors(['nombre' => 'Error interno al procesar el ciclo: ' . $e->getMessage()]);
+        }
 
         return redirect()->back()->with('message', 'Ciclo escolar registrado correctamente.');
     }

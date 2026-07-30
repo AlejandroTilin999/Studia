@@ -12,7 +12,11 @@ class Teacher extends Model
         'usuario_id',
         'codigo_empleado',
         'especialidad',
-        'area'
+        'areas'
+    ];
+
+    protected $casts = [
+        'areas' => 'array'
     ];
 
     public function user()

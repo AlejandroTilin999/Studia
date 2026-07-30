@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 interface TeacherTableControlsProps {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    cycleFilter: string | number;
+    setCycleFilter: (cycle: string | number) => void;
+    availableCycles?: any[];
     showFiltersDropdown: boolean;
     setShowFiltersDropdown: (show: boolean) => void;
     onCreate: () => void;
@@ -15,6 +18,9 @@ interface TeacherTableControlsProps {
 export default function TeacherTableControls({
     searchQuery,
     setSearchQuery,
+    cycleFilter,
+    setCycleFilter,
+    availableCycles = [],
     showFiltersDropdown,
     setShowFiltersDropdown,
     onCreate,
@@ -53,19 +59,37 @@ export default function TeacherTableControls({
                     Filtros
                 </button>
                 {showFiltersDropdown && (
-                    <div className="absolute right-0 top-14 w-52 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-3.5 space-y-2">
-                        <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                            Especialidad
-                        </span>
-                        <SpecialtySelect
-                            value={searchQuery}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value === "all" ? "" : e.target.value);
-                                setShowFiltersDropdown(false);
-                            }}
-                            showAllOption={true}
-                            className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer"
-                        />
+                    <div className="absolute right-0 top-14 w-60 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-4 space-y-4">
+                        <div className="space-y-2">
+                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Ciclo Escolar</span>
+                            <select
+                                value={cycleFilter}
+                                onChange={e => {
+                                    setCycleFilter(e.target.value);
+                                    setShowFiltersDropdown(false);
+                                }}
+                                className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
+                            >
+                                {availableCycles.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nombre} {c.status === 'activo' ? '(Vigente)' : '(Planeación)'}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                                Especialidad
+                            </span>
+                            <SpecialtySelect
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value === "all" ? "" : e.target.value);
+                                    setShowFiltersDropdown(false);
+                                }}
+                                showAllOption={true}
+                                className="w-full py-1.5 px-2 bg-slate-50 border border-slate-100 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer"
+                            />
+                        </div>
                     </div>
                 )}
             </div>

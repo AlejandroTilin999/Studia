@@ -20,6 +20,7 @@ interface GroupFormModalProps {
         especialidad: string;
         docente_tutor_id: string | number;
         activo: boolean;
+        crear_escalera?: boolean;
     };
     setData: (key: any, value: any) => void;
     errors: Record<string, string>;
@@ -27,6 +28,7 @@ interface GroupFormModalProps {
     onSubmit: (e: React.FormEvent) => void;
     profesores?: any[];
     specialties?: any[];
+    currentYear?: number;
 }
 
 export default function GroupFormModal({
@@ -40,6 +42,7 @@ export default function GroupFormModal({
     onSubmit,
     specialties = [],
     profesores = [],
+    currentYear = new Date().getFullYear(),
 }: GroupFormModalProps) {
     const [selectedSemester, setSelectedSemester] = useState<string>('');
     const [selectedSection, setSelectedSection] = useState<string>('');
@@ -66,6 +69,21 @@ export default function GroupFormModal({
             }
         }
     }, [isOpen, mode]);
+
+    // [LÓGICA v6.5] Autogenerar generación basada en semestre e inteligencia temporal
+    useEffect(() => {
+        if (isOpen && mode === 'create' && selectedSemester) {
+            const sem = Number(selectedSemester);
+            let targetStartYear = currentYear;
+
+            // Restar años según el nivel académico
+            if (sem === 3 || sem === 4) targetStartYear -= 1;
+            else if (sem === 5 || sem === 6) targetStartYear -= 2;
+
+            const gen = `${targetStartYear}-${targetStartYear + 1}`;
+            setData('generacion', gen);
+        }
+    }, [selectedSemester, isOpen, mode, currentYear]);
 
     const getSpecialtySuffix = (major: string) => {
         if (!major) return '';
@@ -145,8 +163,8 @@ export default function GroupFormModal({
                             </p>
                         </div>
                     </div>
-                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6">
-                        Prepahid Control Escolar
+                    <div className="text-[9px] text-blue-200 font-medium leading-tight pt-4 border-t border-white/15 hidden md:block mt-6 uppercase tracking-widest">
+                        PREPAHID · CAMPUS DIGITAL
                     </div>
                 </div>
 
@@ -196,14 +214,11 @@ export default function GroupFormModal({
                             </div>
                             <div className="space-y-1.5">
                                 <FormLabel required>Turno</FormLabel>
-                                <FormSelect
+                                <FormInput
+                                    readOnly
                                     value={data.turno}
-                                    onChange={e => setData('turno', e.target.value)}
-                                    className="h-9 text-xs"
-                                >
-                                    <option value="Matutino">Matutino</option>
-                                    <option value="Vespertino">Vespertino</option>
-                                </FormSelect>
+                                    className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed select-none"
+                                />
                             </div>
                         </div>
 
@@ -244,14 +259,32 @@ export default function GroupFormModal({
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <span className="text-[10px] text-slate-400 font-medium block">Código Único</span>
-                                    <span className="text-[12px] font-black text-slate-700 font-mono uppercase">{data.codigo || '---'}</span>
+                                    <span className="text-[12px] font-normal text-slate-700 uppercase tracking-wide">{data.codigo || '---'}</span>
                                 </div>
                                 <div>
                                     <span className="text-[10px] text-slate-400 font-medium block">Nombre Oficial</span>
-                                    <span className="text-[12px] font-black text-[#0266E0] uppercase">{data.nombre || '---'}</span>
+                                    <span className="text-[12px] font-normal text-slate-900 uppercase tracking-tight">{data.nombre || '---'}</span>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Función Escalera (Solo para 1° Semestre) */}
+                        {mode === 'create' && selectedSemester === '1' && (
+                            <div className="pt-2 animate-in slide-in-from-top-1 duration-300">
+                                <label className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-xl cursor-pointer group hover:bg-blue-50 transition-all">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.crear_escalera}
+                                        onChange={e => setData('crear_escalera', e.target.checked)}
+                                        className="w-4 h-4 rounded border-blue-300 text-[#0266E0] focus:ring-[#0266E0]"
+                                    />
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-blue-700">Generar escalera académica</span>
+                                        <span className="text-[10px] text-blue-500 font-medium">Crea automáticamente los grupos de 2° a 6° para esta generación.</span>
+                                    </div>
+                                </label>
+                            </div>
+                        )}
                     </div>
 
                     {/* Footer */}
