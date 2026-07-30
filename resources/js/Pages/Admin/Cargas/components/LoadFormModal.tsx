@@ -100,10 +100,28 @@ export default function LoadFormModal({
             if (selectedTeacherIds.includes(t.id.toString())) return false;
 
             if (course.tipo === 'General') {
-                return t.especialidad?.toLowerCase() === 'general' &&
-                       t.area?.toLowerCase() === course.area?.toLowerCase();
+                const isGeneralTeacher = !t.especialidad || t.especialidad.toLowerCase() === 'general';
+                if (!isGeneralTeacher) return false;
+
+                // Si la materia tiene área definida (ej: MATEMÁTICAS, HUMANIDADES)
+                if (course.area) {
+                    const cArea = course.area.toLowerCase();
+                    const teacherAreas = (t.areas || []).map(a => a.toLowerCase());
+                    const singleArea = (t.area || '').toLowerCase();
+                    
+                    if (teacherAreas.length > 0) {
+                        return teacherAreas.includes(cArea);
+                    }
+                    if (singleArea) {
+                        return singleArea === cArea;
+                    }
+                }
+                return true;
             } else {
-                return t.especialidad?.toLowerCase() === groupMajor.toLowerCase();
+                // Materia de Especialidad
+                const tEsp = (t.especialidad || '').toLowerCase();
+                const gEsp = groupMajor.toLowerCase();
+                return tEsp === gEsp || tEsp === 'general';
             }
         });
     };

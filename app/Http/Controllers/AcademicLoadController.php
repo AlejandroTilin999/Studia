@@ -94,7 +94,7 @@ class AcademicLoadController extends Controller
                     'id' => $t->id,
                     'nombre_completo' => $t->user->nombre_completo ?? 'Docente sin nombre',
                     'especialidad' => $t->especialidad,
-                    'area' => $t->area ?? '',
+                    'areas' => $t->areas ?? [],
                 ])
                 ->values()
             ),
