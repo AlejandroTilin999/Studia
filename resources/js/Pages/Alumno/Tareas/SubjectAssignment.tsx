@@ -11,7 +11,8 @@ import {
     X,
     Calendar,
     MessageCircle,
-    CheckCircle2
+    CheckCircle2,
+    ExternalLink
 } from 'lucide-react';
 
 interface Task {
@@ -29,11 +30,6 @@ interface SubjectAssignmentProps {
     otherTasks: Task[];
     onBack: () => void;
     onSwitchTask: (task: Task) => void;
-    attachedFile: File | null;
-    onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    onRemoveFile: () => void;
-    onDeliver: () => void;
-    onCancelDeliver?: () => void;
     comments: string[];
     onAddComment: (text: string) => void;
     teacherName: string;
@@ -44,16 +40,13 @@ export default function SubjectAssignment({
     otherTasks,
     onBack,
     onSwitchTask,
-    attachedFile,
-    onFileChange,
-    onRemoveFile,
-    onDeliver,
-    onCancelDeliver,
     comments,
     onAddComment,
     teacherName
 }: SubjectAssignmentProps) {
     const [localComment, setLocalComment] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [driveLink, setDriveLink] = useState('');
 
     const handleSendComment = () => {
         if (!localComment.trim()) return;
@@ -61,11 +54,51 @@ export default function SubjectAssignment({
         setLocalComment('');
     };
 
-    const handleUploadClick = () => {
-        document.getElementById('asymmetric-file-input')?.click();
+    const handleRealDeliver = () => {
+        if (!driveLink.trim()) return;
+
+        setIsUploading(true);
+
+        import('axios').then(({ default: axios }) => {
+            axios.post('/alumno/tareas/entregar', {
+                tarea_id: task.id,
+                enlace: driveLink,
+                nombre: 'Documento de Drive'
+            })
+            .then(() => {
+                import('@/utils/SwalHelper').then(({ SwalHelper }) => {
+                    SwalHelper.success('¡Entregado!', 'Tu enlace ha sido guardado correctamente.');
+                    window.location.reload();
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                import('@/utils/SwalHelper').then(({ SwalHelper }) => {
+                    SwalHelper.error('Error', 'Asegúrate de poner un enlace válido.');
+                });
+            })
+            .finally(() => setIsUploading(false));
+        });
     };
 
-    const isDelivered = task.status === 'Entregado';
+    const handleCancelRealSubmission = () => {
+        import('@/utils/SwalHelper').then(({ SwalHelper }) => {
+            SwalHelper.confirm('¿Anular entrega?', 'Podrás cambiar el enlace si el docente aún no ha calificado.', 'warning')
+                .then((res) => {
+                    if (res.isConfirmed) {
+                        import('axios').then(({ default: axios }) => {
+                            axios.post('/alumno/tareas/anular', { tarea_id: task.id })
+                                .then(() => {
+                                    window.location.reload();
+                                });
+                        });
+                    }
+                });
+        });
+    };
+
+    const isDelivered = task.status === 'Entregado' || task.status === 'Calificado';
+    const serverFile = (task as any).archivo;
 
     // Determinar el peso y la calificación en base de 10
     const getTaskWeight = (taskId: number) => {
@@ -102,13 +135,12 @@ export default function SubjectAssignment({
                 </button>
             </div>
 
-            {/* Modern Layout (Unified grid to align right column at the same height as left column title) */}
+            {/* Modern Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-                {/* Left Side: Title, Metadata, Instructions and private chat (8 columns) */}
+                {/* Left Side */}
                 <div className="lg:col-span-8 space-y-8 min-w-0">
 
-                    {/* Title & Metadata (Clean and without box containers) */}
                     <div className="space-y-4">
                         <div className="space-y-1">
                            <span className="text-[10px] font-black text-[#0266E0] uppercase tracking-widest block">
@@ -129,7 +161,6 @@ export default function SubjectAssignment({
                         </div>
                     </div>
 
-                    {/* Instructions - Minimalist quote-style with a left indicator line */}
                     <div className="space-y-3">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
                             Instrucciones
@@ -139,7 +170,6 @@ export default function SubjectAssignment({
                         </div>
                     </div>
 
-                    {/* Forum / Private comments with teacher */}
                     <div className="space-y-4 pt-4 border-t border-slate-100">
                         <div className="flex items-center gap-2">
                             <MessageCircle size={16} className="text-slate-500" />
@@ -165,7 +195,6 @@ export default function SubjectAssignment({
                             )}
                         </div>
 
-                        {/* Input field */}
                         <div className="flex gap-2 pt-1">
                             <input
                                 type="text"
@@ -186,10 +215,9 @@ export default function SubjectAssignment({
                     </div>
                 </div>
 
-                {/* Right Side: Delivery Details & Actions (4 columns) - Completely borderless */}
+                {/* Right Side */}
                 <div className="lg:col-span-4 space-y-6">
 
-                    {/* Delivery Status and Upload space (Flat, clean, borderless) */}
                     <div className="space-y-5 text-left bg-white">
                         <div className="space-y-1">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
@@ -209,7 +237,6 @@ export default function SubjectAssignment({
                             </div>
                         </div>
 
-                        {/* Flat Evaluation Table (No shadows, plain font, scale of 10) */}
                         <div className="space-y-2">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
                                 Detalle de Calificación
@@ -233,84 +260,84 @@ export default function SubjectAssignment({
                                     <tr>
                                         <td className="py-2">Calificación Obtenida</td>
                                         <td className="py-2 text-right font-black text-[#0266E0]">
-                                            {grade ? `${grade} / 10` : 'Sin calificar'}
+                                            {(task as any).grade ? `${(task as any).grade} / 10` : 'Sin calificar'}
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
-                        {/* Dynamic Button Area (No dashed boxes, pure interactive button states) */}
                         <div className="space-y-3 pt-2">
-                            <input
-                                type="file"
-                                id="asymmetric-file-input"
-                                className="hidden"
-                                onChange={onFileChange}
-                            />
-
                             {isDelivered ? (
                                 <div className="space-y-4">
                                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-[20px] p-4 text-center text-emerald-600 flex flex-col items-center justify-center gap-2">
                                         <CheckCircle2 size={24} className="text-emerald-500" />
                                         <div>
                                             <span className="text-xs font-black block uppercase tracking-wide">Actividad Entregada</span>
-                                            <span className="text-[10px] text-emerald-600/70 font-semibold block mt-0.5">El reporte fue guardado</span>
+                                            <span className="text-[10px] text-emerald-600/70 font-semibold block mt-0.5">El enlace fue guardado</span>
                                         </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={onCancelDeliver}
-                                        className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0"
-                                    >
-                                        Anular Entrega
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {/* Show attached file if present */}
-                                    {attachedFile && (
-                                        <div className="border border-slate-200 bg-white rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-none">
+
+                                    {serverFile && (
+                                        <div
+                                            className="border border-slate-100 bg-slate-50/50 rounded-xl p-3 flex items-center justify-between gap-3 shadow-none transition-all group"
+                                        >
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <Paperclip size={16} className="text-slate-450 shrink-0" />
-                                                <span className="text-xs font-bold text-slate-700 block truncate max-w-[170px]">
-                                                    {attachedFile.name}
-                                                </span>
+                                                <ExternalLink size={14} className="text-slate-400 shrink-0" />
+                                                <a href={serverFile.url} target="_blank" className="text-[11px] font-bold text-[#0266E0] hover:underline truncate max-w-[180px]">
+                                                    {serverFile.url}
+                                                </a>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={onRemoveFile}
-                                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                            >
-                                                <X size={14} />
-                                            </button>
+                                            <span className="text-[9px] font-black text-slate-300 uppercase shrink-0">Link</span>
                                         </div>
                                     )}
 
-                                    {/* Action button changes state from "Cargar" to "Entregar" */}
-                                    {!attachedFile ? (
+                                    {task.status !== 'Calificado' && (
                                         <button
                                             type="button"
-                                            onClick={handleUploadClick}
-                                            className="w-full h-11 bg-[#0266E0] hover:bg-blue-700 text-white rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0"
+                                            onClick={handleCancelRealSubmission}
+                                            className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0"
                                         >
-                                            Cargar Reporte
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={onDeliver}
-                                            className="w-full h-11 bg-[#0266E0] hover:bg-blue-700 text-white rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0"
-                                        >
-                                            Entregar Actividad
+                                            Anular Entrega
                                         </button>
                                     )}
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Pega el link de tu trabajo (Drive, Canva, etc)</label>
+                                        <div className="relative group">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0266E0] transition-colors">
+                                                <Paperclip size={16} />
+                                            </div>
+                                            <input
+                                                type="url"
+                                                value={driveLink}
+                                                onChange={e => setDriveLink(e.target.value)}
+                                                placeholder="https://drive.google.com/..."
+                                                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        disabled={isUploading || !driveLink.trim()}
+                                        onClick={handleRealDeliver}
+                                        className="w-full h-11 bg-[#0266E0] hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0 gap-2"
+                                    >
+                                        {isUploading ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Guardando...
+                                            </>
+                                        ) : 'Entregar Actividad'}
+                                    </button>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Navigation list (Clean & borderless list) */}
                     <div className="space-y-3 pt-4 border-t border-slate-100 text-left">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
                             Otras Actividades del Curso

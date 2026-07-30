@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronRight, GraduationCap, Layers, Palette, ArrowLeft } from 'lucide-react';
+import { ChevronRight, GraduationCap, Layers, Palette, ArrowLeft, School, ExternalLink, FileText } from 'lucide-react';
 import { COLOR_THEMES } from '@/Pages/Docente/Grupos/ColorThemes';
 
 interface Subject {
@@ -28,6 +28,7 @@ interface SubjectHeaderProps {
     setActiveTab?: (tab: 'novedades' | 'trabajo') => void;
     onBack: () => void;
     onBackToSubject?: () => void;
+    activeCriteria?: any[];
 }
 
 export default function SubjectHeader({
@@ -36,7 +37,8 @@ export default function SubjectHeader({
     activeTab,
     setActiveTab,
     onBack,
-    onBackToSubject
+    onBackToSubject,
+    activeCriteria = []
 }: SubjectHeaderProps) {
     const themeKey = subject?.color_tema || 'blue';
     const groupColors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
@@ -81,27 +83,44 @@ export default function SubjectHeader({
                         </div>
 
                         {/* Widget de Información Rápida (Estilo Docente) */}
-                        <div className="bg-slate-50 border border-slate-100 rounded-lg p-6 sm:p-8 flex flex-col justify-between h-full select-none text-left">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Información Académica</h3>
+                        <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 flex flex-col justify-center h-full select-none text-left relative">
+                            <h3 className="absolute top-6 left-6 sm:left-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Información Académica</h3>
 
-                            <div className="flex-1 flex flex-col justify-center gap-3">
+                            <div className="flex flex-col justify-center gap-1.5 mt-2">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <GraduationCap size={15} className="text-slate-800 shrink-0" />
-                                        <span className="text-xs font-semibold text-slate-600">Docente titular</span>
-                                    </div>
-                                    <span className="text-xs font-extrabold text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-slate-100 truncate max-w-[120px]" title={subject.teacher}>{subject.teacher}</span>
+                                    <span className="text-[12px] font-normal text-slate-600">Docente titular</span>
+                                    <span className="text-[12px] font-bold text-slate-800 truncate max-w-[120px]" title={subject.teacher}>{subject.teacher}</span>
                                 </div>
 
-                                <div className="h-px bg-slate-200/50 w-full" />
-
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <Palette size={15} className="text-slate-800 shrink-0" />
-                                        <span className="text-xs font-semibold text-slate-600">Estado</span>
-                                    </div>
-                                    <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">Activa</span>
+                                    <span className="text-[12px] font-normal text-slate-600">Estado</span>
+                                    <span className="text-[12px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100/50">Activa</span>
                                 </div>
+
+                                {/* Sección de Criterios del Alumno */}
+                                {activeCriteria.length > 0 && (
+                                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-3 relative">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Esquema de Evaluación</p>
+                                        <div className="space-y-3 relative">
+                                            {activeCriteria.map((c, idx) => (
+                                                <div key={idx} className="relative flex items-center justify-between group/crit">
+                                                    {/* Línea conectora sutil */}
+                                                    {idx < activeCriteria.length - 1 && (
+                                                        <div className="absolute left-[7.5px] top-4 bottom-[-18px] w-0.5 bg-[#0266E0]/10" />
+                                                    )}
+
+                                                    <div className="flex items-center gap-2.5 max-w-[160px] relative z-10">
+                                                        <div className="w-4 h-4 rounded-full bg-[#0266E0] flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm">
+                                                            {idx + 1}
+                                                        </div>
+                                                        <span className="text-[11.5px] text-slate-900 font-normal truncate" title={c.name}>{c.name}</span>
+                                                    </div>
+                                                    <span className="text-[11.5px] text-slate-950 font-medium relative z-10">{c.percentage}%</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

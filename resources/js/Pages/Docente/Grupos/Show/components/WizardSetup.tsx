@@ -96,13 +96,14 @@ export default function WizardSetup({
                                     {/* Porcentaje */}
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         <input
-                                            type="number"
-                                            min={0}
-                                            max={100}
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
                                             value={c.porcentaje === 0 ? '' : c.porcentaje}
                                             onChange={e => {
-                                                const val = e.target.value === '' ? 0 : Number(e.target.value);
-                                                updateCriterion(c.id, 'porcentaje', val);
+                                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                                const num = val === '' ? 0 : parseInt(val);
+                                                if (num <= 100) updateCriterion(c.id, 'porcentaje', num);
                                             }}
                                             className="w-16 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-extrabold text-slate-800 outline-none focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
                                             placeholder="0"

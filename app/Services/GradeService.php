@@ -20,6 +20,7 @@ class GradeService
     public static function formatGrade($value)
     {
         if ($value === null || $value === '—' || $value === '') return '—';
+        // Redondeo oficial: .6 sube, .5 baja -> floor(n + 0.4)
         return (int) floor(floatval($value) + 0.4);
     }
 
@@ -108,10 +109,16 @@ class GradeService
                     $pKey = "p{$parcial}";
                     $parcialAvgValue = $consolidado ? $consolidado->$pKey : null;
 
+                    $lockInfo = ['allowed' => true, 'reason' => ''];
+                    if ($enrollment->academicPeriod) {
+                        $lockInfo = \App\Services\AcademicPeriodService::isCapturaHabilitada($enrollment->academicPeriod, $parcial, 'operacion');
+                    }
+
                     $parcialDetails[$parcial] = [
                         'configured' => true,
                         'criteria' => $criteriaData,
-                        'average' => $parcialAvgValue !== null ? self::formatGrade($parcialAvgValue) : '—'
+                        'average' => $parcialAvgValue !== null ? self::formatGrade($parcialAvgValue) : '—',
+                        'lock_info' => $lockInfo
                     ];
                 }
 
@@ -157,8 +164,15 @@ class GradeService
                 foreach ($load->tareas as $task) {
                     $delivery = $task->entregas->first();
                     $status = 'Pendiente';
+                    $archivo = null;
                     if ($delivery) {
                         $status = ($delivery->calificacion !== '') ? 'Calificado' : (($delivery->estatus === 'submitted') ? 'Entregado' : 'Pendiente');
+                        if ($delivery->archivo_url) {
+                            $archivo = [
+                                'url' => $delivery->archivo_url,
+                                'nombre' => $delivery->archivo_nombre
+                            ];
+                        }
                     }
 
                     $deadlineFormatted = $task->fecha_entrega ? date('d \d\e F', strtotime($task->fecha_entrega)) : 'Sin fecha';
@@ -173,6 +187,8 @@ class GradeService
                         'desc' => $task->descripcion ?? 'Sin descripción',
                         'points' => ($task->puntos ?: 10) . ' puntos',
                         'deadline' => $deadlineFormatted,
+                        'archivo' => $archivo,
+                        'grade' => ($delivery && $delivery->calificacion !== '') ? $delivery->calificacion : null,
                     ];
                 }
             }

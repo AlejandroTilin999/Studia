@@ -266,49 +266,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 return Inertia::render('Docente/Grupos/Index');
             })->name('docente.grupos.index');
 
-            Route::get('/grupos/show', function (Illuminate\Http\Request $request) {
-                $uuid = $request->query('id');
+            Route::get('/grupos/show', [App\Http\Controllers\DocenteClassroomController::class, 'show'])->name('docente.grupos.show');
 
-                return Inertia::render('Docente/Grupos/Show', [
-                    'classInfo' => Inertia::defer(function() use ($uuid) {
-                        $load = \App\Models\AcademicLoad::where('uuid', $uuid)
-                            ->with(['academicGroup', 'course'])
-                            ->first();
-
-                        if (!$load) return null;
-
-                        $students = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
-                            ->where('estatus', 'active')
-                            ->with('user')
-                            ->get()
-                            ->map(function ($enrollment) {
-                                return [
-                                    'id' => $enrollment->usuario_id,
-                                    'nombre' => $enrollment->user->nombre_completo ?? 'Sin nombre',
-                                    'matricula' => $enrollment->codigo_alumno ?? 'N/A',
-                                ];
-                            })->toArray();
-
-                        return [
-                            'id' => $load->uuid,
-                            'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
-                            'nombre_materia' => $load->course->nombre ?? 'N/A',
-                            'codigo_materia' => $load->course->codigo ?? 'N/A',
-                            'especialidad' => $load->academicGroup->especialidad ?? 'N/A',
-                            'semestre' => $load->course->semestre ?? 1,
-                            'alumnos' => $students,
-                        ];
-                    })
-                ]);
-            })->name('docente.grupos.show');
-
+            Route::get('/clases/{uuid}/full-data', [App\Http\Controllers\DocenteClassroomController::class, 'getFullData']);
             Route::get('/clases/{uuid}/config', [App\Http\Controllers\DocenteClassroomController::class, 'getConfig']);
-            Route::post('/clases/{uuid}/theme', [App\Http\Controllers\DocenteClassroomController::class, 'updateTheme']);
+            Route::post('/clases/{uuid}/theme', [App\Http\Controllers\DocenteClassroomController::class, 'updateTheme'])->name('docente.clases.update_theme');
 
             Route::middleware('captura.abierta')->group(function() {
                 Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
                 Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
                 Route::post('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'saveTareas']);
+                Route::post('/clases/{uuid}/return-grade', [App\Http\Controllers\DocenteClassroomController::class, 'returnGrade']);
             });
 
             Route::get('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'getTareas']);
@@ -404,6 +372,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     })
                 ]);
             })->name('alumno.materias.index');
+
+            Route::post('/tareas/entregar', [App\Http\Controllers\StudentClassroomController::class, 'submitTask'])->name('alumno.tareas.entregar');
+            Route::post('/tareas/anular', [App\Http\Controllers\StudentClassroomController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
         });
 
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

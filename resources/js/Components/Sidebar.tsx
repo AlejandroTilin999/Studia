@@ -179,7 +179,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             if (role === 'ALUMNO' && item.name === 'Materias') {
               const isAnySubjectActive = pathname.startsWith('/alumno/materias') || (pathname === '/alumno' && url.includes('id='));
               return (
-                <SidebarMenuItem key={item.path} className="mb-1">
+                <SidebarMenuItem key={item.name} className="mb-1">
                   <button
                     onClick={() => isMenuExpanded && setMateriasOpen(prev => !prev)}
                     className={cn(
@@ -221,7 +221,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             if (role === 'DOCENTE' && item.name === 'Grupos') {
               const isAnyGroupActive = pathname.startsWith('/docente/grupos');
               return (
-                <SidebarMenuItem key={item.path} className="mb-1">
+                <SidebarMenuItem key={item.name} className="mb-1">
                   <button onClick={() => isMenuExpanded && setGruposOpen(prev => !prev)} className={cn("flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full", isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full", isAnyGroupActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-bold")}>
                     <Layers className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnyGroupActive ? "text-[#0266E0]" : "text-slate-300")} />
                     {isMenuExpanded && (
@@ -252,7 +252,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             }
 
             return (
-              <SidebarMenuItem key={item.path} className="mb-1">
+              <SidebarMenuItem key={item.name} className="mb-1">
                 <Link
                   href={item.path}
                   prefetch="hover"

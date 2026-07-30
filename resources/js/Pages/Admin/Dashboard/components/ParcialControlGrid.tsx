@@ -59,7 +59,8 @@ export default function ParcialControlGrid({ activeCycle, onToggle }: ParcialCon
                             >
                                 <div className={cn(
                                     "absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-sm",
-                                    isActive ? "left-5" : "left-1"
+                                    isActive ? "left-5" : "left-1",
+                                    isLocked && "bg-slate-50 shadow-none"
                                 )} />
                             </button>
                         </div>
@@ -69,10 +70,10 @@ export default function ParcialControlGrid({ activeCycle, onToggle }: ParcialCon
                                 <span className="text-slate-400 font-normal uppercase tracking-wider">Estado de Captura</span>
                                 <span className={cn(
                                     "px-2.5 py-0.5 rounded-lg font-bold uppercase text-[9px] tracking-widest",
-                                    isActive ? "bg-blue-50 text-[#0266E0]" : "bg-slate-50 text-slate-500",
-                                    isLocked && "bg-slate-100/50 text-slate-400"
+                                    isActive && !isLocked ? "bg-blue-50 text-[#0266E0]" : "bg-slate-50 text-slate-500",
+                                    isLocked && "bg-slate-100 text-slate-400"
                                 )}>
-                                    {isLocked ? 'Bloqueada' : (isActive ? 'Abierta' : 'Cerrada')}
+                                    {isLocked ? 'Inhabilitada' : (isActive ? 'Abierta' : 'Cerrada')}
                                 </span>
                             </div>
 

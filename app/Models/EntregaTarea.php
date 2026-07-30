@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class EntregaTarea extends Model
 {
     protected $table = 'entregas_tareas';
-    protected $fillable = ['tarea_id', 'usuario_id', 'calificacion', 'estatus'];
+    protected $fillable = ['tarea_id', 'usuario_id', 'calificacion', 'estatus', 'archivo_url', 'archivo_nombre'];
 
     public function assignment()
     {

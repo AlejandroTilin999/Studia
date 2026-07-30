@@ -1,5 +1,6 @@
-import { Palette, Layers, Users, BookOpen, CheckCircle2, FileText, GraduationCap, School } from 'lucide-react';
+import { Palette, Layers, Users, BookOpen, CheckCircle2, FileText, GraduationCap, School, Target } from 'lucide-react';
 import { COLOR_THEMES } from '../../ColorThemes';
+import { Criterion } from '../services/constants';
 
 interface GroupHeaderBannerProps {
     grupo: string;
@@ -14,6 +15,7 @@ interface GroupHeaderBannerProps {
     parcialesCount: number;
     configuredCount: number;
     setIsGradesModalOpen: (open: boolean) => void;
+    activeCriteria?: Criterion[];
 }
 
 export default function GroupHeaderBanner({
@@ -28,7 +30,8 @@ export default function GroupHeaderBanner({
     studentGradesCount,
     parcialesCount,
     configuredCount,
-    setIsGradesModalOpen
+    setIsGradesModalOpen,
+    activeCriteria = []
 }: GroupHeaderBannerProps) {
     const groupColors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
 
@@ -93,53 +96,58 @@ export default function GroupHeaderBanner({
             </div>
 
             {/* Widget único de Resumen del Grupo al lado */}
-            <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 lg:p-6 xl:p-9 shadow-none flex flex-col justify-between h-full lg:col-span-1 min-h-[135px] lg:min-h-[160px] xl:min-h-[260px] 2xl:min-h-[300px] select-none text-left font-body">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Información del Grupo</h3>
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 lg:p-6 xl:p-9 shadow-none flex flex-col justify-center h-full lg:col-span-1 min-h-[135px] lg:min-h-[160px] xl:min-h-[260px] 2xl:min-h-[300px] select-none text-left font-body relative">
+                <h3 className="absolute top-6 left-6 sm:left-5 lg:left-6 xl:left-9 text-[10px] font-black text-slate-400 uppercase tracking-widest">Información del Grupo</h3>
 
-                <div className="flex-1 flex flex-col justify-center gap-2.5">
+                <div className="flex flex-col justify-center space-y-2.5 mt-2">
                     {/* Item: Semestre */}
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <School size={15} className="text-slate-800 shrink-0" />
-                            <span className="text-xs font-semibold text-slate-600">Semestre</span>
-                        </div>
-                        <span className="text-xs font-extrabold text-slate-700 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{semestre}°</span>
+                        <span className="text-[13px] font-normal text-slate-600">Semestre</span>
+                        <span className="text-[13px] font-bold text-slate-800">{semestre}°</span>
                     </div>
-
-                    <div className="h-px bg-slate-50 w-full" />
 
                     {/* Item: Especialidad */}
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <GraduationCap size={15} className="text-slate-800 shrink-0" />
-                            <span className="text-xs font-semibold text-slate-600">Bachillerato</span>
-                        </div>
-                        <span className="text-xs font-extrabold text-slate-700 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 max-w-[120px] truncate" title={especialidad}>{especialidad}</span>
+                        <span className="text-[13px] font-normal text-slate-600">Bachillerato</span>
+                        <span className="text-[13px] font-bold text-slate-800 truncate max-w-[140px]" title={especialidad}>{especialidad}</span>
                     </div>
-
-                    <div className="h-px bg-slate-50 w-full" />
 
                     {/* Item: Alumnos */}
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <Users size={15} className="text-slate-800 shrink-0" />
-                            <span className="text-xs font-semibold text-slate-600">Alumnos inscritos</span>
-                        </div>
-                        <span className="text-xs font-extrabold text-slate-700 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{studentGradesCount}</span>
+                        <span className="text-[13px] font-normal text-slate-600">Alumnos</span>
+                        <span className="text-[13px] font-bold text-slate-800">{studentGradesCount}</span>
                     </div>
 
-                    <div className="h-px bg-slate-50 w-full" />
+                    {/* [NEW] Sección de Criterios del Parcial Actual */}
+                    {activeCriteria.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-slate-100 space-y-3 relative">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Evaluación del Parcial</p>
+                            <div className="space-y-4 relative">
+                                {activeCriteria.map((c, idx) => (
+                                    <div key={c.id} className="relative flex items-center justify-between group/crit">
+                                        {/* Línea conectora vertical */}
+                                        {idx < activeCriteria.length - 1 && (
+                                            <div className="absolute left-[7.5px] top-4 bottom-[-18px] w-0.5 bg-[#0266E0]/10" />
+                                        )}
 
-                    {/* Item: Configurados */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <CheckCircle2 size={15} className="text-slate-800 shrink-0" />
-                            <span className="text-xs font-semibold text-slate-600">Parciales Configurados</span>
+                                        <div className="flex items-center gap-2.5 max-w-[180px] relative z-10">
+                                            {/* Círculo con Índice (Azul Fuerte) */}
+                                            <div className="w-4 h-4 rounded-full bg-[#0266E0] flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm">
+                                                {idx + 1}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="text-[12.5px] text-slate-900 font-normal truncate" title={c.nombre}>{c.nombre}</span>
+                                                {c.sincronizar_tareas && (
+                                                    <Layers size={10} className="text-[#0266E0] shrink-0 opacity-60" />
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="text-[13px] text-slate-950 font-medium relative z-10">{c.porcentaje}%</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50/50 px-2 py-0.5 rounded-lg border border-emerald-100/40">
-                            {configuredCount} / {parcialesCount}
-                        </span>
-                    </div>
+                    )}
 
                     <div className="h-px bg-slate-100 w-full" />
 

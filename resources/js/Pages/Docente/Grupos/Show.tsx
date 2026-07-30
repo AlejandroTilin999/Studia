@@ -4,7 +4,6 @@ import { ChevronRight, Settings, RotateCcw, ArrowLeft, CheckCircle2, LockKeyhole
 import { PARCIALES } from './Show/services/constants';
 import { useGroupClass } from './Show/hooks/useGroupClass';
 import GroupHeaderBanner from './Show/components/GroupHeaderBanner';
-import CriteriaGrid from './Show/components/CriteriaGrid';
 import NavigationTabs from './Show/components/NavigationTabs';
 import WizardSetup from './Show/components/WizardSetup';
 import ActivitiesTab from './Show/components/ActivitiesTab';
@@ -15,7 +14,7 @@ import TaskGradesModal from './Show/components/TaskGradesModal';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
 export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
-    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, saveTasks, activeTab, setActiveTab, students, studentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid, isReadOnly, lockReason } = useGroupClass();
+    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, setTasks, saveTasks, activeTab, setActiveTab, students, studentGrades, setStudentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, returnTaskGrade, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid, isReadOnly, lockReason, lockInfos, isSaving } = useGroupClass(classInfo);
 
     const parcialLabel = activeParcial ? PARCIALES.find(p => p.num === activeParcial)?.label : '';
     const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];
@@ -75,6 +74,7 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                         parcialesCount={PARCIALES.length}
                         configuredCount={Object.values(configs).filter(c => c.configured).length}
                         setIsGradesModalOpen={setIsGradesModalOpen}
+                        activeCriteria={activeCriteria}
                     />
 
                     {screen === 'parciales' && (
@@ -85,13 +85,18 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                                 {PARCIALES.map(({ num, label }) => {
                                     const cfg = configs[num];
                                     const done = cfg?.configured;
-                                    const isLocked = num === 2 ? !isParcialClosed(1) : num === 3 ? (!isParcialClosed(1) || !isParcialClosed(2)) : false;
+
+                                    // [SINCRONIZACIÓN v4.1] Bloqueo por servidor (Switch del Admin) o por secuencia
+                                    const serverLocked = lockInfos[num]?.allowed === false;
+                                    const sequenceLocked = num === 2 ? !isParcialClosed(1) : num === 3 ? (!isParcialClosed(1) || !isParcialClosed(2)) : false;
+                                    const isLocked = serverLocked || sequenceLocked;
+                                    const currentLockReason = serverLocked ? lockInfos[num]?.reason : 'Se desbloqueará al concluir el parcial anterior.';
 
                                     return (
                                         <div key={num} onClick={() => !isLocked && openParcial(num)} className={`flex flex-col h-full bg-white border rounded-2xl p-6 shadow-sm transition-all ${isLocked ? 'opacity-60 border-slate-100 cursor-not-allowed' : 'border-slate-100 hover:shadow-lg hover:border-blue-200 cursor-pointer'}`}>
                                             <div className="flex items-center justify-between mb-4">
                                                 {isLocked ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold uppercase"><LockKeyhole size={14}/> Bloqueado</span>
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold uppercase" title={currentLockReason}><LockKeyhole size={14}/> Bloqueado</span>
                                                 ) : (
                                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase ${done ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}><Vote size={14}/> {done ? 'Configurado':'Pendiente'}</span>
                                                 )}
@@ -113,7 +118,7 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-sm text-slate-400 leading-relaxed">{isLocked ? 'Se desbloqueará al concluir y calificar el parcial anterior.' : 'Configura los criterios de evaluación para este parcial.'}</p>
+                                                    <p className="text-sm text-slate-400 leading-relaxed">{isLocked ? currentLockReason : 'Configura los criterios de evaluación para este parcial.'}</p>
                                                 )}
                                             </div>
 
@@ -143,14 +148,13 @@ export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
                                 <button onClick={() => { setScreen('parciales'); setActiveParcial(null); }} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 px-3 py-2 rounded-xl"><ArrowLeft size={13} /> Volver</button>
                                 <button onClick={resetConfig} className="flex items-center gap-1.5 text-xs font-bold text-slate-400 border border-slate-200 px-3 py-2 rounded-xl"><Settings size={13} /> Reconfigurar</button>
                             </div>
-                            <CriteriaGrid activeCriteria={activeCriteria} />
                             <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                             <div className="flex-grow">
-                                {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} isReadOnly={isReadOnly} />}
-                                {activeTab === 'tasks' && <TasksTab tasks={tasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} isReadOnly={isReadOnly} />}
+                                {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} setStudentGrades={setStudentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} isReadOnly={isReadOnly} isSaving={isSaving} />}
+                                {activeTab === 'tasks' && <TasksTab tasks={tasks} setTasks={setTasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} isReadOnly={isReadOnly} isSaving={isSaving} />}
                                 {activeTab === 'activities' && (
                                     selectedTaskId !== null ? (
-                                        <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} isReadOnly={isReadOnly} />
+                                        <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} returnTaskGrade={returnTaskGrade} isReadOnly={isReadOnly} />
                                     ) : (
                                         <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} isReadOnly={isReadOnly} />
                                     )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import axios from 'axios';
 import {
@@ -38,8 +38,9 @@ function saveConfig(grupo: string, materia: string, parcial: number, config: Par
 
 export type Screen = 'parciales' | 'wizard' | 'grades';
 
-export function useGroupClass() {
-    const { classInfo } = usePage().props as any;
+export function useGroupClass(classInfoProp?: any) {
+    const { classInfo: pageClassInfo } = usePage().props as any;
+    const classInfo = classInfoProp || pageClassInfo;
 
     // 1. Resolver grupo, materia e ID de carga académica
     const [loadId, setLoadId] = useState<string | null>(null);
@@ -94,8 +95,15 @@ export function useGroupClass() {
         setShowPaletteMenu(false);
 
         if (loadId) {
-            axios.post(`/docente/clases/${loadId}/theme`, { color: newKey })
-                .catch(err => console.error("Error al guardar tema:", err));
+            // @ts-ignore
+            axios.post(route('docente.clases.update_theme', { uuid: loadId }), { color: newKey })
+                .then(() => {
+                    SwalHelper.toast('Apariencia de la clase actualizada', 'success');
+                })
+                .catch(err => {
+                    console.error("Error al guardar tema:", err);
+                    SwalHelper.error('Error', 'No se pudo sincronizar el nuevo color.');
+                });
         }
     }
 
@@ -111,78 +119,151 @@ export function useGroupClass() {
     });
     const [configs, setConfigs] = useState<Record<number, ParcialConfig>>({});
     const [allGrades, setAllGrades] = useState<Record<number, StudentGrade[]>>({});
+    const [allTasks, setAllTasks] = useState<Record<number, Task[]>>({});
     const [lockInfos, setLockInfos] = useState<Record<number, { allowed: boolean, reason: string }>>({});
     const [configLockInfos, setConfigLockInfos] = useState<Record<number, { allowed: boolean, reason: string }>>({});
+    const [refreshCounter, setRefreshCounter] = useState(Date.now());
+    const [isSaving, setIsSaving] = useState(false); // [NUEVO] Feedback de guardado
+    const burstTimerRef = useRef<any>(null);
 
-    // 3.1 Sincronizar URL
+    // [ARQUITECTURA ATÓMICA v5.0] Sincronizar estado local con props de Inertia
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        if (!id) return;
+        if (!classInfo || !classInfo.parciales) return;
 
-        if (activeParcial) {
-            params.set('parcial', activeParcial.toString());
-        } else {
-            params.delete('parcial');
+        // [PROTECCIÓN ULTRA-AGRESIVA]
+        // Si el usuario tiene el foco en CUALQUIER lugar de la página,
+        // posponemos la sincronización de datos de notas para no borrar su progreso.
+        const isUserActive = document.activeElement && (
+            document.activeElement.tagName === 'INPUT' ||
+            document.activeElement.tagName === 'TEXTAREA' ||
+            document.activeElement.getAttribute('contenteditable') === 'true'
+        );
+
+        if (isUserActive) {
+            console.log('%c[Atomic-Sync] ✋ Sincronización pospuesta (Usuario capturando).', 'color: #f59e0b; font-weight: bold;');
+            return;
         }
 
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState(null, '', newUrl);
-    }, [activeParcial, screen]);
+        console.log('%c[Atomic-Sync] 🧩 Unificando verdad total desde props...', 'color: #10b981; font-weight: bold;');
 
-    // Sincronizar configuraciones
-    useEffect(() => {
+        const newLockInfos: Record<number, any> = {};
+        const newConfigLockInfos: Record<number, any> = {};
+        const newConfigs: Record<number, any> = {};
+        const newAllGrades: Record<number, any> = {};
+        const newAllTasks: Record<number, any> = {};
+
+        [1, 2, 3].forEach(num => {
+            const pData = classInfo.parciales[num];
+            if (pData) {
+                newLockInfos[num] = pData.lock_info;
+                newConfigLockInfos[num] = pData.lock_config;
+                newConfigs[num] = pData.config;
+                newAllGrades[num] = pData.students;
+                newAllTasks[num] = pData.tasks;
+            }
+        });
+
+        setLockInfos(newLockInfos);
+        setConfigLockInfos(newConfigLockInfos);
+        setConfigs(newConfigs);
+        setAllGrades(newAllGrades);
+        setAllTasks(newAllTasks);
+
+        if (classInfo.alumnos) {
+            setStudents(classInfo.alumnos);
+        }
+
+        if (classInfo.color_tema && COLOR_THEMES[classInfo.color_tema]) {
+            setThemeKey(classInfo.color_tema);
+        }
+
+        // Sincronizar vista actual si hay un parcial en la URL
+        const params = new URLSearchParams(window.location.search);
+        const pNum = params.get('parcial');
+        if (pNum) {
+            const num = parseInt(pNum);
+            const pData = classInfo.parciales[num];
+            if (pData) {
+                setStudentGrades(pData.students);
+                setTasks(pData.tasks);
+                if (pData.config?.configured) setScreen('grades');
+            }
+        }
+    }, [classInfo]);
+
+    // Función maestra de refresco (ThunderSync V7 - Atómica)
+    const refreshClassData = (isBurst = false) => {
         if (!loadId) return;
 
-        setTasks([]);
-        setStudentGrades([]);
+        // [ESTABILIDAD] No refrescar props si el usuario está interactuando con un input
+        const isInputActive = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '');
+        if (isInputActive && isBurst) {
+            console.log('[RT] ✋ Refresco omitido por actividad de usuario.');
+            return;
+        }
 
-        PARCIALES.forEach(({ num }) => {
-            axios.get(`/docente/clases/${loadId}/config?parcial=${num}`)
-                .then(res => {
-                    const { configurado, criterios, alumnos, color_tema, lock_info, lock_config } = res.data;
-                    const currentParams = new URLSearchParams(window.location.search);
-                    const isCurrentInUrl = currentParams.get('parcial') === num.toString();
+        console.log(`%c[RT] 🔄 Recargando props de Inertia...`, 'color: #0266E0; font-weight: bold;');
 
-                    if (color_tema && COLOR_THEMES[color_tema]) {
-                        setThemeKey(color_tema);
-                    }
-
-                    if (lock_info) {
-                        setLockInfos(prev => ({ ...prev, [num]: lock_info }));
-                    }
-
-                    if (lock_config) {
-                        setConfigLockInfos(prev => ({ ...prev, [num]: lock_config }));
-                    }
-
-                    if (configurado) {
-                        setConfigs(prev => ({
-                            ...prev,
-                            [num]: { configured: configurado, criteria: criterios }
-                        }));
-                        setAllGrades(prev => ({
-                            ...prev,
-                            [num]: alumnos
-                        }));
-
-                        if (isCurrentInUrl) {
-                            setScreen('grades');
-                            setStudentGrades(alumnos);
-
-                            axios.get(`/docente/clases/${loadId}/tareas?parcial=${num}`)
-                                .then(tRes => setTasks(tRes.data.tareas))
-                                .catch(err => console.error("Error tareas:", err));
-                        }
-                    } else if (isCurrentInUrl) {
-                        setScreen('wizard');
-                        setWizardStep(1);
-                        setDraftCriteria(DEFAULT_CRITERIA.map(c => ({ ...c })));
-                    }
-                })
-                .catch(err => console.error("Error al cargar config de parcial:", num, err));
+        // La magia ocurre aquí: al recargar classInfo, el useEffect de arriba se dispara
+        router.reload({
+            only: ['classInfo'],
+            onSuccess: () => console.log('[RT] ✅ Props sincronizadas.')
         });
-    }, [loadId]);
+    };
+
+    // Lanzador de ráfaga
+    const startBurstRefresh = () => {
+        if (burstTimerRef.current) clearInterval(burstTimerRef.current);
+
+        console.log('%c[ThunderSync] ⚡ Sincronización ráfaga activa...', 'background: #0266E0; color: #fff; padding: 4px 10px; border-radius: 20px;');
+
+        const delays = [0, 800, 2000]; // Ráfaga reducida gracias a la optimización del backend
+
+        delays.forEach((delay, index) => {
+            setTimeout(() => {
+                refreshClassData(true);
+                if (index === delays.length - 1) setRefreshCounter(Date.now());
+            }, delay);
+        });
+    };
+
+    // Sincronizar configuraciones iniciales y por cambio de ID
+    useEffect(() => {
+        if (loadId) refreshClassData();
+    }, [loadId, refreshCounter]);
+
+    // 3.2 Escuchar ráfagas de señales en tiempo real
+    useEffect(() => {
+        const cicloId = classInfo?.ciclo_id;
+        if (!cicloId) return;
+
+        const targetId = Number(cicloId);
+
+        const handleSignal = (data: any) => {
+            if (!data) return;
+            if (data.type === 'cycle-update' || data.msg?.includes('FORCE_REFRESH')) {
+                if (Number(data.id) === targetId) {
+                    startBurstRefresh();
+                }
+            }
+        };
+
+        const bc = new BroadcastChannel('school-cycle-channel');
+        bc.onmessage = (e) => handleSignal(e.data);
+
+        const onStorage = (e: StorageEvent) => {
+            const keys = ['studia_v4_signal', 'studia_rt_signal', 'studia_rt_update'];
+            if (keys.includes(e.key!) && e.newValue) {
+                try { handleSignal(JSON.parse(e.newValue)); } catch(err) {}
+            }
+        };
+        window.addEventListener('storage', onStorage);
+
+        return () => {
+            bc.close();
+            window.removeEventListener('storage', onStorage);
+        };
+    }, [classInfo?.ciclo_id, loadId]);
 
     // 4. Asistente (Wizard) de Criterios
     const [wizardStep, setWizardStep] = useState(1);
@@ -226,19 +307,8 @@ export function useGroupClass() {
                 criterios: draftCriteria
             })
             .then(res => {
-                const freshCriteria = res.data.criterios;
-                setConfigs(prev => ({
-                    ...prev,
-                    [activeParcial!]: { configured: true, criteria: freshCriteria }
-                }));
-
-                axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
-                    .then(r => {
-                        setStudentGrades(r.data.alumnos);
-                        SwalHelper.success('¡Configurado!', 'Los criterios han sido guardados correctamente.');
-                    })
-                    .catch(err => console.error("Error al refrescar notas:", err));
-
+                SwalHelper.success('¡Configurado!', 'Los criterios han sido guardados correctamente.');
+                refreshClassData(); // [OPTIMIZACIÓN] Recargar la Verdad Total
                 setScreen('grades');
             })
             .catch(err => {
@@ -322,50 +392,46 @@ export function useGroupClass() {
     const [activeTab, setActiveTab] = useState<'grades' | 'tasks' | 'activities'>('activities');
     const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
 
+    // [SINCRONIZACIÓN v4.6] Sincronizar vista local con la Verdad Total en memoria
     useEffect(() => {
-        if (activeParcial && loadId) {
-            axios.get(`/docente/clases/${loadId}/config?parcial=${activeParcial}`)
-                .then(res => {
-                    const { configured, criterios, alumnos } = res.data;
-                    setConfigs(prev => ({
-                        ...prev,
-                        [activeParcial]: { configured, criteria: criterios }
-                    }));
-                    setStudentGrades(alumnos);
-                })
-                .catch(err => {
-                    console.error("Error al cargar config:", err);
-                });
-
-            axios.get(`/docente/clases/${loadId}/tareas?parcial=${activeParcial}`)
-                .then(res => {
-                    setTasks(res.data.tareas);
-                })
-                .catch(err => {
-                    console.error("Error al cargar tareas:", err);
-                    setTasks([]);
-                });
+        if (activeParcial) {
+            setStudentGrades(allGrades[activeParcial] || []);
+            setTasks(allTasks[activeParcial] || []);
         }
-    }, [activeParcial, loadId]);
+    }, [activeParcial, allGrades, allTasks]);
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
         if (loadId && activeParcial) {
+            setIsSaving(true);
             axios.post(`/docente/clases/${loadId}/tareas`, {
                 parcial: activeParcial,
                 tareas: newTasks
             })
             .then(res => {
-                setTasks(res.data.tareas);
+                // Actualizar verdad total
+                const updatedTasks = res.data.tareas;
+                setAllTasks(prev => ({ ...prev, [activeParcial]: updatedTasks }));
+                setTasks(updatedTasks);
             })
             .catch(err => {
                 console.error("Error al guardar tareas:", err);
                 SwalHelper.error('Error', 'No se pudieron sincronizar las actividades.');
-            });
+            })
+            .finally(() => setIsSaving(false));
         }
     }
 
-    function getStudentTasksAverage(studentId: number): string {
+    // [LÓGICA v5.2] Redondeo oficial: .6 sube, .5 baja
+    const formatIntGrade = React.useCallback((val: number | string): string => {
+        if (val === null || val === '—' || val === '') return '—';
+        const num = parseFloat(val.toString());
+        if (isNaN(num)) return '—';
+        // .6 sube, .5 baja: floor(n + 0.4)
+        return Math.floor(num + 0.4).toString();
+    }, []);
+
+    const getStudentTasksAverage = React.useCallback((studentId: number): string => {
         if (!tasks || tasks.length === 0) return "0";
         let sumNormalized = 0;
         let count = 0;
@@ -378,8 +444,8 @@ export function useGroupClass() {
         });
         if (count === 0) return "0";
         const avg = sumNormalized / count;
-        return avg % 1 === 0 ? avg.toString() : avg.toFixed(1);
-    }
+        return formatIntGrade(avg);
+    }, [tasks, formatIntGrade]);
 
     function openParcial(parcialNum: number) {
         if (parcialNum === 2 && !isParcialClosed(1)) {
@@ -395,18 +461,10 @@ export function useGroupClass() {
         setActiveTab('grades');
         setSelectedTaskId(null);
 
-        setTasks([]);
-        setStudentGrades([]);
-
         const config = configs[parcialNum];
         if (config?.configured) {
             setScreen('grades');
-            if (loadId) {
-                axios.get(`/docente/clases/${loadId}/config?parcial=${parcialNum}`)
-                    .then(res => setStudentGrades(res.data.alumnos));
-                axios.get(`/docente/clases/${loadId}/tareas?parcial=${parcialNum}`)
-                    .then(res => setTasks(res.data.tareas));
-            }
+            // Los datos ya están en el estado global (allGrades/allTasks)
         } else {
             setWizardStep(1);
             setDraftCriteria(DEFAULT_CRITERIA.map(c => ({ ...c })));
@@ -439,15 +497,35 @@ export function useGroupClass() {
                 alumnos: updatedGrades
             })
             .then(() => {
-                setAllGrades(prev => ({ ...prev, [activeParcial!]: updatedGrades }));
-                setStudentGrades(updatedGrades);
                 SwalHelper.success('¡Completado!', 'Calificaciones asentadas correctamente.');
+                refreshClassData(); // [OPTIMIZACIÓN] Recargar la Verdad Total de golpe
             })
             .catch(err => {
                 console.error("Error al asentar calificaciones:", err);
                 SwalHelper.error('Error', 'No se pudieron guardar las calificaciones.');
             });
         }
+    }
+
+    function returnTaskGrade(taskId: number, studentId: number, score: string) {
+        if (!loadId) return;
+
+        setIsSaving(true);
+        return axios.post(`/docente/clases/${loadId}/return-grade`, {
+            tarea_id: taskId,
+            usuario_id: studentId,
+            calificacion: score
+        })
+        .then(res => {
+            refreshClassData();
+            return res.data;
+        })
+        .catch(err => {
+            console.error("Error al devolver calificación:", err);
+            SwalHelper.error('Error', 'No se pudo procesar el envío.');
+            throw err;
+        })
+        .finally(() => setIsSaving(false));
     }
 
     // 6. Modales y Estado de Chat/Selección
@@ -464,7 +542,7 @@ export function useGroupClass() {
         }
     }, [studentGrades]);
 
-    function getParcialAverage(studentId: number, parcialNum: number): number | string {
+    const getParcialAverage = React.useCallback((studentId: number, parcialNum: number): number | string => {
         const cfg = configs[parcialNum];
         if (!cfg || !cfg.configured) return "—";
 
@@ -480,7 +558,7 @@ export function useGroupClass() {
 
         const filled = criteria.every(c => {
             if (c.sincronizar_tareas && activeParcial === parcialNum) {
-                return getStudentTasksAverage(studentId) !== '';
+                return getStudentTasksAverage(studentId) !== '—';
             }
             const val = sGrade.calificaciones[c.id];
             return val !== undefined && val !== null && val !== '';
@@ -498,31 +576,31 @@ export function useGroupClass() {
             return sum + (parseFloat(scoreVal) * c.porcentaje / 100);
         }, 0);
 
-        return parseFloat(avg.toFixed(1));
-    }
+        return formatIntGrade(avg);
+    }, [configs, allGrades, activeParcial, studentGrades, getStudentTasksAverage, formatIntGrade]);
 
-    function isParcialClosed(parcialNum: number): boolean {
+    const isParcialClosed = React.useCallback((parcialNum: number): boolean => {
         const cfg = configs[parcialNum];
         if (!cfg || !cfg.configured) return false;
 
         return students.every(student => {
             const avg = getParcialAverage(student.id, parcialNum);
-            return typeof avg === 'number';
+            return avg !== "—";
         });
-    }
+    }, [configs, students, getParcialAverage]);
 
-    function getFinalAverage(studentId: number): number | string {
+    const getFinalAverage = React.useCallback((studentId: number): number | string => {
         let sum = 0;
         let count = 0;
         [1, 2, 3].forEach(num => {
             const avg = getParcialAverage(studentId, num);
-            if (typeof avg === 'number') {
-                sum += avg;
+            if (avg !== "—") {
+                sum += parseFloat(avg.toString());
                 count++;
             }
         });
-        return count === 0 ? "—" : parseFloat((sum / count).toFixed(1));
-    }
+        return count === 0 ? "—" : formatIntGrade(sum / count);
+    }, [getParcialAverage, formatIntGrade]);
 
     const isReadOnly = useMemo(() => {
         if (!activeParcial) return false;
@@ -569,6 +647,7 @@ export function useGroupClass() {
         resetParcial,
         setScore,
         handleAsentarCalificaciones,
+        returnTaskGrade,
         selectedTaskId,
         setSelectedTaskId,
         selectedStudentId,
@@ -588,6 +667,9 @@ export function useGroupClass() {
         totalPct,
         pctValid,
         isReadOnly,
-        lockReason: activeParcial ? lockInfos[activeParcial]?.reason : ''
+        isSaving,
+        lockReason: activeParcial ? lockInfos[activeParcial]?.reason : '',
+        lockInfos,
+        configLockInfos
     };
 }

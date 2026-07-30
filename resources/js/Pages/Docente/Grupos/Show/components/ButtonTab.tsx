@@ -17,17 +17,23 @@ export default function ButtonTab({
     tab,
     icon,
 }: ButtonTabProps) {
+    const isActive = activeTab === tab;
+
     return (
         <button
             onClick={() => setActiveTab(tab)}
-            className={`flex items-center gap-2 px-6 py-3.5 text-xs font-black uppercase tracking-wider transition-all border-b-2 -mb-px ${
-                activeTab === tab
-                    ? 'border-[#1e88e5] text-[#1e88e5]'
-                    : 'border-transparent text-slate-400 hover:text-slate-655'
-            }`}
+            className={`
+                flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg
+                ${isActive
+                    ? 'bg-slate-100 text-slate-800'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50/50'
+                }
+            `}
         >
-            {icon}
-            <span>{name}</span>
+            <span className="shrink-0">
+                {icon}
+            </span>
+            <span className="whitespace-nowrap">{name}</span>
         </button>
     );
 }

@@ -11,29 +11,29 @@ export default function NavigationTabs({
     setActiveTab,
 }: NavigationTabsProps) {
     return (
-        <div className="flex border-b border-slate-200 mb-6 w-full">
+        <div className="flex items-center gap-2 p-1 bg-transparent w-full mb-8">
             <ButtonTab
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 tab="activities"
-                name="Crear y Ver Actividades"
-                icon={<FileText size={14} />}
+                name="Actividades"
+                icon={<FileText size={18} />}
             />
 
             <ButtonTab
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 tab="tasks"
-                name="Calificar Actividades"
-                icon={<Stamp size={14} />}
+                name="Calificar"
+                icon={<Stamp size={18} />}
             />
 
             <ButtonTab
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 tab="grades"
-                name="Registro de Calificaciones"
-                icon={<ClipboardList size={14} />}
+                name="Registro"
+                icon={<ClipboardList size={18} />}
             />
         </div>
     );

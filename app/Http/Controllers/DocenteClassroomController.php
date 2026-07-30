@@ -10,94 +10,147 @@ use App\Models\EntregaTarea;
 use App\Models\Enrollment;
 use App\Services\AcademicPeriodService;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class DocenteClassroomController extends Controller
 {
     /**
-     * Obtiene la configuración de criterios y calificaciones de una clase/parcial.
+     * Muestra la vista principal del aula virtual con toda la verdad inyectada.
+     * [ARQUITECTURA ATÓMICA v5.0]
      */
-    public function getConfig(Request $request, $uuid)
+    public function show(Request $request)
     {
-        $load = AcademicLoad::with('academicPeriod')->where('uuid', $uuid)->firstOrFail();
-        $parcial = (int) $request->query('parcial', 1);
+        $uuid = $request->query('id');
 
-        // [DETALLE v3.19] Separar bloqueo de configuración y operación
-        $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, 'config');
-        $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, 'operacion');
+        return Inertia::render('Docente/Grupos/Show', [
+            'classInfo' => Inertia::defer(fn() => $this->assembleFullClassData($uuid))
+        ]);
+    }
 
-        // 1. Obtener criterios
-        $criteria = CriterioEvaluacion::where('carga_id', $load->id)
-            ->where('parcial', $parcial)
-            ->orderBy('id', 'asc')
-            ->get()
-            ->map(function ($c) {
-                return [
-                    'id' => $c->id,
-                    'nombre' => $c->nombre,
-                    'porcentaje' => $c->porcentaje,
-                    'sincronizar_tareas' => (bool)$c->sincronizar_tareas,
-                ];
-            });
+    /**
+     * Ensambla el objeto de "Verdad Total" para el aula virtual.
+     */
+    private function assembleFullClassData($uuid)
+    {
+        $load = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'criterios', 'tareas.entregas'])
+            ->where('uuid', $uuid)
+            ->first();
 
-        $configurado = $criteria->count() > 0;
+        if (!$load) return null;
 
-        // 2. Obtener alumnos y calificaciones del grupo
+        $parciales = [1, 2, 3];
         $enrollments = Enrollment::where('grupo_id', $load->grupo_id)
             ->where('estatus', 'active')
             ->with('user')
             ->get();
 
         $studentIds = $enrollments->pluck('usuario_id');
-        $criteriaIds = $criteria->pluck('id');
-
-        // [OPTIMIZACIÓN] Obtener todas las calificaciones de una vez para evitar N+1
         $allGrades = Grade::whereIn('usuario_id', $studentIds)
-            ->whereIn('criterio_id', $criteriaIds)
-            ->get()
-            ->groupBy('usuario_id');
-
-        // [OPTIMIZACIÓN] Obtener todos los promedios consolidados de una vez
-        $allConsolidados = Grade::whereIn('usuario_id', $studentIds)
             ->where('carga_id', $load->id)
-            ->whereNull('criterio_id')
-            ->get()
-            ->keyBy('usuario_id');
+            ->get();
 
-        $gradesData = [];
-        foreach ($enrollments as $enrollment) {
-            $studentScores = [];
-            $studentGrades = $allGrades->get($enrollment->usuario_id, collect());
+        $fullData = [
+            'id'             => $load->uuid,
+            'nombre_grupo'   => $load->academicGroup->nombre ?? 'N/A',
+            'nombre_materia' => $load->course->nombre ?? 'N/A',
+            'codigo_materia' => $load->course->codigo ?? 'N/A',
+            'especialidad'   => $load->academicGroup->especialidad ?? 'N/A',
+            'semestre'       => $load->course->semestre ?? 1,
+            'ciclo_id'       => $load->ciclo_id,
+            'color_tema'     => $load->color_tema ?? 'blue',
 
-            foreach ($criteria as $c) {
-                $grade = $studentGrades->where('criterio_id', $c['id'])->first();
-                $studentScores[$c['id']] = $grade ? $grade->calificacion : '';
+            // Datos Estructurados por Parcial
+            'parciales' => []
+        ];
+
+        foreach ($parciales as $p) {
+            $criteria = $load->criterios->where('parcial', $p)->values();
+
+            // Alumnos y sus notas para este parcial
+            $studentsData = [];
+            foreach ($enrollments as $enrollment) {
+                $studentScores = [];
+                $studentGrades = $allGrades->where('usuario_id', $enrollment->usuario_id);
+
+                foreach ($criteria as $c) {
+                    $grade = $studentGrades->where('criterio_id', $c->id)->first();
+                    $rawScore = $grade ? $grade->calificacion : '';
+                    // Formatear nota de criterio como entero (.6 sube)
+                    $studentScores[$c->id] = ($rawScore !== '' && $rawScore !== null)
+                        ? (string)\App\Services\GradeService::formatGrade($rawScore)
+                        : '';
+                }
+
+                $consolidado = $studentGrades->whereNull('criterio_id')->first();
+
+                $studentsData[] = [
+                    'id'             => $enrollment->usuario_id,
+                    'nombre'         => $enrollment->user?->nombre_completo ?? 'Sin nombre',
+                    'matricula'      => $enrollment->codigo_alumno ?? 'N/A',
+                    'calificaciones' => $studentScores,
+                    'consolidado'    => $consolidado ? [
+                        'p1'     => \App\Services\GradeService::formatGrade($consolidado->p1),
+                        'p2'     => \App\Services\GradeService::formatGrade($consolidado->p2),
+                        'p3'     => \App\Services\GradeService::formatGrade($consolidado->p3),
+                        'final'  => \App\Services\GradeService::formatGrade($consolidado->final),
+                        'estatus' => $consolidado->estatus
+                    ] : null
+                ];
             }
 
-            $consolidado = $allConsolidados->get($enrollment->usuario_id);
+            $lockConfig = ['allowed' => false, 'reason' => 'Ciclo no definido'];
+            $lockOperacion = ['allowed' => false, 'reason' => 'Ciclo no definido'];
 
-            $gradesData[] = [
-                'id' => $enrollment->usuario_id,
-                'nombre' => $enrollment->user?->nombre_completo ?? 'Sin nombre',
-                'matricula' => $enrollment->codigo_alumno ?? 'N/A',
-                'calificaciones' => $studentScores,
-                'consolidado' => $consolidado ? [
-                    'p1' => $consolidado->p1,
-                    'p2' => $consolidado->p2,
-                    'p3' => $consolidado->p3,
-                    'final' => $consolidado->final,
-                    'estatus' => $consolidado->estatus,
-                ] : null
+            if ($load->academicPeriod) {
+                $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config');
+                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion');
+            }
+
+            $fullData['parciales'][$p] = [
+                'lock_info'   => $lockOperacion,
+                'lock_config' => $lockConfig,
+                'config'      => [
+                    'configured' => $criteria->count() > 0,
+                    'criteria'   => $criteria->map(fn($c) => [
+                        'id' => $c->id,
+                        'nombre' => $c->nombre,
+                        'porcentaje' => $c->porcentaje,
+                        'sincronizar_tareas' => (bool)$c->sincronizar_tareas
+                    ])
+                ],
+                'tasks' => $load->tareas->where('parcial', $p)->values()->map(fn($t) => [
+                    'id' => $t->id,
+                    'nombre' => $t->nombre,
+                    'descripcion' => $t->descripcion,
+                    'fecha_entrega' => $t->fecha_entrega,
+                    'puntos' => $t->puntos,
+                    'calificaciones' => $t->entregas->mapWithKeys(fn($e) => [
+                        $e->usuario_id => (string)\App\Services\GradeService::formatGrade($e->calificacion)
+                    ])->toArray(),
+                    'archivos' => $t->entregas->mapWithKeys(fn($e) => [
+                        $e->usuario_id => $e->archivo_url ? [
+                            'url' => $e->archivo_url,
+                            'nombre' => $e->archivo_nombre,
+                            'estatus' => $e->estatus
+                        ] : null
+                    ])->toArray()
+                ]),
+                'students' => $studentsData
             ];
         }
 
-        return response()->json([
-            'configurado' => $configurado,
-            'criterios' => $criteria,
-            'alumnos' => $gradesData,
-            'color_tema' => $load->color_tema ?? 'blue',
-            'lock_info' => $lockOperacion,
-            'lock_config' => $lockConfig
-        ]);
+        // Compatibilidad con la lista plana para el banner
+        $fullData['alumnos'] = $fullData['parciales'][1]['students'];
+
+        return $fullData;
+    }
+
+    /**
+     * Obtiene la verdad total de la clase (Para refrescos RT).
+     */
+    public function getFullData(Request $request, $uuid)
+    {
+        return response()->json($this->assembleFullClassData($uuid));
     }
 
     /**
@@ -106,23 +159,9 @@ class DocenteClassroomController extends Controller
     public function updateTheme(Request $request, $uuid)
     {
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
-
-        $request->validate([
-            'color' => 'required|string'
-        ]);
-
+        $request->validate(['color' => 'required|string']);
         $load->update(['color_tema' => $request->input('color')]);
-
-        // [IMPORTANTE] Limpiar el caché de los alumnos de este grupo para que vean el cambio al instante
-        $studentIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
-            ->where('estatus', 'active')
-            ->pluck('usuario_id');
-
-        foreach ($studentIds as $id) {
-            \Cache::forget("student_kardex_{$id}");
-            \Cache::forget("student_tasks_{$id}");
-        }
-
+        $this->clearStudentsCache($load);
         return response()->json(['message' => 'Tema actualizado']);
     }
 
@@ -132,7 +171,6 @@ class DocenteClassroomController extends Controller
     public function saveCriterios(Request $request, $uuid)
     {
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
-
         $request->validate([
             'parcial' => 'required|integer',
             'criterios' => 'required|array',
@@ -143,32 +181,31 @@ class DocenteClassroomController extends Controller
         $parcial = $request->input('parcial');
         $criteriaData = $request->input('criterios');
 
-        // Borrar criterios anteriores para este parcial
-        CriterioEvaluacion::where('carga_id', $load->id)
-            ->where('parcial', $parcial)
-            ->delete();
+        CriterioEvaluacion::where('carga_id', $load->id)->where('parcial', $parcial)->delete();
 
-        // Crear nuevos criterios
-        $newCriteria = [];
         foreach ($criteriaData as $c) {
-            $newCrit = CriterioEvaluacion::create([
+            CriterioEvaluacion::create([
                 'carga_id' => $load->id,
                 'parcial' => $parcial,
                 'nombre' => $c['nombre'],
                 'porcentaje' => $c['porcentaje'],
                 'sincronizar_tareas' => isset($c['sincronizar_tareas']) ? (bool)$c['sincronizar_tareas'] : false,
             ]);
-            $newCriteria[] = [
-                'id' => $newCrit->id,
-                'nombre' => $newCrit->nombre,
-                'porcentaje' => $newCrit->porcentaje,
-                'sincronizar_tareas' => (bool)$newCrit->sincronizar_tareas,
-            ];
         }
 
+        $this->clearStudentsCache($load);
+
+        $updatedCriteria = CriterioEvaluacion::where('carga_id', $load->id)
+            ->where('parcial', $parcial)
+            ->get()
+            ->map(fn($c) => [
+                'id' => $c->id, 'nombre' => $c->nombre, 'porcentaje' => $c->porcentaje,
+                'sincronizar_tareas' => (bool)$c->sincronizar_tareas
+            ]);
+
         return response()->json([
-            'message' => 'Criterios guardados correctamente',
-            'criterios' => $newCriteria
+            'message' => 'Criterios guardados',
+            'criterios' => $updatedCriteria
         ]);
     }
 
@@ -178,7 +215,6 @@ class DocenteClassroomController extends Controller
     public function saveCalificaciones(Request $request, $uuid)
     {
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
-
         $request->validate([
             'parcial' => 'required|integer',
             'alumnos' => 'required|array',
@@ -191,60 +227,17 @@ class DocenteClassroomController extends Controller
             $scores = $studentGrade['calificaciones'];
 
             foreach ($scores as $criterionId => $score) {
+                $finalScore = ($score !== '' && $score !== null) ? (int)round(floatval($score)) : '';
                 Grade::updateOrCreate(
-                    [
-                        'criterio_id' => $criterionId,
-                        'usuario_id'  => $userId
-                    ],
-                    [
-                        'calificacion' => $score !== null ? (string)$score : '',
-                        'carga_id' => $load->id // Asegurar carga_id en cada fila
-                    ]
+                    ['criterio_id' => $criterionId, 'usuario_id'  => $userId],
+                    ['calificacion' => (string)$finalScore, 'carga_id' => $load->id]
                 );
             }
-
-            // [OPTIMIZACIÓN] Consolidar promedios
             \App\Services\GradeConsolidator::consolidate($userId, $load->id);
         }
 
-        return response()->json([
-            'message' => 'Calificaciones asentadas correctamente'
-        ]);
-    }
-
-    /**
-     * Obtiene las tareas y calificaciones de una clase/parcial.
-     */
-    public function getTareas(Request $request, $uuid)
-    {
-        $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
-        $parcial = (int) $request->query('parcial', 1);
-
-        $tareas = Tarea::where('carga_id', $load->id)
-            ->where('parcial', $parcial)
-            ->with('entregas')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $tasksData = [];
-        foreach ($tareas as $t) {
-            $grades = [];
-            foreach ($t->entregas as $entrega) {
-                $grades[$entrega->usuario_id] = $entrega->calificacion;
-            }
-            $tasksData[] = [
-                'id' => $t->id,
-                'nombre' => $t->nombre,
-                'descripcion' => $t->descripcion,
-                'fecha_entrega' => $t->fecha_entrega,
-                'puntos' => $t->puntos,
-                'calificaciones' => $grades,
-            ];
-        }
-
-        return response()->json([
-            'tareas' => $tasksData
-        ]);
+        $this->clearStudentsCache($load);
+        return response()->json(['message' => 'Calificaciones asentadas']);
     }
 
     /**
@@ -253,7 +246,6 @@ class DocenteClassroomController extends Controller
     public function saveTareas(Request $request, $uuid)
     {
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
-
         $request->validate([
             'parcial' => 'required|integer',
             'tareas' => 'required|array',
@@ -261,16 +253,12 @@ class DocenteClassroomController extends Controller
 
         $parcial = $request->input('parcial');
         $tasksData = $request->input('tareas');
-
         $activeIds = [];
 
         foreach ($tasksData as $taskItem) {
             $taskId = isset($taskItem['id']) && is_numeric($taskItem['id']) ? $taskItem['id'] : null;
-
             $tarea = Tarea::updateOrCreate(
-                [
-                    'id' => $taskId,
-                ],
+                ['id' => $taskId],
                 [
                     'carga_id' => $load->id,
                     'parcial' => $parcial,
@@ -280,21 +268,17 @@ class DocenteClassroomController extends Controller
                     'puntos' => $taskItem['puntos'] ?? 10,
                 ]
             );
-
             $activeIds[] = $tarea->id;
 
-            // Guardar calificaciones de los alumnos para esta tarea
             if (isset($taskItem['calificaciones']) && is_array($taskItem['calificaciones'])) {
                 foreach ($taskItem['calificaciones'] as $userId => $score) {
                     if (is_numeric($userId)) {
+                        $finalScore = ($score !== null && $score !== '') ? (int)round(floatval($score)) : '';
                         EntregaTarea::updateOrCreate(
+                            ['tarea_id' => $tarea->id, 'usuario_id' => $userId],
                             [
-                                'tarea_id'   => $tarea->id,
-                                'usuario_id' => $userId
-                            ],
-                            [
-                                'calificacion' => $score !== null ? (string)$score : '',
-                                'estatus'      => $score !== null && $score !== '' ? 'graded' : 'pending'
+                                'calificacion' => (string)$finalScore,
+                                'status' => ($finalScore !== '') ? 'graded' : 'pending'
                             ]
                         );
                     }
@@ -302,11 +286,78 @@ class DocenteClassroomController extends Controller
             }
         }
 
-        Tarea::where('carga_id', $load->id)
-            ->where('parcial', $parcial)
-            ->whereNotIn('id', $activeIds)
-            ->delete();
+        Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->delete();
+        $this->clearStudentsCache($load);
 
-        return $this->getTareas($request, $uuid);
+        $updatedTasks = Tarea::where('carga_id', $load->id)
+            ->where('parcial', $parcial)
+            ->with('entregas')
+            ->get()
+            ->map(fn($t) => [
+                'id' => $t->id, 'nombre' => $t->nombre, 'descripcion' => $t->descripcion,
+                'fecha_entrega' => $t->fecha_entrega, 'puntos' => $t->puntos,
+                'calificaciones' => $t->entregas->mapWithKeys(fn($e) => [
+                    $e->usuario_id => (string)\App\Services\GradeService::formatGrade($e->calificacion)
+                ])->toArray()
+            ]);
+
+        return response()->json([
+            'message' => 'Tareas guardadas',
+            'tareas' => $updatedTasks
+        ]);
+    }
+
+    /**
+     * Devuelve una calificación oficialmente al alumno y le notifica.
+     * [ACCION v6.0] Confirmación manual de guardado + Notificación.
+     */
+    public function returnGrade(Request $request, $uuid)
+    {
+        $request->validate([
+            'tarea_id' => 'required|integer',
+            'usuario_id' => 'required|integer',
+            'calificacion' => 'required|string',
+        ]);
+
+        $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
+
+        // 1. Guardar calificación
+        $score = \App\Services\GradeService::formatGrade($request->calificacion);
+
+        EntregaTarea::updateOrCreate(
+            ['tarea_id' => $request->tarea_id, 'usuario_id' => $request->usuario_id],
+            [
+                'calificacion' => (string)$score,
+                'status' => 'graded'
+            ]
+        );
+
+        // 2. Notificar al alumno
+        $task = Tarea::findOrFail($request->tarea_id);
+        \App\Models\Notificacion::create([
+            'usuario_id' => $request->usuario_id,
+            'titulo' => 'Actividad Calificada',
+            'mensaje' => "Tu actividad '{$task->nombre}' ha sido evaluada con {$score} puntos.",
+            'leido' => false
+        ]);
+
+        // 3. Consolidar promedios
+        \App\Services\GradeConsolidator::consolidate($request->usuario_id, $load->id);
+
+        $this->clearStudentsCache($load);
+
+        return response()->json([
+            'message' => 'Calificación devuelta correctamente',
+            'score'   => $score
+        ]);
+    }
+
+    private function clearStudentsCache(AcademicLoad $load)
+    {
+        $studentIds = Enrollment::where('grupo_id', $load->grupo_id)->where('estatus', 'active')->pluck('usuario_id');
+        foreach ($studentIds as $id) {
+            \Cache::forget("student_kardex_{$id}");
+            \Cache::forget("student_tasks_{$id}");
+        }
     }
 }

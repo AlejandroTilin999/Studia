@@ -130,7 +130,6 @@ export default function FinalGradesModal({
             isOpen={isOpen}
             onClose={onClose}
             maxWidthClass="max-w-4xl"
-            onSubmit={handlePrintSubmit}
             showFooter={false}
             fullBleed={true}
         >

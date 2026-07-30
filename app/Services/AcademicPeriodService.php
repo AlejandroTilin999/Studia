@@ -57,15 +57,16 @@ class AcademicPeriodService
         $fin = $period->{"{$prefix}_fin"};
         $switchActivo = (bool)$period->{"{$prefix}_activo"};
 
-        // 2. Validación de Switch Manual del Admin (Prioridad alta para excepciones)
-        if (!$switchActivo) {
+        // 2. Validación de Switch Manual del Admin (Prioridad Máxima)
+        // Si el switch está encendido, el administrador abrió el periodo manualmente (bypassea fechas)
+        if ($switchActivo) {
             return [
-                'allowed' => false,
-                'reason' => "El Parcial {$parcial} ha sido cerrado manualmente por la administración."
+                'allowed' => true,
+                'reason' => 'Captura habilitada.'
             ];
         }
 
-        // 3. Validación de Rango de Fechas
+        // 3. Validación de Rango de Fechas (Solo aplica si el switch está apagado)
         if ($inicio && $now->lt($inicio)) {
             return [
                 'allowed' => false,
@@ -81,8 +82,8 @@ class AcademicPeriodService
         }
 
         return [
-            'allowed' => true,
-            'reason' => 'Captura habilitada.'
+            'allowed' => false,
+            'reason' => "El Parcial {$parcial} no se encuentra activo para captura."
         ];
     }
 }

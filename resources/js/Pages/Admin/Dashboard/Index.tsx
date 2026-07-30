@@ -8,7 +8,7 @@ import { cycleService } from '@/services/cycleService';
 
 // Subcomponents
 import CycleStatusCard from './components/CycleStatusCard';
-import ParcialControlGrid from './components/ParcialControlGrid';
+import ParcialStatusListener from './components/ParcialStatusListener';
 import RecentActivitiesTable from './components/RecentActivitiesTable';
 import AdminToolsSidebar from './components/AdminToolsSidebar';
 import NewCycleModal from './components/NewCycleModal';
@@ -96,6 +96,32 @@ export default function AdminDashboardIndex() {
         setIsPeriodModalOpen(true);
     };
 
+    const broadcastCycleUpdate = (cycleId: any) => {
+        if (!cycleId) return;
+        const id = Number(cycleId);
+
+        try {
+            const payload = {
+                type: 'cycle-update',
+                id: id,
+                t: Date.now(),
+                msg: 'FORCE_REFRESH_THUNDER'
+            };
+
+            // Un solo disparo potente, el receptor se encarga de la ráfaga
+            const bc = new BroadcastChannel('school-cycle-channel');
+            bc.postMessage(payload);
+            setTimeout(() => bc.close(), 1000);
+
+            localStorage.setItem('studia_rt_signal', JSON.stringify(payload));
+            window.dispatchEvent(new CustomEvent('studia-rt-signal', { detail: payload }));
+
+            console.log('%c[ThunderSync] ⚡ Señal de ráfaga enviada.', 'color: #fbbf24; font-weight: bold;');
+        } catch (e) {
+            console.error('Error en ThunderSync:', e);
+        }
+    };
+
     const handleSubmitPeriod = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -107,6 +133,9 @@ export default function AdminDashboardIndex() {
                 setIsPeriodModalOpen(false);
                 reset();
                 SwalHelper.success('¡Operación Exitosa!', `El ciclo ha sido ${modalMode === 'create' ? 'configurado' : 'actualizado'} correctamente.`);
+                if (selectedCycleId) {
+                    broadcastCycleUpdate(selectedCycleId);
+                }
             },
             onError: () => {
                 SwalHelper.error('Error', `Hubo un problema al ${modalMode === 'create' ? 'crear' : 'actualizar'} el ciclo escolar.`);
@@ -135,6 +164,7 @@ export default function AdminDashboardIndex() {
                 cycleService.close(activeCycle.id, {
                     onSuccess: () => {
                         SwalHelper.success('¡Ciclo Concluido!', 'El periodo ha sido archivado correctamente.');
+                        broadcastCycleUpdate(activeCycle.id);
                     },
                     onError: () => {
                         SwalHelper.error('Error', 'No se pudo cerrar el ciclo escolar.');
@@ -157,6 +187,7 @@ export default function AdminDashboardIndex() {
                     onSuccess: () => {
                         setIsHistoryModalOpen(false);
                         SwalHelper.success('¡Ciclo Cambiado!', 'El sistema ahora opera bajo el nuevo periodo.');
+                        broadcastCycleUpdate(id);
                     },
                     onError: () => {
                         SwalHelper.error('Error', 'No se pudo cambiar el ciclo escolar.');
@@ -167,7 +198,7 @@ export default function AdminDashboardIndex() {
     };
 
     const handleToggleParcial = (parcial: number, currentStatus: boolean) => {
-        if (!activeCycle) return;
+        if (!workingCycle) return;
 
         const action = currentStatus ? 'Cerrar' : 'Abrir';
         SwalHelper.confirm(
@@ -179,11 +210,16 @@ export default function AdminDashboardIndex() {
         ).then((result) => {
             if (result.isConfirmed) {
                 SwalHelper.loading('Actualizando estado...', 'Comunicando con el servidor escolar');
-                router.post(route('admin.cycles.toggle_parcial', { id: activeCycle.id }), {
+                router.post(route('admin.cycles.toggle_parcial', { id: workingCycle.id }), {
                     parcial,
                     activo: !currentStatus
                 }, {
-                    onSuccess: () => SwalHelper.success('¡Actualizado!', `El Parcial ${parcial} ahora está ${!currentStatus ? 'abierto' : 'cerrado'}.`),
+                    preserveScroll: true,   // Mantener posición de scroll
+                    only: ['cycles'],       // Partial reload: solo actualizar ciclos desde el servidor
+                    onSuccess: () => {
+                        SwalHelper.success('¡Actualizado!', `El Parcial ${parcial} ahora está ${!currentStatus ? 'abierto' : 'cerrado'}.`);
+                        broadcastCycleUpdate(workingCycle.id);
+                    },
                     onError: () => SwalHelper.error('Error', 'No se pudo cambiar el estado del parcial.')
                 });
             }
@@ -227,8 +263,8 @@ export default function AdminDashboardIndex() {
 
                     {/* Parcial Controls (Only if cycle is active or planning) */}
                     {workingCycle && (
-                        <ParcialControlGrid
-                            activeCycle={workingCycle}
+                        <ParcialStatusListener
+                            cycle={workingCycle}
                             onToggle={handleToggleParcial}
                         />
                     )}

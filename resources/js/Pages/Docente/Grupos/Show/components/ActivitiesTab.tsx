@@ -4,6 +4,25 @@ import { Task } from '../services/constants';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { cn } from '@/lib/utils';
 
+const formatHumanDate = (dateStr?: string) => {
+    if (!dateStr) return 'Sin fecha';
+    const date = new Date(dateStr + 'T00:00:00');
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays === -1) return 'Ayer';
+    if (diffDays > 1 && diffDays < 7) {
+        return date.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^\w/, (c) => c.toUpperCase());
+    }
+
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+};
+
 interface ActivityFormProps {
     editingTask: Task | null;
     onSave: (taskData: {
@@ -149,11 +168,14 @@ function ActivityForm({ editingTask, onSave, onCancelEdit }: ActivityFormProps) 
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Puntos máximos</label>
                             <input
-                                type="number"
-                                min={1}
-                                max={100}
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={puntos}
-                                onChange={e => setPuntos(Number(e.target.value))}
+                                onChange={e => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    setPuntos(val === '' ? 0 : parseInt(val));
+                                }}
                                 className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-755 font-normal text-center outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
                             />
                         </div>
@@ -222,14 +244,20 @@ interface ActivityCardProps {
 
 function ActivityCard({ task, index, onEdit, onDelete, onSelectTask, isReadOnly = false }: ActivityCardProps) {
     const isTask = task.type !== 'material';
+    const isExpired = isTask && task.fecha_entrega && new Date(task.fecha_entrega + 'T00:00:00') < new Date(new Date().setHours(0,0,0,0));
 
     return (
         <div className="bg-white border border-slate-100 p-6 rounded-2xl relative space-y-4 transition-all duration-200">
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                    <span className={`text-[9px] font-semibold uppercase tracking-widest block ${isTask ? 'text-[#1e88e5]' : 'text-purple-600'}`}>
-                        {isTask ? `Actividad ${index + 1}` : 'Aviso / Material'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-semibold uppercase tracking-widest block ${isTask ? 'text-[#1e88e5]' : 'text-purple-600'}`}>
+                            {isTask ? `Actividad ${index + 1}` : 'Aviso / Material'}
+                        </span>
+                        {isExpired && (
+                            <span className="text-[8px] font-black uppercase bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded border border-rose-100/50">Vencida</span>
+                        )}
+                    </div>
                     <h4 className="text-base font-black text-slate-800 tracking-tight">{task.nombre}</h4>
                 </div>
                 {!isReadOnly && (
@@ -243,7 +271,9 @@ function ActivityCard({ task, index, onEdit, onDelete, onSelectTask, isReadOnly 
             <div className="flex flex-wrap gap-3.5 text-xs text-slate-455 font-normal uppercase tracking-wide">
                 {isTask ? (
                     <>
-                        <span className="flex items-center gap-1"><Calendar size={13} className="text-slate-400" /> Límite: {task.fecha_entrega || 'Sin fecha'}</span>
+                        <span className={cn("flex items-center gap-1", isExpired ? "text-rose-400" : "text-slate-400")}>
+                            <Calendar size={13} /> Límite: {formatHumanDate(task.fecha_entrega)}
+                        </span>
                         <span className="text-slate-200">|</span>
                         <span className="flex items-center gap-1"><FileText size={13} className="text-slate-400" /> Valor: {task.puntos || 10} pts</span>
                     </>
