@@ -92,6 +92,9 @@ class GradeService
                     }
 
                     $criteriaData = [];
+                    $calculatedWeightedAvg = 0;
+                    $hasAnyScore = false;
+
                     foreach ($criteria as $criterion) {
                         $score = null;
                         if ($criterion->sincronizar_tareas) {
@@ -115,6 +118,11 @@ class GradeService
                             $score = ($grade && $grade->calificacion !== '') ? floatval($grade->calificacion) : null;
                         }
 
+                        if ($score !== null) {
+                            $hasAnyScore = true;
+                            $calculatedWeightedAvg += ($score * ($criterion->porcentaje / 100));
+                        }
+
                         $criteriaData[] = [
                             'name' => $criterion->nombre,
                             'percentage' => $criterion->porcentaje,
@@ -124,6 +132,10 @@ class GradeService
 
                     $pKey = "p{$parcial}";
                     $parcialAvgValue = $consolidado ? $consolidado->$pKey : null;
+
+                    if ($parcialAvgValue === null && $hasAnyScore) {
+                        $parcialAvgValue = $calculatedWeightedAvg;
+                    }
 
                     $lockInfo = ['allowed' => true, 'reason' => ''];
                     if ($enrollment->academicPeriod) {

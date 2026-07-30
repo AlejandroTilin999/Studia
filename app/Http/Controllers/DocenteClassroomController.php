@@ -287,6 +287,17 @@ class DocenteClassroomController extends Controller
         }
 
         Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->delete();
+
+        // [CONSOLIDACIÓN AUTOMÁTICA] Recalcular el consolidado de cada alumno de la clase
+        $studentUserIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+            ->where('ciclo_id', $load->ciclo_id)
+            ->where('estatus', 'active')
+            ->pluck('usuario_id');
+
+        foreach ($studentUserIds as $sUserId) {
+            \App\Services\GradeConsolidator::consolidate($sUserId, $load->id);
+        }
+
         $this->clearStudentsCache($load);
 
         $updatedTasks = Tarea::where('carga_id', $load->id)

@@ -348,7 +348,7 @@ export default function AlumnoDashboard({
                                                 ) : (
                                                     <div className="space-y-6">
                                                         <button onClick={() => setSelectedParcial(null)} className="text-xs font-bold text-slate-400">← Volver</button>
-                                                        <SubjectClasswork tasks={currentSubjectTasks.filter(t => t.parcial === selectedParcial)} onSelectTask={setSelectedTask} />
+                                                        <SubjectClasswork tasks={currentSubjectTasks.filter(t => !t.parcial || Number(t.parcial) === Number(selectedParcial))} onSelectTask={setSelectedTask} />
                                                     </div>
                                                 )}
                                             </div>
