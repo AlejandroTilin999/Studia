@@ -102,17 +102,8 @@ class DocenteClassroomController extends Controller
             $lockOperacion = ['allowed' => false, 'reason' => 'Ciclo no definido'];
 
             if ($load->academicPeriod) {
-                $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config');
-                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion');
-
-                // [NUEVO v6.0] Si el docente ya cerró manualmente, forzar bloqueo
-                $fieldCerrado = "p{$p}_cerrado";
-                if ($load->$fieldCerrado) {
-                    $lockOperacion = [
-                        'allowed' => false,
-                        'reason' => 'Este parcial ha sido concluido oficialmente por el docente.'
-                    ];
-                }
+                $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config', $load);
+                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion', $load);
             }
 
             $fullData['parciales'][$p] = [

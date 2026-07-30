@@ -31,13 +31,7 @@ export default function GradesTab({
 
     // Actualización instantánea para el promedio en la UI
     function handleInstantGrade(studentId: number, criterionId: number, val: string) {
-        const updated = studentGrades.map(s =>
-            s.id === studentId ? {
-                ...s,
-                calificaciones: { ...(s.calificaciones || {}), [criterionId]: val }
-            } : s
-        );
-        setStudentGrades(updated);
+        setScore(studentId, criterionId, val);
     }
 
     // [OPTIMIZACIÓN] Memoizar columnas para que el scroll y sync no remunten los inputs
@@ -76,7 +70,7 @@ export default function GradesTab({
                             <GradeSelector
                                 initialValue={val}
                                 max={10}
-                                disabled={isReadOnly || isSynced}
+                                disabled={Boolean(isReadOnly || isSynced)}
                                 onInstantChange={isSynced ? undefined : (newVal) => handleInstantGrade(r.id, c.id, newVal)}
                                 onChange={isSynced ? () => {} : (newVal) => setScore(r.id, c.id, newVal)}
                             />
@@ -125,31 +119,35 @@ export default function GradesTab({
 
     return (
         <div>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <AppTable
-                    data={studentGrades}
-                    keyExtractor={r => r.id}
-                    columns={columns}
-                />
-            </div>
+            <AppTable
+                data={studentGrades}
+                keyExtractor={r => r.id}
+                columns={columns}
+            />
 
             {/* Acciones */}
             {!isReadOnly && (
-                <div className="flex justify-end mt-5 gap-3">
+                <div className="flex justify-end mt-8 pb-12 gap-3">
                     <button
                         onClick={handleAsentarCalificaciones}
-                        className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-none active:scale-[0.98]"
+                        className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm active:scale-[0.98]"
                     >
                         <Folder size={14} />
-                        Guardar borradores
+                        Asentar / Guardar Calificaciones
                     </button>
 
                     <button
                         onClick={handleConcludeParcial}
-                        className="flex items-center gap-2 bg-[#1e88e5] hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]"
+                        disabled={isSaving}
+                        className={cn(
+                            "flex items-center gap-2 px-8 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]",
+                            isSaving
+                                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                : "bg-[#1e88e5] hover:bg-blue-700 text-white"
+                        )}
                     >
                         <CheckCircle2 size={16} />
-                        Concluir Parcial oficial
+                        Concluir Parcial Oficial
                     </button>
                 </div>
             )}

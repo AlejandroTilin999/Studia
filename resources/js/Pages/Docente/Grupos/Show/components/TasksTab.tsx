@@ -138,19 +138,17 @@ export default function TasksTab({
     return (
         <div className="space-y-6">
             {/* Tabla de notas de tareas */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                {tasks.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400 font-semibold text-sm">
-                        No hay actividades registradas en la plataforma para este parcial. ¡Crea una en la pestaña "Crear y Ver Actividades"!
-                    </div>
-                ) : (
-                    <AppTable
-                        data={studentGrades}
-                        keyExtractor={r => r.id}
-                        columns={columns}
-                    />
-                )}
-            </div>
+            {tasks.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center text-slate-400 font-semibold text-sm">
+                    No hay actividades registradas en la plataforma para este parcial. ¡Crea una en la pestaña "Crear y Ver Actividades"!
+                </div>
+            ) : (
+                <AppTable
+                    data={studentGrades}
+                    keyExtractor={r => r.id}
+                    columns={columns}
+                />
+            )}
         </div>
     );
 }

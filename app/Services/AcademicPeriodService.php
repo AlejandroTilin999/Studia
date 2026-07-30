@@ -18,7 +18,7 @@ class AcademicPeriodService
      * @param string $tipo El tipo de acción ('config' o 'operacion')
      * @return array ['allowed' => boolean, 'reason' => string]
      */
-    public static function isCapturaHabilitada(AcademicPeriod $period, $parcial, $tipo = 'operacion')
+    public static function isCapturaHabilitada(AcademicPeriod $period, $parcial, $tipo = 'operacion', $load = null)
     {
         // 1. Validación de Estado de Ciclo
         if ($tipo === 'config') {
@@ -57,8 +57,17 @@ class AcademicPeriodService
         $fin = $period->{"{$prefix}_fin"};
         $switchActivo = (bool)$period->{"{$prefix}_activo"};
 
-        // 2. Validación de Switch Manual del Admin (Prioridad Máxima)
-        // Si el switch está encendido, el administrador abrió el periodo manualmente (bypassea fechas)
+        // 2. Validación de Cierre por Docente
+        // Si el docente concluyó este parcial, se mantendrá cerrado salvo que el Administrador fuerce el Switch activo
+        if ($load && !empty($load->{"{$prefix}_cerrado"}) && !$switchActivo) {
+            return [
+                'allowed' => false,
+                'reason' => "El Parcial {$parcial} ha sido concluido oficialmente por el docente."
+            ];
+        }
+
+        // 3. Validación de Switch Manual del Admin (Prioridad Máxima)
+        // Si el switch está encendido, el administrador abrió el periodo manualmente (bypassea fechas y cierres)
         if ($switchActivo) {
             return [
                 'allowed' => true,

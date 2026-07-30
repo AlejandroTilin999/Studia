@@ -184,9 +184,14 @@ export function useGroupClass(classInfoProp?: any) {
             const num = parseInt(pNum);
             const pData = classInfo.parciales[num];
             if (pData) {
+                setActiveParcial(num);
                 setStudentGrades(pData.students);
                 setTasks(pData.tasks);
-                if (pData.config?.configured) setScreen('grades');
+                if (pData.config?.configured) {
+                    setScreen('grades');
+                } else {
+                    setScreen('wizard');
+                }
             }
         }
     }, [classInfo]);
@@ -227,10 +232,8 @@ export function useGroupClass(classInfoProp?: any) {
         });
     };
 
-    // Sincronizar configuraciones iniciales y por cambio de ID
-    useEffect(() => {
-        if (loadId) refreshClassData();
-    }, [loadId, refreshCounter]);
+    // Sincronizar configuraciones únicamente si se solicita refresco manual
+    // (no al montar para evitar bucle infinito con Inertia Deferred)
 
     // 3.2 Escuchar ráfagas de señales en tiempo real
     useEffect(() => {
@@ -402,6 +405,9 @@ export function useGroupClass(classInfoProp?: any) {
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
+        if (activeParcial) {
+            setAllTasks(prev => ({ ...prev, [activeParcial]: newTasks }));
+        }
         if (loadId && activeParcial) {
             setIsSaving(true);
             axios.post(`/docente/clases/${loadId}/tareas`, {
@@ -467,10 +473,14 @@ export function useGroupClass(classInfoProp?: any) {
         setActiveTab('grades');
         setSelectedTaskId(null);
 
+        // Persistir estado en la URL sin recargar la página
+        const url = new URL(window.location.href);
+        url.searchParams.set('parcial', parcialNum.toString());
+        window.history.replaceState({}, '', url.toString());
+
         const config = configs[parcialNum];
         if (config?.configured) {
             setScreen('grades');
-            // Los datos ya están en el estado global (allGrades/allTasks)
         } else {
             setWizardStep(1);
             setDraftCriteria(DEFAULT_CRITERIA.map(c => ({ ...c })));
@@ -479,9 +489,15 @@ export function useGroupClass(classInfoProp?: any) {
     }
 
     function setScore(studentId: number, criterionId: number, val: string) {
-        setStudentGrades(prev => prev.map(s =>
-            s.id === studentId ? { ...s, calificaciones: { ...s.calificaciones, [criterionId]: val } } : s
-        ));
+        setStudentGrades(prev => {
+            const updated = prev.map(s =>
+                s.id === studentId ? { ...s, calificaciones: { ...s.calificaciones, [criterionId]: val } } : s
+            );
+            if (activeParcial) {
+                setAllGrades(allPrev => ({ ...allPrev, [activeParcial]: updated }));
+            }
+            return updated;
+        });
     }
 
     function handleAsentarCalificaciones() {
@@ -514,7 +530,7 @@ export function useGroupClass(classInfoProp?: any) {
     }
 
     function returnTaskGrade(taskId: number, studentId: number, score: string) {
-        if (!loadId) return;
+        if (!loadId) return Promise.resolve();
 
         setIsSaving(true);
         return axios.post(`/docente/clases/${loadId}/return-grade`, {
@@ -549,25 +565,46 @@ export function useGroupClass(classInfoProp?: any) {
             return;
         }
 
-        SwalHelper.confirm(
-            '¿Concluir Parcial oficialmente?',
-            'Una vez concluido, el parcial se bloqueará para edición y las notas serán finales para los alumnos.',
-            'Sí, Concluir',
-            'Cancelar',
-            'info'
-        ).then((result) => {
-            if (result.isConfirmed) {
-                SwalHelper.loading('Concluyendo parcial...', 'Generando actas y notificando alumnos');
-                axios.post(`/docente/clases/${loadId}/conclude`, { parcial: activeParcial })
-                    .then(() => {
-                        SwalHelper.success('¡Parcial Concluido!', 'El periodo ha sido cerrado oficialmente.');
-                        refreshClassData();
-                    })
-                    .catch(err => {
-                        console.error("Error al concluir parcial:", err);
-                        SwalHelper.error('Error', 'No se pudo cerrar el parcial.');
-                    });
-            }
+        const activeCriteria = configs[activeParcial]?.criteria ?? [];
+        const updatedGrades = studentGrades.map(s => {
+            const calificaciones = { ...s.calificaciones };
+            activeCriteria.forEach(c => {
+                if (c.sincronizar_tareas) {
+                    calificaciones[c.id] = getStudentTasksAverage(s.id);
+                }
+            });
+            return { ...s, calificaciones };
+        });
+
+        // 1. Asentar automáticamente primero para asegurar que todo esté guardado en DB
+        SwalHelper.loading('Sincronizando notas...', 'Asentando calificaciones antes de concluir');
+        axios.post(`/docente/clases/${loadId}/calificaciones`, {
+            parcial: activeParcial,
+            alumnos: updatedGrades
+        }).then(() => {
+            SwalHelper.confirm(
+                '¿Concluir Parcial oficialmente?',
+                'Una vez concluido, el parcial se bloqueará para edición y las notas serán finales para los alumnos.',
+                'Sí, Concluir',
+                'Cancelar',
+                'info'
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    SwalHelper.loading('Concluyendo parcial...', 'Generando actas y notificando alumnos');
+                    axios.post(`/docente/clases/${loadId}/conclude`, { parcial: activeParcial })
+                        .then(() => {
+                            SwalHelper.success('¡Parcial Concluido!', 'El periodo ha sido cerrado oficialmente.');
+                            refreshClassData();
+                        })
+                        .catch(err => {
+                            console.error("Error al concluir parcial:", err);
+                            SwalHelper.error('Error', 'No se pudo cerrar el parcial.');
+                        });
+                }
+            });
+        }).catch(err => {
+            console.error("Error al asentar calificaciones previas:", err);
+            SwalHelper.error('Error de Guardado', 'Primero deben poder guardarse las calificaciones.');
         });
     }
 

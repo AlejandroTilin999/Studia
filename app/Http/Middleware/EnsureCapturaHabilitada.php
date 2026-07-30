@@ -40,7 +40,7 @@ class EnsureCapturaHabilitada
             $isConfigRoute = $request->is('*/criterios*');
             $tipo = $isConfigRoute ? 'config' : 'operacion';
 
-            $validation = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, $tipo);
+            $validation = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $parcial, $tipo, $load);
 
             if (!$validation['allowed']) {
                 if ($request->expectsJson()) {
