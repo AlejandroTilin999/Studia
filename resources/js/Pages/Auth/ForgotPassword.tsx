@@ -37,7 +37,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
             {/* COLUMNA IZQUIERDA (Formulario) */}
             <div className="w-full lg:w-[55%] bg-white relative flex flex-col justify-center items-center px-6 md:px-12 xl:px-24 py-6 md:py-8 lg:py-8 xl:py-12 lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
-                
+
                 <div className="w-full max-w-[500px] relative">
                     {/* Botón superior de regresar (Alineado con el contenido) */}
                     <div className="mb-4 lg:mb-6">
@@ -55,9 +55,12 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         {/* Logotipo Azul/Color */}
                         <div className="mb-4 lg:mb-6 justify-start flex w-full">
                             <img
-                                src="/assets/phid_logo.png"
-                                alt="Logo PREPAHID"
-                                className="w-[240px] h-auto object-contain"
+                                src="/assets/phid_logo.webp"
+                alt="Logo PREPAHID"
+                loading="eager"
+                // @ts-ignore
+                fetchpriority="high"
+                className="w-[240px] h-auto object-contain"
                             />
                         </div>
 
@@ -119,8 +122,11 @@ export default function ForgotPassword({ status }: { status?: string }) {
                 {/* Capa de la imagen de la chica */}
                 <div className="absolute inset-0 z-0 overflow-hidden hidden lg:block">
                     <img
-                        src="/assets/alumna.png"
+                        src="/assets/alumna.webp"
                         alt="Restablecer Visual"
+                        loading="eager"
+                        // @ts-ignore
+                        fetchpriority="high"
                         className="absolute bottom-0 right-0 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 lg:translate-x-16 object-bottom"
                     />
                     <div className="absolute inset-0 bg-gradient-to-b lg:bg-gradient-to-l from-transparent via-transparent to-[#0266E0]/40"></div>
@@ -134,8 +140,8 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         viewBox="0 0 100 1000"
                         preserveAspectRatio="none"
                     >
-                        <path 
-                            d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z" 
+                        <path
+                            d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z"
                             stroke="white"
                             strokeWidth="3"
                         />
@@ -147,8 +153,8 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         viewBox="0 0 1000 100"
                         preserveAspectRatio="none"
                     >
-                        <path 
-                            d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z" 
+                        <path
+                            d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z"
                             stroke="white"
                             strokeWidth="3"
                         />
@@ -157,7 +163,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
                 {/* Logotipo Minimalista Blanco en la esquina - Solo en Desktop */}
                 <div className="hidden lg:block absolute lg:bottom-6 lg:right-12 z-20 opacity-60">
-                    <img src="/assets/logo-ph-blanco.png" alt="Logo PH" className="h-12 w-auto brightness-200" />
+                    <img src="/assets/logo-ph-blanco.webp" alt="Logo PH" className="h-12 w-auto brightness-200" />
                 </div>
             </div>
         </div>

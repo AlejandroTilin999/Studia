@@ -40,11 +40,11 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
-            'activePeriod' => $activePeriod ? [
+            'activePeriod' => Inertia::defer(fn() => $activePeriod ? [
                 'id' => $activePeriod->id,
                 'nombre' => $activePeriod->nombre,
                 'es_nones' => $activePeriod->fecha_inicio ? (\Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month == 1) : true,
-            ] : null,
+            ] : null),
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,

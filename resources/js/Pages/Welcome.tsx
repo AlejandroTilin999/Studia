@@ -11,8 +11,11 @@ export default function Welcome() {
                     {/* Imagen de la chica */}
                     <div className="absolute inset-0 z-0 overflow-hidden">
                         <img
-                            src="/assets/hero-img.png"
+                            src="/assets/hero-img.webp"
                             alt="Welcome Visual"
+                            loading="eager"
+                            // @ts-ignore
+                            fetchpriority="high"
                             className="absolute bottom-0 left-0 w-full h-[95%] lg:h-full object-contain lg:object-cover object-bottom lg:scale-95 origin-bottom opacity-100 brightness-105 transition-all duration-500"
                         />
                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0266E0]/40 lg:hidden"></div>
@@ -26,8 +29,8 @@ export default function Welcome() {
                             viewBox="0 0 100 1000"
                             preserveAspectRatio="none"
                         >
-                            <path 
-                                d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z" 
+                            <path
+                                d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z"
                                 stroke="white"
                                 strokeWidth="3"
                             />
@@ -39,8 +42,8 @@ export default function Welcome() {
                             viewBox="0 0 1000 100"
                             preserveAspectRatio="none"
                         >
-                            <path 
-                                d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z" 
+                            <path
+                                d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z"
                                 stroke="white"
                                 strokeWidth="3"
                             />
@@ -49,7 +52,7 @@ export default function Welcome() {
 
                     {/* Logotipo Minimalista en la esquina */}
                     <div className="absolute top-4 left-6 lg:bottom-6 lg:right-12 lg:top-auto lg:left-auto z-20 opacity-80 lg:opacity-40">
-                        <img src="/assets/logo-ph-blanco.png" alt="Logo PH" className="h-6 lg:h-12 w-auto brightness-200" />
+                        <img src="/assets/logo-ph-blanco.webp" alt="Logo PH" className="h-6 lg:h-12 w-auto brightness-200" />
                     </div>
                 </div>
             </div>
@@ -58,7 +61,7 @@ export default function Welcome() {
             <header className="w-full relative z-30 hidden md:block">
                 <div className="max-w-7xl mx-auto px-6 md:px-12 pt-10 lg:pt-14 pb-4">
                     <Link href="/">
-                        <img src="/assets/phid_logo.png" className="w-40 sm:w-52 md:w-64 h-auto object-contain" alt="Logo"/>
+                        <img src="/assets/phid_logo.webp" className="w-40 sm:w-52 md:w-64 h-auto object-contain" alt="Logo"/>
                     </Link>
                 </div>
             </header>
@@ -78,7 +81,7 @@ export default function Welcome() {
                             <span className="hidden md:inline lg:hidden xl:inline text-slate-200">|</span>
                             <div className="flex items-center gap-2">
                                 <span>Desarrollado por</span>
-                                <img src="/assets/studia-logo.png" alt="Studia Logo" className="w-[50px] h-auto object-contain" />
+                                <img src="/assets/studia-logo.webp" alt="Studia Logo" className="w-[50px] h-auto object-contain" />
                             </div>
                         </div>
                     </div>

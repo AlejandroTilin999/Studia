@@ -1,6 +1,6 @@
 import React from 'react';
 import { ClipboardList, BookOpen, FileText, User, ChevronRight, Star, Clock } from 'lucide-react';
-import { router, Deferred } from '@inertiajs/react';
+import { router, Deferred, Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import { COLOR_THEMES } from '@/Pages/Alumno/ColorThemes';
@@ -61,7 +61,7 @@ export default function StudentDashboardCards({
             title: "Mi Perfil",
             subtitle: "Modifica tus datos y contraseña",
             icon: User,
-            path: "/profile",
+            path: "/perfil",
         }
     ];
 
@@ -80,7 +80,7 @@ export default function StudentDashboardCards({
 
                         <div className="hidden lg:flex flex-col items-end gap-1 shrink-0">
                             <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Institución</span>
-                            <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-8 w-auto grayscale opacity-60" />
+                            <img src="/assets/phid_logo.webp" alt="Prepa Hidalgo" className="h-8 w-auto grayscale opacity-60" />
                         </div>
                     </div>
 
@@ -158,9 +158,10 @@ export default function StudentDashboardCards({
                             const colors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
 
                             return (
-                                <div
+                                <Link
                                     key={item.id}
-                                    onClick={() => router.visit(`/alumno/materias?id=${item.uuid}`)}
+                                    href={`/alumno/materias?id=${item.uuid}`}
+                                    prefetch="hover"
                                     className={cn(
                                         "group flex flex-col p-5 bg-white border transition-all duration-200 rounded-2xl shadow-none cursor-pointer",
                                         colors.borderHover,
@@ -211,11 +212,7 @@ export default function StudentDashboardCards({
                                     </div>
 
                                     <div className="flex justify-end mt-4">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                router.visit(`/alumno/materias?id=${item.uuid}`);
-                                            }}
+                                        <div
                                             className={cn(
                                                 "flex items-center gap-1 text-[10px] font-normal uppercase tracking-widest transition-colors",
                                                 colors.text,
@@ -224,9 +221,9 @@ export default function StudentDashboardCards({
                                         >
                                             Ver Detalle completo
                                             <ChevronRight size={14} />
-                                        </button>
+                                        </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         }) : (
                             <div className="md:col-span-2 p-12 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
@@ -256,9 +253,10 @@ export default function StudentDashboardCards({
                     <div className="md:hidden absolute left-1/2 top-4 bottom-4 w-0.5 border-l border-dashed border-slate-200 z-0 -translate-x-1/2" />
 
                     {shortcuts.map((item, idx) => (
-                        <div
+                        <Link
                             key={idx}
-                            onClick={() => router.visit(item.path)}
+                            href={item.path}
+                            prefetch="hover"
                             className="flex flex-col items-center text-center cursor-pointer group relative z-10 w-full md:w-40"
                         >
                             {/* Circle Container */}
@@ -275,7 +273,7 @@ export default function StudentDashboardCards({
                             <span className="text-[10px] text-slate-400 font-semibold mt-1 leading-normal block max-w-[130px] md:max-w-none">
                                 {item.subtitle}
                             </span>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </div>

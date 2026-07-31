@@ -20,7 +20,7 @@ interface CertificateData {
 
 export const generateCertificateHTML = (data: CertificateData): string => {
     const { student, academic, issued_at } = data;
-    const logoUrl = "/assets/phid_logo.png";
+    const logoUrl = "/assets/phid_logo.webp";
 
     return `
         <html>

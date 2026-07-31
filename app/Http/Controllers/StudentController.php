@@ -145,7 +145,6 @@ class StudentController extends Controller
         // Validar cupo del grupo (límite: 22 estudiantes por grupo)
         $activeEnrollmentsCount = Enrollment::where('grupo_id', $request->grupo_id)
             ->where('estatus', 'active')
-            ->whereNull('fecha_baja')
             ->count();
 
         if ($activeEnrollmentsCount >= 22) {
@@ -239,7 +238,6 @@ class StudentController extends Controller
         if ($currentGroupId != $request->grupo_id) {
             $activeEnrollmentsCount = Enrollment::where('grupo_id', $request->grupo_id)
                 ->where('estatus', 'active')
-                ->whereNull('fecha_baja')
                 ->count();
 
             if ($activeEnrollmentsCount >= 22) {

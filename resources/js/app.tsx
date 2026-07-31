@@ -9,11 +9,21 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name) =>
-        resolvePageComponent(
+    resolve: (name) => {
+        const page = resolvePageComponent(
             `./Pages/${name}.tsx`,
             import.meta.glob('./Pages/**/*.tsx'),
-        ),
+        );
+
+        // @ts-ignore
+        page.then((module) => {
+            if (!module.default) return;
+            // Si la página no define un layout propio pero lo envuelve manualmente en el render,
+            // podemos detectar si queremos forzar la persistencia aquí en el futuro.
+        });
+
+        return page;
+    },
     setup({ el, App, props }) {
         const root = createRoot(el);
 

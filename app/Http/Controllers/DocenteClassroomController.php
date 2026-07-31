@@ -193,6 +193,16 @@ class DocenteClassroomController extends Controller
             ]);
         }
 
+        // [CONSOLIDACIÓN AUTOMÁTICA] Recalcular el consolidado de cada alumno de la clase
+        $studentUserIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+            ->where('ciclo_id', $load->ciclo_id)
+            ->where('estatus', 'active')
+            ->pluck('usuario_id');
+
+        foreach ($studentUserIds as $sUserId) {
+            \App\Services\GradeConsolidator::consolidate($sUserId, $load->id);
+        }
+
         $this->clearStudentsCache($load);
 
         $updatedCriteria = CriterioEvaluacion::where('carga_id', $load->id)

@@ -13,7 +13,7 @@ interface KardexData {
 
 export const generateKardexHTML = (data: KardexData): string => {
     const { student, history, globalGpa, issued_at } = data;
-    const logoUrl = "/assets/phid_logo.png";
+    const logoUrl = "/assets/phid_logo.webp";
 
     // Dividir el historial en dos para las columnas
     const half = Math.ceil(history.length / 2);

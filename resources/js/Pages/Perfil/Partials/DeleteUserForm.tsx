@@ -1,118 +1,69 @@
-import DangerButton from '@/Components/DangerButton';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import Modal from '@/Components/Modal';
-import SecondaryButton from '@/Components/SecondaryButton';
-import TextInput from '@/Components/TextInput';
+import { ButtonLogin } from '@/Components/ButtonLogin';
 import { useForm } from '@inertiajs/react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FormEventHandler } from 'react';
+import { SwalHelper } from "@/utils/SwalHelper";
+import Swal from 'sweetalert2';
 
 export default function DeleteUserForm({
     className = '',
 }: {
     className?: string;
 }) {
-    const [confirmingUserDeletion, setConfirmingUserDeletion] = useState(false);
-    const passwordInput = useRef<HTMLInputElement>(null);
-
     const {
-        data,
         setData,
         delete: destroy,
         processing,
         reset,
-        errors,
-        clearErrors,
     } = useForm({
         password: '',
     });
 
     const confirmUserDeletion = () => {
-        setConfirmingUserDeletion(true);
+        SwalHelper.passwordConfirm(
+            '¿Confirmar eliminación?',
+            'Esta acción borrará permanentemente todos tus datos institucionalmente. Ingresa tu contraseña para proceder.',
+            'Sí, eliminar cuenta',
+            (password) => {
+                setData('password', password);
+                setTimeout(() => {
+                    executeDelete(password);
+                }, 100);
+            }
+        );
     };
 
-    const deleteUser: FormEventHandler = (e) => {
-        e.preventDefault();
-
-        destroy(route('profile.destroy'), {
+    const executeDelete = (password: string) => {
+        destroy(route('perfil.destroy'), {
+            data: { password }, // Pasar password directo en el payload
             preserveScroll: true,
-            onSuccess: () => closeModal(),
-            onError: () => passwordInput.current?.focus(),
+            onError: (err) => {
+                SwalHelper.error('Error de validación', err.password || 'La contraseña es incorrecta.');
+            },
             onFinish: () => reset(),
         });
     };
 
-    const closeModal = () => {
-        setConfirmingUserDeletion(false);
-
-        clearErrors();
-        reset();
-    };
-
     return (
         <section className={`space-y-6 ${className}`}>
-            <header>
-                <h2 className="text-lg font-bold text-slate-900">
-                    Eliminar Cuenta
+            <header className="mb-8 border-b border-rose-50 pb-6 text-left">
+                <h2 className="text-xl font-bold text-rose-600 tracking-tight">
+                    Eliminar Cuenta Institucional
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500 font-medium">
-                    Una vez que tu cuenta sea eliminada, todos sus recursos y datos serán eliminados permanentemente. Antes de eliminar tu cuenta, por favor descarga cualquier dato o información que desees conservar.
+                <p className="mt-2 text-sm text-slate-500 font-medium leading-relaxed">
+                    Esta acción es irreversible. Se borrarán tus expedientes, tareas y accesos de forma permanente del sistema.
                 </p>
             </header>
 
-            <DangerButton onClick={confirmUserDeletion}>
-                Eliminar Cuenta
-            </DangerButton>
-
-            <Modal show={confirmingUserDeletion} onClose={closeModal}>
-                <form onSubmit={deleteUser} className="p-6">
-                    <h2 className="text-lg font-bold text-slate-900">
-                        ¿Estás seguro de que deseas eliminar tu cuenta?
-                    </h2>
-
-                    <p className="mt-1 text-sm text-slate-500 font-medium">
-                        Una vez que tu cuenta sea eliminada, todos sus recursos y datos serán eliminados de forma permanente. Por favor, ingresa tu contraseña para confirmar que deseas eliminar permanentemente tu cuenta.
-                    </p>
-
-                    <div className="mt-6">
-                        <InputLabel
-                            htmlFor="password"
-                            value="Contraseña"
-                            className="sr-only"
-                        />
-
-                        <TextInput
-                            id="password"
-                            type="password"
-                            name="password"
-                            ref={passwordInput}
-                            value={data.password}
-                            onChange={(e) =>
-                                setData('password', e.target.value)
-                            }
-                            className="mt-1 block w-3/4"
-                            isFocused
-                            placeholder="Contraseña"
-                        />
-
-                        <InputError
-                            message={errors.password}
-                            className="mt-2"
-                        />
-                    </div>
-
-                    <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton onClick={closeModal}>
-                            Cancelar
-                        </SecondaryButton>
-
-                        <DangerButton disabled={processing}>
-                            Eliminar Cuenta
-                        </DangerButton>
-                    </div>
-                </form>
-            </Modal>
+            <div className="flex justify-start">
+                <ButtonLogin
+                    type="button"
+                    onClick={confirmUserDeletion}
+                    className="bg-rose-500 hover:bg-rose-700 text-white px-10 h-12 rounded-lg font-black text-xs uppercase tracking-widest transition-all border-none shadow-none"
+                >
+                    Eliminar mi cuenta
+                </ButtonLogin>
+            </div>
         </section>
     );
 }

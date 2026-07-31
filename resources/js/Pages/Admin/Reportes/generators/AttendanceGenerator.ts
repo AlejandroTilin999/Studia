@@ -15,7 +15,7 @@ interface AttendanceData {
 
 export const generateAttendanceHTML = (data: AttendanceData): string => {
     const { group, period, enrollments, generated_at } = data;
-    const logoUrl = "/assets/phid_logo.png";
+    const logoUrl = "/assets/phid_logo.webp";
 
     return `
         <html>

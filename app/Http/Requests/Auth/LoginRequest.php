@@ -60,15 +60,15 @@ class LoginRequest extends FormRequest
             }
 
             // Validar si eligió la pestaña "Estudiante" pero NO tiene rol de alumno
-            if ($profileType === 'student' && $userRole !== 'alumno') {
+            if ($profileType === 'alumno' && $userRole !== 'alumno') {
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([
                     'email' => 'Este correo no pertenece a una cuenta de estudiante.',
                 ]);
             }
 
-            // Validar si eligió la pestaña "Personal" pero NO es docente ni admin
-            if ($profileType === 'staff' && !in_array($userRole, ['docente', 'admin'])) {
+            // Validar si eligió la pestaña "Institucional" pero NO es docente ni admin
+            if ($profileType === 'institucional' && !in_array($userRole, ['docente', 'admin'])) {
                 RateLimiter::hit($this->throttleKey());
                 throw ValidationException::withMessages([
                     'email' => 'Este correo no pertenece al personal docente o administrativo.',

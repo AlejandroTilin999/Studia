@@ -59,7 +59,7 @@ export default function ResetPassword() {
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        
+
         // Bloquear envío si no cumple con las reglas básicas de seguridad
         if (!rules.minLength || !rules.hasUpper || !rules.hasNumber) {
             return;
@@ -81,7 +81,7 @@ export default function ResetPassword() {
             `}</style>
 
             <div className="absolute top-5 left-5 z-50">
-                <Link 
+                <Link
                     href={route('logout')}
                     method="post"
                     as="button"
@@ -93,12 +93,15 @@ export default function ResetPassword() {
 
             {/* Tarjeta de Formulario */}
             <div className="w-full max-w-md bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-none relative z-20 transition-all duration-300">
-                
+
                 {/* Logo PrepaHidalgo */}
                 <div className="flex justify-center mb-6">
-                    <img 
-                        src="/assets/phid_logo.png" 
-                        alt="Logo PREPAHID" 
+                    <img
+                        src="/assets/phid_logo.webp"
+                        alt="Logo PREPAHID"
+                        loading="eager"
+                        // @ts-ignore
+                        fetchpriority="high"
                         className="w-[200px] h-auto object-contain"
                     />
                 </div>
@@ -148,8 +151,8 @@ export default function ResetPassword() {
                                 <span className={`font-extrabold text-[11px] ${strength.textColor}`}>{strength.label}</span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div 
-                                    className={`h-full transition-all duration-500 ${strength.color}`} 
+                                <div
+                                    className={`h-full transition-all duration-500 ${strength.color}`}
                                     style={{ width: `${(strength.score / 4) * 100}%` }}
                                 />
                             </div>
@@ -159,7 +162,7 @@ export default function ResetPassword() {
                     {/* Indicadores de requisitos */}
                     <div className="text-xs space-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-200/80 text-left">
                         <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] block mb-1">Requisitos obligatorios:</span>
-                        
+
                         <div className="flex items-center gap-2">
                             {rules.minLength ? (
                                 <div className="w-4.5 h-4.5 bg-emerald-50 rounded-full flex items-center justify-center shrink-0">

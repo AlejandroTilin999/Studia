@@ -253,7 +253,7 @@ export default function NewCycleModal({
                 <div className="col-span-1 md:col-span-3 bg-[#0266E0] p-6 md:p-8 text-white flex flex-col justify-between select-none relative rounded-t-lg md:rounded-l-lg md:rounded-tr-none shrink-0">
                     <div className="space-y-8">
                         <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-8 md:h-9 w-auto object-contain mb-8" />
+                            <img src="/assets/logo-ph-blanco.webp" alt="Prepa Hidalgo" className="h-8 md:h-9 w-auto object-contain mb-8" />
                             <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
                                 {mode === 'create' ? 'Apertura de Ciclo' : 'Edición de Ciclo'}
                             </h3>

@@ -15,7 +15,7 @@ export function useExportPDF() {
 
         SwalHelper.loading("Generando PDF", "Dando formato institucional al documento...");
 
-        const logoUrl = "/assets/phid_logo.png";
+        const logoUrl = "/assets/phid_logo.webp";
         const dateStr = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 

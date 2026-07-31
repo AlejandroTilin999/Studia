@@ -10,6 +10,15 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <!-- Preload Critical Images -->
+        <link rel="preload" href="/assets/phid_logo.webp" as="image">
+        <link rel="preload" href="/assets/alumna.webp" as="image">
+        <link rel="preload" href="/assets/hero-img.webp" as="image">
+        <link rel="preload" href="/assets/studia-logo.webp" as="image">
+        <link rel="preload" href="/assets/admin-dashboard.webp" as="image">
+        <link rel="preload" href="/assets/docente-dashboard.webp" as="image">
+        <link rel="preload" href="/assets/persona-dashboard.webp" as="image">
+
         <!-- Scripts -->
         @routes
         @viteReactRefresh

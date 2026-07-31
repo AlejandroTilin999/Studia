@@ -1,0 +1,3 @@
+- `[x]` Revertir estilos personalizados de `SwalHelper.ts` a los valores por defecto de SweetAlert2
+- `[x]` Simplificar `passwordConfirm` para usar el diseño estándar de SweetAlert2
+- `[ ]` Verificar consistencia visual de las alertas en todo el sistema

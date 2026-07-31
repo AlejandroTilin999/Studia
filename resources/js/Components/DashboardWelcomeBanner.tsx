@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Calendar } from 'lucide-react';
-import { usePage, router } from '@inertiajs/react';
+import { usePage, Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 
 interface DashboardWelcomeBannerProps {
@@ -20,7 +20,6 @@ export default function DashboardWelcomeBanner({
     wrapperClassName = "pt-0 pb-6 md:pb-10"
 }: DashboardWelcomeBannerProps) {
     const { url } = usePage();
-    const [imageLoaded, setImageLoaded] = React.useState(false);
 
     // Resolve role based on path
     let role = 'ADMIN';
@@ -30,16 +29,12 @@ export default function DashboardWelcomeBanner({
         role = 'ALUMNO';
     }
 
+    // Fallback logic for missing persona-dashboard.webp
     const imageSrc = role === 'ADMIN'
-        ? '/assets/admin-dashboard.png'
+        ? '/assets/admin-dashboard.webp'
         : role === 'DOCENTE'
-            ? '/assets/docente-dashboard.png'
-            : '/assets/persona-dashboard.webp';
-
-    // Reiniciar el estado de carga cuando cambia la imagen (ej: cambio de rol)
-    React.useEffect(() => {
-        setImageLoaded(false);
-    }, [imageSrc]);
+            ? '/assets/docente-dashboard.webp'
+            : '/assets/alumna.webp'; // Fallback to alumna.webp if persona-dashboard is missing
 
     const currentDate = new Date().toLocaleDateString('es-ES', {
         weekday: 'long',
@@ -50,14 +45,10 @@ export default function DashboardWelcomeBanner({
 
     const formattedDate = currentDate.charAt(0).toUpperCase() + currentDate.slice(1);
 
-    const handleButtonClick = () => {
-        if (role === 'ADMIN') {
-            router.visit('/admin/reportes');
-        } else if (role === 'DOCENTE') {
-            router.visit('/docente');
-        } else {
-            router.visit('/alumno/calificaciones');
-        }
+    const getButtonHref = () => {
+        if (role === 'ADMIN') return '/admin/reportes';
+        if (role === 'DOCENTE') return '/docente';
+        return '/alumno/materias';
     };
 
     const getButtonText = () => {
@@ -81,27 +72,17 @@ export default function DashboardWelcomeBanner({
             {/* Main Card Container */}
             <div className="relative w-full overflow-hidden bg-[#e8f0fe] rounded-xl md:rounded-2xl p-6 sm:p-8 md:p-12 lg:p-14 shadow-sm border border-blue-100 select-none">
 
-                {/* --- DECORACIONES GEOMÉTRICAS (Abstract background elements) --- */}
+                {/* --- DECORACIONES GEOMÉTRICAS --- */}
                 <div className="absolute left-0 top-0 bottom-0 w-48 overflow-hidden pointer-events-none select-none z-0">
-                    {/* Wavy line */}
                     <svg className="absolute -left-6 top-1 w-44 h-48 opacity-25" viewBox="0 0 120 140" fill="none">
                         <path d="M10 10 Q50 60 20 100 T100 120" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
-
-                    {/* Green Triangle */}
                     <div className="absolute left-10 top-4 w-14 h-14 bg-[#4db6ac] rotate-12 opacity-30" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
-
-                    {/* Purple Rectangle */}
                     <div className="absolute -left-8 top-12 w-24 h-12 bg-[#ab47bc] rotate-45 opacity-20 rounded-md"></div>
-
-                    {/* Blue Circle */}
                     <div className="absolute left-8 top-28 w-12 h-12 bg-[#1e88e5] rounded-full opacity-40"></div>
-
-                    {/* Orange Square */}
                     <div className="absolute -left-6 top-40 w-12 h-12 bg-[#ffa726] rotate-12 opacity-35 rounded-md"></div>
                 </div>
 
-                {/* Faint Abstract Grid Overlay */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e88e505_1px,transparent_1px),linear-gradient(to_bottom,#1e88e505_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0"></div>
 
                 {/* --- CONTENT GRID --- */}
@@ -109,7 +90,6 @@ export default function DashboardWelcomeBanner({
 
                     {/* Left Side: Text & Button */}
                     <div className="flex flex-col items-center min-[1352px]:items-start text-center min-[1352px]:text-left space-y-4 relative z-10 flex-1 w-full">
-                        {/* Date Pill Badge */}
                         <div className="relative z-20 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-lg text-blue-700 select-none">
                             <Calendar size={13} className="text-blue-600" />
                             <span className="text-[10px] md:text-xs font-semibold tracking-wide uppercase">
@@ -135,36 +115,23 @@ export default function DashboardWelcomeBanner({
                         </div>
 
                         {/* Actions Button */}
-                        <button
-                            onClick={handleButtonClick}
+                        <Link
+                            href={getButtonHref()}
+                            prefetch="hover"
                             className="inline-flex items-center justify-center px-6 py-3 bg-[#0a0f1d] hover:bg-slate-900 text-white rounded-xl text-xs md:text-sm font-bold transition-colors cursor-pointer"
                         >
                             {getButtonText()}
-                        </button>
+                        </Link>
                     </div>
 
-                    {/* Right Side: Image (Below on screens < 1352px, beside on larger) */}
+                    {/* Right Side: Image */}
                     <div className="w-full min-[1352px]:w-auto flex justify-center min-[1352px]:justify-end items-center">
-                        <div className="relative w-full max-w-[130px] sm:max-w-[150px] md:max-w-[170px] lg:max-w-[210px] min-[1352px]:max-w-[230px] flex items-center justify-center">
-
-                            {/* Loader central cuando la imagen aún no está lista */}
-                            {!imageLoaded && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="dots-loader scale-75 opacity-60" />
-                                </div>
-                            )}
-
-                            <img
-                                src={imageSrc}
-                                alt="Personaje Dashboard"
-                                draggable="false"
-                                onLoad={() => setImageLoaded(true)}
-                                className={cn(
-                                    "w-full h-auto object-contain pointer-events-none select-none transition-opacity duration-500",
-                                    imageLoaded ? "opacity-100" : "opacity-0"
-                                )}
-                            />
-                        </div>
+                        <div
+                            className="relative w-full h-40 sm:h-48 md:h-56 lg:h-64 xl:h-72 min-[1352px]:w-64 bg-contain bg-no-repeat bg-center min-[1352px]:bg-right pointer-events-none select-none transition-all duration-300"
+                            style={{ backgroundImage: `url('${imageSrc}')` }}
+                            role="img"
+                            aria-label="Personaje Dashboard"
+                        />
                     </div>
 
                 </div>

@@ -30,15 +30,6 @@ Route::get('/', function () {
 });
 
 // ==========================================
-// 2. RUTAS LIBERADAS / PÚBLICAS API
-// ==========================================
-Route::get('/student', [StudentController::class, 'index'])->name('students.index');
-Route::post('/student', [StudentController::class, 'store'])->name('students.store');
-
-Route::get('/teacher', [TeacherController::class, 'index'])->name('teachers.index');
-Route::post('/teacher', [TeacherController::class, 'store'])->name('teachers.store');
-
-// ==========================================
 // 3. RUTAS PROTEGIDAS
 // ==========================================
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -364,9 +355,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/tareas/anular', [App\Http\Controllers\StudentClassroomController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
         });
 
-        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+        Route::get('/perfil', [ProfileController::class, 'edit'])->name('perfil.edit');
+        Route::patch('/perfil', [ProfileController::class, 'update'])->name('perfil.update');
+        Route::delete('/perfil', [ProfileController::class, 'destroy'])->name('perfil.destroy');
     });
 });
 
