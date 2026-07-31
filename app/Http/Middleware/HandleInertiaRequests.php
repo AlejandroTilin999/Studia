@@ -40,11 +40,11 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
-            'activePeriod' => $activePeriod ? [
+            'activePeriod' => Inertia::defer(fn() => $activePeriod ? [
                 'id' => $activePeriod->id,
                 'nombre' => $activePeriod->nombre,
                 'es_nones' => $activePeriod->fecha_inicio ? (\Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month == 1) : true,
-            ] : null,
+            ] : null),
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,
@@ -98,7 +98,8 @@ class HandleInertiaRequests extends Middleware
                     'nombre' => $load->course?->nombre ?? 'N/A',
                     'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
                     'descripcion' => $load->course?->descripcion ?? 'Sin descripción',
-                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A'
+                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A',
+                    'color_tema' => $load->color_tema ?? 'blue'
                 ])->toArray();
         });
     }

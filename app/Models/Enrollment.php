@@ -18,9 +18,6 @@ class Enrollment extends Model
         'ciclo_id',
         'codigo_alumno',
         'estatus',
-        'telefono',
-        'direccion',
-        'fecha_baja',
     ];
 
     /**

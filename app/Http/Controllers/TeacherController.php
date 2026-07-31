@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicPeriod;
+use App\Models\AcademicGroup;
+use App\Models\Specialty;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,98 +19,108 @@ class TeacherController extends Controller
         $search = $request->query('search');
         $selectedCycleId = $request->query('cycle');
 
-        $activeCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
-        $planningCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_PLANNING)->first();
+        // [OPTIMIZACIÓN 1] Obtener periodos relevantes en UNA sola consulta
+        $periods = AcademicPeriod::select('id', 'nombre', 'status', 'fecha_inicio')
+            ->whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])
+            ->orderBy('fecha_inicio', 'desc')
+            ->get();
 
-        // Determinar el ciclo de trabajo (Prioridad: Seleccionado > Activo > Planificación)
+        $activeCycle = $periods->firstWhere('status', AcademicPeriod::STATUS_ACTIVE);
+        $planningCycle = $periods->firstWhere('status', AcademicPeriod::STATUS_PLANNING);
+
+        // Determinar el ciclo de trabajo en memoria sin hacer extra query
         $workingCycle = null;
         if ($selectedCycleId) {
-            $workingCycle = \App\Models\AcademicPeriod::find($selectedCycleId);
+            $workingCycle = $periods->firstWhere('id', $selectedCycleId) ?? AcademicPeriod::find($selectedCycleId);
         }
+        $workingCycle = $workingCycle ?: ($activeCycle ?: $planningCycle);
 
-        if (!$workingCycle) {
-            $workingCycle = $activeCycle ?: $planningCycle;
-        }
+        $isCycleActive = !is_null($activeCycle);
+        $canRegister = $periods->isNotEmpty();
 
         return Inertia::render('Admin/Docentes/Index', [
             'teachers' => Inertia::defer(function () use ($search, $workingCycle) {
-                $query = Teacher::whereHas('user');
+                // [OPTIMIZACIÓN 2] Carga selectiva de relaciones y uso de ilike para Postgres
+                $query = Teacher::select('id', 'usuario_id', 'codigo_empleado', 'especialidad', 'areas')
+                    ->whereHas('user');
 
                 if ($search) {
                     $query->where(function($q) use ($search) {
-                        $q->where('codigo_empleado', 'like', "%{$search}%")
+                        $q->where('codigo_empleado', 'ilike', "%{$search}%")
                           ->orWhereHas('user', function($qu) use ($search) {
-                              $qu->where('nombre', 'like', "%{$search}%")
-                                 ->orWhere('apellido_paterno', 'like', "%{$search}%")
-                                 ->orWhere('email', 'like', "%{$search}%");
+                              $qu->where('nombre', 'ilike', "%{$search}%")
+                                 ->orWhere('apellido_paterno', 'ilike', "%{$search}%")
+                                 ->orWhere('email', 'ilike', "%{$search}%");
                           });
                     });
                 }
 
+                // Carga optimizada de cargas académicas solo seleccionando columnas necesarias
                 $loadsRelation = $workingCycle
-                    ? ['academicLoads' => fn($q) => $q->where('ciclo_id', $workingCycle->id)->with(['course', 'academicGroup'])]
-                    : ['academicLoads.course', 'academicLoads.academicGroup'];
+                    ? ['academicLoads' => fn($q) => $q->where('ciclo_id', $workingCycle->id)
+                        ->select('id', 'docente_id', 'materia_id', 'grupo_id')
+                        ->with([
+                            'course:id,nombre,codigo',
+                            'academicGroup:id,nombre'
+                        ])]
+                    : ['academicLoads' => fn($q) => $q->select('id', 'docente_id', 'materia_id', 'grupo_id')
+                        ->with([
+                            'course:id,nombre,codigo',
+                            'academicGroup:id,nombre'
+                        ])];
 
-                return $query->with(array_merge($loadsRelation, ['user']))
+                return $query->with(array_merge($loadsRelation, ['user:id,nombre,apellido_paterno,apellido_materno,telefono,email']))
                     ->paginate(50)
-                    ->through(function ($t) {
-                        return [
-                            'id'                => $t->id,
-                            'codigo_empleado'   => $t->codigo_empleado,
-                            'nombre'            => $t->user->nombre ?? '',
-                            'apellido_paterno'  => $t->user->apellido_paterno ?? '',
-                            'apellido_materno'  => $t->user->apellido_materno ?? '',
-                            'especialidad'      => $t->especialidad,
-                            'areas'             => $t->areas ?? [],
-                            'telefono'          => $t->user->telefono ?? '',
-                            'usuario'           => $t->user ? ['email' => $t->user->email] : null,
-                            'materias'          => $t->academicLoads->map(fn($l) => [
-                                'id'             => $l->course->id ?? null,
-                                'nombre'         => $l->course->nombre ?? 'N/A',
-                                'codigo'         => $l->course->codigo ?? '',
-                                'nombre_group'   => $l->academicGroup->nombre ?? 'N/A',
-                            ])->values()->toArray(),
-                        ];
-                    })
+                    ->through(fn ($t) => [
+                        'id'               => $t->id,
+                        'codigo_empleado'  => $t->codigo_empleado,
+                        'nombre'           => $t->user->nombre ?? '',
+                        'apellido_paterno' => $t->user->apellido_paterno ?? '',
+                        'apellido_materno' => $t->user->apellido_materno ?? '',
+                        'especialidad'     => $t->especialidad,
+                        'areas'            => $t->areas ?? [],
+                        'telefono'         => $t->user->telefono ?? '',
+                        'usuario'          => $t->user ? ['email' => $t->user->email] : null,
+                        'materias'         => $t->academicLoads->map(fn($l) => [
+                            'id'           => $l->course->id ?? null,
+                            'nombre'       => $l->course->nombre ?? 'N/A',
+                            'codigo'       => $l->course->codigo ?? '',
+                            'nombre_group' => $l->academicGroup->nombre ?? 'N/A',
+                        ])->values()->toArray(),
+                    ])
                     ->withQueryString();
             }),
+
             'filters' => [
                 'search' => $search,
                 'cycle' => $workingCycle ? $workingCycle->id : null
             ],
-            'availableCycles' => \App\Models\AcademicPeriod::whereIn('status', [
-                \App\Models\AcademicPeriod::STATUS_ACTIVE,
-                \App\Models\AcademicPeriod::STATUS_PLANNING
-            ])->orderBy('fecha_inicio', 'desc')->get()->map(fn($c) => [
+
+            'availableCycles' => $periods->map(fn($c) => [
                 'id' => $c->id,
                 'nombre' => $c->nombre,
                 'status' => $c->status
             ]),
-            'especialidades' => \App\Models\Specialty::all()->map(fn($s) => [
-                'id' => $s->id,
-                'nombre' => $s->nombre,
-                'sub_areas' => $s->sub_areas ?? []
-            ]),
-            'isCycleActive' => \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->exists(),
-            'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
-                \App\Models\AcademicPeriod::STATUS_PLANNING,
-                \App\Models\AcademicPeriod::STATUS_ACTIVE
-            ])->exists(),
-            'activeCycleTeachersCount' => Inertia::defer(function() {
-                $activeCycle = \App\Models\AcademicPeriod::where('status', \App\Models\AcademicPeriod::STATUS_ACTIVE)->first();
+
+            // Proyección liviana de especialidades
+            'especialidades' => Inertia::defer(fn() => Specialty::select('id', 'nombre', 'sub_areas')->get()),
+
+            'isCycleActive' => $isCycleActive,
+            'canRegister' => $canRegister,
+
+            'activeCycleTeachersCount' => Inertia::defer(function() use ($activeCycle) {
                 if (!$activeCycle) return 0;
-                return \DB::table('cargas_academicas')->where('ciclo_id', $activeCycle->id)->distinct('docente_id')->count();
+                return DB::table('cargas_academicas')
+                    ->where('ciclo_id', $activeCycle->id)
+                    ->distinct('docente_id')
+                    ->count('docente_id');
             })
         ]);
     }
 
     public function store(Request $request)
     {
-        // [SAFETY LOCK v3.6] Permitir registros si hay ciclo activo o en planeación
-        if (!\App\Models\AcademicPeriod::whereIn('status', [
-            \App\Models\AcademicPeriod::STATUS_PLANNING,
-            \App\Models\AcademicPeriod::STATUS_ACTIVE
-        ])->exists()) {
+        if (!AcademicPeriod::whereIn('status', [AcademicPeriod::STATUS_PLANNING, AcademicPeriod::STATUS_ACTIVE])->exists()) {
             return redirect()->back()->withErrors([
                 'nombre' => 'Operación bloqueada. Debes tener un Ciclo Escolar vigente o en modo Planeación para registrar docentes.'
             ]);
@@ -130,24 +143,19 @@ class TeacherController extends Controller
             'telefono.digits'           => 'El número de celular debe tener exactamente 10 dígitos.',
         ]);
 
-        // Generar matrícula docente: DOC-{INICIALES}{AÑO}, garantizando unicidad
-        $firstInit    = strtoupper(substr(trim($request->nombre), 0, 1));
-        $paternoInit  = strtoupper(substr(trim($request->apellido_paterno), 0, 1));
-        $maternoInit  = (strtoupper(substr(trim($request->apellido_materno ?? ''), 0, 1))) ?: 'X';
-        $year         = date('Y');
-        $baseCode     = "DOC-{$firstInit}{$paternoInit}{$maternoInit}{$year}";
-        $employeeCode = $baseCode;
-        $counter      = 1;
-        while (Teacher::where('codigo_empleado', $employeeCode)->exists()) {
-            $employeeCode = $baseCode . $counter;
-            $counter++;
-        }
+        // Generar código de empleado con búsqueda directa en BD
+        $firstInit   = strtoupper(substr(trim($request->nombre), 0, 1));
+        $paternoInit = strtoupper(substr(trim($request->apellido_paterno), 0, 1));
+        $maternoInit = (strtoupper(substr(trim($request->apellido_materno ?? ''), 0, 1))) ?: 'X';
+        $year        = date('Y');
+        $baseCode    = "DOC-{$firstInit}{$paternoInit}{$maternoInit}{$year}";
 
-        // [ESTANDARIZACIÓN v4.0] Generación de correo profesional
-        // Usar el correo enviado por el frontend como sugerencia base
+        $countExisting = Teacher::where('codigo_empleado', 'like', "{$baseCode}%")->count();
+        $employeeCode = $countExisting > 0 ? "{$baseCode}{$countExisting}" : $baseCode;
+
+        // Generación de correo profesional
         $generatedEmail = $request->email;
 
-        // Si por alguna razón no viene el correo o ya existe, lo generamos/ajustamos
         if (empty($generatedEmail) || User::where('email', $generatedEmail)->exists()) {
             $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
             $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
@@ -157,16 +165,16 @@ class TeacherController extends Controller
             $initials = substr($firstNamePart, 0, 1) . substr($paternoPart, 0, 1);
             $emailBase = "{$firstNamePart}.{$paternoPart}.{$initials}";
 
-            // Buscar un número único
-            $counter = rand(10, 99);
-            do {
-                $generatedEmail = "{$emailBase}{$counter}@prepahidalgo.edu.mx";
-                $counter++;
-            } while (User::where('email', $generatedEmail)->exists());
+            $randomNum = rand(10, 99);
+            $generatedEmail = "{$emailBase}{$randomNum}@prepahidalgo.edu.mx";
+            
+            while (User::where('email', $generatedEmail)->exists()) {
+                $randomNum++;
+                $generatedEmail = "{$emailBase}{$randomNum}@prepahidalgo.edu.mx";
+            }
         }
 
         DB::transaction(function () use ($request, $employeeCode, $generatedEmail) {
-            // 1. Crear el usuario correspondiente
             $user = User::create([
                 'nombre'           => $request->nombre,
                 'apellido_paterno' => $request->apellido_paterno,
@@ -177,12 +185,11 @@ class TeacherController extends Controller
                 'rol'              => 'docente',
             ]);
 
-            // 2. Crear el docente enlazado
             Teacher::create([
-                'usuario_id'       => $user->id,
-                'codigo_empleado'  => $employeeCode,
-                'especialidad'     => $request->especialidad,
-                'areas'            => $request->areas ?? [],
+                'usuario_id'      => $user->id,
+                'codigo_empleado' => $employeeCode,
+                'especialidad'    => $request->especialidad,
+                'areas'           => $request->areas ?? [],
             ]);
         });
 
@@ -214,9 +221,8 @@ class TeacherController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $teacher) {
-            // 1. Si está enlazado a un usuario, actualizar sus datos personales
-            if ($teacher->user) {
-                $teacher->user->update([
+            if ($teacher->usuario_id) {
+                User::where('id', $teacher->usuario_id)->update([
                     'nombre'           => $request->nombre,
                     'apellido_paterno' => $request->apellido_paterno,
                     'apellido_materno' => $request->apellido_materno,
@@ -225,10 +231,9 @@ class TeacherController extends Controller
                 ]);
             }
 
-            // 2. Actualizar docente
             $teacher->update([
-                'especialidad'     => $request->especialidad,
-                'areas'            => $request->areas ?? [],
+                'especialidad' => $request->especialidad,
+                'areas'        => $request->areas ?? [],
             ]);
         });
 
@@ -237,29 +242,30 @@ class TeacherController extends Controller
 
     public function destroy($id)
     {
-        $teacher = Teacher::findOrFail($id);
+        $teacher = Teacher::with('user:id,nombre')->findOrFail($id);
 
-        // 1. Verificar si tiene materias asignadas (Cargas Académicas)
         $loadsCount = $teacher->academicLoads()->count();
         if ($loadsCount > 0) {
+            $nombre = $teacher->user->nombre ?? 'Docente';
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar al docente '{$teacher->user->nombre}' porque tiene {$loadsCount} materias asignadas actualmente."
+                'delete' => "No se puede eliminar al docente '{$nombre}' porque tiene {$loadsCount} materias asignadas actualmente."
             ]);
         }
 
-        // 2. Verificar si es tutor de algún grupo
-        $groupTutor = \App\Models\AcademicGroup::where('docente_tutor_id', $teacher->id)->first();
+        $groupTutor = AcademicGroup::select('nombre')->where('docente_tutor_id', $teacher->id)->first();
         if ($groupTutor) {
+            $nombre = $teacher->user->nombre ?? 'Docente';
             return redirect()->back()->withErrors([
-                'delete' => "No se puede eliminar al docente '{$teacher->user->nombre}' porque es tutor titular del grupo '{$groupTutor->nombre}'."
+                'delete' => "No se puede eliminar al docente '{$nombre}' porque es tutor titular del grupo '{$groupTutor->nombre}'."
             ]);
         }
 
         DB::transaction(function () use ($teacher) {
-            if ($teacher->user) {
-                $teacher->user->delete();
-            }
+            $userId = $teacher->usuario_id;
             $teacher->delete();
+            if ($userId) {
+                User::where('id', $userId)->delete();
+            }
         });
 
         return redirect()->route('admin.docentes.index');

@@ -140,7 +140,7 @@ export default function StudentFormModal({
                 <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none shrink-0">
                     <div className="space-y-6">
                         <div>
-                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-8 md:h-10 w-auto object-contain mb-4 md:mb-6" />
+                            <img src="/assets/logo-ph-blanco.webp" alt="Prepa Hidalgo" className="h-8 md:h-10 w-auto object-contain mb-4 md:mb-6" />
                             <h3 className="text-lg md:text-xl font-bold text-white leading-tight">
                                 {mode === 'create' ? 'Inscribir Nuevo Alumno' : 'Modificar Información del Alumno'}
                             </h3>

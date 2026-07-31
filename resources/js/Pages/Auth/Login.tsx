@@ -4,18 +4,19 @@ import { useState, useEffect } from "react";
 import { Head, useForm, Link } from "@inertiajs/react";
 import { ButtonLogin } from "@/Components/ButtonLogin";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { SwalHelper } from "@/utils/SwalHelper";
 
 export default function LoginPage() {
-  const [profile, setProfile] = useState<"student" | "staff">("student");
+  const [profile, setProfile] = useState<"alumno" | "institucional">("alumno");
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const roleParam = params.get('role');
+    const accesoParam = params.get('acceso');
 
-    if (roleParam === 'student' || roleParam === 'staff') {
-      setProfile(roleParam);
-      setData("profile_type", roleParam);
+    if (accesoParam === 'alumno' || accesoParam === 'institucional') {
+      setProfile(accesoParam);
+      setData("profile_type", accesoParam);
     }
   }, []);
 
@@ -23,18 +24,22 @@ export default function LoginPage() {
     email: '',
     password: '',
     remember: false,
-    profile_type: 'student',
+    profile_type: 'alumno',
   });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    post('/login');
+    post('/login', {
+      onSuccess: () => {
+        SwalHelper.toast('¡Has iniciado sesión correctamente!', 'success');
+      }
+    });
   };
 
-  const handleSwitchProfile = (newRole: "student" | "staff") => {
+  const handleSwitchProfile = (newRole: "alumno" | "institucional") => {
     setProfile(newRole);
     setData("profile_type", newRole);
-    window.history.replaceState(null, '', `/login?role=${newRole}`);
+    window.history.replaceState(null, '', `/login?acceso=${newRole}`);
   };
 
   return (
@@ -67,20 +72,23 @@ export default function LoginPage() {
             {/* Logotipo Azul/Color */}
             <div className="mb-4 lg:mb-6 justify-start flex w-full">
               <img
-                src="/assets/phid_logo.png"
+                src="/assets/phid_logo.webp"
                 alt="Logo PREPAHID"
+                loading="eager"
+                // @ts-ignore
+                fetchpriority="high"
                 className="w-[240px] h-auto object-contain"
               />
             </div>
 
             <div className="mb-4 lg:mb-6">
               <h2 className="text-4xl lg:text-5xl font-black text-slate-800 tracking-tighter mb-3 leading-none">
-                {profile === "student" ? "Portal Alumnos" : "Portal Docentes y Administrativos"}
+                {profile === "alumno" ? "Portal Alumnos" : "Portal Institucional"}
               </h2>
               <p className="text-base font-semibold text-slate-400">Ingresa tus credenciales para continuar.</p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6 lg:space-y-8 w-full">
+            <form onSubmit={handleLogin} className="space-y-6 lg:space-y-8 w-full" autoComplete="off" noValidate>
                 <div className="space-y-4 lg:space-y-6">
                   <div className="relative">
                     <input
@@ -90,6 +98,7 @@ export default function LoginPage() {
                       value={data.email}
                       onChange={e => setData("email", e.target.value)}
                       placeholder=" "
+                      autoComplete="off"
                       className="peer w-full h-16 px-5 bg-white border border-slate-200 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
                     />
                     <label
@@ -111,7 +120,7 @@ export default function LoginPage() {
                       value={data.password}
                       onChange={e => setData("password", e.target.value)}
                       placeholder=" "
-                      autoComplete="current-password"
+                      autoComplete="new-password"
                       className="peer w-full h-16 pl-5 pr-14 bg-white border border-slate-200 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
                     />
                     <label
@@ -170,8 +179,11 @@ export default function LoginPage() {
         {/* Capa de la imagen de la chica */}
         <div className="absolute inset-0 z-0 overflow-hidden hidden lg:block">
           <img
-            src="/assets/alumna.png"
+            src="/assets/alumna.webp"
             alt="Login Visual"
+            loading="eager"
+            // @ts-ignore
+            fetchpriority="high"
             className="absolute bottom-0 right-0 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 lg:translate-x-16 object-bottom"
           />
           {/* Degradado para integrar la imagen al azul */}
@@ -186,8 +198,8 @@ export default function LoginPage() {
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
           >
-            <path 
-              d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z" 
+            <path
+              d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z"
               stroke="white"
               strokeWidth="3"
             />
@@ -199,8 +211,8 @@ export default function LoginPage() {
             viewBox="0 0 1000 100"
             preserveAspectRatio="none"
           >
-            <path 
-              d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z" 
+            <path
+              d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z"
               stroke="white"
               strokeWidth="3"
             />
@@ -209,7 +221,7 @@ export default function LoginPage() {
 
         {/* Logotipo Minimalista Blanco en la esquina - Solo en Desktop */}
         <div className="hidden lg:block absolute lg:bottom-6 lg:right-12 z-20 opacity-60">
-          <img src="/assets/logo-ph-blanco.png" alt="Logo PH" className="h-12 w-auto brightness-200" />
+          <img src="/assets/logo-ph-blanco.webp" alt="Logo PH" className="h-12 w-auto brightness-200" />
         </div>
       </div>
     </div>

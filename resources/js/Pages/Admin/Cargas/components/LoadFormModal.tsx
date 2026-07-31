@@ -52,7 +52,20 @@ export default function LoadFormModal({
 
     // 1. Identificar paridad y filtrar materias sugeridas
     const selectedCycle = periods.find(p => p.id.toString() === data.ciclo_id.toString());
-    const isOddCycle = selectedCycle?.mes_inicio ? (selectedCycle.mes_inicio >= 8 || selectedCycle.mes_inicio === 1) : true;
+    // Periodo A (Agosto - Enero) = Semestres Impares (1°, 3°, 5°)
+    // Periodo B (Febrero - Julio) = Semestres Pares (2°, 4°, 6°)
+    const isOddCycle = useMemo(() => {
+        if (!selectedCycle) return true;
+        const nombreLower = (selectedCycle.nombre || '').toLowerCase();
+        if (nombreLower.includes('periodo a') || nombreLower.includes('agosto') || nombreLower.includes('non')) {
+            return true;
+        }
+        if (nombreLower.includes('periodo b') || nombreLower.includes('febrero') || nombreLower.includes('par')) {
+            return false;
+        }
+        const m = selectedCycle.mes_inicio;
+        return m ? (m >= 8 || m === 1) : true;
+    }, [selectedCycle]);
 
     const selectedGroup = groups.find(g => g.id.toString() === data.grupo_id.toString());
     const groupMajor = selectedGroup?.especialidad || '';
@@ -100,10 +113,28 @@ export default function LoadFormModal({
             if (selectedTeacherIds.includes(t.id.toString())) return false;
 
             if (course.tipo === 'General') {
-                return t.especialidad?.toLowerCase() === 'general' &&
-                       t.area?.toLowerCase() === course.area?.toLowerCase();
+                const isGeneralTeacher = !t.especialidad || t.especialidad.toLowerCase() === 'general';
+                if (!isGeneralTeacher) return false;
+
+                // Si la materia tiene área definida (ej: MATEMÁTICAS, HUMANIDADES)
+                if (course.area) {
+                    const cArea = course.area.toLowerCase();
+                    const teacherAreas = (t.areas || []).map(a => a.toLowerCase());
+                    const singleArea = (t.area || '').toLowerCase();
+
+                    if (teacherAreas.length > 0) {
+                        return teacherAreas.includes(cArea);
+                    }
+                    if (singleArea) {
+                        return singleArea === cArea;
+                    }
+                }
+                return true;
             } else {
-                return t.especialidad?.toLowerCase() === groupMajor.toLowerCase();
+                // Materia de Especialidad
+                const tEsp = (t.especialidad || '').toLowerCase();
+                const gEsp = groupMajor.toLowerCase();
+                return tEsp === gEsp || tEsp === 'general';
             }
         });
     };
@@ -188,7 +219,7 @@ export default function LoadFormModal({
                 <div className="col-span-1 md:col-span-4 bg-[#0266E0] p-5 md:p-7 text-white flex flex-col justify-between select-none rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none">
                     <div className="space-y-6 md:space-y-8">
                         <div>
-                            <img src="/assets/logo-ph-blanco.png" alt="Prepa Hidalgo" className="h-7 md:h-9 w-auto object-contain mb-4 md:mb-6" />
+                            <img src="/assets/logo-ph-blanco.webp" alt="Prepa Hidalgo" className="h-7 md:h-9 w-auto object-contain mb-4 md:mb-6" />
                             <h3 className="text-base md:text-lg font-bold text-white leading-tight">Asignación de Cargas</h3>
                         </div>
 

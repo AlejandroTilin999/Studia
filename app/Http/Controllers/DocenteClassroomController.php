@@ -102,8 +102,8 @@ class DocenteClassroomController extends Controller
             $lockOperacion = ['allowed' => false, 'reason' => 'Ciclo no definido'];
 
             if ($load->academicPeriod) {
-                $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config');
-                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion');
+                $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config', $load);
+                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion', $load);
             }
 
             $fullData['parciales'][$p] = [
@@ -191,6 +191,16 @@ class DocenteClassroomController extends Controller
                 'porcentaje' => $c['porcentaje'],
                 'sincronizar_tareas' => isset($c['sincronizar_tareas']) ? (bool)$c['sincronizar_tareas'] : false,
             ]);
+        }
+
+        // [CONSOLIDACIÓN AUTOMÁTICA] Recalcular el consolidado de cada alumno de la clase
+        $studentUserIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+            ->where('ciclo_id', $load->ciclo_id)
+            ->where('estatus', 'active')
+            ->pluck('usuario_id');
+
+        foreach ($studentUserIds as $sUserId) {
+            \App\Services\GradeConsolidator::consolidate($sUserId, $load->id);
         }
 
         $this->clearStudentsCache($load);
@@ -287,6 +297,17 @@ class DocenteClassroomController extends Controller
         }
 
         Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->delete();
+
+        // [CONSOLIDACIÓN AUTOMÁTICA] Recalcular el consolidado de cada alumno de la clase
+        $studentUserIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
+            ->where('ciclo_id', $load->ciclo_id)
+            ->where('estatus', 'active')
+            ->pluck('usuario_id');
+
+        foreach ($studentUserIds as $sUserId) {
+            \App\Services\GradeConsolidator::consolidate($sUserId, $load->id);
+        }
+
         $this->clearStudentsCache($load);
 
         $updatedTasks = Tarea::where('carga_id', $load->id)
@@ -352,12 +373,45 @@ class DocenteClassroomController extends Controller
         ]);
     }
 
+    /**
+     * Concluye oficialmente un parcial para una clase.
+     */
+    public function concludeParcial(Request $request, $uuid)
+    {
+        $request->validate([
+            'parcial' => 'required|integer|in:1,2,3'
+        ]);
+
+        $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
+        $parcial = $request->input('parcial');
+        $field = "p{$parcial}_cerrado";
+
+        $load->update([$field => true]);
+
+        // Registrar en Auditoría
+        \App\Models\AdminAuditLog::create([
+            'usuario_id' => auth()->id(),
+            'accion' => 'CONCLUIR_PARCIAL_DOCENTE',
+            'descripcion' => "El docente concluyó oficialmente el Parcial {$parcial} para la materia {$load->course->nombre}.",
+            'metadata' => ['carga_id' => $load->id, 'parcial' => $parcial]
+        ]);
+
+        // [ThunderSync] Limpiar cache de alumnos para que vean el estatus de "Calificado"
+        $this->clearStudentsCache($load);
+
+        return response()->json(['message' => "Parcial {$parcial} concluido con éxito."]);
+    }
+
     private function clearStudentsCache(AcademicLoad $load)
     {
+        // Incrementar versión de cache global de estudiantes para invalidar instantáneamente
+        \Cache::increment('student_cache_version');
+
         $studentIds = Enrollment::where('grupo_id', $load->grupo_id)->where('estatus', 'active')->pluck('usuario_id');
         foreach ($studentIds as $id) {
             \Cache::forget("student_kardex_{$id}");
             \Cache::forget("student_tasks_{$id}");
+            \Cache::forget("sidebar_alumno_{$id}");
         }
     }
 }

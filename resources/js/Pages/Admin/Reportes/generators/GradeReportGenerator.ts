@@ -17,7 +17,7 @@ interface GradeReportData {
 
 export const generateGradeReportHTML = (data: GradeReportData): string => {
     const { student, academic, grades, gpa, issued_at } = data;
-    const logoUrl = "/assets/phid_logo.png";
+    const logoUrl = "/assets/phid_logo.webp";
 
     // Función auxiliar para quitar decimales
     const formatInt = (val: any) => {

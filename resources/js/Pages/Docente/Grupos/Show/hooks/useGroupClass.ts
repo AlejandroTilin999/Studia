@@ -99,6 +99,13 @@ export function useGroupClass(classInfoProp?: any) {
             axios.post(route('docente.clases.update_theme', { uuid: loadId }), { color: newKey })
                 .then(() => {
                     SwalHelper.toast('Apariencia de la clase actualizada', 'success');
+
+                    // Emite evento en tiempo real a alumnos y otras pestañas
+                    try {
+                        const bc = new BroadcastChannel('school-cycle-channel');
+                        bc.postMessage({ type: 'cycle-update', msg: 'THEME_UPDATED' });
+                        bc.close();
+                    } catch(e) {}
                 })
                 .catch(err => {
                     console.error("Error al guardar tema:", err);
@@ -184,9 +191,14 @@ export function useGroupClass(classInfoProp?: any) {
             const num = parseInt(pNum);
             const pData = classInfo.parciales[num];
             if (pData) {
+                setActiveParcial(num);
                 setStudentGrades(pData.students);
                 setTasks(pData.tasks);
-                if (pData.config?.configured) setScreen('grades');
+                if (pData.config?.configured) {
+                    setScreen('grades');
+                } else {
+                    setScreen('wizard');
+                }
             }
         }
     }, [classInfo]);
@@ -227,10 +239,8 @@ export function useGroupClass(classInfoProp?: any) {
         });
     };
 
-    // Sincronizar configuraciones iniciales y por cambio de ID
-    useEffect(() => {
-        if (loadId) refreshClassData();
-    }, [loadId, refreshCounter]);
+    // Sincronizar configuraciones únicamente si se solicita refresco manual
+    // (no al montar para evitar bucle infinito con Inertia Deferred)
 
     // 3.2 Escuchar ráfagas de señales en tiempo real
     useEffect(() => {
@@ -308,6 +318,14 @@ export function useGroupClass(classInfoProp?: any) {
             })
             .then(res => {
                 SwalHelper.success('¡Configurado!', 'Los criterios han sido guardados correctamente.');
+                
+                // Emite evento en tiempo real a alumnos y otras pestañas
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'CRITERIA_UPDATED' });
+                    bc.close();
+                } catch(e) {}
+
                 refreshClassData(); // [OPTIMIZACIÓN] Recargar la Verdad Total
                 setScreen('grades');
             })
@@ -402,6 +420,9 @@ export function useGroupClass(classInfoProp?: any) {
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
+        if (activeParcial) {
+            setAllTasks(prev => ({ ...prev, [activeParcial]: newTasks }));
+        }
         if (loadId && activeParcial) {
             setIsSaving(true);
             axios.post(`/docente/clases/${loadId}/tareas`, {
@@ -413,6 +434,13 @@ export function useGroupClass(classInfoProp?: any) {
                 const updatedTasks = res.data.tareas;
                 setAllTasks(prev => ({ ...prev, [activeParcial]: updatedTasks }));
                 setTasks(updatedTasks);
+
+                // Emite evento en tiempo real a alumnos y otras pestañas
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'TASKS_UPDATED' });
+                    bc.close();
+                } catch(e) {}
             })
             .catch(err => {
                 console.error("Error al guardar tareas:", err);
@@ -432,16 +460,22 @@ export function useGroupClass(classInfoProp?: any) {
     }, []);
 
     const getStudentTasksAverage = React.useCallback((studentId: number): string => {
-        if (!tasks || tasks.length === 0) return "0";
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) return "0";
         let sumNormalized = 0;
         let count = 0;
+
         tasks.forEach(t => {
-            const score = parseFloat(t.calificaciones[studentId] || '0');
+            // [SEGURIDAD v6.2] Validar existencia de calificaciones
+            if (!t.calificaciones) return;
+
+            const scoreStr = t.calificaciones[studentId];
+            const score = (scoreStr !== undefined && scoreStr !== null && scoreStr !== '') ? parseFloat(scoreStr) : 0;
             const maxPoints = t.puntos || 10;
             const normalized = (score / maxPoints) * 10;
             sumNormalized += normalized;
             count++;
         });
+
         if (count === 0) return "0";
         const avg = sumNormalized / count;
         return formatIntGrade(avg);
@@ -461,10 +495,14 @@ export function useGroupClass(classInfoProp?: any) {
         setActiveTab('grades');
         setSelectedTaskId(null);
 
+        // Persistir estado en la URL sin recargar la página
+        const url = new URL(window.location.href);
+        url.searchParams.set('parcial', parcialNum.toString());
+        window.history.replaceState({}, '', url.toString());
+
         const config = configs[parcialNum];
         if (config?.configured) {
             setScreen('grades');
-            // Los datos ya están en el estado global (allGrades/allTasks)
         } else {
             setWizardStep(1);
             setDraftCriteria(DEFAULT_CRITERIA.map(c => ({ ...c })));
@@ -473,9 +511,15 @@ export function useGroupClass(classInfoProp?: any) {
     }
 
     function setScore(studentId: number, criterionId: number, val: string) {
-        setStudentGrades(prev => prev.map(s =>
-            s.id === studentId ? { ...s, calificaciones: { ...s.calificaciones, [criterionId]: val } } : s
-        ));
+        setStudentGrades(prev => {
+            const updated = prev.map(s =>
+                s.id === studentId ? { ...s, calificaciones: { ...s.calificaciones, [criterionId]: val } } : s
+            );
+            if (activeParcial) {
+                setAllGrades(allPrev => ({ ...allPrev, [activeParcial]: updated }));
+            }
+            return updated;
+        });
     }
 
     function handleAsentarCalificaciones() {
@@ -498,6 +542,14 @@ export function useGroupClass(classInfoProp?: any) {
             })
             .then(() => {
                 SwalHelper.success('¡Completado!', 'Calificaciones asentadas correctamente.');
+
+                // Emite evento en tiempo real a alumnos y otras pestañas
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'GRADES_UPDATED' });
+                    bc.close();
+                } catch(e) {}
+
                 refreshClassData(); // [OPTIMIZACIÓN] Recargar la Verdad Total de golpe
             })
             .catch(err => {
@@ -508,7 +560,7 @@ export function useGroupClass(classInfoProp?: any) {
     }
 
     function returnTaskGrade(taskId: number, studentId: number, score: string) {
-        if (!loadId) return;
+        if (!loadId) return Promise.resolve();
 
         setIsSaving(true);
         return axios.post(`/docente/clases/${loadId}/return-grade`, {
@@ -526,6 +578,64 @@ export function useGroupClass(classInfoProp?: any) {
             throw err;
         })
         .finally(() => setIsSaving(false));
+    }
+
+    function handleConcludeParcial() {
+        if (!loadId || !activeParcial) return;
+
+        // Validar que todos tengan calificación
+        const incomplete = students.some(s => getParcialAverage(s.id, activeParcial) === "—");
+
+        if (incomplete) {
+            SwalHelper.alert(
+                'Captura incompleta',
+                'No puedes concluir el parcial porque aún hay alumnos sin calificación final. Por favor, asegúrate de llenar todas las notas.',
+                'warning'
+            );
+            return;
+        }
+
+        const activeCriteria = configs[activeParcial]?.criteria ?? [];
+        const updatedGrades = studentGrades.map(s => {
+            const calificaciones = { ...s.calificaciones };
+            activeCriteria.forEach(c => {
+                if (c.sincronizar_tareas) {
+                    calificaciones[c.id] = getStudentTasksAverage(s.id);
+                }
+            });
+            return { ...s, calificaciones };
+        });
+
+        // 1. Asentar automáticamente primero para asegurar que todo esté guardado en DB
+        SwalHelper.loading('Sincronizando notas...', 'Asentando calificaciones antes de concluir');
+        axios.post(`/docente/clases/${loadId}/calificaciones`, {
+            parcial: activeParcial,
+            alumnos: updatedGrades
+        }).then(() => {
+            SwalHelper.confirm(
+                '¿Concluir Parcial oficialmente?',
+                'Una vez concluido, el parcial se bloqueará para edición y las notas serán finales para los alumnos.',
+                'Sí, Concluir',
+                'Cancelar',
+                'info'
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    SwalHelper.loading('Concluyendo parcial...', 'Generando actas y notificando alumnos');
+                    axios.post(`/docente/clases/${loadId}/conclude`, { parcial: activeParcial })
+                        .then(() => {
+                            SwalHelper.success('¡Parcial Concluido!', 'El periodo ha sido cerrado oficialmente.');
+                            refreshClassData();
+                        })
+                        .catch(err => {
+                            console.error("Error al concluir parcial:", err);
+                            SwalHelper.error('Error', 'No se pudo cerrar el parcial.');
+                        });
+                }
+            });
+        }).catch(err => {
+            console.error("Error al asentar calificaciones previas:", err);
+            SwalHelper.error('Error de Guardado', 'Primero deben poder guardarse las calificaciones.');
+        });
     }
 
     // 6. Modales y Estado de Chat/Selección
@@ -560,7 +670,7 @@ export function useGroupClass(classInfoProp?: any) {
             if (c.sincronizar_tareas && activeParcial === parcialNum) {
                 return getStudentTasksAverage(studentId) !== '—';
             }
-            const val = sGrade.calificaciones[c.id];
+            const val = sGrade.calificaciones?.[c.id];
             return val !== undefined && val !== null && val !== '';
         });
 
@@ -571,7 +681,7 @@ export function useGroupClass(classInfoProp?: any) {
             if (c.sincronizar_tareas && activeParcial === parcialNum) {
                 scoreVal = getStudentTasksAverage(studentId);
             } else {
-                scoreVal = sGrade.calificaciones[c.id] || '0';
+                scoreVal = sGrade.calificaciones?.[c.id] || '0';
             }
             return sum + (parseFloat(scoreVal) * c.porcentaje / 100);
         }, 0);
@@ -647,6 +757,7 @@ export function useGroupClass(classInfoProp?: any) {
         resetParcial,
         setScore,
         handleAsentarCalificaciones,
+        handleConcludeParcial,
         returnTaskGrade,
         selectedTaskId,
         setSelectedTaskId,

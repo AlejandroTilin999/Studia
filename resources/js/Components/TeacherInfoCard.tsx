@@ -43,7 +43,7 @@ export default function TeacherInfoCard({ name, specialty, email, groupsCount = 
 
                     <div className="hidden lg:flex flex-col items-start gap-1 shrink-0">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Institución</span>
-                        <img src="/assets/phid_logo.png" alt="Prepa Hidalgo" className="h-7 w-auto grayscale opacity-70" />
+                        <img src="/assets/phid_logo.webp" alt="Prepa Hidalgo" className="h-7 w-auto grayscale opacity-70" />
                     </div>
                 </div>
 

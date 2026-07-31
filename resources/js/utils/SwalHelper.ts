@@ -1,24 +1,18 @@
 import Swal, { SweetAlertIcon } from 'sweetalert2';
 
 /**
- * Utility helper for SweetAlert2 notifications to maintain consistency
- * and modularity across the application.
+ * Utility helper for SweetAlert2 notifications.
+ * Uses default SweetAlert2 styling as requested.
  */
 export const SwalHelper = {
     /**
-     * Basic alert with custom icon, title and text
+     * Basic alert
      */
     alert: (title: string, text: string, icon: SweetAlertIcon = 'info') => {
         return Swal.fire({
             title,
             text,
             icon,
-            confirmButtonColor: '#1e88e5',
-            confirmButtonText: 'Entendido',
-            customClass: {
-                popup: 'rounded-xl',
-                confirmButton: 'rounded-lg px-6 py-2 text-sm font-semibold'
-            }
         });
     },
 
@@ -33,9 +27,6 @@ export const SwalHelper = {
             showConfirmButton: false,
             timer: 2000,
             timerProgressBar: true,
-            customClass: {
-                popup: 'rounded-xl',
-            }
         });
     },
 
@@ -47,12 +38,6 @@ export const SwalHelper = {
             title,
             text,
             icon: 'error',
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Cerrar',
-            customClass: {
-                popup: 'rounded-xl',
-                confirmButton: 'rounded-lg px-6 py-2 text-sm font-semibold'
-            }
         });
     },
 
@@ -67,9 +52,6 @@ export const SwalHelper = {
             didOpen: () => {
                 Swal.showLoading();
             },
-            customClass: {
-                popup: 'rounded-xl',
-            }
         });
     },
 
@@ -81,7 +63,7 @@ export const SwalHelper = {
     },
 
     /**
-     * Confirmation dialog for critical actions
+     * Confirmation dialog
      */
     confirm: (
         title: string,
@@ -95,21 +77,60 @@ export const SwalHelper = {
             text,
             icon,
             showCancelButton: true,
-            confirmButtonColor: '#1e88e5',
-            cancelButtonColor: '#64748b',
             confirmButtonText: confirmText,
             cancelButtonText: cancelText,
             reverseButtons: true,
+        });
+    },
+
+    /**
+     * Confirmation for destructive actions with password input
+     * Uses default SweetAlert2 input styling
+     */
+    passwordConfirm: (
+        title: string,
+        text: string,
+        confirmText: string = 'Confirmar',
+        onConfirm: (password: string) => void
+    ) => {
+        return Swal.fire({
+            title,
+            text,
+            icon: 'warning',
+            input: 'password',
+            inputPlaceholder: 'Ingresa tu contraseña',
+            inputAttributes: {
+                autocapitalize: 'off',
+                autocorrect: 'off',
+                autocomplete: 'new-password'
+            },
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ef4444',
+            showLoaderOnConfirm: true,
             customClass: {
-                popup: 'rounded-xl',
-                confirmButton: 'rounded-lg px-6 py-2 text-sm font-semibold',
-                cancelButton: 'rounded-lg px-6 py-2 text-sm font-semibold'
+                actions: 'w-full flex justify-center gap-3 px-6 md:px-12',
+                confirmButton: 'flex-1 h-12 rounded-lg font-bold',
+                cancelButton: 'flex-1 h-12 rounded-lg font-bold'
+            },
+            preConfirm: (password) => {
+                if (!password) {
+                    Swal.showValidationMessage('La contraseña es necesaria');
+                    return false;
+                }
+                return password;
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                onConfirm(result.value);
             }
         });
     },
 
     /**
-     * Toast notification (small, bottom-right)
+     * Toast notification
      */
     toast: (title: string, icon: SweetAlertIcon = 'success') => {
         const Toast = Swal.mixin({

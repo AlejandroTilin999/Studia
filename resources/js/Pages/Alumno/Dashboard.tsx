@@ -45,6 +45,34 @@ export default function AlumnoDashboard({
     const [selectedParcial, setSelectedParcial] = useState<number | null>(null);
     const [activeSubjectTab, setActiveSubjectTab] = useState<'novedades' | 'trabajo'>('novedades');
 
+    // [LÓGICA v7.0] Sincronización en tiempo real con cambios en el Admin (ThunderSync V7)
+    useEffect(() => {
+        const bc = new BroadcastChannel('school-cycle-channel');
+
+        const performHardRefresh = () => {
+            console.log('%c[ThunderSync] ⚡ Cambio detectado. Iniciando ráfaga de sincronización...', 'color: #0266E0; font-weight: bold;');
+
+            // Ráfaga de 3 intentos para asegurar consistencia con el servidor (Bypass Cache)
+            const delays = [0, 800, 2000];
+            delays.forEach(delay => {
+                setTimeout(() => {
+                    router.reload({
+                        only: ['kardex', 'taskList', 'alumnoGroups', 'isCycleActive'],
+                        onSuccess: () => console.log('[ThunderSync] ✅ Datos actualizados.')
+                    });
+                }, delay);
+            });
+        };
+
+        bc.onmessage = (event) => {
+            if (event.data?.type === 'cycle-update') {
+                performHardRefresh();
+            }
+        };
+
+        return () => bc.close();
+    }, []);
+
     // 1. Catálogo de materias
     const subjects = useMemo(() => {
         const groups = propAlumnoGroups || [];
@@ -145,7 +173,12 @@ export default function AlumnoDashboard({
     }, [taskList, activeParcialNum]);
 
     const currentSubjectTasks = useMemo(() => {
-        return (taskList || []).filter(t => selectedSubject && t.subjectName === selectedSubject.name);
+        if (!selectedSubject) return [];
+        const sName = (selectedSubject.name || '').trim().toLowerCase();
+        return (taskList || []).filter(t => {
+            const tName = (t.subjectName || '').trim().toLowerCase();
+            return tName === sName || (t.carga_id && (t.carga_id === selectedSubject.id || t.carga_id === selectedSubject.uuid));
+        });
     }, [taskList, selectedSubject]);
 
     const activeCriteria = useMemo(() => {
@@ -162,6 +195,17 @@ export default function AlumnoDashboard({
 
     // Comentarios
     const [taskComments] = useState<Record<number, string[]>>({});
+
+    const currentYear = useMemo(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const yearParam = urlParams.get('year');
+        return yearParam ? parseInt(yearParam) : new Date().getFullYear();
+    }, []);
+
+    const activeParity = useMemo(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        return (urlParams.get('parity') as 'odd' | 'even') || 'odd';
+    }, []);
 
     return (
         <AuthenticatedLayout noPadding>
@@ -206,16 +250,20 @@ export default function AlumnoDashboard({
 
                                                             const isGraded = avg !== '—';
 
-                                                            // [LÓGICA v6.0] Bloqueo sincronizado
+                                                            // [LÓGICA v6.5] Bloqueo sincronizado
                                                             const serverLocked = pData?.lock_info?.allowed === false;
-                                                            // Bloqueo por secuencia: Parcial 2 necesita el 1 calificado, etc.
+
+                                                            // Bloqueo por secuencia: Parcial 2 se desbloquea al estar configurado el Parcial 1, etc.
                                                             const sequenceLocked = num === 2
-                                                                ? (Array.isArray(kardex) && kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.average === '—')
+                                                                ? (Array.isArray(kardex) && !kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.configured)
                                                                 : num === 3
-                                                                    ? (Array.isArray(kardex) && (kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.average === '—' || kardex.find(k => k.subject === selectedSubject.name)?.details?.[2]?.average === '—'))
+                                                                    ? (Array.isArray(kardex) && (!kardex.find(k => k.subject === selectedSubject.name)?.details?.[1]?.configured || !kardex.find(k => k.subject === selectedSubject.name)?.details?.[2]?.configured))
                                                                     : false;
 
-                                                            const isLocked = serverLocked || sequenceLocked;
+                                                            // [MEJORA v6.8] Permitir acceso en modo lectura incluso si está bloqueado por el servidor
+                                                            const isLocked = sequenceLocked;
+                                                            const isAccessRestricted = serverLocked && done;
+
                                                             const lockReason = serverLocked ? pData?.lock_info?.reason : 'Se desbloqueará al concluir el parcial anterior.';
 
                                                             return (
@@ -224,7 +272,7 @@ export default function AlumnoDashboard({
                                                                     onClick={() => !isLocked && setSelectedParcial(num)}
                                                                     className={`flex flex-col h-full bg-white border rounded-2xl p-6 transition-all ${
                                                                         isLocked
-                                                                            ? 'opacity-60 border-slate-100 cursor-not-allowed shadow-none'
+                                                                            ? 'opacity-40 border-slate-100 cursor-not-allowed shadow-none grayscale'
                                                                             : 'border-slate-100 hover:shadow-lg hover:border-blue-200 cursor-pointer shadow-sm'
                                                                     }`}
                                                                 >
@@ -233,6 +281,10 @@ export default function AlumnoDashboard({
                                                                         {isLocked ? (
                                                                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold uppercase" title={lockReason}>
                                                                                 <LockKeyhole size={12} /> Bloqueado
+                                                                            </span>
+                                                                        ) : isAccessRestricted ? (
+                                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold uppercase" title={lockReason}>
+                                                                                <LockKeyhole size={12} /> Cerrado (Lectura)
                                                                             </span>
                                                                         ) : (
                                                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase ${
@@ -296,7 +348,7 @@ export default function AlumnoDashboard({
                                                 ) : (
                                                     <div className="space-y-6">
                                                         <button onClick={() => setSelectedParcial(null)} className="text-xs font-bold text-slate-400">← Volver</button>
-                                                        <SubjectClasswork tasks={currentSubjectTasks.filter(t => t.parcial === selectedParcial)} onSelectTask={setSelectedTask} />
+                                                        <SubjectClasswork tasks={currentSubjectTasks.filter(t => !t.parcial || Number(t.parcial) === Number(selectedParcial))} onSelectTask={setSelectedTask} />
                                                     </div>
                                                 )}
                                             </div>

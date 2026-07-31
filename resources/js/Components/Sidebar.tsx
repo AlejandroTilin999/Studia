@@ -146,7 +146,11 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       )}>
         {isMenuExpanded ? (
           <>
-            <img src="/assets/phid_logo.png" alt="Logo Prepa Hidalgo" className="h-[34px] w-auto object-contain" />
+            <div
+              className="h-[34px] w-32 bg-[url('/assets/phid_logo.webp')] bg-contain bg-no-repeat bg-left shrink-0"
+              role="img"
+              aria-label="Logo Prepa Hidalgo"
+            />
             <button
                 type="button"
                 onClick={() => isMobile ? setOpenMobile(!openMobile) : setExpanded(!expanded)}
@@ -164,7 +168,11 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             >
                 <PanelLeft size={18} />
             </button>
-            <img src="/assets/icono-sidebar.png" alt="Icono" className="h-8 w-auto object-contain" />
+            <div
+              className="h-8 w-8 bg-[url('/assets/icono-sidebar.webp')] bg-contain bg-no-repeat bg-center shrink-0"
+              role="img"
+              aria-label="Icono"
+            />
           </>
         )}
       </div>
@@ -202,13 +210,21 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                       {alumnoGroups.map((s: any) => {
                         const isSubActive = url.includes(`id=${s.id}`);
                         return (
-                          <button key={s.id} onClick={() => router.visit(`/alumno/materias?id=${s.id}`)} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all", isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600")}>
+                          <Link
+                            key={s.id}
+                            href={`/alumno/materias?id=${s.id}`}
+                            prefetch="hover"
+                            className={cn(
+                                "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all",
+                                isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                            )}
+                          >
                             <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isSubActive ? "bg-[#0266E0]" : "bg-slate-300")} />
                             <div className="min-w-0">
                                 <span className={cn("block text-[13px] leading-tight", isSubActive ? "font-bold" : "font-semibold")}>{s.nombre}</span>
                                 <span className="block text-[10px] text-slate-400 font-medium truncate mt-0.5">{s.docente}</span>
                             </div>
-                          </button>
+                          </Link>
                         );
                       })}
                     </div>
@@ -236,13 +252,21 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                       {docenteGroups.map((g: any) => {
                         const isSubActive = pathname === '/docente/grupos/show' && url.includes(`id=${g.id}`);
                         return (
-                          <button key={g.id} onClick={() => router.visit(`/docente/grupos/show?id=${g.id}`)} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all", isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600")}>
+                          <Link
+                            key={g.id}
+                            href={`/docente/grupos/show?id=${g.id}`}
+                            prefetch="hover"
+                            className={cn(
+                                "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all",
+                                isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                            )}
+                          >
                             <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isSubActive ? "bg-[#0266E0]" : "bg-slate-300")} />
                             <div className="min-w-0">
                                 <span className={cn("block text-[13px] leading-tight", isSubActive ? "font-bold" : "font-semibold")}>Grupo {g.nombre_grupo}</span>
                                 <span className="block text-[10px] text-slate-400 font-medium truncate mt-0.5">{g.materia}</span>
                             </div>
-                          </button>
+                          </Link>
                         );
                       })}
                     </div>
@@ -255,7 +279,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
               <SidebarMenuItem key={item.name} className="mb-1">
                 <Link
                   href={item.path}
-                  prefetch="hover"
+                  prefetch={item.name === 'Inicio' ? ['mount', 'hover'] : 'hover'}
                   className={cn(
                     "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
                     isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full",
@@ -320,7 +344,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     <div className="absolute bottom-full mb-2 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
                         <button
                             type="button"
-                            onClick={() => { router.visit('/profile'); setUserMenuOpen(false); }}
+                            onClick={() => { router.visit('/perfil'); setUserMenuOpen(false); }}
                             className="w-full flex items-center gap-2.5 px-4 py-3 text-[12px] font-bold text-slate-700 hover:bg-slate-50 transition-all text-left"
                         >
                             <User size={14} className="text-slate-400" />

@@ -27,6 +27,7 @@ export interface TeacherCatalogItem {
     nombre_completo: string;
     especialidad: string;
     area?: string;
+    areas?: string[];
 }
 
 export interface AcademicLoadItem {
