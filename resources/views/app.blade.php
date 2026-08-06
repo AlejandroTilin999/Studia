@@ -17,7 +17,6 @@
         <link rel="preload" href="/assets/studia-logo.webp" as="image">
         <link rel="preload" href="/assets/admin-dashboard.webp" as="image">
         <link rel="preload" href="/assets/docente-dashboard.webp" as="image">
-        <link rel="preload" href="/assets/persona-dashboard.webp" as="image">
 
         <!-- Scripts -->
         @routes

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
+import { Head, useForm, usePage, router, Deferred } from '@inertiajs/react';
 import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
 import QuickSummaryWidget, { MetricItem } from '@/Components/QuickSummaryWidget';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { cycleService } from '@/services/cycleService';
+import DotsLoader from '@/Components/ui/DotsLoader';
 
 // Subcomponents
 import CycleStatusCard from './components/CycleStatusCard';
@@ -275,7 +276,13 @@ export default function AdminDashboardIndex() {
                     </div>
 
                     {/* Activities Table */}
-                    <RecentActivitiesTable activities={recentActivities} />
+                    <Deferred data="recentActivities" fallback={
+                        <div className="bg-white rounded-lg p-8 border border-slate-100 flex flex-col items-center justify-center min-h-[300px]">
+                            <DotsLoader label="Sincronizando bitácora" sublabel="Consultando actividades recientes..." />
+                        </div>
+                    }>
+                        <RecentActivitiesTable activities={recentActivities} />
+                    </Deferred>
 
                 </div>
 

@@ -4,36 +4,47 @@ namespace App\Http\Controllers;
 
 use App\Models\Notificacion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class NotificacionController extends Controller
 {
     public function index(Request $request)
     {
-        $user = $request->user();
+        $userId = $request->user()->id;
 
         return Inertia::render('Admin/Notificaciones/Index', [
-            'notificaciones' => Inertia::defer(fn() => Notificacion::where('usuario_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->paginate(20)
-                ->through(fn($n) => [
-                    'id' => $n->id,
-                    'titulo' => $n->titulo,
-                    'mensaje' => $n->mensaje,
-                    'leido' => (bool)$n->leido,
-                    'fecha' => $n->created_at->diffForHumans(),
-                ])),
-            'notifStats' => Inertia::defer(fn() => [
-                'total' => Notificacion::where('usuario_id', $user->id)->count(),
-                'unread' => Notificacion::where('usuario_id', $user->id)->where('leido', false)->count(),
-            ])
+            'notificaciones' => Inertia::defer(fn() => 
+                Notificacion::select('id', 'titulo', 'mensaje', 'leido', 'created_at')
+                    ->where('usuario_id', $userId)
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20)
+                    ->through(fn($n) => [
+                        'id' => $n->id,
+                        'titulo' => $n->titulo,
+                        'mensaje' => $n->mensaje,
+                        'leido' => (bool)$n->leido,
+                        'fecha' => $n->created_at->diffForHumans(),
+                    ])
+            ),
+            'notifStats' => Inertia::defer(function () use ($userId) {
+                $stats = Notificacion::where('usuario_id', $userId)
+                    ->selectRaw('COUNT(*) as total, COUNT(CASE WHEN leido = false THEN 1 END) as unread')
+                    ->first();
+
+                return [
+                    'total' => (int) ($stats->total ?? 0),
+                    'unread' => (int) ($stats->unread ?? 0),
+                ];
+            })
         ]);
     }
 
-    public function markAsRead($id)
+    public function markAsRead(Request $request, $id)
     {
-        $notificacion = Notificacion::findOrFail($id);
-        $notificacion->update(['leido' => true]);
+        Notificacion::where('id', $id)
+            ->where('usuario_id', $request->user()->id)
+            ->update(['leido' => true]);
 
         return redirect()->back();
     }
@@ -47,3 +58,4 @@ class NotificacionController extends Controller
         return redirect()->back();
     }
 }
+

@@ -128,9 +128,9 @@ class DocenteClassroomController extends Controller
                         $e->usuario_id => (string)\App\Services\GradeService::formatGrade($e->calificacion)
                     ])->toArray(),
                     'archivos' => $t->entregas->mapWithKeys(fn($e) => [
-                        $e->usuario_id => $e->archivo_url ? [
-                            'url' => $e->archivo_url,
-                            'nombre' => $e->archivo_nombre,
+                        $e->usuario_id => ($e->archivo_url || $e->google_drive_url) ? [
+                            'url' => $e->archivo_url ?: $e->google_drive_url,
+                            'nombre' => $e->archivo_nombre ?: 'Documento de Drive',
                             'estatus' => $e->estatus
                         ] : null
                     ])->toArray()
@@ -199,9 +199,10 @@ class DocenteClassroomController extends Controller
             ->where('estatus', 'active')
             ->pluck('usuario_id');
 
-        foreach ($studentUserIds as $sUserId) {
-            \App\Services\GradeConsolidator::consolidate($sUserId, $load->id);
-        }
+        \App\Services\GradeConsolidator::consolidateGroup($load->id);
+
+        // Notificar actualización masiva
+        event(new \App\Events\GroupDataUpdated($load->grupo_id, 'grades'));
 
         $this->clearStudentsCache($load);
 
@@ -231,6 +232,7 @@ class DocenteClassroomController extends Controller
         ]);
 
         $grades = $request->input('alumnos');
+        $upsertGrades = [];
 
         foreach ($grades as $studentGrade) {
             $userId = $studentGrade['id'];
@@ -238,13 +240,24 @@ class DocenteClassroomController extends Controller
 
             foreach ($scores as $criterionId => $score) {
                 $finalScore = ($score !== '' && $score !== null) ? (int)round(floatval($score)) : '';
-                Grade::updateOrCreate(
-                    ['criterio_id' => $criterionId, 'usuario_id'  => $userId],
-                    ['calificacion' => (string)$finalScore, 'carga_id' => $load->id]
-                );
+                $upsertGrades[] = [
+                    'usuario_id' => $userId,
+                    'carga_id' => $load->id,
+                    'criterio_id' => $criterionId,
+                    'calificacion' => (string)$finalScore,
+                    'updated_at' => now(),
+                ];
             }
-            \App\Services\GradeConsolidator::consolidate($userId, $load->id);
         }
+
+        if (!empty($upsertGrades)) {
+            Grade::upsert($upsertGrades, ['usuario_id', 'carga_id', 'criterio_id'], ['calificacion', 'updated_at']);
+        }
+
+        // Consolidación masiva (Optimizado)
+        \App\Services\GradeConsolidator::consolidateGroup($load->id);
+
+        event(new \App\Events\GroupDataUpdated($load->grupo_id, 'grades'));
 
         $this->clearStudentsCache($load);
         return response()->json(['message' => 'Calificaciones asentadas']);
@@ -255,6 +268,7 @@ class DocenteClassroomController extends Controller
      */
     public function saveTareas(Request $request, $uuid)
     {
+        \Illuminate\Support\Facades\Log::info("RT_DEBUG: saveTareas started for UUID: $uuid");
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
         $request->validate([
             'parcial' => 'required|integer',
@@ -265,48 +279,80 @@ class DocenteClassroomController extends Controller
         $tasksData = $request->input('tareas');
         $activeIds = [];
 
-        foreach ($tasksData as $taskItem) {
-            $taskId = isset($taskItem['id']) && is_numeric($taskItem['id']) ? $taskItem['id'] : null;
-            $tarea = Tarea::updateOrCreate(
-                ['id' => $taskId],
-                [
-                    'carga_id' => $load->id,
-                    'parcial' => $parcial,
-                    'nombre' => $taskItem['nombre'],
-                    'descripcion' => $taskItem['descripcion'] ?? '',
-                    'fecha_entrega' => $taskItem['fecha_entrega'] ?? null,
-                    'puntos' => $taskItem['puntos'] ?? 10,
-                ]
-            );
-            $activeIds[] = $tarea->id;
+        $upsertSubmissions = [];
 
-            if (isset($taskItem['calificaciones']) && is_array($taskItem['calificaciones'])) {
-                foreach ($taskItem['calificaciones'] as $userId => $score) {
-                    if (is_numeric($userId)) {
-                        $finalScore = ($score !== null && $score !== '') ? (int)round(floatval($score)) : '';
-                        EntregaTarea::updateOrCreate(
-                            ['tarea_id' => $tarea->id, 'usuario_id' => $userId],
-                            [
+        \App\Models\Tarea::withoutEvents(function () use ($tasksData, $load, $parcial, &$activeIds, &$upsertSubmissions) {
+            foreach ($tasksData as $taskItem) {
+                $taskId = isset($taskItem['id']) && is_numeric($taskItem['id']) ? $taskItem['id'] : null;
+                $fechaEntrega = $taskItem['fecha_entrega'] ?? null;
+                if ($fechaEntrega && !empty($taskItem['hora_entrega'])) {
+                    $fechaEntrega = explode(' ', $fechaEntrega)[0] . ' ' . $taskItem['hora_entrega'] . ':00';
+                }
+
+                $tarea = Tarea::updateOrCreate(
+                    ['id' => $taskId],
+                    [
+                        'carga_id' => $load->id,
+                        'parcial' => $parcial,
+                        'nombre' => $taskItem['nombre'],
+                        'descripcion' => $taskItem['descripcion'] ?? '',
+                        'fecha_entrega' => $fechaEntrega,
+                        'puntos' => $taskItem['puntos'] ?? 10,
+                    ]
+                );
+                $activeIds[] = $tarea->id;
+
+                if (isset($taskItem['calificaciones']) && is_array($taskItem['calificaciones'])) {
+                    foreach ($taskItem['calificaciones'] as $userId => $score) {
+                        if (is_numeric($userId)) {
+                            $finalScore = ($score !== null && $score !== '') ? (int)round(floatval($score)) : '';
+                            $upsertSubmissions[] = [
+                                'tarea_id' => $tarea->id,
+                                'usuario_id' => $userId,
                                 'calificacion' => (string)$finalScore,
-                                'status' => ($finalScore !== '') ? 'graded' : 'pending'
-                            ]
-                        );
+                                'estatus' => ($finalScore !== '') ? 'graded' : 'pending',
+                                'updated_at' => now(),
+                            ];
+                        }
                     }
+                }
+            }
+        });
+
+        // Optimización masiva de Entregas
+        if (!empty($upsertSubmissions)) {
+            $tareaIds = array_unique(array_column($upsertSubmissions, 'tarea_id'));
+            $userIds = array_unique(array_column($upsertSubmissions, 'usuario_id'));
+
+            $existingSubmissions = EntregaTarea::whereIn('tarea_id', $tareaIds)
+                ->whereIn('usuario_id', $userIds)
+                ->get();
+
+            foreach ($upsertSubmissions as $sub) {
+                $existing = $existingSubmissions->where('tarea_id', $sub['tarea_id'])
+                    ->where('usuario_id', $sub['usuario_id'])
+                    ->first();
+
+                if ($existing) {
+                    $existing->update(['calificacion' => $sub['calificacion'], 'estatus' => $sub['estatus']]);
+                } else {
+                    EntregaTarea::create($sub);
                 }
             }
         }
 
         Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->delete();
 
-        // [CONSOLIDACIÓN AUTOMÁTICA] Recalcular el consolidado de cada alumno de la clase
-        $studentUserIds = \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
-            ->where('ciclo_id', $load->ciclo_id)
-            ->where('estatus', 'active')
-            ->pluck('usuario_id');
-
-        foreach ($studentUserIds as $sUserId) {
-            \App\Services\GradeConsolidator::consolidate($sUserId, $load->id);
+        // [CONSOLIDACIÓN RÁPIDA]
+        try {
+            \App\Services\GradeConsolidator::consolidateGroup($load->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("RT_DEBUG: Error in consolidateGroup: " . $e->getMessage());
         }
+
+        // Notificar actualización masiva
+        \Illuminate\Support\Facades\Log::info("RT_DEBUG: Dispatching GroupDataUpdated for group: " . $load->grupo_id);
+        event(new \App\Events\GroupDataUpdated($load->grupo_id, 'all'));
 
         $this->clearStudentsCache($load);
 
@@ -322,6 +368,7 @@ class DocenteClassroomController extends Controller
                 ])->toArray()
             ]);
 
+        \Illuminate\Support\Facades\Log::info("RT_DEBUG: saveTareas finished successfully");
         return response()->json([
             'message' => 'Tareas guardadas',
             'tareas' => $updatedTasks
@@ -363,7 +410,11 @@ class DocenteClassroomController extends Controller
         ]);
 
         // 3. Consolidar promedios
-        \App\Services\GradeConsolidator::consolidate($request->usuario_id, $load->id);
+        \App\Models\Grade::withoutEvents(function () use ($request, $load) {
+            \App\Services\GradeConsolidator::consolidate($request->usuario_id, $load->id);
+        });
+
+        event(new \App\Events\GroupDataUpdated($load->grupo_id, 'grades'));
 
         $this->clearStudentsCache($load);
 

@@ -34,7 +34,7 @@ export default function DashboardWelcomeBanner({
         ? '/assets/admin-dashboard.webp'
         : role === 'DOCENTE'
             ? '/assets/docente-dashboard.webp'
-            : '/assets/alumna.webp'; // Fallback to alumna.webp if persona-dashboard is missing
+            : '/assets/docente-dashboard.webp';
 
     const currentDate = new Date().toLocaleDateString('es-ES', {
         weekday: 'long',

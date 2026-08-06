@@ -1,6 +1,7 @@
 import { PropsWithChildren, ReactNode } from 'react';
 import Sidebar, { SidebarProvider, useSidebar } from '@/Components/Sidebar';
 import { PanelLeft } from 'lucide-react';
+import { useRealtime } from '@/hooks/useRealtime';
 
 interface AuthenticatedProps {
     header?: ReactNode;
@@ -13,6 +14,9 @@ function LayoutContent({
     children,
 }: PropsWithChildren<AuthenticatedProps>) {
     const { isMobile, setOpenMobile } = useSidebar();
+
+    // Initialize global real-time listeners for the authenticated user
+    useRealtime();
 
     return (
         <div className="h-screen w-full flex bg-white overflow-hidden relative flex-col md:flex-row text-left">

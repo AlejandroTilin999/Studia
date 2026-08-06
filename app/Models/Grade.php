@@ -23,6 +23,13 @@ class Grade extends Model
         'estatus'
     ];
 
+    protected static function booted()
+    {
+        static::saved(function ($grade) {
+            event(new \App\Events\GradeUpdated($grade));
+        });
+    }
+
     /**
      * Relación con el Criterio de Evaluación (opcional)
      */

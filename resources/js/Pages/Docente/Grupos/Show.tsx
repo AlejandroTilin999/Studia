@@ -12,9 +12,15 @@ import GradesTab from './Show/components/GradesTab';
 import FinalGradesModal from './Show/components/FinalGradesModal';
 import TaskGradesModal from './Show/components/TaskGradesModal';
 import DotsLoader from '@/Components/ui/DotsLoader';
+import { useRealtime } from '@/hooks/useRealtime';
 
 function DocenteGruposContent({ classInfo }: { classInfo: any }) {
     const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, setTasks, saveTasks, activeTab, setActiveTab, students, studentGrades, setStudentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, returnTaskGrade, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid, isReadOnly, lockReason, lockInfos, isSaving, handleConcludeParcial } = useGroupClass(classInfo);
+
+    const { subscribeToGroup } = useRealtime();
+
+    // Subscribe to real-time events for this academic group
+    subscribeToGroup(classInfo?.grupo_id);
 
     const parcialLabel = activeParcial ? PARCIALES.find(p => p.num === activeParcial)?.label : '';
     const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];

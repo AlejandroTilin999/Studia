@@ -59,4 +59,10 @@ class Student extends Model
     {
         return $this->hasMany(Enrollment::class, 'usuario_id', 'usuario_id');
     }
+
+    public function documents()
+    {
+        return $this->hasMany(StudentDocument::class, 'alumno_id');
+    }
 }
+

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicPeriod;
 use App\Models\Specialty;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SpecialtyController extends Controller
@@ -12,29 +14,31 @@ class SpecialtyController extends Controller
     {
         return Inertia::render('Admin/Especialidades/Index', [
             'especialidades' => Inertia::defer(function () {
-                return Specialty::withCount('courses')->get()->map(function ($s) {
-                    return [
+                return Specialty::select('id', 'nombre', 'codigo', 'sub_areas')
+                    ->withCount('courses')
+                    ->get()
+                    ->map(fn($s) => [
                         'id' => $s->id,
                         'nombre' => $s->nombre,
                         'codigo' => $s->codigo,
                         'sub_areas' => $s->sub_areas ?? [],
                         'courses_count' => $s->courses_count,
-                    ];
-                });
+                    ]);
             }),
             'specialtyDistribution' => Inertia::defer(function () {
-                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
-                if (!$activeCycle) return [];
+                $activeCycleId = AcademicPeriod::where('activo', true)->value('id');
+                if (!$activeCycleId) return [];
 
-                return \DB::table('inscripciones')
+                $colors = ['#0266E0', '#4db6ac', '#ab47bc', '#ffa726', '#ef5350'];
+
+                return DB::table('inscripciones')
                     ->join('grupos', 'inscripciones.grupo_id', '=', 'grupos.id')
-                    ->select('grupos.especialidad as name', \DB::raw('count(*) as count'))
+                    ->select('grupos.especialidad as name', DB::raw('count(*) as count'))
                     ->where('inscripciones.estatus', 'active')
-                    ->where('inscripciones.ciclo_id', $activeCycle->id)
+                    ->where('inscripciones.ciclo_id', $activeCycleId)
                     ->groupBy('grupos.especialidad')
                     ->get()
-                    ->map(function($item, $index) {
-                        $colors = ['#0266E0', '#4db6ac', '#ab47bc', '#ffa726', '#ef5350'];
+                    ->map(function($item, $index) use ($colors) {
                         $color = $colors[$index % count($colors)];
                         return [
                             'name' => $item->name ?: 'General',
@@ -97,3 +101,4 @@ class SpecialtyController extends Controller
         return redirect()->back();
     }
 }
+

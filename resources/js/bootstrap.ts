@@ -2,3 +2,31 @@ import axios from 'axios';
 window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+
+window.Pusher = Pusher;
+
+/**
+ * Laravel Echo configuration for Reverb
+ */
+window.Echo = new Echo({
+    broadcaster: 'reverb',
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
+    wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+    wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+    enabledTransports: ['ws', 'wss'],
+    // Optimización de reconexión y latencia
+    unavailable_timeout: 5000,
+    activityTimeout: 10000,
+});
+
+/**
+ * Monitoring connection health
+ */
+window.Echo.connector.pusher.connection.bind('state_change', (states: any) => {
+    console.log(`%c[RT] 🛰️ Connection state: ${states.current}`, 'color: #3b82f6; font-weight: bold;');
+});

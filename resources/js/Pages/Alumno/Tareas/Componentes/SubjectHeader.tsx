@@ -83,10 +83,10 @@ export default function SubjectHeader({
                         </div>
 
                         {/* Widget de Información Rápida (Estilo Docente) */}
-                        <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 flex flex-col justify-center h-full select-none text-left relative">
-                            <h3 className="absolute top-6 left-6 sm:left-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Información Académica</h3>
+                        <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 flex flex-col justify-center h-full select-none text-left">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Información Académica</h3>
 
-                            <div className="flex flex-col justify-center gap-1.5 mt-2">
+                            <div className="flex flex-col justify-center gap-1.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[12px] font-normal text-slate-600">Docente titular</span>
                                     <span className="text-[12px] font-bold text-slate-800 truncate max-w-[120px]" title={subject.teacher}>{subject.teacher}</span>

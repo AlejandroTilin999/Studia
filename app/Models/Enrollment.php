@@ -20,6 +20,16 @@ class Enrollment extends Model
         'estatus',
     ];
 
+    protected static function booted()
+    {
+        static::saved(function ($enrollment) {
+            event(new \App\Events\EnrollmentChanged($enrollment));
+        });
+        static::deleted(function ($enrollment) {
+            event(new \App\Events\EnrollmentChanged($enrollment));
+        });
+    }
+
     /**
      * Relación con las Calificaciones (Kardex)
      */

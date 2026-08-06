@@ -11,13 +11,13 @@ export default function NavigationTabs({
     setActiveTab,
 }: NavigationTabsProps) {
     return (
-        <div className="flex items-center gap-2 p-1 bg-transparent w-full mb-8">
+        <div className="flex items-center gap-1.5 p-1 bg-transparent w-full mb-6 overflow-x-auto no-scrollbar scrollbar-none">
             <ButtonTab
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 tab="activities"
                 name="Actividades"
-                icon={<FileText size={18} />}
+                icon={<FileText size={16} />}
             />
 
             <ButtonTab
@@ -25,7 +25,7 @@ export default function NavigationTabs({
                 setActiveTab={setActiveTab}
                 tab="tasks"
                 name="Calificar"
-                icon={<Stamp size={18} />}
+                icon={<Stamp size={16} />}
             />
 
             <ButtonTab
@@ -33,7 +33,7 @@ export default function NavigationTabs({
                 setActiveTab={setActiveTab}
                 tab="grades"
                 name="Registro"
-                icon={<ClipboardList size={18} />}
+                icon={<ClipboardList size={16} />}
             />
         </div>
     );

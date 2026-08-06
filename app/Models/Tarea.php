@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Tarea extends Model
 {
     protected $table = 'tareas';
-    protected $fillable = ['carga_id', 'parcial', 'nombre', 'descripcion', 'fecha_entrega', 'puntos'];
+    protected $fillable = ['carga_id', 'parcial', 'nombre', 'descripcion', 'fecha_entrega', 'puntos', 'tipo'];
+
+    protected static function booted()
+    {
+        static::created(function ($tarea) {
+            event(new \App\Events\TaskCreated($tarea));
+        });
+        static::updated(function ($tarea) {
+            event(new \App\Events\TaskUpdated($tarea));
+        });
+    }
 
     public function academicLoad()
     {

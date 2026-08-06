@@ -25,8 +25,11 @@ class AcademicLoadController extends Controller
             'loads' => Inertia::defer(function () use ($search, $workingCycle) {
                 $query = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user']);
 
-                // [AUTO-FILTRO v3.6] Mostrar cargas del ciclo de trabajo (Activo o Planeación)
-                if ($workingCycle && !$search) {
+                // [FILTRO DE CARGAS] Si viene ciclo explícito, filtrar por él; de lo contrario mostrar cargas del ciclo de trabajo o todas
+                $cycleFilter = request('cycle');
+                if ($cycleFilter && $cycleFilter !== 'all') {
+                    $query->where('ciclo_id', $cycleFilter);
+                } elseif (!$search && $workingCycle) {
                     $query->where('ciclo_id', $workingCycle->id);
                 }
 
@@ -77,6 +80,7 @@ class AcademicLoadController extends Controller
                 'id' => $g->id,
                 'nombre' => $g->nombre,
                 'codigo' => $g->codigo,
+                'semestre' => $g->semestre,
                 'especialidad' => $g->especialidad,
             ])),
             'courses' => Inertia::defer(fn() => Course::with('specialties')->get()->map(fn($c) => [

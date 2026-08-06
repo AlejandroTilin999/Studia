@@ -2,17 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AcademicGroup;
-use App\Models\AcademicPeriod;
-use App\Models\Enrollment;
-use App\Models\AdminAuditLog;
+use App\Models\{AcademicGroup, AcademicPeriod, AdminAuditLog, Enrollment, Student};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PromotionController extends Controller
 {
     /**
-     * Procesa la promoción masiva de alumnos de un grupo a otro.
+     * Procesa la promoción masiva de alumnos (Optimizado con Bulk Upsert en `inscripciones`)
      */
     public function promote(Request $request)
     {
@@ -20,7 +17,7 @@ class PromotionController extends Controller
             'grupo_origen_id' => 'required|exists:grupos,id',
             'grupo_destino_id' => 'required|exists:grupos,id',
             'ciclo_destino_id' => 'required|exists:ciclos_escolares,id',
-            'alumnos_ids' => 'required|array', // IDs de los usuarios (alumnos) a promover
+            'alumnos_ids' => 'required|array',
             'marcar_egresados' => 'boolean'
         ]);
 
@@ -28,7 +25,7 @@ class PromotionController extends Controller
         $grupoDestino = AcademicGroup::findOrFail($request->grupo_destino_id);
         $cicloDestino = AcademicPeriod::findOrFail($request->ciclo_destino_id);
 
-        // Regla de Negocio: Solo permitir N + 1
+        // Validación de semestre
         if ($grupoDestino->semestre != ($grupoOrigen->semestre + 1) && !$request->marcar_egresados) {
             return response()->json([
                 'error' => "Operación no permitida. El grupo destino debe pertenecer al semestre " . ($grupoOrigen->semestre + 1) . "."
@@ -38,56 +35,59 @@ class PromotionController extends Controller
         try {
             DB::transaction(function () use ($request, $grupoOrigen, $grupoDestino, $cicloDestino) {
                 $status = $request->marcar_egresados ? 'graduated' : 'active';
-                $count = 0;
+                $alumnosIds = $request->alumnos_ids;
 
-                // [OPTIMIZACIÓN] Obtener todas las matrículas de una vez
-                $matriculas = Enrollment::whereIn('usuario_id', $request->alumnos_ids)
+                // 1. Obtener matrículas actuales masivamente desde inscripciones
+                $matriculas = Enrollment::whereIn('usuario_id', $alumnosIds)
                     ->pluck('codigo_alumno', 'usuario_id');
 
-                foreach ($request->alumnos_ids as $userId) {
-                    $matricula = $matriculas[$userId] ?? 'S/M';
-
-                    // 1. Crear nueva inscripción en el ciclo/grupo destino
-                    Enrollment::updateOrCreate(
-                        [
-                            'usuario_id' => $userId,
-                            'ciclo_id' => $cicloDestino->id,
-                        ],
-                        [
-                            'grupo_id' => $grupoDestino->id,
-                            'estatus' => $status,
-                            'codigo_alumno' => $matricula
-                        ]
-                    );
-
-                    // 2. Si se marca como egresado, actualizar perfil de alumno
-                    if ($request->marcar_egresados) {
-                        \App\Models\Student::where('usuario_id', $userId)->update([
-                            'estatus' => 'graduated',
-                            'folio_egreso' => 'FE-' . date('Y') . '-' . str_pad($userId, 5, '0', STR_PAD_LEFT)
-                        ]);
-                    }
-                    $count++;
+                // 2. Preparar datos para BULK UPSERT en la tabla `inscripciones`
+                $dataToUpsert = [];
+                $now = now();
+                foreach ($alumnosIds as $userId) {
+                    $dataToUpsert[] = [
+                        'usuario_id'    => $userId,
+                        'ciclo_id'      => $cicloDestino->id,
+                        'grupo_id'      => $grupoDestino->id,
+                        'estatus'       => $status,
+                        'codigo_alumno' => $matriculas[$userId] ?? ('ALU-' . $userId),
+                        'created_at'    => $now,
+                        'updated_at'    => $now
+                    ];
                 }
 
-                // 3. Registrar en Auditoría
+                // 3. Inserción/Actualización masiva (Requiere índice único UNIQUE(usuario_id, ciclo_id))
+                Enrollment::upsert(
+                    $dataToUpsert, 
+                    ['usuario_id', 'ciclo_id'], 
+                    ['grupo_id', 'estatus', 'codigo_alumno', 'updated_at']
+                );
+
+                // 4. Actualización masiva de estatus en Students
+                if ($request->marcar_egresados) {
+                    Student::whereIn('usuario_id', $alumnosIds)->update([
+                        'estatus' => 'graduated',
+                        'folio_egreso' => DB::raw("CONCAT('FE-', EXTRACT(YEAR FROM CURRENT_DATE), '-', LPAD(usuario_id::text, 5, '0'))")
+                    ]);
+                }
+
+                // 5. Auditoría
                 AdminAuditLog::create([
                     'usuario_id' => auth()->id(),
                     'accion' => 'PROMOCION_GRUPAL',
-                    'descripcion' => "Se promovieron {$count} alumnos del grupo {$grupoOrigen->nombre} al grupo {$grupoDestino->nombre} (" . ($request->marcar_egresados ? 'EGRESO' : 'AVANCE') . ").",
+                    'descripcion' => "Se promovieron " . count($alumnosIds) . " alumnos de {$grupoOrigen->nombre} a {$grupoDestino->nombre}.",
                     'metadata' => [
-                        'origen' => $grupoOrigen->id,
-                        'destino' => $grupoDestino->id,
-                        'ciclo' => $cicloDestino->id,
-                        'cantidad' => $count
+                        'origen' => $grupoOrigen->id, 
+                        'destino' => $grupoDestino->id, 
+                        'ciclo' => $cicloDestino->id, 
+                        'cantidad' => count($alumnosIds)
                     ]
                 ]);
             });
 
-            return response()->json(['message' => 'Promoción procesada con éxito.']);
-
+            return response()->json(['message' => 'Promoción procesada masivamente con éxito.']);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al procesar la promoción: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Error al procesar: ' . $e->getMessage()], 500);
         }
     }
 }

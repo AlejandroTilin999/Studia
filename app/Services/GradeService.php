@@ -19,9 +19,9 @@ class GradeService
      */
     public static function formatGrade($value)
     {
-        if ($value === null || $value === '—' || $value === '') return '—';
+        if ($value === null || $value === '—' || $value === '') return '';
         // Redondeo oficial: .6 sube, .5 baja -> floor(n + 0.4)
-        return (int) floor(floatval($value) + 0.4);
+        return (string) (int) floor(floatval($value) + 0.4);
     }
 
     /**
@@ -76,6 +76,14 @@ class GradeService
                 ->groupBy('carga_id');
 
             $kardex = [];
+
+            // Pre-calcular disponibilidad de parciales una sola vez para todas las materias
+            $parcialLocks = [];
+            if ($enrollment->academicPeriod) {
+                foreach ([1, 2, 3] as $p) {
+                    $parcialLocks[$p] = \App\Services\AcademicPeriodService::isCapturaHabilitada($enrollment->academicPeriod, $p, 'operacion');
+                }
+            }
 
             foreach ($loads as $load) {
                 // Buscar grado consolidado (sin criterio_id)
@@ -137,10 +145,7 @@ class GradeService
                         $parcialAvgValue = $calculatedWeightedAvg;
                     }
 
-                    $lockInfo = ['allowed' => true, 'reason' => ''];
-                    if ($enrollment->academicPeriod) {
-                        $lockInfo = \App\Services\AcademicPeriodService::isCapturaHabilitada($enrollment->academicPeriod, $parcial, 'operacion');
-                    }
+                    $lockInfo = $parcialLocks[$parcial] ?? ['allowed' => true, 'reason' => ''];
 
                     $parcialDetails[$parcial] = [
                         'configured' => true,
@@ -221,11 +226,14 @@ class GradeService
                         }
                     }
 
-                    $deadlineFormatted = $task->fecha_entrega ? date('d \d\e F', strtotime($task->fecha_entrega)) : 'Sin fecha';
+                    $deadlineFormatted = $task->fecha_entrega ? date('d \d\e F, h:i A', strtotime($task->fecha_entrega)) : 'Sin fecha';
                     foreach ($months as $en => $es) $deadlineFormatted = str_replace($en, $es, $deadlineFormatted);
+
+                    $taskHash = strtoupper(substr(md5('t_' . $task->id), 0, 6));
 
                     $tasksList[] = [
                         'id' => $task->id,
+                        'hash' => $taskHash,
                         'carga_id' => $load->uuid,
                         'subjectName' => $load->course?->nombre ?? 'Materia Desconocida',
                         'parcial' => $task->parcial,

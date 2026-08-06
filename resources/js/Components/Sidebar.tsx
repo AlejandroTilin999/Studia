@@ -185,7 +185,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
             // ─── Bloque especial: "Materias" para ALUMNO ───────────────────
             if (role === 'ALUMNO' && item.name === 'Materias') {
-              const isAnySubjectActive = pathname.startsWith('/alumno/materias') || (pathname === '/alumno' && url.includes('id='));
+              const isAnySubjectActive = pathname.startsWith('/alumno/materias') || (pathname === '/alumno' && (url.includes('c=') || url.includes('id=')));
               return (
                 <SidebarMenuItem key={item.name} className="mb-1">
                   <button
@@ -208,11 +208,11 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   {isMenuExpanded && materiasOpen && (
                     <div className="mt-1 ml-10 mr-4 space-y-1 animate-in slide-in-from-top-1 duration-200">
                       {alumnoGroups.map((s: any) => {
-                        const isSubActive = url.includes(`id=${s.id}`);
+                        const isSubActive = url.includes(`c=${s.id}`) || url.includes(`id=${s.id}`);
                         return (
                           <Link
                             key={s.id}
-                            href={`/alumno/materias?id=${s.id}`}
+                            href={`/alumno/materias?c=${s.id}`}
                             prefetch="hover"
                             className={cn(
                                 "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all",

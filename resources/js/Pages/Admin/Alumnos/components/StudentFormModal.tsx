@@ -67,7 +67,7 @@ export default function StudentFormModal({
             setLocalMonth(clean.m);
             setLocalYear(clean.y);
         }
-    }, [isOpen]);
+    }, [isOpen, data.fecha_nacimiento]);
 
     const handleDateChange = (type: 'day' | 'month' | 'year', value: string) => {
         let d = localDay;
@@ -216,9 +216,8 @@ export default function StudentFormModal({
                         {/* Apellido Materno y Teléfono */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
-                                <FormLabel required>Apellido Materno</FormLabel>
+                                <FormLabel>Apellido Materno</FormLabel>
                                 <FormInput
-                                    required
                                     value={data.apellido_materno}
                                     onChange={e => setData('apellido_materno', e.target.value)}
                                     placeholder="Ej: López"

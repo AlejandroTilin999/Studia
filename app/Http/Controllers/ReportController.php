@@ -6,7 +6,9 @@ use App\Models\AcademicGroup;
 use App\Models\AcademicPeriod;
 use App\Models\Enrollment;
 use App\Models\ReportDownload;
+use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ReportController extends Controller
@@ -14,25 +16,28 @@ class ReportController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Reportes/Index', [
-            'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(function ($g) {
-                return [
-                    'id' => $g->id,
-                    'nombre' => $g->nombre,
-                ];
-            })),
-            'students' => Inertia::defer(fn() => Enrollment::with('user')->get()->map(function ($e) {
-                return [
-                    'matricula' => $e->codigo_alumno,
-                    'nombre' => $e->user?->nombre_completo ?? 'Sin nombre',
-                    'grupo_id' => $e->grupo_id,
-                ];
-            })),
-            'periods' => Inertia::defer(fn() => AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'nombre' => $p->nombre,
-                ];
-            })),
+            'groups' => Inertia::defer(fn() => 
+                AcademicGroup::select('id', 'nombre')->get()
+            ),
+            'students' => Inertia::defer(fn() => 
+                Enrollment::select('id', 'usuario_id', 'grupo_id', 'codigo_alumno')
+                    ->with('user:id,nombre,apellido_paterno,apellido_materno')
+                    ->get()
+                    ->map(fn($e) => [
+                        'matricula' => $e->codigo_alumno,
+                        'nombre' => $e->user?->nombre_completo ?? 'Sin nombre',
+                        'grupo_id' => $e->grupo_id,
+                    ])
+            ),
+            'periods' => Inertia::defer(fn() => 
+                AcademicPeriod::select('id', 'nombre', 'fecha_inicio')
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->get()
+                    ->map(fn($p) => [
+                        'id' => $p->id,
+                        'nombre' => $p->nombre,
+                    ])
+            ),
             'stats' => Inertia::defer(fn() => $this->getReportStats()),
             'recentDownloads' => Inertia::defer(fn() => $this->getRecentDownloads())
         ]);
@@ -40,8 +45,8 @@ class ReportController extends Controller
 
     protected function getReportStats()
     {
-        $counts = \DB::table('reporte_descargas')
-            ->select('tipo_reporte', \DB::raw('count(*) as total'))
+        $counts = DB::table('reporte_descargas')
+            ->select('tipo_reporte', DB::raw('count(*) as total'))
             ->groupBy('tipo_reporte')
             ->pluck('total', 'tipo_reporte');
 
@@ -58,6 +63,7 @@ class ReportController extends Controller
     protected function getRecentDownloads()
     {
         return ReportDownload::with('user:id,nombre,apellido_paterno,apellido_materno')
+            ->select('id', 'usuario_id', 'tipo_reporte', 'metadata', 'created_at')
             ->orderBy('created_at', 'desc')
             ->limit(100)
             ->get()
@@ -82,7 +88,7 @@ class ReportController extends Controller
     {
         $request->validate([
             'tipo_reporte' => 'required|string',
-            'sujeto' => 'nullable|string', // Nombre del alumno o grupo
+            'sujeto' => 'nullable|string',
             'metadata' => 'nullable|array',
         ]);
 
@@ -122,8 +128,8 @@ class ReportController extends Controller
      */
     public function clearDownloadHistory()
     {
-        \DB::transaction(function () {
-            \DB::table('reporte_descargas')->delete();
+        DB::transaction(function () {
+            DB::table('reporte_descargas')->truncate();
             \App\Models\AdminAuditLog::create([
                 'usuario_id' => auth()->id(),
                 'accion' => 'LIMPIAR_HISTORIAL_REPORTES',
@@ -144,12 +150,14 @@ class ReportController extends Controller
 
     protected function makeAttendanceData($groupId, $periodId)
     {
-        $group = AcademicGroup::with('tutor.user')->findOrFail($groupId);
+        $group = AcademicGroup::with('tutor.user:id,nombre,apellido_paterno,apellido_materno')
+            ->findOrFail($groupId);
+
         $period = AcademicPeriod::findOrFail($periodId);
 
         $enrollments = Enrollment::where('grupo_id', $groupId)
             ->where('ciclo_id', $periodId)
-            ->with('user')
+            ->with('user:id,nombre,apellido_paterno,apellido_materno')
             ->get()
             ->map(function ($e) {
                 $u = $e->user;
@@ -195,7 +203,11 @@ class ReportController extends Controller
         if (!$enrollment) {
             $enrollment = Enrollment::where('codigo_alumno', $matricula)
                 ->where('estatus', 'active')
-                ->with(['user', 'academicGroup', 'academicPeriod'])
+                ->with([
+                    'user:id,nombre,apellido_paterno,apellido_materno', 
+                    'academicGroup', 
+                    'academicPeriod'
+                ])
                 ->firstOrFail();
         }
 
@@ -242,7 +254,11 @@ class ReportController extends Controller
         if (!$enrollment) {
             $enrollment = Enrollment::where('codigo_alumno', $matricula)
                 ->where('ciclo_id', $periodId)
-                ->with(['user', 'academicGroup', 'academicPeriod'])
+                ->with([
+                    'user:id,nombre,apellido_paterno,apellido_materno', 
+                    'academicGroup', 
+                    'academicPeriod'
+                ])
                 ->firstOrFail();
         }
 
@@ -286,18 +302,22 @@ class ReportController extends Controller
      */
     public function getFullKardexData($matricula)
     {
-        $student = \App\Models\Student::where('matricula', $matricula)->with('user')->firstOrFail();
+        $student = Student::where('matricula', $matricula)
+            ->with('user:id,nombre,apellido_paterno,apellido_materno')
+            ->firstOrFail();
         $userId = $student->usuario_id;
 
-        // [OPTIMIZACIÓN] Eager Loading masivo para evitar N+1 anidados
         $enrollments = Enrollment::where('usuario_id', $userId)
             ->with([
-                'academicGroup',
-                'academicPeriod',
-                'academicGroup.academicLoads.course',
-                'academicGroup.academicLoads.criterios',
-                'academicGroup.academicLoads.tareas.entregas' => fn($q) => $q->where('usuario_id', $userId),
-                'academicGroup.academicLoads.grades' => fn($q) => $q->where('usuario_id', $userId)
+                'academicGroup:id,nombre,especialidad',
+                'academicPeriod:id,nombre',
+                'academicGroup.academicLoads' => function($q) {
+                    $q->select('id', 'grupo_id', 'ciclo_id', 'materia_id');
+                },
+                'academicGroup.academicLoads.course:id,nombre,codigo,semestre',
+                'academicGroup.academicLoads.grades' => function($q) use ($userId) {
+                    $q->where('usuario_id', $userId)->whereNull('criterio_id');
+                }
             ])
             ->get();
 
@@ -310,11 +330,9 @@ class ReportController extends Controller
             $loads = $enrollment->academicGroup->academicLoads ?? collect();
 
             foreach ($loads as $load) {
-                // Solo procesar si la carga pertenece al ciclo de la inscripción
                 if ($load->ciclo_id != $enrollment->ciclo_id) continue;
 
-                // Buscar el registro consolidado (criterio_id = null)
-                $gradeRecord = $load->grades->where('criterio_id', null)->first();
+                $gradeRecord = $load->grades->first();
                 $finalGrade = $gradeRecord ? \App\Services\GradeService::formatGrade($gradeRecord->final) : '—';
 
                 if ($finalGrade !== '—') {
@@ -353,13 +371,12 @@ class ReportController extends Controller
      */
     public function getBatchData(Request $request)
     {
-        // Aumentar límites para procesos pesados
-        set_time_limit(300); // 5 minutos
+        set_time_limit(300);
         ini_set('memory_limit', '512M');
 
         $request->validate([
             'tipo_reporte' => 'required|string|in:boleta,constancia,asistencia',
-            'grupo_id' => 'required|string', // Puede ser ID numérico o 'all'
+            'grupo_id' => 'required|string',
             'ciclo_id' => 'required|exists:ciclos_escolares,id',
         ]);
 
@@ -367,13 +384,9 @@ class ReportController extends Controller
         $groupId = $request->grupo_id;
         $periodId = $request->ciclo_id;
 
-        // Determinar qué grupos procesar
-        $groupsToProcess = [];
-        if ($groupId === 'all') {
-            $groupsToProcess = AcademicGroup::where('activo', true)->get();
-        } else {
-            $groupsToProcess = AcademicGroup::where('id', $groupId)->get();
-        }
+        $groupsToProcess = ($groupId === 'all')
+            ? AcademicGroup::select('id', 'nombre', 'codigo', 'especialidad', 'turno', 'tutor_id')->where('activo', true)->get()
+            : AcademicGroup::select('id', 'nombre', 'codigo', 'especialidad', 'turno', 'tutor_id')->where('id', $groupId)->get();
 
         $batchData = [];
 
@@ -383,15 +396,13 @@ class ReportController extends Controller
                     $batchData[] = $this->makeAttendanceData($group->id, $periodId);
                 } catch (\Exception $e) { continue; }
             } else {
-                // [OPTIMIZACIÓN] Eager load masivo para lote
                 $enrollments = Enrollment::where('grupo_id', $group->id)
                     ->where('ciclo_id', $periodId)
                     ->where('estatus', 'active')
                     ->with([
-                        'user',
-                        'academicGroup',
-                        'academicPeriod',
-                        // Cargamos todo lo necesario para GradeService::getStudentKardex de forma anticipada
+                        'user:id,nombre,apellido_paterno,apellido_materno',
+                        'academicGroup:id,nombre,especialidad,turno',
+                        'academicPeriod:id,nombre'
                     ])
                     ->get();
 
@@ -414,3 +425,4 @@ class ReportController extends Controller
         ]);
     }
 }
+

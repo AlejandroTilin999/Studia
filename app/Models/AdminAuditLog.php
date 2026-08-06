@@ -15,6 +15,13 @@ class AdminAuditLog extends Model
         'metadata'
     ];
 
+    protected static function booted()
+    {
+        static::created(function ($log) {
+            event(new \App\Events\AuditLogCreated($log));
+        });
+    }
+
     protected $casts = [
         'metadata' => 'array'
     ];

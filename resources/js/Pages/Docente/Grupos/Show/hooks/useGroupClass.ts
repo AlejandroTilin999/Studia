@@ -249,8 +249,11 @@ export function useGroupClass(classInfoProp?: any) {
 
         const targetId = Number(cicloId);
 
+        const mySenderId = Math.random().toString(36).substring(2);
+
         const handleSignal = (data: any) => {
             if (!data) return;
+            if (data.senderId === mySenderId) return; // Ignorar el propio rebote
             if (data.type === 'cycle-update' || data.msg?.includes('FORCE_REFRESH')) {
                 if (Number(data.id) === targetId) {
                     startBurstRefresh();
@@ -412,11 +415,11 @@ export function useGroupClass(classInfoProp?: any) {
 
     // [SINCRONIZACIÓN v4.6] Sincronizar vista local con la Verdad Total en memoria
     useEffect(() => {
-        if (activeParcial) {
+        if (activeParcial && !isSaving) {
             setStudentGrades(allGrades[activeParcial] || []);
             setTasks(allTasks[activeParcial] || []);
         }
-    }, [activeParcial, allGrades, allTasks]);
+    }, [activeParcial, allGrades, allTasks, isSaving]);
 
     function saveTasks(newTasks: Task[]) {
         setTasks(newTasks);
@@ -429,12 +432,7 @@ export function useGroupClass(classInfoProp?: any) {
                 parcial: activeParcial,
                 tareas: newTasks
             })
-            .then(res => {
-                // Actualizar verdad total
-                const updatedTasks = res.data.tareas;
-                setAllTasks(prev => ({ ...prev, [activeParcial]: updatedTasks }));
-                setTasks(updatedTasks);
-
+            .then(() => {
                 // Emite evento en tiempo real a alumnos y otras pestañas
                 try {
                     const bc = new BroadcastChannel('school-cycle-channel');
@@ -444,7 +442,6 @@ export function useGroupClass(classInfoProp?: any) {
             })
             .catch(err => {
                 console.error("Error al guardar tareas:", err);
-                SwalHelper.error('Error', 'No se pudieron sincronizar las actividades.');
             })
             .finally(() => setIsSaving(false));
         }

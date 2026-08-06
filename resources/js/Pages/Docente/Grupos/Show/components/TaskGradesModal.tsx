@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Calendar, FileText, ChevronRight, ChevronLeft, X, UserCircle2 } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, ChevronRight, ChevronLeft, X, UserCircle2, ExternalLink } from 'lucide-react';
 import { Task, StudentGrade } from '../services/constants';
 import GradeSelector from './GradeSelector';
 import StudiaPDFViewer from './StudiaPDFViewer';
@@ -285,16 +285,21 @@ export default function TaskGradesModal({
                             <div className="pt-4 border-t border-slate-100 mt-4 space-y-2 text-left">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Entrega del Alumno</span>
                                 {studentFile ? (
-                                    <div onClick={() => setIsPdfModalOpen(true)} className="flex items-center justify-between border border-slate-150 hover:bg-blue-50/25 p-3.5 rounded-xl cursor-pointer transition-all group bg-slate-50/40">
+                                    <a
+                                        href={studentFile.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-between border border-slate-150 hover:bg-blue-50/25 p-3.5 rounded-xl cursor-pointer transition-all group bg-slate-50/40"
+                                    >
                                         <div className="flex items-center gap-2.5 min-w-0">
                                             <ExternalLink size={15} className="text-[#0266E0] shrink-0" />
                                             <div className="text-left min-w-0">
-                                                <span className="text-xs font-bold text-slate-755 block truncate max-w-[180px]">{studentFile.url}</span>
-                                                <span className="text-[8px] font-black text-slate-400 uppercase block">Enlace Externo · Abrir Visor</span>
+                                                <span className="text-xs font-bold text-slate-755 block truncate max-w-[180px]">{studentFile.nombre || 'Documento de Google Drive'}</span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase block">Abrir archivo en pestaña nueva</span>
                                             </div>
                                         </div>
                                         <ChevronRight size={12} className="text-[#1e88e5] group-hover:translate-x-0.5 transition-transform" />
-                                    </div>
+                                    </a>
                                 ) : (
                                     <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Sin entrega disponible</span>
@@ -305,14 +310,6 @@ export default function TaskGradesModal({
                     </div>
                 </div>
             </div>
-
-            {isPdfModalOpen && studentFile && (
-                <StudiaPDFViewer
-                    url={studentFile.url}
-                    filename={studentFile.nombre}
-                    onClose={() => setIsPdfModalOpen(false)}
-                />
-            )}
         </div>
     );
 }

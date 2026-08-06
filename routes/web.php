@@ -16,7 +16,11 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\GoogleAuthController;
 
+Route::get('/google/auth', [GoogleAuthController::class, 'redirect']);
+
+Route::get('/google/callback', [GoogleAuthController::class, 'callback']);
 // ==========================================
 // 1. VISTAS PÚBLICAS
 // ==========================================
@@ -87,7 +91,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $usersCount    = Inertia::defer(fn() => \DB::table('users')->count());
 
                 // Actividades Recientes (Auditoría)
-                $recentActivities = \App\Models\AdminAuditLog::with('user:id,nombre,apellido_paterno')
+                $recentActivities = Inertia::defer(fn() => \App\Models\AdminAuditLog::with('user:id,nombre,apellido_paterno')
                     ->orderBy('created_at', 'desc')
                     ->limit(20)
                     ->get()
@@ -112,7 +116,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             'user' => $log->user ? $log->user->nombre_completo : 'Sistema',
                             'time' => $log->created_at->isoFormat('D/MM/YYYY - h:mm A'),
                         ];
-                    });
+                    }));
 
                 return Inertia::render('Admin/Dashboard/Index', [
                     'cycles' => $cycles,
@@ -143,10 +147,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/alumnos', [StudentController::class, 'index'])->name('admin.alumnos.index');
             Route::get('/alumnos/{id}/kardex', [StudentController::class, 'getKardex'])->name('admin.alumnos.kardex');
+            Route::get('/alumnos/{id}/documentos', [StudentController::class, 'getDocuments'])->name('admin.alumnos.documents.index');
+            Route::post('/alumnos/{id}/documentos', [StudentController::class, 'uploadDocument'])->name('admin.alumnos.documents.store');
+            Route::delete('/alumnos/{id}/documentos/{documentId}', [StudentController::class, 'deleteDocument'])->name('admin.alumnos.documents.destroy');
             Route::post('/alumnos', [StudentController::class, 'store'])->name('admin.alumnos.store');
             Route::put('/alumnos/{id}', [StudentController::class, 'update'])->name('admin.alumnos.update');
             Route::delete('/alumnos/{id}', [StudentController::class, 'destroy'])->name('admin.alumnos.destroy');
             Route::post('/alumnos/{id}/toggle', [StudentController::class, 'toggleStatus'])->name('admin.alumnos.toggle');
+
 
             Route::get('/docentes', [TeacherController::class, 'index'])->name('admin.docentes.index');
             Route::post('/docentes', [TeacherController::class, 'store'])->name('admin.docentes.store');
@@ -330,6 +338,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'gpa' => '—',
                     'tutor' => $enrollment?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
                     'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
+                    'groupId' => $enrollment?->grupo_id,
                 ];
 
                 return Inertia::render('Alumno/Dashboard', [

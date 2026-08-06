@@ -9,6 +9,7 @@ export interface GroupCatalogItem {
     id: number;
     nombre: string;
     codigo: string;
+    semestre?: number | string;
     especialidad: string;
 }
 

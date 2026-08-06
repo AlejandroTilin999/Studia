@@ -69,7 +69,19 @@ export default function LoadFormModal({
 
     const selectedGroup = groups.find(g => g.id.toString() === data.grupo_id.toString());
     const groupMajor = selectedGroup?.especialidad || '';
-    const groupSemester = selectedGroup?.codigo ? parseInt(selectedGroup.codigo.charAt(0)) : null;
+    const groupSemester = useMemo(() => {
+        if (!selectedGroup) return null;
+        if (selectedGroup.semestre) return Number(selectedGroup.semestre);
+        if (selectedGroup.codigo) {
+            const parsed = parseInt(selectedGroup.codigo.charAt(0));
+            if (!isNaN(parsed) && parsed > 0) return parsed;
+        }
+        if (selectedGroup.nombre) {
+            const match = selectedGroup.nombre.match(/(\d+)/);
+            if (match) return parseInt(match[1]);
+        }
+        return null;
+    }, [selectedGroup]);
 
     const suggestedCourses = useMemo(() => {
         if (!data.grupo_id) return [];

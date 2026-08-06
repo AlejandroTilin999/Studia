@@ -72,7 +72,7 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
                     only: ['alumnos']
                 });
             }
-        }, 500);
+        }, 150);
         return () => clearTimeout(timeout);
     }, [searchQuery, groupFilter, cycleFilter]);
 

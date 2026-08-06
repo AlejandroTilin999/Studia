@@ -9,6 +9,7 @@ import { SwalHelper } from '@/utils/SwalHelper';
 import { formatGrade } from '@/utils/gradeHelper';
 import { Deferred } from '@inertiajs/react';
 import DotsLoader from '@/Components/ui/DotsLoader';
+import { useRealtime } from '@/hooks/useRealtime';
 
 // Componentes modulares
 import SubjectCard from './Tareas/SubjectCard';
@@ -38,40 +39,14 @@ export default function AlumnoDashboard({
     const { auth } = usePage().props as any;
     const { url: currentUrl } = usePage();
 
+    const { subscribeToGroup } = useRealtime();
+
     // Estados principales
     const [currentView, setCurrentView] = useState<'perfil' | 'tareas'>(defaultView);
     const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [selectedParcial, setSelectedParcial] = useState<number | null>(null);
     const [activeSubjectTab, setActiveSubjectTab] = useState<'novedades' | 'trabajo'>('novedades');
-
-    // [LÓGICA v7.0] Sincronización en tiempo real con cambios en el Admin (ThunderSync V7)
-    useEffect(() => {
-        const bc = new BroadcastChannel('school-cycle-channel');
-
-        const performHardRefresh = () => {
-            console.log('%c[ThunderSync] ⚡ Cambio detectado. Iniciando ráfaga de sincronización...', 'color: #0266E0; font-weight: bold;');
-
-            // Ráfaga de 3 intentos para asegurar consistencia con el servidor (Bypass Cache)
-            const delays = [0, 800, 2000];
-            delays.forEach(delay => {
-                setTimeout(() => {
-                    router.reload({
-                        only: ['kardex', 'taskList', 'alumnoGroups', 'isCycleActive'],
-                        onSuccess: () => console.log('[ThunderSync] ✅ Datos actualizados.')
-                    });
-                }, delay);
-            });
-        };
-
-        bc.onmessage = (event) => {
-            if (event.data?.type === 'cycle-update') {
-                performHardRefresh();
-            }
-        };
-
-        return () => bc.close();
-    }, []);
 
     // 1. Catálogo de materias
     const subjects = useMemo(() => {
@@ -86,37 +61,54 @@ export default function AlumnoDashboard({
         }));
     }, [propAlumnoGroups]);
 
-    // Sincronizar URL
+    // Listado de tareas
+    const [taskList, setTaskList] = useState<Task[]>(propTaskList || []);
+    useEffect(() => { if (propTaskList) setTaskList(propTaskList); }, [propTaskList]);
+
+    // Sincronizar URL estilo Google Classroom: ?c=ID_MATERIA&a=HASH_TAREA
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
-        const subjectId = urlParams.get('id');
+        const subjectId = urlParams.get('c') || urlParams.get('id');
         const viewParam = urlParams.get('view');
         const parcialParam = urlParams.get('parcial');
+        const taskHashParam = urlParams.get('a') || urlParams.get('task');
 
         if (subjectId && subjects.length > 0) {
-            const sub = subjects.find((s: any) => s.id?.toString() === subjectId.toString());
+            const sub = subjects.find((s: any) => s.id?.toString() === subjectId.toString() || s.uuid?.toString() === subjectId.toString());
             if (sub) {
-                setCurrentView('tareas');
-                setSelectedSubject(sub);
-                if (parcialParam) setSelectedParcial(parseInt(parcialParam));
-                if (viewParam !== 'tareas') setSelectedTask(null);
+                if (!selectedSubject || selectedSubject.id !== sub.id) {
+                    setCurrentView('tareas');
+                    setSelectedSubject(sub);
+                }
+                if (parcialParam && selectedParcial !== parseInt(parcialParam)) {
+                    setSelectedParcial(parseInt(parcialParam));
+                }
+
+                if (taskHashParam && taskList && taskList.length > 0) {
+                    const targetTask = taskList.find((t: any) =>
+                        t.id?.toString() === taskHashParam.toString() ||
+                        (t.hash && t.hash.endsWith(taskHashParam)) ||
+                        t.title === taskHashParam
+                    );
+                    if (targetTask && (!selectedTask || selectedTask.id !== targetTask.id)) {
+                        setSelectedTask(targetTask);
+                    }
+                }
                 return;
             }
         }
 
         if (currentUrl.includes('/materias') && !subjectId) {
-            setCurrentView('perfil');
-            setSelectedSubject(null);
+            if (currentView !== 'perfil') setCurrentView('perfil');
+            if (selectedSubject) setSelectedSubject(null);
             return;
         }
 
         if (viewParam === 'tareas') {
-            setCurrentView('tareas');
+            if (currentView !== 'tareas') setCurrentView('tareas');
             return;
         }
-
-        setCurrentView(defaultView);
-    }, [currentUrl, subjects, defaultView]);
+    }, [subjects, taskList]);
 
     // 2. Datos del alumno
     const studentInfo = useMemo(() => {
@@ -153,6 +145,8 @@ export default function AlumnoDashboard({
         return info;
     }, [propStudentInfo, subjects, kardex, auth]);
 
+    subscribeToGroup(studentInfo?.groupId);
+
     // Determinar el parcial activo
     const activeParcialNum = useMemo(() => {
         if (!Array.isArray(kardex) || kardex.length === 0) return 1;
@@ -163,10 +157,6 @@ export default function AlumnoDashboard({
         if (first.details[3]?.average === '—') return 3;
         return 1;
     }, [kardex]);
-
-    // Listado de tareas
-    const [taskList, setTaskList] = useState<Task[]>(propTaskList || []);
-    useEffect(() => { if (propTaskList) setTaskList(propTaskList); }, [propTaskList]);
 
     const activeParcialTasks = useMemo(() => {
         return (taskList || []).filter(t => !t.parcial || t.parcial === activeParcialNum);
@@ -348,7 +338,19 @@ export default function AlumnoDashboard({
                                                 ) : (
                                                     <div className="space-y-6">
                                                         <button onClick={() => setSelectedParcial(null)} className="text-xs font-bold text-slate-400">← Volver</button>
-                                                        <SubjectClasswork tasks={currentSubjectTasks.filter(t => !t.parcial || Number(t.parcial) === Number(selectedParcial))} onSelectTask={setSelectedTask} />
+                                                        <SubjectClasswork
+                                                            tasks={currentSubjectTasks.filter(t => !t.parcial || Number(t.parcial) === Number(selectedParcial))}
+                                                            onSelectTask={(t) => {
+                                                                setSelectedTask(t);
+                                                                const url = new URL(window.location.href);
+                                                                const taskCode = (t as any).hash ? (t as any).hash.replace('a/', '') : (t.id.toString());
+                                                                url.searchParams.delete('id');
+                                                                url.searchParams.delete('task');
+                                                                url.searchParams.set('c', selectedSubject.id || 'C1');
+                                                                url.searchParams.set('a', taskCode);
+                                                                window.history.pushState({}, '', url.toString());
+                                                            }}
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
@@ -356,8 +358,23 @@ export default function AlumnoDashboard({
                                             <SubjectAssignment
                                                 task={selectedTask}
                                                 otherTasks={otherTasksOfSubject}
-                                                onBack={() => setSelectedTask(null)}
-                                                onSwitchTask={setSelectedTask}
+                                                onBack={() => {
+                                                    setSelectedTask(null);
+                                                    const url = new URL(window.location.href);
+                                                    url.searchParams.delete('a');
+                                                    url.searchParams.delete('task');
+                                                    window.history.pushState({}, '', url.toString());
+                                                }}
+                                                onSwitchTask={(t) => {
+                                                    setSelectedTask(t);
+                                                    const url = new URL(window.location.href);
+                                                    const taskCode = (t as any).hash ? (t as any).hash.replace('a/', '') : (t.id.toString());
+                                                    url.searchParams.delete('id');
+                                                    url.searchParams.delete('task');
+                                                    url.searchParams.set('c', selectedSubject.id || 'C1');
+                                                    url.searchParams.set('a', taskCode);
+                                                    window.history.pushState({}, '', url.toString());
+                                                }}
                                                 comments={taskComments[selectedTask.id] || []}
                                                 onAddComment={() => {}}
                                                 teacherName={selectedSubject.teacher}

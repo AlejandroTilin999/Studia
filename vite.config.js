@@ -11,6 +11,13 @@ export default defineConfig({
         react(),
     ],
     server: {
-        open: 'http://127.0.0.1:8000',
+        host: '127.0.0.1',
+        port: 5173,
+        hmr: {
+            host: '127.0.0.1',
+        },
+        fs: {
+            strict: false,
+        },
     },
 });

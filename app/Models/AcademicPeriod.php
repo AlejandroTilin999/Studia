@@ -40,6 +40,13 @@ class AcademicPeriod extends Model
         'p3_activo' => false,
     ];
 
+    protected static function booted()
+    {
+        static::updated(function ($period) {
+            event(new \App\Events\AcademicPeriodChanged($period));
+        });
+    }
+
     // Un ciclo escolar alberga muchas inscripciones de alumnos
     public function enrollments()
     {

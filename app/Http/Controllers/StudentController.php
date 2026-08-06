@@ -37,13 +37,19 @@ class StudentController extends Controller
                 // Si no hay ciclo de trabajo, no hay alumnos operativos
                 if (!$workingCycle) return ['data' => [], 'total' => 0];
 
-                $query = Student::whereHas('user')
+                $query = Student::select('id', 'usuario_id', 'matricula', 'fecha_nacimiento')
+                    ->whereHas('user')
                     ->whereHas('enrollments', function($q) use ($workingCycle) {
                         $q->where('ciclo_id', $workingCycle->id);
                     })
-                    ->with(['user', 'enrollments' => function($q) use ($workingCycle) {
-                        $q->where('ciclo_id', $workingCycle->id)->with('academicGroup');
-                    }]);
+                    ->with([
+                        'user:id,nombre,apellido_paterno,apellido_materno,email,telefono',
+                        'enrollments' => function($q) use ($workingCycle) {
+                            $q->where('ciclo_id', $workingCycle->id)
+                              ->select('id', 'usuario_id', 'grupo_id', 'ciclo_id', 'estatus')
+                              ->with('academicGroup:id,nombre');
+                        }
+                    ]);
 
                 if ($search) {
                     $query->where(function ($q) use ($search) {
@@ -66,17 +72,18 @@ class StudentController extends Controller
                 return $query->paginate(50)
                     ->through(function ($student) use ($workingCycle) {
                         $currentEnrollment = $student->enrollments->where('ciclo_id', $workingCycle->id)->first();
+                        $u = $student->user;
 
                         return [
                             'id' => $student->id,
                             'usuario_id' => $student->usuario_id,
-                            'nombre' => $student->user ? $student->user->nombre_completo : 'Sin nombre',
-                            'rawNombre' => $student->user->nombre ?? '',
-                            'rawPaterno' => $student->user->apellido_paterno ?? '',
-                            'rawMaterno' => $student->user->apellido_materno ?? '',
-                            'email' => $student->user->email ?? 'Sin correo',
+                            'nombre' => $u ? trim("{$u->nombre} {$u->apellido_paterno} {$u->apellido_materno}") : 'Sin nombre',
+                            'rawNombre' => $u->nombre ?? '',
+                            'rawPaterno' => $u->apellido_paterno ?? '',
+                            'rawMaterno' => $u->apellido_materno ?? '',
+                            'email' => $u->email ?? 'Sin correo',
                             'matricula' => $student->matricula,
-                            'telefono' => $student->user->telefono ?? '',
+                            'telefono' => $u->telefono ?? '',
                             'fecha_nacimiento' => $student->fecha_nacimiento ?? '',
                             'grupo' => $currentEnrollment && $currentEnrollment->academicGroup ? [
                                 'id' => $currentEnrollment->academicGroup->id,
@@ -88,7 +95,7 @@ class StudentController extends Controller
                     })
                     ->withQueryString();
             }),
-            'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(function ($g) {
+            'groups' => Inertia::defer(fn() => AcademicGroup::select('id', 'nombre', 'codigo', 'especialidad')->get()->map(function ($g) {
                 return [
                     'id' => $g->id,
                     'nombre' => $g->nombre,
@@ -101,14 +108,15 @@ class StudentController extends Controller
                 'group' => $group,
                 'cycle' => $workingCycle ? $workingCycle->id : null
             ],
-            'availableCycles' => \App\Models\AcademicPeriod::whereIn('status', [
-                \App\Models\AcademicPeriod::STATUS_ACTIVE,
-                \App\Models\AcademicPeriod::STATUS_PLANNING
-            ])->orderBy('fecha_inicio', 'desc')->get()->map(fn($c) => [
-                'id' => $c->id,
-                'nombre' => $c->nombre,
-                'status' => $c->status
-            ]),
+            'availableCycles' => Inertia::defer(fn() => \App\Models\AcademicPeriod::select('id', 'nombre', 'status', 'fecha_inicio')
+                ->whereIn('status', [
+                    \App\Models\AcademicPeriod::STATUS_ACTIVE,
+                    \App\Models\AcademicPeriod::STATUS_PLANNING
+                ])->orderBy('fecha_inicio', 'desc')->get()->map(fn($c) => [
+                    'id' => $c->id,
+                    'nombre' => $c->nombre,
+                    'status' => $c->status
+                ])),
             'isCycleActive' => (bool)$activeCycle,
             'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
                 \App\Models\AcademicPeriod::STATUS_ACTIVE,
@@ -354,4 +362,81 @@ class StudentController extends Controller
 
         return redirect()->route('admin.alumnos.index');
     }
+
+    /**
+     * Subir documento de alumno a Google Drive y guardar en base de datos.
+     */
+    public function uploadDocument(Request $request, $id, \App\Services\GoogleDriveService $driveService)
+    {
+        $request->validate([
+            'tipo_documento' => 'required|string|max:100',
+            'archivo'        => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240', // máx 10MB
+        ]);
+
+        $student = Student::with(['user', 'enrollment.academicGroup', 'enrollment.academicPeriod'])->findOrFail($id);
+        $file = $request->file('archivo');
+
+        // 1. Guardar temporalmente en local
+        $tempPath = $file->storeAs('tmp', uniqid() . '_' . $file->getClientOriginalName());
+        $fullPath = storage_path('app/' . $tempPath);
+
+        try {
+            // 2. Obtener carpeta correspondiente en Google Drive
+            $folderId = $driveService->getOrCreateStudentFolder($student);
+
+            // 3. Subir archivo a la carpeta de Drive
+            $driveFile = $driveService->uploadFileToFolder($fullPath, $file->getClientOriginalName(), $folderId);
+
+            // 4. Registrar en base de datos
+            $document = \App\Models\StudentDocument::create([
+                'alumno_id'            => $student->id,
+                'nombre_archivo'       => $file->getClientOriginalName(),
+                'tipo_documento'       => $request->tipo_documento,
+                'google_drive_file_id' => $driveFile->getId(),
+                'google_drive_url'     => $driveFile->getWebViewLink(),
+                'fecha_subida'         => now(),
+            ]);
+
+            return redirect()->back()->with('message', 'Documento subido a Google Drive con éxito.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['archivo' => 'Error al subir a Google Drive: ' . $e->getMessage()]);
+        } finally {
+            // 5. Eliminar temporal local
+            if (file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+        }
+    }
+
+    /**
+     * Obtener lista de documentos de un alumno.
+     */
+    public function getDocuments($id)
+    {
+        $student = Student::findOrFail($id);
+        $documents = \App\Models\StudentDocument::where('alumno_id', $student->id)
+            ->orderBy('fecha_subida', 'desc')
+            ->get();
+
+        return response()->json(['documents' => $documents]);
+    }
+
+    /**
+     * Eliminar un documento del alumno de Google Drive y DB.
+     */
+    public function deleteDocument($id, $documentId, \App\Services\GoogleDriveService $driveService)
+    {
+        $document = \App\Models\StudentDocument::where('alumno_id', $id)->findOrFail($documentId);
+
+        try {
+            $driveService->deleteFile($document->google_drive_file_id);
+        } catch (\Exception $e) {
+            // Log warning si ya fue borrado en Drive
+        }
+
+        $document->delete();
+
+        return redirect()->back()->with('message', 'Documento eliminado.');
+    }
 }
+

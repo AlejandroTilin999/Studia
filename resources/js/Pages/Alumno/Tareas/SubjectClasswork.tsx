@@ -33,6 +33,7 @@ export default function SubjectClasswork({ tasks, onSelectTask }: SubjectClasswo
                     </div>
                 ) : (
                     tasks.map((task) => {
+                        const isMaterial = (task as any).type === 'material';
                         const isDelivered = task.status === 'Entregado' || task.status === 'Calificado';
                         return (
                             <div
@@ -43,16 +44,27 @@ export default function SubjectClasswork({ tasks, onSelectTask }: SubjectClasswo
                                 {/* Left Info block */}
                                 <div className="flex items-center gap-2 min-w-0">
                                     <div className="min-w-0 space-y-1 text-left px-2">
-                                        <span className="font-bold text-sm text-slate-800 block truncate group-hover:text-[#0266E0] transition-colors leading-tight">
-                                            {task.title}
-                                        </span>
-                                        <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                                            <span className="flex items-center gap-1">
-                                                <Clock size={12} className="text-slate-300" />
-                                                Límite: {task.deadline}
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-sm text-slate-800 block truncate group-hover:text-[#0266E0] transition-colors leading-tight">
+                                                {task.title}
                                             </span>
-                                            <span className="text-slate-200">•</span>
-                                            <span>{task.points || '100 puntos'}</span>
+                                            {isMaterial && (
+                                                <span className="text-[9px] font-black uppercase tracking-wider bg-purple-50 text-purple-600 border border-purple-100 px-2 py-0.5 rounded-md">
+                                                    Aviso / Material
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                                            {!isMaterial && (
+                                                <>
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock size={12} className="text-slate-300" />
+                                                        Límite: {task.deadline}
+                                                    </span>
+                                                    <span className="text-slate-200">•</span>
+                                                </>
+                                            )}
+                                            <span>{task.points || 'Material Informativo'}</span>
                                         </div>
                                     </div>
                                 </div>

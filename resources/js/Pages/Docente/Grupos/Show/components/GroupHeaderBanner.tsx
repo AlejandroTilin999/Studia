@@ -96,10 +96,10 @@ export default function GroupHeaderBanner({
             </div>
 
             {/* Widget único de Resumen del Grupo al lado */}
-            <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 lg:p-6 xl:p-9 shadow-none flex flex-col justify-center h-full lg:col-span-1 min-h-[135px] lg:min-h-[160px] xl:min-h-[260px] 2xl:min-h-[300px] select-none text-left font-body relative">
-                <h3 className="absolute top-6 left-6 sm:left-5 lg:left-6 xl:left-9 text-[10px] font-black text-slate-400 uppercase tracking-widest">Información del Grupo</h3>
+            <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-7 shadow-none flex flex-col justify-center h-full lg:col-span-1 min-h-[135px] lg:min-h-[160px] xl:min-h-[260px] 2xl:min-h-[300px] select-none text-left font-body">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Información del Grupo</h3>
 
-                <div className="flex flex-col justify-center space-y-2.5 mt-2">
+                <div className="flex flex-col justify-center space-y-2.5">
                     {/* Item: Semestre */}
                     <div className="flex items-center justify-between">
                         <span className="text-[13px] font-normal text-slate-600">Semestre</span>

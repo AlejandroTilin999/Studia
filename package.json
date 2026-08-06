@@ -4,12 +4,13 @@
     "type": "module",
     "scripts": {
         "build": "tsc && vite build",
-        "dev": "concurrently \"php artisan serve\" \"vite\"",
+        "dev": "concurrently \"php artisan serve --port=8000\" \"vite\"",
         "lint": "eslint resources/js --ext .js,.jsx,.ts,.tsx --ignore-path .gitignore --fix"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
         "@inertiajs/react": "^2.0.0",
+        "@laravel/echo-react": "^2.4.0",
         "@tailwindcss/forms": "^0.5.3",
         "@tailwindcss/vite": "^4.0.0",
         "@types/node": "^26.0.0",
@@ -27,11 +28,13 @@
         "eslint-plugin-prettier": "^5.1.3",
         "eslint-plugin-react": "^7.34.4",
         "eslint-plugin-react-hooks": "^4.6.2",
+        "laravel-echo": "^2.4.0",
         "laravel-vite-plugin": "^2.0.0",
         "postcss": "^8.4.31",
         "prettier": "^3.3.0",
         "prettier-plugin-organize-imports": "^4.0.0",
         "prettier-plugin-tailwindcss": "^0.6.5",
+        "pusher-js": "^8.6.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "tailwindcss": "^3.2.1",

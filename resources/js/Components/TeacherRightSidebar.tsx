@@ -76,12 +76,12 @@ export default function TeacherRightSidebar({
             {/* Bottom Quick Contact Buttons */}
             <div className="grid grid-cols-2 gap-3 pt-8 border-t border-slate-50 mt-10 mb-2">
                 <ContactButton
-                    href="mailto:contacto@prepahidalgo.edu.mx"
+                    href="mailto:[admin.prepahid@gmail.com]"
                     label="Correo Escolar"
                     icon={Mail}
                 />
                 <ContactButton
-                    href="https://wa.me/7710000000"
+                    href="https://wa.me/4433541441"
                     label="WhatsApp"
                     icon={FaWhatsapp}
                     external
