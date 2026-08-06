@@ -29,7 +29,12 @@ class TaskCreated implements ShouldBroadcastNow
         }
 
         $groupId = $this->tarea->academicLoad->grupo_id ?? null;
-        return $groupId ? [new PrivateChannel('AcademicGroup.' . $groupId)] : [];
+        $channels = [new Channel('Public.Global')];
+        if ($groupId) {
+            $channels[] = new PrivateChannel('AcademicGroup.' . $groupId);
+        }
+
+        return $channels;
     }
 
     public function broadcastAs(): string

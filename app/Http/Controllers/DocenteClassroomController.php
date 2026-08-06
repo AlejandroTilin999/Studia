@@ -272,76 +272,63 @@ class DocenteClassroomController extends Controller
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
         $request->validate([
             'parcial' => 'required|integer',
-            'tareas' => 'required|array',
+            'tareas' => 'present|array',
         ]);
 
         $parcial = $request->input('parcial');
         $tasksData = $request->input('tareas');
         $activeIds = [];
-
         $upsertSubmissions = [];
 
-        \App\Models\Tarea::withoutEvents(function () use ($tasksData, $load, $parcial, &$activeIds, &$upsertSubmissions) {
-            foreach ($tasksData as $taskItem) {
-                $taskId = isset($taskItem['id']) && is_numeric($taskItem['id']) ? $taskItem['id'] : null;
-                $fechaEntrega = $taskItem['fecha_entrega'] ?? null;
-                if ($fechaEntrega && !empty($taskItem['hora_entrega'])) {
-                    $fechaEntrega = explode(' ', $fechaEntrega)[0] . ' ' . $taskItem['hora_entrega'] . ':00';
-                }
-
-                $tarea = Tarea::updateOrCreate(
-                    ['id' => $taskId],
-                    [
-                        'carga_id' => $load->id,
-                        'parcial' => $parcial,
-                        'nombre' => $taskItem['nombre'],
-                        'descripcion' => $taskItem['descripcion'] ?? '',
-                        'fecha_entrega' => $fechaEntrega,
-                        'puntos' => $taskItem['puntos'] ?? 10,
-                    ]
-                );
-                $activeIds[] = $tarea->id;
-
-                if (isset($taskItem['calificaciones']) && is_array($taskItem['calificaciones'])) {
-                    foreach ($taskItem['calificaciones'] as $userId => $score) {
-                        if (is_numeric($userId)) {
-                            $finalScore = ($score !== null && $score !== '') ? (int)round(floatval($score)) : '';
-                            $upsertSubmissions[] = [
-                                'tarea_id' => $tarea->id,
-                                'usuario_id' => $userId,
-                                'calificacion' => (string)$finalScore,
-                                'estatus' => ($finalScore !== '') ? 'graded' : 'pending',
-                                'updated_at' => now(),
-                            ];
-                        }
-                    }
-                }
+        foreach ($tasksData as $taskItem) {
+            $taskId = isset($taskItem['id']) && is_numeric($taskItem['id']) ? $taskItem['id'] : null;
+            $fechaEntrega = $taskItem['fecha_entrega'] ?? null;
+            if ($fechaEntrega && !empty($taskItem['hora_entrega'])) {
+                $fechaEntrega = explode(' ', $fechaEntrega)[0] . ' ' . $taskItem['hora_entrega'] . ':00';
             }
-        });
 
-        // Optimización masiva de Entregas
-        if (!empty($upsertSubmissions)) {
-            $tareaIds = array_unique(array_column($upsertSubmissions, 'tarea_id'));
-            $userIds = array_unique(array_column($upsertSubmissions, 'usuario_id'));
+            $tarea = Tarea::updateOrCreate(
+                ['id' => $taskId],
+                [
+                    'carga_id' => $load->id,
+                    'parcial' => $parcial,
+                    'nombre' => $taskItem['nombre'],
+                    'descripcion' => $taskItem['descripcion'] ?? '',
+                    'fecha_entrega' => $fechaEntrega,
+                    'puntos' => $taskItem['puntos'] ?? 10,
+                ]
+            );
+            $activeIds[] = $tarea->id;
 
-            $existingSubmissions = EntregaTarea::whereIn('tarea_id', $tareaIds)
-                ->whereIn('usuario_id', $userIds)
-                ->get();
-
-            foreach ($upsertSubmissions as $sub) {
-                $existing = $existingSubmissions->where('tarea_id', $sub['tarea_id'])
-                    ->where('usuario_id', $sub['usuario_id'])
-                    ->first();
-
-                if ($existing) {
-                    $existing->update(['calificacion' => $sub['calificacion'], 'estatus' => $sub['estatus']]);
-                } else {
-                    EntregaTarea::create($sub);
+            if (isset($taskItem['calificaciones']) && is_array($taskItem['calificaciones'])) {
+                foreach ($taskItem['calificaciones'] as $userId => $score) {
+                    if (is_numeric($userId)) {
+                        $finalScore = ($score !== null && $score !== '') ? (int)round(floatval($score)) : '';
+                        $upsertSubmissions[] = [
+                            'tarea_id' => $tarea->id,
+                            'usuario_id' => $userId,
+                            'calificacion' => (string)$finalScore,
+                            'estatus' => ($finalScore !== '') ? 'graded' : 'pending',
+                            'updated_at' => now(),
+                        ];
+                    }
                 }
             }
         }
 
-        Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->delete();
+        // Optimización masiva de Entregas mediante SQL Upsert directo
+        if (!empty($upsertSubmissions)) {
+            EntregaTarea::upsert(
+                $upsertSubmissions,
+                ['tarea_id', 'usuario_id'],
+                ['calificacion', 'estatus', 'updated_at']
+            );
+        }
+
+        $tasksToDelete = Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->get();
+        foreach ($tasksToDelete as $taskToDelete) {
+            $taskToDelete->delete();
+        }
 
         // [CONSOLIDACIÓN RÁPIDA]
         try {
@@ -350,8 +337,7 @@ class DocenteClassroomController extends Controller
             \Illuminate\Support\Facades\Log::error("RT_DEBUG: Error in consolidateGroup: " . $e->getMessage());
         }
 
-        // Notificar actualización masiva
-        \Illuminate\Support\Facades\Log::info("RT_DEBUG: Dispatching GroupDataUpdated for group: " . $load->grupo_id);
+        // Notificar actualización masiva limpia de una sola vez
         event(new \App\Events\GroupDataUpdated($load->grupo_id, 'all'));
 
         $this->clearStudentsCache($load);
@@ -455,11 +441,13 @@ class DocenteClassroomController extends Controller
 
     private function clearStudentsCache(AcademicLoad $load)
     {
-        // Incrementar versión de cache global de estudiantes para invalidar instantáneamente
+        $version = \Cache::get('student_cache_version', 1);
         \Cache::increment('student_cache_version');
 
         $studentIds = Enrollment::where('grupo_id', $load->grupo_id)->where('estatus', 'active')->pluck('usuario_id');
         foreach ($studentIds as $id) {
+            \Cache::forget("student_kardex_{$id}_v{$version}");
+            \Cache::forget("student_tasks_{$id}_v{$version}");
             \Cache::forget("student_kardex_{$id}");
             \Cache::forget("student_tasks_{$id}");
             \Cache::forget("sidebar_alumno_{$id}");

@@ -63,7 +63,11 @@ export default function AlumnoDashboard({
 
     // Listado de tareas
     const [taskList, setTaskList] = useState<Task[]>(propTaskList || []);
-    useEffect(() => { if (propTaskList) setTaskList(propTaskList); }, [propTaskList]);
+    useEffect(() => {
+        if (Array.isArray(propTaskList)) {
+            setTaskList(propTaskList);
+        }
+    }, [propTaskList]);
 
     // Sincronizar URL estilo Google Classroom: ?c=ID_MATERIA&a=HASH_TAREA
     useEffect(() => {
@@ -220,9 +224,9 @@ export default function AlumnoDashboard({
                                 activeCriteria={activeCriteria}
                             />
 
-                            <div className="p-6 md:p-8">
+                            <div className="p-6 md:p-8 flex-1 flex flex-col">
                                 {!selectedSubject ? (
-                                    <div className="flex flex-col items-center justify-center h-[400px]">
+                                    <div className="flex-1 flex flex-col items-center justify-center min-h-[calc(100vh-180px)]">
                                         <DotsLoader label="Cargando portal" />
                                     </div>
                                 ) : (

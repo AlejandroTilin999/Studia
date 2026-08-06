@@ -295,20 +295,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'ciclo' => $fullCicloLabel,
                     ];
 
+                $alumnoGroupsData = \App\Models\AcademicLoad::where('grupo_id', $enrollment?->grupo_id)
+                    ->where('ciclo_id', $enrollment?->ciclo_id)
+                    ->with(['course', 'teacher.user'])
+                    ->get()
+                    ->map(fn($load) => [
+                        'id' => $load->uuid,
+                        'nombre' => $load->course?->nombre ?? 'N/A',
+                        'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
+                        'description' => $load->course?->descripcion ?? 'Sin descripción',
+                        'color_tema' => $load->color_tema ?? 'blue'
+                    ])->toArray();
+
                 return Inertia::render('Alumno/Dashboard', [
                     'studentInfo' => $studentInfo,
                     'kardex' => Inertia::defer(fn() => \App\Services\GradeService::getStudentKardex($studentId)),
                     'taskList' => Inertia::defer(fn() => \App\Services\GradeService::getStudentTasks($studentId)),
-                    'alumnoGroups' => Inertia::defer(function() use ($studentId) {
-                        $k = \App\Services\GradeService::getStudentKardex($studentId);
-                        return array_map(fn($item) => [
-                            'id' => $item['uuid'],
-                            'nombre' => $item['subject'],
-                            'docente' => $item['teacher'],
-                            'description' => $item['description'] ?? '',
-                            'color_tema' => $item['color_tema'] ?? 'blue'
-                        ], $k);
-                    }),
+                    'alumnoGroups' => $alumnoGroupsData,
                     'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('alumno.dashboard');

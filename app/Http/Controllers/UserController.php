@@ -149,8 +149,10 @@ class UserController extends Controller
     public function resetPassword(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $user->password = Hash::make('Prepahid2026');
-        $user->save();
+        $user->update([
+            'password' => Hash::make('Prepahid2026'),
+            'password_changed' => false,
+        ]);
 
         return redirect()->back()->with('message', 'Contraseña restablecida a: Prepahid2026');
     }

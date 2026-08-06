@@ -29,11 +29,7 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    post('/login', {
-      onSuccess: () => {
-        SwalHelper.toast('¡Has iniciado sesión correctamente!', 'success');
-      }
-    });
+    post('/login');
   };
 
   const handleSwitchProfile = (newRole: "alumno" | "institucional") => {
@@ -161,10 +157,10 @@ export default function LoginPage() {
 
               {/* Botón de alternar portal/recuperación */}
               <div className="mt-6 lg:mt-8 text-center text-sm font-semibold text-slate-400">
-                ¿Eres {profile === "student" ? "docente o administrativo" : "alumno"}?{' '}
+                ¿Eres {profile === "alumno" ? "docente o administrativo" : "alumno"}?{' '}
                 <button
                   type="button"
-                  onClick={() => handleSwitchProfile(profile === "student" ? "staff" : "student")}
+                  onClick={() => handleSwitchProfile(profile === "alumno" ? "institucional" : "alumno")}
                   className="text-[#0266E0] hover:underline font-black cursor-pointer"
                 >
                   Ingresa aquí

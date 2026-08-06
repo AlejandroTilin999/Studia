@@ -12,10 +12,16 @@ class Tarea extends Model
     protected static function booted()
     {
         static::created(function ($tarea) {
+            \Cache::increment('student_cache_version');
             event(new \App\Events\TaskCreated($tarea));
         });
         static::updated(function ($tarea) {
+            \Cache::increment('student_cache_version');
             event(new \App\Events\TaskUpdated($tarea));
+        });
+        static::deleted(function ($tarea) {
+            \Cache::increment('student_cache_version');
+            event(new \App\Events\TaskDeleted($tarea));
         });
     }
 

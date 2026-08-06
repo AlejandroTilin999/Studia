@@ -58,8 +58,8 @@ class HandleInertiaRequests extends Middleware
             ],
             // [OPTIMIZACIÓN v2.2] Carga diferida (Deferred) para no bloquear la navegación principal
             'unreadNotificationsCount' => Inertia::defer(fn() => $user ? \App\Models\Notificacion::where('usuario_id', $user->id)->where('leido', false)->count() : 0),
-            'docenteGroups' => Inertia::defer(fn() => $this->getDocenteGroups($user)),
-            'alumnoGroups' => Inertia::defer(fn() => $this->getAlumnoGroups($user)),
+            'docenteGroups' => $this->getDocenteGroups($user),
+            'alumnoGroups' => $this->getAlumnoGroups($user),
         ];
     }
 

@@ -1,6 +1,7 @@
 import { Head, useForm, Link } from '@inertiajs/react';
 import { FormEvent, useState, useEffect } from 'react';
 import { Check, X, Shield, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { SwalHelper } from '@/utils/SwalHelper';
 
 export default function ResetPassword() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -66,6 +67,9 @@ export default function ResetPassword() {
         }
 
         post(route('password.force_update'), {
+            onSuccess: () => {
+                SwalHelper.toast('¡Contraseña actualizada correctamente! Bienvenido al sistema.', 'success');
+            },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };
@@ -92,7 +96,7 @@ export default function ResetPassword() {
             </div>
 
             {/* Tarjeta de Formulario */}
-            <div className="w-full max-w-md bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-none relative z-20 transition-all duration-300">
+            <div className="w-full max-w-xl md:max-w-2xl bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-none relative z-20 transition-all duration-300">
 
                 {/* Logo PrepaHidalgo */}
                 <div className="flex justify-center mb-6">

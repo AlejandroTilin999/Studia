@@ -22,7 +22,7 @@ export function useRealtime() {
             console.log('[RT] 🔄 Executing consolidated reload...');
             router.reload(options);
             reloadTimeoutRef.current = null;
-        }, 500); // 500ms window to accumulate events
+        }, 20); // 20ms instantaneous window
     };
 
     useEffect(() => {
@@ -72,6 +72,18 @@ export function useRealtime() {
             .listen('.AcademicPeriodChanged', (e: any) => {
                 console.log('[RT] Period Update (Public):', e);
                 debouncedReload({ only: ['isCycleActive', 'activePeriod'] });
+            })
+            .listen('.TaskCreated', (e: any) => {
+                console.log('[RT] Global Task Created:', e);
+                debouncedReload({ only: ['taskList', 'kardex'] });
+            })
+            .listen('.TaskUpdated', (e: any) => {
+                console.log('[RT] Global Task Updated:', e);
+                debouncedReload({ only: ['taskList', 'kardex'] });
+            })
+            .listen('.TaskDeleted', (e: any) => {
+                console.log('[RT] Global Task Deleted:', e);
+                debouncedReload({ only: ['taskList', 'kardex'] });
             });
 
         return () => {
@@ -101,17 +113,22 @@ export function useRealtime() {
 
             groupChannel.listen('.TaskCreated', (e: any) => {
                 console.log('[RT] Task Created Received:', e);
-                debouncedReload({ only: ['taskList', 'kardex', 'alumnoGroups', 'classInfo'] });
+                debouncedReload({ only: ['taskList', 'kardex'] });
             });
 
             groupChannel.listen('.TaskUpdated', (e: any) => {
                 console.log('[RT] Task Updated Received:', e);
-                debouncedReload({ only: ['taskList', 'kardex', 'alumnoGroups', 'classInfo'] });
+                debouncedReload({ only: ['taskList', 'kardex'] });
+            });
+
+            groupChannel.listen('.TaskDeleted', (e: any) => {
+                console.log('[RT] Task Deleted Received:', e);
+                debouncedReload({ only: ['taskList', 'kardex'] });
             });
 
             groupChannel.listen('.GroupDataUpdated', (e: any) => {
                 console.log('[RT] Group Data Mass Update Received:', e);
-                debouncedReload();
+                debouncedReload({ only: ['taskList', 'kardex'] });
             });
 
             return () => {

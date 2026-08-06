@@ -108,18 +108,18 @@ class GradeService
                         if ($criterion->sincronizar_tareas) {
                             $tasks = $load->tareas->where('parcial', $parcial);
                             if ($tasks->isEmpty()) {
-                                $score = 0;
+                                $score = null;
                             } else {
                                 $sumNormalized = 0; $count = 0;
                                 foreach ($tasks as $task) {
                                     $delivery = $task->entregas->first();
-                                    $taskScore = ($delivery && $delivery->calificacion !== '') ? floatval($delivery->calificacion) : null;
+                                    $taskScore = ($delivery && $delivery->calificacion !== null && $delivery->calificacion !== '') ? floatval($delivery->calificacion) : null;
                                     if ($taskScore !== null) {
                                         $sumNormalized += ($taskScore / ($task->puntos ?: 10)) * 10;
                                         $count++;
                                     }
                                 }
-                                $score = ($count === 0) ? 0 : ($sumNormalized / $count);
+                                $score = ($count === 0) ? null : ($sumNormalized / $count);
                             }
                         } else {
                             $grade = $loadGrades->where('criterio_id', $criterion->id)->first();
