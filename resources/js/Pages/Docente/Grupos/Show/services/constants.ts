@@ -13,6 +13,7 @@ export interface Task {
     puntos?: number;
     type?: 'task' | 'material';
     attachments?: { name: string; size: string; type: string }[];
+    archivos?: Record<number, any>;
     calificaciones: Record<number, string>; // studentId → score
 }
 

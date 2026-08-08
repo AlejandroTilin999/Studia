@@ -8,9 +8,10 @@ import {
     BookOpen,
     AlertCircle
 } from 'lucide-react';
-import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
-import TeacherInfoCard from '@/Components/TeacherInfoCard';
-import TeacherRightSidebar from '@/Components/TeacherRightSidebar';
+import DashboardWelcomeBanner from '@/Components/layout/DashboardWelcomeBanner';
+import TeacherInfoCard from '@/Components/docente/TeacherInfoCard';
+import QuickActionsWidget from '@/Components/widgets/QuickActionsWidget';
+import TeacherRightSidebar from '@/Components/docente/TeacherRightSidebar';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
 interface AssignedLoadItem {

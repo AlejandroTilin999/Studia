@@ -128,7 +128,7 @@ export function useRealtime() {
 
             groupChannel.listen('.GroupDataUpdated', (e: any) => {
                 console.log('[RT] Group Data Mass Update Received:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                debouncedReload({ only: ['kardex', 'taskList', 'studentInfo', 'alumnoGroups', 'classInfo'] });
             });
 
             return () => {

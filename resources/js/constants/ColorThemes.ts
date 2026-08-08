@@ -1,5 +1,4 @@
-
-interface GroupColorTheme {
+export interface GroupColorTheme {
     bg: string;
     border: string;
     text: string;
@@ -58,7 +57,6 @@ export const COLOR_THEMES: Record<string, GroupColorTheme> = {
         strokeColor: '#94a3b8',
         dotBg: 'bg-[#94a3b8]',
     },
-
     rojo: {
         bg: 'bg-[#fae8e8]',
         border: 'border-[#f4e8e8]',
@@ -77,5 +75,4 @@ export const COLOR_THEMES: Record<string, GroupColorTheme> = {
         strokeColor: '#9e9be2ff',
         dotBg: 'bg-[#EBEAFF]',
     },
-
 };

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ChevronRight, GraduationCap, Layers, Palette, ArrowLeft, School, ExternalLink, FileText } from 'lucide-react';
-import { COLOR_THEMES } from '@/Pages/Docente/Grupos/ColorThemes';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 interface Subject {
     id?: string | number;
@@ -71,11 +71,11 @@ export default function SubjectHeader({
                                     <span>Portal de Asignatura</span>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <h1 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight leading-none">
+                                <div className="space-y-2">
+                                    <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight leading-tight">
                                         {subject.name}
                                     </h1>
-                                    <p className="text-sm md:text-base font-medium text-slate-500 leading-relaxed max-w-2xl">
+                                    <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed text-justify max-w-2xl">
                                         {subject.description}
                                     </p>
                                 </div>

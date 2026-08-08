@@ -1,4 +1,4 @@
-import { COLOR_THEMES } from '../../ColorThemes';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 export interface AcademicLoad {
     id: string;

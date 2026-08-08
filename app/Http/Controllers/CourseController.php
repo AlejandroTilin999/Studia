@@ -156,6 +156,12 @@ class CourseController extends Controller
             }
         });
 
+        // [TIEMPO REAL INSTANTÁNEO] Notificar a todos los grupos que llevan esta materia
+        $affectedLoads = \App\Models\AcademicLoad::where('materia_id', $course->id)->get();
+        foreach ($affectedLoads as $load) {
+            event(new \App\Events\GroupDataUpdated($load->grupo_id, 'course'));
+        }
+
         return redirect()->route('admin.materias.index')
             ->with('message', 'Materia actualizada correctamente.');
     }

@@ -1,5 +1,5 @@
 import { Palette, Layers, Users, BookOpen, CheckCircle2, FileText, GraduationCap, School, Target } from 'lucide-react';
-import { COLOR_THEMES } from '../../ColorThemes';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 import { Criterion } from '../services/constants';
 
 interface GroupHeaderBannerProps {

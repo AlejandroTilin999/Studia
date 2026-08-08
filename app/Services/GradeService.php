@@ -226,7 +226,14 @@ class GradeService
                         }
                     }
 
-                    $deadlineFormatted = $task->fecha_entrega ? date('d \d\e F, h:i A', strtotime($task->fecha_entrega)) : 'Sin fecha';
+                    $rawDeadline = $task->fecha_entrega;
+                    if ($rawDeadline && !empty($task->hora_entrega)) {
+                        $onlyDate = explode(' ', $rawDeadline)[0];
+                        $cleanHora = strlen($task->hora_entrega) === 5 ? $task->hora_entrega . ':00' : $task->hora_entrega;
+                        $rawDeadline = $onlyDate . ' ' . $cleanHora;
+                    }
+
+                    $deadlineFormatted = $rawDeadline ? date('d \d\e F, h:i A', strtotime($rawDeadline)) : 'Sin fecha';
                     foreach ($months as $en => $es) $deadlineFormatted = str_replace($en, $es, $deadlineFormatted);
 
                     $taskHash = strtoupper(substr(md5('t_' . $task->id), 0, 6));

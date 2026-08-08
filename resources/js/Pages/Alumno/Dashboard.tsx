@@ -2,8 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar, Check, BookOpen, ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Clock, LockKeyhole } from 'lucide-react';
-import StudentRightSidebar from '@/Components/StudentRightSidebar';
-import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
+import StudentRightSidebar from '@/Components/alumno/StudentRightSidebar';
+import DashboardWelcomeBanner from '@/Components/layout/DashboardWelcomeBanner';
 import StudentDashboardCards from './StudentDashboardCards';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { formatGrade } from '@/utils/gradeHelper';
@@ -16,9 +16,11 @@ import SubjectCard from './Tareas/SubjectCard';
 import SubjectHeader from './Tareas/Componentes/SubjectHeader';
 import SubjectClasswork from './Tareas/SubjectClasswork';
 import SubjectAssignment from './Tareas/SubjectAssignment';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 interface Task {
     id: number;
+    carga_id?: any;
     subjectName?: string;
     parcial?: number;
     title: string;
@@ -80,10 +82,8 @@ export default function AlumnoDashboard({
         if (subjectId && subjects.length > 0) {
             const sub = subjects.find((s: any) => s.id?.toString() === subjectId.toString() || s.uuid?.toString() === subjectId.toString());
             if (sub) {
-                if (!selectedSubject || selectedSubject.id !== sub.id) {
-                    setCurrentView('tareas');
-                    setSelectedSubject(sub);
-                }
+                setCurrentView('tareas');
+                setSelectedSubject(sub);
                 if (parcialParam && selectedParcial !== parseInt(parcialParam)) {
                     setSelectedParcial(parseInt(parcialParam));
                 }
@@ -343,6 +343,7 @@ export default function AlumnoDashboard({
                                                     <div className="space-y-6">
                                                         <button onClick={() => setSelectedParcial(null)} className="text-xs font-bold text-slate-400">← Volver</button>
                                                         <SubjectClasswork
+                                                            themeKey={selectedSubject?.color_tema || 'blue'}
                                                             tasks={currentSubjectTasks.filter(t => !t.parcial || Number(t.parcial) === Number(selectedParcial))}
                                                             onSelectTask={(t) => {
                                                                 setSelectedTask(t);

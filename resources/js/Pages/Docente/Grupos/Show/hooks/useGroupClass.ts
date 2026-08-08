@@ -15,7 +15,7 @@ import {
     getLoadByParams,
     getGroupDefaultThemeKey
 } from '../services/loadService';
-import { COLOR_THEMES } from '../../ColorThemes';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 import { SwalHelper } from '@/utils/SwalHelper';
 
 function storageKey(grupo: string, materia: string, parcial: number) {
@@ -398,7 +398,8 @@ export function useGroupClass(classInfoProp?: any) {
                         delete next[num];
                         return next;
                     });
-                    SwalHelper.success('¡Hecho!', 'El parcial ha sido reiniciado.');
+                    setTasks([]);
+                    SwalHelper.success('¡Hecho!', 'El parcial y sus actividades han sido reiniciados.');
                 })
                 .catch(err => {
                     console.error("Error al reiniciar parcial:", err);

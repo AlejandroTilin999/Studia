@@ -123,6 +123,7 @@ class DocenteClassroomController extends Controller
                     'nombre' => $t->nombre,
                     'descripcion' => $t->descripcion,
                     'fecha_entrega' => $t->fecha_entrega,
+                    'hora_entrega' => $t->fecha_entrega ? (str_contains($t->fecha_entrega, ' ') ? explode(' ', $t->fecha_entrega)[1] : '') : '',
                     'puntos' => $t->puntos,
                     'calificaciones' => $t->entregas->mapWithKeys(fn($e) => [
                         $e->usuario_id => (string)\App\Services\GradeService::formatGrade($e->calificacion)
@@ -161,6 +162,10 @@ class DocenteClassroomController extends Controller
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
         $request->validate(['color' => 'required|string']);
         $load->update(['color_tema' => $request->input('color')]);
+        
+        // Notificar cambio de tema en tiempo real a todos los alumnos del grupo
+        event(new \App\Events\GroupDataUpdated($load->grupo_id, 'theme'));
+
         $this->clearStudentsCache($load);
         return response()->json(['message' => 'Tema actualizado']);
     }
@@ -173,15 +178,22 @@ class DocenteClassroomController extends Controller
         $load = AcademicLoad::where('uuid', $uuid)->firstOrFail();
         $request->validate([
             'parcial' => 'required|integer',
-            'criterios' => 'required|array',
-            'criterios.*.nombre' => 'required|string',
-            'criterios.*.porcentaje' => 'required|integer',
+            'criterios' => 'present|array',
+            'criterios.*.nombre' => 'required_with:criterios|string',
+            'criterios.*.porcentaje' => 'required_with:criterios|integer',
         ]);
 
         $parcial = $request->input('parcial');
         $criteriaData = $request->input('criterios');
 
         CriterioEvaluacion::where('carga_id', $load->id)->where('parcial', $parcial)->delete();
+
+        // Si se reinicia el parcial (sin criterios), borrar también las tareas del parcial
+        if (empty($criteriaData)) {
+            $taskIds = Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->pluck('id');
+            EntregaTarea::whereIn('tarea_id', $taskIds)->delete();
+            Tarea::whereIn('id', $taskIds)->delete();
+        }
 
         foreach ($criteriaData as $c) {
             CriterioEvaluacion::create([
@@ -282,9 +294,13 @@ class DocenteClassroomController extends Controller
 
         foreach ($tasksData as $taskItem) {
             $taskId = isset($taskItem['id']) && is_numeric($taskItem['id']) ? $taskItem['id'] : null;
-            $fechaEntrega = $taskItem['fecha_entrega'] ?? null;
-            if ($fechaEntrega && !empty($taskItem['hora_entrega'])) {
-                $fechaEntrega = explode(' ', $fechaEntrega)[0] . ' ' . $taskItem['hora_entrega'] . ':00';
+            $rawFecha = $taskItem['fecha_entrega'] ?? null;
+            $rawHora = $taskItem['hora_entrega'] ?? '';
+
+            $fechaEntrega = null;
+            if ($rawFecha) {
+                $onlyDate = explode(' ', $rawFecha)[0];
+                $fechaEntrega = !empty($rawHora) ? ($onlyDate . ' ' . (strlen($rawHora) === 5 ? $rawHora . ':00' : $rawHora)) : ($onlyDate . ' 23:59:00');
             }
 
             $tarea = Tarea::updateOrCreate(
@@ -295,6 +311,7 @@ class DocenteClassroomController extends Controller
                     'nombre' => $taskItem['nombre'],
                     'descripcion' => $taskItem['descripcion'] ?? '',
                     'fecha_entrega' => $fechaEntrega,
+                    'hora_entrega' => $rawHora,
                     'puntos' => $taskItem['puntos'] ?? 10,
                 ]
             );
@@ -348,7 +365,9 @@ class DocenteClassroomController extends Controller
             ->get()
             ->map(fn($t) => [
                 'id' => $t->id, 'nombre' => $t->nombre, 'descripcion' => $t->descripcion,
-                'fecha_entrega' => $t->fecha_entrega, 'puntos' => $t->puntos,
+                'fecha_entrega' => $t->fecha_entrega,
+                'hora_entrega' => $t->hora_entrega ?: ($t->fecha_entrega ? (str_contains($t->fecha_entrega, ' ') ? explode(' ', $t->fecha_entrega)[1] : '') : ''),
+                'puntos' => $t->puntos,
                 'calificaciones' => $t->entregas->mapWithKeys(fn($e) => [
                     $e->usuario_id => (string)\App\Services\GradeService::formatGrade($e->calificacion)
                 ])->toArray()
