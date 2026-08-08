@@ -12,6 +12,7 @@ import GradesTab from './Show/components/GradesTab';
 import FinalGradesModal from './Show/components/FinalGradesModal';
 import TaskGradesModal from './Show/components/TaskGradesModal';
 import DotsLoader from '@/Components/ui/DotsLoader';
+import BackButton from '@/Components/common/BackButton';
 import { useRealtime } from '@/hooks/useRealtime';
 
 function DocenteGruposContent({ classInfo }: { classInfo: any }) {
@@ -147,13 +148,13 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                 {screen === 'grades' && (
                     <div className="flex flex-col flex-grow space-y-4 px-2">
                         <div className="flex justify-between items-center">
-                            <button onClick={() => {
+                            <BackButton onClick={() => {
                                 setScreen('parciales');
                                 setActiveParcial(null);
                                 const url = new URL(window.location.href);
                                 url.searchParams.delete('parcial');
                                 window.history.replaceState({}, '', url.toString());
-                            }} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 px-3 py-2 rounded-xl"><ArrowLeft size={13} /> Volver</button>
+                            }} />
                             <button onClick={resetConfig} className="flex items-center gap-1.5 text-xs font-bold text-slate-400 border border-slate-200 px-3 py-2 rounded-xl"><Settings size={13} /> Reconfigurar</button>
                         </div>
                         <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />

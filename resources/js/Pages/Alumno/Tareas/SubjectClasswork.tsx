@@ -1,5 +1,6 @@
 import * as React from 'react';
 import StudentTaskCard from './Componentes/StudentTaskCard';
+import ParcialHeader from '@/Components/common/ParcialHeader';
 
 interface Task {
     id: number;
@@ -20,11 +21,12 @@ interface SubjectClassworkProps {
 export default function SubjectClasswork({ tasks, onSelectTask, themeKey = 'blue' }: SubjectClassworkProps) {
     return (
         <div className="space-y-6 text-left pt-2 w-full">
-            {/* Header info */}
-            <div>
-                <h4 className="text-lg font-bold text-slate-800 tracking-tight">Trabajos escolares</h4>
-                <p className="text-xs text-slate-400 font-normal mt-0.5">Listado completo de actividades del ciclo escolar</p>
-            </div>
+            {/* Header info con estilo dinámico homogado */}
+            <ParcialHeader
+                title="Trabajos escolares"
+                count={tasks.length}
+                themeKey={themeKey}
+            />
 
             {/* List of Tasks */}
             <div className="w-full">

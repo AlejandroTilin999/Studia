@@ -20,6 +20,8 @@ import {
     Globe
 } from 'lucide-react';
 import PdfIcon from '@/Components/ui/PdfIcon';
+import BackButton from '@/Components/common/BackButton';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 const getFileIcon = (filename: string = '') => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -59,6 +61,7 @@ interface SubjectAssignmentProps {
     comments: string[];
     onAddComment: (text: string) => void;
     teacherName: string;
+    themeKey?: string;
 }
 
 export default function SubjectAssignment({
@@ -68,8 +71,10 @@ export default function SubjectAssignment({
     onSwitchTask,
     comments,
     onAddComment,
-    teacherName
+    teacherName,
+    themeKey = 'blue'
 }: SubjectAssignmentProps) {
+    const activeTheme = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
     const [taskStatus, setTaskStatus] = useState(task?.status || 'Pendiente');
     const [currentServerFile, setCurrentServerFile] = useState((task as any)?.archivo || null);
     const [localComment, setLocalComment] = useState('');
@@ -254,15 +259,12 @@ export default function SubjectAssignment({
     return (
         <div className="space-y-8 text-left animate-in fade-in duration-200 pt-2 bg-white">
 
-            {/* Back Button */}
+            {/* Back Button Homogéneo en Gris */}
             <div className="pb-2">
-                <button
+                <BackButton
                     onClick={onBack}
-                    className="flex items-center gap-2 text-slate-400 hover:text-slate-800 transition-colors text-xs font-bold uppercase tracking-widest"
-                >
-                    <ChevronLeft size={16} />
-                    Volver a la lista
-                </button>
+                    label="Volver a la lista"
+                />
             </div>
 
             {/* Modern Layout */}
@@ -273,7 +275,10 @@ export default function SubjectAssignment({
 
                     <div className="space-y-4">
                         <div className="space-y-1">
-                           <span className="text-[10px] font-black text-[#0266E0] uppercase tracking-widest block">
+                           <span 
+                               style={{ color: activeTheme.strokeColor }}
+                               className="text-[10px] font-black uppercase tracking-widest block"
+                           >
                                {isMaterialType ? 'Aviso y Material Informativo' : 'Actividad Académica'}
                            </span>
                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
@@ -299,7 +304,10 @@ export default function SubjectAssignment({
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
                             Instrucciones
                         </span>
-                        <div className="border-l-4 border-[#0266E0] pl-5 py-1 text-slate-600 text-xs md:text-sm font-medium leading-relaxed whitespace-pre-line">
+                        <div 
+                            style={{ borderColor: activeTheme.strokeColor }}
+                            className="border-l-4 pl-5 py-1 text-slate-600 text-xs md:text-sm font-medium leading-relaxed whitespace-pre-line"
+                        >
                             {task.desc}
                         </div>
                     </div>
@@ -320,9 +328,9 @@ export default function SubjectAssignment({
                                         className="border border-slate-200 bg-slate-50 hover:bg-blue-50/50 hover:border-blue-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm transition-all group cursor-pointer"
                                     >
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                            <Paperclip size={16} className="text-[#0266E0] shrink-0" />
+                                            <Paperclip size={16} style={{ color: activeTheme.strokeColor }} className="shrink-0" />
                                             <div className="min-w-0">
-                                                <span className="text-xs font-bold text-slate-800 group-hover:text-[#0266E0] block truncate">
+                                                <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 block truncate">
                                                     {file.name || file.nombre || 'Material de apoyo'}
                                                 </span>
                                                 {file.size && (
@@ -332,7 +340,7 @@ export default function SubjectAssignment({
                                                 )}
                                             </div>
                                         </div>
-                                        <ExternalLink size={14} className="text-slate-400 group-hover:text-[#0266E0] shrink-0" />
+                                        <ExternalLink size={14} className="text-slate-400 group-hover:text-blue-600 shrink-0" />
                                     </a>
                                 ))}
                                 {!(task as any).attachments && (task as any).material_url && (
@@ -343,12 +351,12 @@ export default function SubjectAssignment({
                                         className="border border-slate-200 bg-slate-50 hover:bg-blue-50/50 hover:border-blue-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm transition-all group cursor-pointer"
                                     >
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                            <Paperclip size={16} className="text-[#0266E0] shrink-0" />
-                                            <span className="text-xs font-bold text-slate-800 group-hover:text-[#0266E0] truncate">
+                                            <Paperclip size={16} style={{ color: activeTheme.strokeColor }} className="shrink-0" />
+                                            <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
                                                 Material de estudio adjunto
                                             </span>
                                         </div>
-                                        <ExternalLink size={14} className="text-slate-400 group-hover:text-[#0266E0] shrink-0" />
+                                        <ExternalLink size={14} className="text-slate-400 group-hover:text-blue-600 shrink-0" />
                                     </a>
                                 )}
                             </div>
@@ -386,13 +394,14 @@ export default function SubjectAssignment({
                                 value={localComment}
                                 onChange={e => setLocalComment(e.target.value)}
                                 placeholder="Escribe un mensaje privado para el docente..."
-                                className="flex-1 text-xs py-3 px-4 bg-slate-50 border border-slate-200 rounded-[14px] focus:bg-white focus:ring-1 focus:ring-[#0266E0] text-slate-700 transition-all outline-none"
+                                className="flex-1 text-xs py-3 px-4 bg-slate-50 border border-slate-200 rounded-[14px] focus:bg-white focus:ring-1 focus:ring-blue-500 text-slate-700 transition-all outline-none"
                                 onKeyDown={e => e.key === 'Enter' && handleSendComment()}
                             />
                             <button
                                 type="button"
                                 onClick={handleSendComment}
-                                className="p-3 bg-[#0266E0] hover:bg-blue-700 text-white rounded-[14px] transition-all flex items-center justify-center"
+                                style={{ backgroundColor: activeTheme.strokeColor }}
+                                className="p-3 text-white rounded-[14px] transition-all flex items-center justify-center hover:opacity-90"
                             >
                                 <Send size={15} />
                             </button>

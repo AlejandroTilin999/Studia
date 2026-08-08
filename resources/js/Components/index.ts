@@ -41,4 +41,6 @@ export { default as PrimaryButton } from './common/PrimaryButton';
 export { default as SecondaryButton } from './common/SecondaryButton';
 export { SpecialtySelect } from './common/SpecialtySelect';
 export { TableActions, TableActionButton } from './common/TableActions';
+export { default as BackButton } from './common/BackButton';
+export { default as ParcialHeader } from './common/ParcialHeader';
 export { default as TextInput } from './common/TextInput';

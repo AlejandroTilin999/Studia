@@ -5,6 +5,7 @@ import { SwalHelper } from '@/utils/SwalHelper';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 import ActivityForm from './ActivityForm';
 import ActivityCard from './ActivityCard';
+import ParcialHeader from '@/Components/common/ParcialHeader';
 
 interface ActivitiesTabProps {
     tasks: Task[];
@@ -104,17 +105,13 @@ export default function ActivitiesTab({
                 </div>
             ) : (
                 <div className="space-y-6 w-full">
-                    {/* Encabezado de Tema "Primer Parcial" estilo Google Classroom Plano (Color Dinámico) */}
+                    {/* Encabezado de Tema estilo Google Classroom Plano (Color Dinámico) */}
                     <div className="space-y-2 w-full">
-                        <div
-                            style={{ borderColor: activeTheme.strokeColor }}
-                            className="flex items-center justify-between border-b-2 pb-2 transition-colors w-full"
-                        >
-                            <h3 style={{ color: activeTheme.strokeColor }} className="text-lg font-bold">Primer Parcial</h3>
-                            <span className="text-xs font-semibold text-slate-400">
-                                {tasks.length} {tasks.length === 1 ? 'actividad' : 'actividades'}
-                            </span>
-                        </div>
+                        <ParcialHeader
+                            title="Primer Parcial"
+                            count={tasks.length}
+                            themeKey={themeKey}
+                        />
 
                         <div className="w-full">
                             {tasks.length === 0 ? (

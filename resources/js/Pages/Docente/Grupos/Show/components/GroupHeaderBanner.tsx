@@ -55,7 +55,8 @@ export default function GroupHeaderBanner({
                                 <button
                                     key={key}
                                     onClick={() => handleThemeChange(key)}
-                                    className={`w-6 h-6 rounded-full ${value.dotBg} border-2 ${themeKey === key ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent'} hover:scale-105 transition-all`}
+                                    style={{ backgroundColor: value.strokeColor }}
+                                    className={`w-6 h-6 rounded-full border-2 ${themeKey === key ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent'} hover:scale-105 transition-all`}
                                     title={key}
                                 />
                             ))}

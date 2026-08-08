@@ -9,6 +9,7 @@ import { SwalHelper } from '@/utils/SwalHelper';
 import { formatGrade } from '@/utils/gradeHelper';
 import { Deferred } from '@inertiajs/react';
 import DotsLoader from '@/Components/ui/DotsLoader';
+import BackButton from '@/Components/common/BackButton';
 import { useRealtime } from '@/hooks/useRealtime';
 
 // Componentes modulares
@@ -341,7 +342,10 @@ export default function AlumnoDashboard({
                                                     </div>
                                                 ) : (
                                                     <div className="space-y-6">
-                                                        <button onClick={() => setSelectedParcial(null)} className="text-xs font-bold text-slate-400">← Volver</button>
+                                                        <BackButton 
+                                                            onClick={() => setSelectedParcial(null)} 
+                                                            label="Volver a los parciales" 
+                                                        />
                                                         <SubjectClasswork
                                                             themeKey={selectedSubject?.color_tema || 'blue'}
                                                             tasks={currentSubjectTasks.filter(t => !t.parcial || Number(t.parcial) === Number(selectedParcial))}
@@ -363,6 +367,7 @@ export default function AlumnoDashboard({
                                             <SubjectAssignment
                                                 task={selectedTask}
                                                 otherTasks={otherTasksOfSubject}
+                                                themeKey={selectedSubject?.color_tema || 'blue'}
                                                 onBack={() => {
                                                     setSelectedTask(null);
                                                     const url = new URL(window.location.href);
