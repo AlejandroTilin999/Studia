@@ -70,7 +70,13 @@ export default function AlumnoDashboard({
         if (Array.isArray(propTaskList)) {
             setTaskList(propTaskList);
         }
-    }, [propTaskList]);
+        if (selectedSubject && subjects.length > 0) {
+            const updatedSub = subjects.find((s: any) => s.id === selectedSubject.id || s.uuid === selectedSubject.uuid);
+            if (updatedSub && updatedSub.color_tema !== selectedSubject.color_tema) {
+                setSelectedSubject(updatedSub);
+            }
+        }
+    }, [propTaskList, subjects]);
 
     // Sincronizar URL estilo Google Classroom: ?c=ID_MATERIA&a=HASH_TAREA
     useEffect(() => {

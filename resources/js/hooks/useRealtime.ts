@@ -20,9 +20,13 @@ export function useRealtime() {
 
         reloadTimeoutRef.current = setTimeout(() => {
             console.log('[RT] 🔄 Executing consolidated reload...');
-            router.reload(options);
+            router.reload({
+                preserveScroll: true,
+                preserveState: true,
+                ...options
+            });
             reloadTimeoutRef.current = null;
-        }, 20); // 20ms instantaneous window
+        }, 300); // 300ms window to group consecutive events and prevent 409 conflicts
     };
 
     useEffect(() => {
@@ -136,10 +140,10 @@ export function useRealtime() {
                     onGroupUpdate(e);
                 } else {
                     router.reload({
-                        only: ['classInfo'],
+                        only: ['classInfo', 'alumnoGroups', 'kardex', 'taskList'],
                         preserveScroll: true,
                         preserveState: true,
-                    });
+                    } as any);
                 }
             });
 

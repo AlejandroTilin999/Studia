@@ -165,14 +165,14 @@ export default function StudentDashboardCards({
                                     className={cn(
                                         "group flex flex-col p-5 bg-white border transition-all duration-200 rounded-2xl shadow-none cursor-pointer",
                                         colors.borderHover,
-                                        `hover:${colors.bgSoft}`
+                                        colors.bgSoft
                                     )}
                                 >
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="min-w-0 text-left">
                                             <h4 className={cn(
-                                                "text-sm font-medium text-slate-900 truncate leading-tight transition-colors",
-                                                `group-hover:${colors.text}`
+                                                "text-sm font-medium text-slate-900 truncate leading-tight transition-colors group-hover:text-blue-600",
+                                                colors.text
                                             )}>
                                                 {item.subject}
                                             </h4>

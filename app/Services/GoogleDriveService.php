@@ -151,7 +151,13 @@ class GoogleDriveService
         $materiaFolderId = $this->findOrCreateFolder($materiaNombre, $grupoFolderId);
         $docenteFolderId = $this->findOrCreateFolder($docenteNombre, $materiaFolderId);
 
-        return $this->findOrCreateFolder($tareaNombre, $docenteFolderId);
+        $folderId = $this->findOrCreateFolder($tareaNombre, $docenteFolderId);
+        
+        if (empty($tarea->drive_folder_id)) {
+            $tarea->update(['drive_folder_id' => $folderId]);
+        }
+
+        return $folderId;
     }
 
     /**
@@ -201,7 +207,22 @@ class GoogleDriveService
     }
 
     /**
-     * Elimina un archivo de Google Drive.
+     * Renombra un archivo o carpeta en Google Drive.
+     */
+    public function renameFolder(string $folderId, string $newName): bool
+    {
+        try {
+            $fileMetadata = new DriveFile(['name' => $newName]);
+            $this->service->files->update($folderId, $fileMetadata);
+            return true;
+        } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error("GoogleDriveService renameFolder Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Elimina un archivo o carpeta de Google Drive.
      */
     public function deleteFile(string $fileId): bool
     {
@@ -209,6 +230,7 @@ class GoogleDriveService
             $this->service->files->delete($fileId);
             return true;
         } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error("GoogleDriveService deleteFile Error: " . $e->getMessage());
             return false;
         }
     }

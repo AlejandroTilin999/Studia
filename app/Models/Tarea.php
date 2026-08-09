@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Tarea extends Model
 {
     protected $table = 'tareas';
-    protected $fillable = ['carga_id', 'parcial', 'nombre', 'descripcion', 'fecha_entrega', 'hora_entrega', 'puntos', 'tipo'];
+    protected $fillable = ['carga_id', 'parcial', 'nombre', 'descripcion', 'fecha_entrega', 'hora_entrega', 'puntos', 'tipo', 'drive_folder_id'];
 
     protected static function booted()
     {

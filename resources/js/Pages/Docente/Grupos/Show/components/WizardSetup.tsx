@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Layers, Trash2, Plus, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Criterion } from '../services/constants';
+import BackButton from '@/Components/common/BackButton';
 
 interface WizardSetupProps {
     wizardStep: number;
@@ -16,6 +17,7 @@ interface WizardSetupProps {
     removeCriterion: (id: number) => void;
     addCriterion: () => void;
     finishWizard: () => void;
+    onBack?: () => void;
 }
 
 export default function WizardSetup({
@@ -31,25 +33,35 @@ export default function WizardSetup({
     toggleSyncTasks,
     removeCriterion,
     addCriterion,
-    finishWizard
+    finishWizard,
+    onBack
 }: WizardSetupProps) {
     return (
         <div>
+            {/* Botón de regreso usando componente reutilizable BackButton */}
+            {onBack && (
+                <div className="mb-4">
+                    <BackButton onClick={onBack} />
+                </div>
+            )}
+
             {/* Stepper */}
-            <div className="flex items-center gap-3 mb-8">
-                {[{ n: 1, label: 'Criterios' }, { n: 2, label: 'Confirmar' }].map((s, i) => (
-                    <div key={s.n} className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold transition-all ${wizardStep >= s.n ? 'bg-[#1e88e5] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                {wizardStep > s.n ? <Check size={13} /> : s.n}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    {[{ n: 1, label: 'Criterios' }, { n: 2, label: 'Confirmar' }].map((s, i) => (
+                        <div key={s.n} className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold transition-all ${wizardStep >= s.n ? 'bg-[#1e88e5] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                    {wizardStep > s.n ? <Check size={13} /> : s.n}
+                                </div>
+                                <span className={`text-xs font-extrabold ${wizardStep >= s.n ? 'text-slate-700' : 'text-slate-400'}`}>
+                                    {s.label}
+                                </span>
                             </div>
-                            <span className={`text-xs font-extrabold ${wizardStep >= s.n ? 'text-slate-700' : 'text-slate-400'}`}>
-                                {s.label}
-                            </span>
+                            {i < 1 && <div className="w-12 h-px bg-slate-200" />}
                         </div>
-                        {i < 1 && <div className="w-12 h-px bg-slate-200" />}
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -212,13 +224,10 @@ export default function WizardSetup({
 
                         {/* Acciones */}
                         <div className="flex items-center justify-between">
-                            <button
+                            <BackButton
                                 onClick={() => setWizardStep(1)}
-                                className="text-sm font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1.5 transition-colors"
-                            >
-                                <ArrowLeft size={14} />
-                                Editar criterios
-                            </button>
+                                label="Editar criterios"
+                            />
                             <button
                                 onClick={finishWizard}
                                 className="flex items-center gap-2 bg-[#1e88e5] hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]"

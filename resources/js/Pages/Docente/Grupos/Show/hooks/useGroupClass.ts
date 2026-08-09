@@ -206,11 +206,12 @@ export function useGroupClass(classInfoProp?: any) {
 
     // Función maestra de refresco en tiempo real (100% en memoria via Axios sin re-renders de Inertia)
     const refreshClassData = (isBurst = false) => {
-        if (!loadId) return;
+        const targetLoadId = loadId || classInfo?.id || new URLSearchParams(window.location.search).get('id');
+        if (!targetLoadId) return;
 
-        console.log(`%c[RT] ⚡ Consultando datos actualizados vía API silenciosa...`, 'color: #10b981; font-weight: bold;');
+        console.log(`%c[RT] ⚡ Consultando datos actualizados vía API silenciosa para Carga: ${targetLoadId}...`, 'color: #10b981; font-weight: bold;');
 
-        axios.get(`/docente/clases/${loadId}/full-data`)
+        axios.get(`/docente/clases/${targetLoadId}/full-data`)
             .then((res) => {
                 const updatedData = res.data;
                 if (!updatedData || !updatedData.parciales) return;

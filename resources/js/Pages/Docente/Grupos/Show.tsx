@@ -31,26 +31,8 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
             <Head title={grupo ? `${grupo} — ${materia}` : "Cargando clase..."} />
 
             {/* Contenedor principal ajustado para ocupar el alto total disponible */}
-            <div className="flex flex-col h-full min-h-[calc(100vh-100px)] p-4 md:p-6 space-y-4 animate-in fade-in duration-500">
-                {screen !== 'parciales' && (
-                    <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold px-2">
-                        <button onClick={() => {
-                            setScreen('parciales');
-                            setActiveParcial(null);
-                            const url = new URL(window.location.href);
-                            url.searchParams.delete('parcial');
-                            window.history.replaceState({}, '', url.toString());
-                        }} className="hover:text-[#1e88e5] transition-colors">Parciales</button>
-                        <ChevronRight size={12} className="text-slate-300" />
-                        <span className="text-slate-600">{parcialLabel}</span>
-                        {screen === 'wizard' && (
-                            <>
-                                <ChevronRight size={12} className="text-slate-300" />
-                                <span className="text-[#1e88e5]">Configurar criterios</span>
-                            </>
-                        )}
-                    </div>
-                )}
+            <div className="flex flex-col h-full min-h-[calc(100vh-100px)] p-4 sm:p-6 pt-0 sm:pt-6 space-y-4 animate-in fade-in duration-500">
+
 
                 {isReadOnly && activeParcial && (
                     <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
@@ -78,6 +60,14 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                     configuredCount={Object.values(configs).filter(c => c.configured).length}
                     setIsGradesModalOpen={setIsGradesModalOpen}
                     activeCriteria={activeCriteria}
+                    screen={screen}
+                    onBack={() => {
+                        setScreen('parciales');
+                        setActiveParcial(null);
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('parcial');
+                        window.history.replaceState({}, '', url.toString());
+                    }}
                 />
 
                 {screen === 'parciales' && (
@@ -142,7 +132,28 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                 )}
 
                 {screen === 'wizard' && (
-                    <WizardSetup wizardStep={wizardStep} setWizardStep={setWizardStep} draftCriteria={draftCriteria} parcialLabel={parcialLabel || ''} grupo={grupo} materia={materia} pctValid={pctValid} totalPct={totalPct} updateCriterion={updateCriterion} toggleSyncTasks={toggleSyncTasks} removeCriterion={removeCriterion} addCriterion={addCriterion} finishWizard={saveWizardConfig} />
+                    <WizardSetup 
+                        wizardStep={wizardStep} 
+                        setWizardStep={setWizardStep} 
+                        draftCriteria={draftCriteria} 
+                        parcialLabel={parcialLabel || ''} 
+                        grupo={grupo} 
+                        materia={materia} 
+                        pctValid={pctValid} 
+                        totalPct={totalPct} 
+                        updateCriterion={updateCriterion} 
+                        toggleSyncTasks={toggleSyncTasks} 
+                        removeCriterion={removeCriterion} 
+                        addCriterion={addCriterion} 
+                        finishWizard={saveWizardConfig}
+                        onBack={() => {
+                            setScreen('parciales');
+                            setActiveParcial(null);
+                            const url = new URL(window.location.href);
+                            url.searchParams.delete('parcial');
+                            window.history.replaceState({}, '', url.toString());
+                        }}
+                    />
                 )}
 
                 {screen === 'grades' && (
@@ -165,7 +176,7 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                                 selectedTaskId !== null ? (
                                     <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} returnTaskGrade={returnTaskGrade} isReadOnly={isReadOnly} themeKey={themeKey} />
                                 ) : (
-                                    <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} isReadOnly={isReadOnly} themeKey={themeKey} studentGrades={studentGrades.length > 0 ? studentGrades : students} />
+                                    <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} parcialLabel={parcialLabel || ''} isReadOnly={isReadOnly} themeKey={themeKey} studentGrades={studentGrades.length > 0 ? studentGrades : students} />
                                 )
                             )}
                         </div>

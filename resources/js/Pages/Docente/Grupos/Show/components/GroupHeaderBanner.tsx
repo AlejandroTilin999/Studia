@@ -1,4 +1,4 @@
-import { Palette, Layers, Users, BookOpen, CheckCircle2, FileText, GraduationCap, School, Target } from 'lucide-react';
+import { Palette, Layers, ChevronLeft, FileText } from 'lucide-react';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 import { Criterion } from '../services/constants';
 
@@ -16,6 +16,8 @@ interface GroupHeaderBannerProps {
     configuredCount: number;
     setIsGradesModalOpen: (open: boolean) => void;
     activeCriteria?: Criterion[];
+    screen?: string;
+    onBack?: () => void;
 }
 
 export default function GroupHeaderBanner({
@@ -31,16 +33,21 @@ export default function GroupHeaderBanner({
     parcialesCount,
     configuredCount,
     setIsGradesModalOpen,
-    activeCriteria = []
+    activeCriteria = [],
+    screen = 'parciales',
+    onBack
 }: GroupHeaderBannerProps) {
     const groupColors = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-            {/* Banner de color dinámico del grupo */}
-            <div className={`relative overflow-hidden rounded-2xl border p-5 sm:p-6 lg:p-7 xl:p-10 flex flex-col justify-center min-h-[135px] lg:min-h-[160px] xl:min-h-[260px] 2xl:min-h-[300px] select-none ${groupColors.bg} ${groupColors.border} lg:col-span-2 shadow-none`}>
+            {/* Banner de color dinámico del grupo (Full Bleed en Móvil) */}
+            <div 
+                style={{ backgroundColor: groupColors.bgHex }}
+                className={`relative overflow-hidden -mx-4 sm:mx-0 -mt-4 sm:mt-0 rounded-none sm:rounded-2xl border-b sm:border border-x-0 border-t-0 sm:border-x sm:border-t p-7 sm:p-8 lg:p-9 xl:p-10 flex flex-col justify-center min-h-[220px] sm:min-h-[230px] lg:min-h-[240px] xl:min-h-[270px] 2xl:min-h-[290px] select-none ${groupColors.border} lg:col-span-2 shadow-none`}
+            >
                 {/* Selector de color (paleta) */}
-                <div className="absolute right-4 top-4 z-20">
+                <div className="absolute right-4 top-6 sm:top-4 z-20">
                     <button
                         onClick={() => setShowPaletteMenu(!showPaletteMenu)}
                         className="w-8 h-8 rounded-full bg-white/80 hover:bg-white text-slate-700 flex items-center justify-center border border-slate-200/50 shadow-sm transition-all"
@@ -57,7 +64,7 @@ export default function GroupHeaderBanner({
                                     onClick={() => handleThemeChange(key)}
                                     style={{ backgroundColor: value.strokeColor }}
                                     className={`w-6 h-6 rounded-full border-2 ${themeKey === key ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent'} hover:scale-105 transition-all`}
-                                    title={key}
+                                    title={value.label}
                                 />
                             ))}
                         </div>
@@ -77,19 +84,30 @@ export default function GroupHeaderBanner({
                 {/* Grid overlay sutil */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e88e505_1px,transparent_1px),linear-gradient(to_bottom,#1e88e505_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0" />
 
-                <div className="relative z-10 space-y-3 text-left">
+                <div className="relative z-10 space-y-2.5 text-left pr-10 sm:pr-12 lg:pr-0">
                     {/* Pill superior */}
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg w-fit text-[11.5px] font-extrabold tracking-wide uppercase ${groupColors.badgeBg} ${groupColors.text}`}>
-                        <Layers size={12.5} className={groupColors.text} />
+                    <div 
+                        style={{ 
+                            color: groupColors.textHex,
+                            backgroundColor: groupColors.badgeHex
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-lg w-fit text-[10.5px] sm:text-[11.5px] font-extrabold tracking-wide uppercase shadow-xs"
+                    >
+                        <Layers size={12} style={{ color: groupColors.textHex }} />
                         <span>Carga Docente</span>
                     </div>
 
                     <div className="space-y-1">
-                        <p className={`text-[12px] font-black uppercase tracking-wider ${groupColors.textMateria}`}>{materia}</p>
-                        <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-none">
+                        <p 
+                            style={{ color: groupColors.textHex }}
+                            className="text-[11px] sm:text-[12px] font-black uppercase tracking-wider"
+                        >
+                            {materia}
+                        </p>
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-800 tracking-tight leading-snug">
                             Grupo {grupo}
                         </h1>
-                        <p className="text-[13.5px] font-semibold text-slate-500 leading-relaxed max-w-lg">
+                        <p className="text-xs sm:text-[13px] font-medium text-slate-500 leading-relaxed text-justify max-w-lg">
                             Gestiona los parciales, configura criterios de evaluación y captura calificaciones de tus alumnos.
                         </p>
                     </div>

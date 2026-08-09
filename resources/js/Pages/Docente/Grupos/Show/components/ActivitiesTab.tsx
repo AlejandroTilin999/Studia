@@ -13,6 +13,7 @@ interface ActivitiesTabProps {
     setSelectedTaskId: (id: number | null) => void;
     grupo: string;
     materia: string;
+    parcialLabel?: string;
     isReadOnly?: boolean;
     themeKey?: string;
     studentGrades?: any[];
@@ -22,6 +23,7 @@ export default function ActivitiesTab({
     tasks,
     saveTasks,
     setSelectedTaskId,
+    parcialLabel = 'Primer Parcial',
     isReadOnly = false,
     themeKey = 'blue',
     studentGrades = []
@@ -62,10 +64,10 @@ export default function ActivitiesTab({
         <div className="space-y-8 text-left pb-6 w-full">
             {/* Barra Superior Minimalista */}
             {!isReadOnly && (
-                <div className="flex items-center justify-between border-b border-slate-200 pb-5 w-full">
-                    <div>
-                        <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Trabajo de Clase</h3>
-                        <p className="text-xs text-slate-500 font-normal mt-0.5">Publica y administra actividades para los estudiantes</p>
+                <div className="flex flex-row items-center justify-between border-b border-slate-200 pb-5 w-full gap-3">
+                    <div className="min-w-0 flex-1">
+                        <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight truncate">Trabajo de Clase</h3>
+                        <p className="text-xs text-slate-500 font-normal mt-0.5 leading-snug">Publica y administra actividades para los estudiantes</p>
                     </div>
 
                     {!isFormOpen ? (
@@ -73,9 +75,9 @@ export default function ActivitiesTab({
                             type="button"
                             onClick={() => setIsCreating(true)}
                             style={{ backgroundColor: activeTheme.strokeColor }}
-                            className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm hover:opacity-90 transition-all active:scale-95"
+                            className="inline-flex items-center justify-center gap-1.5 text-white px-3.5 sm:px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm hover:opacity-90 transition-all active:scale-95 whitespace-nowrap shrink-0"
                         >
-                            <Plus size={16} />
+                            <Plus size={15} />
                             <span>Crear Tarea</span>
                         </button>
                     ) : (
@@ -111,7 +113,7 @@ export default function ActivitiesTab({
                     {/* Encabezado de Tema estilo Google Classroom Plano (Color Dinámico) */}
                     <div className="space-y-2 w-full">
                         <ParcialHeader
-                            title="Primer Parcial"
+                            title={parcialLabel || 'Primer Parcial'}
                             count={tasks.length}
                             themeKey={themeKey}
                         />

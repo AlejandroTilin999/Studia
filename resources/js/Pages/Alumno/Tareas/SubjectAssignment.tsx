@@ -100,18 +100,19 @@ export default function SubjectAssignment({
     const isMaterialType = (task as any).type === 'material' || task.status === 'Aviso';
 
     return (
-        <div className="space-y-8 text-left animate-in fade-in duration-200 pt-2 bg-white">
-            <AssignmentHeader
-                title={task.title}
-                teacherName={teacherName}
-                deadline={task.deadline}
-                isMaterialType={isMaterialType}
-                strokeColor={activeTheme.strokeColor}
-                onBack={onBack}
-            />
-
+        <div className="space-y-6 text-left animate-in fade-in duration-200 pt-2 bg-white">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Columna Izquierda: Encabezado + Materiales + Comentarios */}
                 <div className="lg:col-span-8 space-y-8 min-w-0">
+                    <AssignmentHeader
+                        title={task.title}
+                        teacherName={teacherName}
+                        deadline={task.deadline}
+                        isMaterialType={isMaterialType}
+                        strokeColor={activeTheme.strokeColor}
+                        onBack={onBack}
+                    />
+
                     <AssignmentMaterials
                         desc={task.desc}
                         attachments={(task as any).attachments}
@@ -128,7 +129,8 @@ export default function SubjectAssignment({
                     />
                 </div>
 
-                <div className="lg:col-span-4 space-y-6">
+                {/* Columna Derecha: Tarjeta alineada a la altura de ACTIVIDAD ACADÉMICA */}
+                <div className="lg:col-span-4 space-y-6 lg:pt-[44px]">
                     {!isMaterialType && (
                         <AssignmentSubmissionCard
                             taskId={task.id}

@@ -318,6 +318,9 @@ class DocenteClassroomController extends Controller
                 $fechaEntrega = !empty($rawHora) ? ($onlyDate . ' ' . (strlen($rawHora) === 5 ? $rawHora . ':00' : $rawHora)) : ($onlyDate . ' 23:59:00');
             }
 
+            $tareaExistente = Tarea::find($taskId);
+            $nombreAnterior = $tareaExistente?->nombre;
+
             $tarea = Tarea::updateOrCreate(
                 ['id' => $taskId],
                 [
@@ -331,6 +334,16 @@ class DocenteClassroomController extends Controller
                 ]
             );
             $activeIds[] = $tarea->id;
+
+            // ⚡ Sincronizar cambio de nombre en la carpeta de Google Drive si existe
+            if ($tarea->drive_folder_id && $nombreAnterior && $nombreAnterior !== $taskItem['nombre']) {
+                try {
+                    $driveService = app(\App\Services\GoogleDriveService::class);
+                    $driveService->renameFolder($tarea->drive_folder_id, $taskItem['nombre']);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error("Error al renombrar carpeta en Drive: " . $e->getMessage());
+                }
+            }
 
             if (isset($taskItem['calificaciones']) && is_array($taskItem['calificaciones'])) {
                 foreach ($taskItem['calificaciones'] as $userId => $score) {
@@ -356,6 +369,15 @@ class DocenteClassroomController extends Controller
 
         $tasksToDelete = Tarea::where('carga_id', $load->id)->where('parcial', $parcial)->whereNotIn('id', $activeIds)->get();
         foreach ($tasksToDelete as $taskToDelete) {
+            // ⚡ Borrar la carpeta correspondiente en Google Drive si existe
+            if ($taskToDelete->drive_folder_id) {
+                try {
+                    $driveService = app(\App\Services\GoogleDriveService::class);
+                    $driveService->deleteFile($taskToDelete->drive_folder_id);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error("Error al eliminar carpeta en Drive: " . $e->getMessage());
+                }
+            }
             $taskToDelete->delete();
         }
 
