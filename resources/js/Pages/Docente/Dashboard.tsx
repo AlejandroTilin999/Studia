@@ -1,16 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, Deferred } from '@inertiajs/react';
-import {
-    Users,
-    Clock,
-    ChevronRight,
-    Layers,
-    BookOpen,
-    AlertCircle
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import DashboardWelcomeBanner from '@/Components/layout/DashboardWelcomeBanner';
 import TeacherInfoCard from '@/Components/docente/TeacherInfoCard';
-import QuickActionsWidget from '@/Components/widgets/QuickActionsWidget';
 import TeacherRightSidebar from '@/Components/docente/TeacherRightSidebar';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
@@ -150,8 +142,6 @@ export default function DocenteDashboard({
                         </div>
                     </Deferred>
                 </div>
-
-                {/* Columna Derecha */}
                 <TeacherRightSidebar tasks={upcomingTasks} />
 
             </div>

@@ -14,7 +14,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 
 // Componentes modulares
 import SubjectCard from './Tareas/SubjectCard';
-import SubjectHeader from './Tareas/Componentes/SubjectHeader';
+import SubjectHeader from './Tareas/components/SubjectHeader';
 import SubjectClasswork from './Tareas/SubjectClasswork';
 import SubjectAssignment from './Tareas/SubjectAssignment';
 import { COLOR_THEMES } from '@/constants/ColorThemes';

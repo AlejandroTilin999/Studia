@@ -1,5 +1,5 @@
 import * as React from 'react';
-import StudentTaskCard from './Componentes/StudentTaskCard';
+import StudentTaskCard from './components/StudentTaskCard';
 import ParcialHeader from '@/Components/common/ParcialHeader';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 
