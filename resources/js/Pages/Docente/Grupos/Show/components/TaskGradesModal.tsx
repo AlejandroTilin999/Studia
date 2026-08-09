@@ -1,8 +1,31 @@
 import React from 'react';
-import { ArrowLeft, Calendar, FileText, ChevronRight, ChevronLeft, X, UserCircle2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, ChevronRight, ChevronLeft, X, UserCircle2, ExternalLink, Image as ImageIcon, FileSpreadsheet, FileCode, FileArchive, Globe } from 'lucide-react';
+import PdfIcon from '@/Components/ui/PdfIcon';
 import { Task, StudentGrade } from '../services/constants';
 import GradeSelector from './GradeSelector';
 import StudiaPDFViewer from './StudiaPDFViewer';
+import BackButton from '@/Components/common/BackButton';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
+
+const getFileIcon = (filename: string = '') => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
+        return <ImageIcon size={16} className="text-emerald-500 shrink-0" />;
+    }
+    if (['pdf'].includes(ext)) {
+        return <PdfIcon size={18} className="shrink-0" />;
+    }
+    if (['doc', 'docx'].includes(ext)) {
+        return <FileText size={16} className="text-blue-600 shrink-0" />;
+    }
+    if (['xls', 'xlsx', 'csv'].includes(ext)) {
+        return <FileSpreadsheet size={16} className="text-emerald-600 shrink-0" />;
+    }
+    if (['zip', 'rar', '7z'].includes(ext)) {
+        return <FileArchive size={16} className="text-amber-500 shrink-0" />;
+    }
+    return <Globe size={16} className="text-[#0266E0] shrink-0" />;
+};
 
 const formatHumanDate = (dateStr?: string) => {
     if (!dateStr) return 'Sin fecha';
@@ -39,6 +62,7 @@ interface TaskGradesModalProps {
     saveTasks: (newTasks: Task[]) => void;
     returnTaskGrade: (taskId: number, studentId: number, score: string) => Promise<any>;
     isReadOnly?: boolean;
+    themeKey?: string;
 }
 
 export default function TaskGradesModal({
@@ -56,18 +80,60 @@ export default function TaskGradesModal({
     setIsPdfModalOpen,
     saveTasks,
     returnTaskGrade,
-    isReadOnly = false
+    isReadOnly = false,
+    themeKey = 'blue'
 }: TaskGradesModalProps) {
+    const activeTheme = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
     const selectedTask = tasks.find(t => t.id === selectedTaskId);
     if (!selectedTask) return null;
 
     const [isReturning, setIsReturning] = React.useState(false);
+    const [isStudentDropdownOpen, setIsStudentDropdownOpen] = React.useState(false);
+    const studentDropdownRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (studentDropdownRef.current && !studentDropdownRef.current.contains(event.target as Node)) {
+                setIsStudentDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const currentStudentId = selectedStudentId || (studentGrades[0]?.id);
     const currentIndex = studentGrades.findIndex(s => s.id === currentStudentId);
     const activeStudent = studentGrades[currentIndex] || studentGrades[0];
 
-    const studentFile = activeStudent ? selectedTask.archivos?.[activeStudent.id] : null;
+    const studentFileRaw = activeStudent ? selectedTask.archivos?.[activeStudent.id] : null;
+    
+    // Parsear entrega de archivos (individual o multiple en JSON)
+    const studentFilesList: Array<{ url: string; nombre?: string }> = React.useMemo(() => {
+        if (!studentFileRaw) return [];
+
+        const targetStr = (typeof studentFileRaw === 'object' && studentFileRaw.raw_url)
+            ? studentFileRaw.raw_url
+            : (typeof studentFileRaw === 'object' && studentFileRaw.url ? studentFileRaw.url : studentFileRaw);
+
+        if (typeof targetStr === 'string') {
+            try {
+                const parsed = JSON.parse(targetStr);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            } catch (e) {}
+        }
+
+        if (typeof studentFileRaw === 'object' && studentFileRaw.url) {
+            return [studentFileRaw];
+        }
+
+        if (typeof targetStr === 'string' && targetStr.trim().length > 0) {
+            return [{ url: targetStr, nombre: targetStr.split('/').pop() }];
+        }
+
+        return [];
+    }, [studentFileRaw]);
+
+    const studentFile = studentFilesList[0] || null;
 
     const chatKey = `${selectedTask.id}:${currentStudentId}`;
     const chatList = privateMessages[chatKey] || [];
@@ -107,17 +173,19 @@ export default function TaskGradesModal({
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <button onClick={() => setSelectedTaskId(null)} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">
-                    <ArrowLeft size={14} /> Volver al Muro
-                </button>
+                <BackButton
+                    onClick={() => setSelectedTaskId(null)}
+                    label="Volver al Muro"
+                    icon="chevron"
+                />
 
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
                     Calificando: {selectedTask.nombre}
                 </div>
             </div>
 
-            {/* BARRA DE NAVEGACIÓN "ZEN" (v6.0 Minimalista) */}
-            <div className="bg-white border border-slate-200/60 p-3 rounded-2xl flex items-center justify-between gap-4">
+            {/* BARRA DE NAVEGACIÓN "ZEN" Plano con líneas nítidas finas */}
+            <div className="bg-transparent border-y border-slate-300 py-3 px-1 flex items-center justify-between gap-4">
 
                 {/* Navegación Izquierda */}
                 <div className="flex items-center gap-4">
@@ -135,29 +203,57 @@ export default function TaskGradesModal({
                     </div>
                 </div>
 
-                {/* Info Central + Selector Integrado (Alineado a la derecha) */}
-                <div className="flex-1 flex justify-end px-4">
-                    <div className="relative group max-w-md">
-                        <div className="flex items-center justify-end gap-2 py-1 px-4 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-transparent hover:border-slate-100">
-                            <h3 className="text-sm font-normal text-slate-800 tracking-tight truncate">{activeStudent?.nombre}</h3>
-                            <ChevronRight size={13} className="text-slate-400 rotate-90" />
-                        </div>
-
-                        <select
-                            value={currentStudentId || ''}
-                            onChange={e => setSelectedStudentId(Number(e.target.value))}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none z-10"
+                {/* Selector Integrado de Alumno Estilizado con Ancho Uniforme */}
+                <div className="flex-1 flex justify-end px-2">
+                    <div className="relative group w-64" ref={studentDropdownRef}>
+                        <button
+                            type="button"
+                            onClick={() => setIsStudentDropdownOpen(!isStudentDropdownOpen)}
+                            className="w-full h-10 px-4 bg-[#e5e7eb]/80 hover:bg-[#d1d5db]/80 text-slate-700 text-xs font-semibold rounded-t-lg rounded-b-none border-b-2 border-slate-400/60 flex items-center justify-between gap-3 transition-all select-none cursor-pointer outline-none"
                         >
-                            {studentGrades.map(s => {
-                                const gradeValue = selectedTask.calificaciones[s.id];
-                                const hasGrade = gradeValue !== "" && gradeValue !== undefined;
-                                return (
-                                    <option key={s.id} value={s.id}>
-                                        {s.nombre} {hasGrade ? `(${gradeValue})` : '—'}
-                                    </option>
-                                );
-                            })}
-                        </select>
+                            <span className="truncate max-w-[200px]">
+                                {activeStudent?.nombre || 'Seleccionar alumno...'}
+                            </span>
+                            <svg
+                                className={`w-3.5 h-3.5 text-slate-700 shrink-0 transition-transform ${isStudentDropdownOpen ? 'rotate-180' : ''}`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                            >
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+
+                        {/* Menú Flotante de Alumnos con el mismo ancho w-full */}
+                        {isStudentDropdownOpen && (
+                            <div className="absolute right-0 top-full w-full bg-white border border-slate-200/90 rounded-b-lg shadow-xl py-1 z-50 overflow-y-auto max-h-64 text-xs">
+                                {studentGrades.map((s) => {
+                                    const gradeValue = selectedTask.calificaciones[s.id];
+                                    const hasGrade = gradeValue !== "" && gradeValue !== undefined;
+                                    const isSelected = s.id === currentStudentId;
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedStudentId(s.id);
+                                                setIsStudentDropdownOpen(false);
+                                            }}
+                                            style={isSelected ? { backgroundColor: `${activeTheme.strokeColor}15`, color: activeTheme.strokeColor } : undefined}
+                                            className={`w-full text-left px-4 py-2.5 transition-colors font-semibold flex items-center justify-between ${
+                                                isSelected
+                                                    ? 'font-bold'
+                                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                                            }`}
+                                        >
+                                            <span className="truncate max-w-[170px]">{s.nombre}</span>
+                                            <span className="text-[10px] font-black opacity-70">
+                                                {hasGrade ? `(${gradeValue})` : '—'}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -177,7 +273,12 @@ export default function TaskGradesModal({
                 <div className="lg:col-span-7 space-y-6">
                     <div className="bg-white border border-slate-100 p-6 rounded-2xl space-y-4">
                         <div className="space-y-1 text-left">
-                            <span className="text-[9px] font-black text-[#1e88e5] uppercase tracking-widest block">Actividad</span>
+                            <span 
+                                style={{ color: activeTheme.strokeColor }}
+                                className="text-[9px] font-black uppercase tracking-widest block"
+                            >
+                                Actividad
+                            </span>
                             <h4 className="text-xl font-black text-slate-800 tracking-tight">{selectedTask.nombre}</h4>
                         </div>
                         <div className="flex flex-wrap gap-3.5 text-xs text-slate-455 font-normal uppercase tracking-wide">
@@ -186,7 +287,10 @@ export default function TaskGradesModal({
                             <span className="flex items-center gap-1"><FileText size={13} className="text-slate-400" /> Valor: {selectedTask.puntos || 10} pts</span>
                         </div>
                         <div className="space-y-2 pt-4 border-t border-slate-100 text-left">
-                            <div className="border-l-4 border-[#1e88e5] pl-4 py-1 text-slate-655 text-sm font-semibold leading-relaxed whitespace-pre-line">
+                            <div 
+                                style={{ borderColor: activeTheme.strokeColor }}
+                                className="border-l-4 pl-4 py-1 text-slate-655 text-sm font-normal text-justify leading-relaxed whitespace-pre-line"
+                            >
                                 {selectedTask.descripcion || 'Sin instrucciones adicionales.'}
                             </div>
                         </div>
@@ -200,7 +304,10 @@ export default function TaskGradesModal({
                                 {chatList.map((msg, mIdx) => (
                                     <div key={mIdx} className={`flex flex-col max-w-[85%] ${msg.sender === 'docente' ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                                         <span className="text-[9px] font-black text-slate-400 uppercase mb-1">{msg.senderName} · {msg.timestamp}</span>
-                                        <div className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${msg.sender === 'docente' ? 'bg-[#1e88e5] text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'}`}>
+                                        <div 
+                                            style={msg.sender === 'docente' ? { backgroundColor: activeTheme.strokeColor } : undefined}
+                                            className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${msg.sender === 'docente' ? 'text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'}`}
+                                        >
                                             {msg.text}
                                         </div>
                                     </div>
@@ -215,9 +322,15 @@ export default function TaskGradesModal({
                                     value={chatInputText}
                                     onChange={e => setChatInputText(e.target.value)}
                                     placeholder="Añadir un comentario para el alumno..."
-                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 font-semibold outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] transition-all"
+                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 font-semibold outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all"
                                 />
-                                <button type="submit" className="bg-[#1e88e5] hover:bg-blue-700 text-white px-5 rounded-xl font-extrabold text-xs transition-all">Enviar</button>
+                                <button 
+                                    type="submit" 
+                                    style={{ backgroundColor: activeTheme.strokeColor }}
+                                    className="text-white px-5 rounded-xl font-extrabold text-xs transition-all hover:opacity-90"
+                                >
+                                    Enviar
+                                </button>
                             </form>
                         ) : (
                             <div className="p-3 bg-slate-50 rounded-xl text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest border border-slate-100/50">El foro de mensajes está cerrado</div>
@@ -227,10 +340,32 @@ export default function TaskGradesModal({
 
                 <div className="lg:col-span-5 space-y-6">
                     <div className="bg-white border border-slate-100 p-6 rounded-2xl space-y-5">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-50">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
-                            <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">Entregado</span>
-                        </div>
+                        {(() => {
+                            const studentGradeVal = activeStudent ? selectedTask.calificaciones[activeStudent.id] : undefined;
+                            const hasGrade = studentGradeVal !== "" && studentGradeVal !== undefined && studentGradeVal !== null;
+                            const studentFile = activeStudent ? selectedTask.archivos?.[activeStudent.id] : null;
+                            const hasDelivery = Boolean(studentFile && (studentFile.url || studentFile.raw_url));
+
+                            let statusText = 'Sin entregar';
+                            let statusClasses = 'text-amber-600 bg-amber-50';
+
+                            if (hasGrade) {
+                                statusText = 'Calificado';
+                                statusClasses = 'text-blue-600 bg-blue-50';
+                            } else if (hasDelivery) {
+                                statusText = 'Entregado';
+                                statusClasses = 'text-emerald-600 bg-emerald-50';
+                            }
+
+                            return (
+                                <div className="flex items-center justify-between pb-3 border-b border-slate-50">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
+                                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${statusClasses}`}>
+                                        {statusText}
+                                    </span>
+                                </div>
+                            );
+                        })()}
                         <div className="space-y-4">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Detalle de Calificación</span>
                             <div className="flex items-center justify-between gap-4 pt-2">
@@ -251,6 +386,7 @@ export default function TaskGradesModal({
                                 <div className="pt-2">
                                     <button
                                         type="button"
+                                        style={selectedTask.calificaciones[activeStudent.id] ? { backgroundColor: activeTheme.strokeColor } : undefined}
                                         disabled={isReturning || !selectedTask.calificaciones[activeStudent.id]}
                                         onClick={() => {
                                             setIsReturning(true);
@@ -262,20 +398,14 @@ export default function TaskGradesModal({
                                                 })
                                                 .finally(() => setIsReturning(false));
                                         }}
-                                        className={`w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center justify-center gap-2
-                                            ${isReturning ? 'bg-slate-100 text-slate-400' : 'bg-[#1e88e5] hover:bg-blue-700 text-white active:scale-[0.98]'}`}
+                                        className={`w-full py-3 rounded-xl font-extrabold text-xs text-white transition-all shadow-sm flex items-center justify-center gap-2 ${
+                                            isReturning || !selectedTask.calificaciones[activeStudent.id]
+                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                : 'hover:opacity-90'
+                                        }`}
                                     >
-                                        {isReturning ? (
-                                            <>
-                                                <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
-                                                Procesando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ChevronRight size={14} className="-rotate-180" />
-                                                Devolver Calificación
-                                            </>
-                                        )}
+                                        <ChevronLeft size={16} />
+                                        <span>DEVOLVER CALIFICACIÓN</span>
                                     </button>
                                     <p className="text-[9px] text-slate-400 font-medium text-center mt-2 px-4 leading-tight">
                                         Al devolver, se notificará al alumno y se actualizará su promedio oficial.
@@ -283,26 +413,32 @@ export default function TaskGradesModal({
                                 </div>
                             )}
                             <div className="pt-4 border-t border-slate-100 mt-4 space-y-2 text-left">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Entrega del Alumno</span>
-                                {studentFile ? (
-                                    <a
-                                        href={studentFile.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="flex items-center justify-between border border-slate-150 hover:bg-blue-50/25 p-3.5 rounded-xl cursor-pointer transition-all group bg-slate-50/40"
-                                    >
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <ExternalLink size={15} className="text-[#0266E0] shrink-0" />
-                                            <div className="text-left min-w-0">
-                                                <span className="text-xs font-bold text-slate-755 block truncate max-w-[180px]">{studentFile.nombre || 'Documento de Google Drive'}</span>
-                                                <span className="text-[8px] font-black text-slate-400 uppercase block">Abrir archivo en pestaña nueva</span>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={12} className="text-[#1e88e5] group-hover:translate-x-0.5 transition-transform" />
-                                    </a>
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                                    {studentFilesList.length > 1 ? `Entregas del Alumno (${studentFilesList.length})` : 'Entrega del Alumno'}
+                                </span>
+                                {studentFilesList.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {studentFilesList.map((fileItem, idx) => (
+                                            <a
+                                                key={idx}
+                                                href={fileItem.url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="border border-slate-200 bg-slate-50/60 rounded-lg p-3 flex items-center justify-between gap-3 transition-all group cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    {getFileIcon(fileItem.nombre || fileItem.url)}
+                                                    <span className="text-xs font-bold text-slate-800 group-hover:text-[#0266E0] truncate max-w-[220px] transition-colors">
+                                                        {fileItem.nombre || fileItem.url}
+                                                    </span>
+                                                </div>
+                                                <ExternalLink size={14} className="text-slate-400 group-hover:text-[#0266E0] shrink-0 transition-colors" />
+                                            </a>
+                                        ))}
+                                    </div>
                                 ) : (
                                     <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Sin entrega disponible</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin entrega disponible</span>
                                     </div>
                                 )}
                             </div>

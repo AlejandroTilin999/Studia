@@ -16,12 +16,12 @@ import BackButton from '@/Components/common/BackButton';
 import { useRealtime } from '@/hooks/useRealtime';
 
 function DocenteGruposContent({ classInfo }: { classInfo: any }) {
-    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, setTasks, saveTasks, activeTab, setActiveTab, students, studentGrades, setStudentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, returnTaskGrade, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid, isReadOnly, lockReason, lockInfos, isSaving, handleConcludeParcial } = useGroupClass(classInfo);
+    const { grupo, materia, especialidad, semestre, themeKey, showPaletteMenu, setShowPaletteMenu, handleThemeChange, screen, setScreen, activeParcial, setActiveParcial, configs, wizardStep, setWizardStep, draftCriteria, tasks, setTasks, saveTasks, activeTab, setActiveTab, students, studentGrades, setStudentGrades, getStudentTasksAverage, openParcial, saveWizardConfig, resetConfig, updateCriterion, toggleSyncTasks, addCriterion, removeCriterion, resetParcial, setScore, handleAsentarCalificaciones, returnTaskGrade, selectedTaskId, setSelectedTaskId, selectedStudentId, setSelectedStudentId, chatInputText, setChatInputText, isPdfModalOpen, setIsPdfModalOpen, isGradesModalOpen, setIsGradesModalOpen, privateMessages, sendPrivateMessage, getParcialAverage, getFinalAverage, isParcialClosed, totalPct, pctValid, isReadOnly, lockReason, lockInfos, isSaving, handleConcludeParcial, refreshClassData } = useGroupClass(classInfo);
 
     const { subscribeToGroup } = useRealtime();
 
-    // Subscribe to real-time events for this academic group
-    subscribeToGroup(classInfo?.grupo_id);
+    // Subscribe to real-time events for this academic group silently via Axios
+    subscribeToGroup(classInfo?.grupo_id, refreshClassData);
 
     const parcialLabel = activeParcial ? PARCIALES.find(p => p.num === activeParcial)?.label : '';
     const activeCriteria = activeParcial ? configs[activeParcial]?.criteria ?? [] : [];
@@ -159,13 +159,13 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                         </div>
                         <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                         <div className="flex-grow">
-                            {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} setStudentGrades={setStudentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} handleConcludeParcial={handleConcludeParcial} isReadOnly={isReadOnly} isSaving={isSaving} />}
-                            {activeTab === 'tasks' && <TasksTab tasks={tasks} setTasks={setTasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} isReadOnly={isReadOnly} isSaving={isSaving} />}
+                            {activeTab === 'grades' && <GradesTab studentGrades={studentGrades} setStudentGrades={setStudentGrades} activeCriteria={activeCriteria} getStudentTasksAverage={getStudentTasksAverage} setScore={setScore} handleAsentarCalificaciones={handleAsentarCalificaciones} handleConcludeParcial={handleConcludeParcial} isReadOnly={isReadOnly} isSaving={isSaving} themeKey={themeKey} />}
+                            {activeTab === 'tasks' && <TasksTab tasks={tasks} setTasks={setTasks} studentGrades={studentGrades} getStudentTasksAverage={getStudentTasksAverage} saveTasks={saveTasks} isReadOnly={isReadOnly} isSaving={isSaving} themeKey={themeKey} />}
                             {activeTab === 'activities' && (
                                 selectedTaskId !== null ? (
-                                    <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} returnTaskGrade={returnTaskGrade} isReadOnly={isReadOnly} />
+                                    <TaskGradesModal selectedTaskId={selectedTaskId} setSelectedTaskId={setSelectedTaskId} tasks={tasks} studentGrades={studentGrades} selectedStudentId={selectedStudentId} setSelectedStudentId={setSelectedStudentId} privateMessages={privateMessages} chatInputText={chatInputText} setChatInputText={setChatInputText} sendPrivateMessage={sendPrivateMessage} isPdfModalOpen={isPdfModalOpen} setIsPdfModalOpen={setIsPdfModalOpen} saveTasks={saveTasks} returnTaskGrade={returnTaskGrade} isReadOnly={isReadOnly} themeKey={themeKey} />
                                 ) : (
-                                    <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} isReadOnly={isReadOnly} themeKey={themeKey} />
+                                    <ActivitiesTab tasks={tasks} saveTasks={saveTasks} setSelectedTaskId={setSelectedTaskId} grupo={grupo} materia={materia} isReadOnly={isReadOnly} themeKey={themeKey} studentGrades={studentGrades.length > 0 ? studentGrades : students} />
                                 )
                             )}
                         </div>
@@ -186,6 +186,8 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
 }
 
 export default function DocenteGruposShow({ classInfo }: { classInfo: any }) {
+    useRealtime();
+
     return (
         <AuthenticatedLayout noPadding>
             <Deferred data="classInfo" fallback={

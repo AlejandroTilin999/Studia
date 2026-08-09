@@ -60,11 +60,7 @@ export function useCycleListener(initialCycle: Cycle) {
 
         bc.onmessage = (event) => {
             if (event.data?.type === 'cycle-update') {
-                console.log('[ParcialStatusListener] BroadcastChannel recibido → Solicitando recarga de datos de Inertia...');
-                // Solicitar a Inertia que recargue solo los ciclos desde el servidor
-                import('@inertiajs/react').then(({ router }) => {
-                    router.reload({ only: ['cycles'] });
-                });
+                console.log('[ParcialStatusListener] Señal silenciosa recibida.');
             }
         };
 

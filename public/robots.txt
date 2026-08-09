@@ -1,2 +1,7 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /docente
+Disallow: /alumno
+Disallow: /login
+Disallow: /reset-password

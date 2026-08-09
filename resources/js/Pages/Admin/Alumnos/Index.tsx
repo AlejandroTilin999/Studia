@@ -13,7 +13,6 @@ import { studentService } from './services/studentService';
 import StudentTable from './components/StudentTable';
 import StudentTableControls from './components/StudentTableControls';
 import StudentFormModal from './components/StudentFormModal';
-import StudentKardexModal from './components/StudentKardexModal';
 import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } from './types';
 
 export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [], filters = { search: '', group: 'all', cycle: null }, isCycleActive, canRegister }: any) {
@@ -54,27 +53,35 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
     const [cycleFilter, setCycleFilter] = useState(filters.cycle || '');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
 
-    // [OPTIMIZACIÓN] Sincronización con el servidor para búsqueda y filtrado
+    // [BÚSQUEDA INSTANTÁNEA EN MEMORIA 0 MS] Filtrar reactivamente los alumnos descargados
+    const filteredStudents: StudentFormatted[] = useMemo(() => {
+        if (!searchQuery.trim()) return formattedStudents;
+        const q = searchQuery.toLowerCase().trim();
+        return formattedStudents.filter(student => 
+            student.name.toLowerCase().includes(q) ||
+            student.matricula.toLowerCase().includes(q) ||
+            student.email.toLowerCase().includes(q) ||
+            student.groupName.toLowerCase().includes(q)
+        );
+    }, [formattedStudents, searchQuery]);
+
+    // Sincronización con servidor únicamente cuando cambian los selects de grupo o ciclo
     useEffect(() => {
-        const timeout = setTimeout(() => {
-            if (
-                searchQuery !== (filters.search || '') ||
-                groupFilter !== (filters.group || 'all') ||
-                cycleFilter?.toString() !== (filters.cycle || '').toString()
-            ) {
-                router.get(window.location.pathname, {
-                    search: searchQuery,
-                    group: groupFilter,
-                    cycle: cycleFilter
-                }, {
-                    preserveState: true,
-                    replace: true,
-                    only: ['alumnos']
-                });
-            }
-        }, 150);
-        return () => clearTimeout(timeout);
-    }, [searchQuery, groupFilter, cycleFilter]);
+        if (
+            groupFilter !== (filters.group || 'all') ||
+            cycleFilter?.toString() !== (filters.cycle || '').toString()
+        ) {
+            router.get(window.location.pathname, {
+                search: '',
+                group: groupFilter,
+                cycle: cycleFilter
+            }, {
+                preserveState: true,
+                replace: true,
+                only: ['alumnos']
+            });
+        }
+    }, [groupFilter, cycleFilter]);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
@@ -294,29 +301,6 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
         });
     };
 
-    const openKardexModal = async (student: any) => {
-        setSelectedStudent(student);
-        setIsKardexModalOpen(true);
-
-        try {
-            const response = await fetch(`/admin/alumnos/${student.id}/kardex`);
-            const result = await response.json();
-            if (result.kardex) {
-                setSelectedStudent((prev: any) => ({
-                    ...prev,
-                    grades: result.kardex.map((g: any) => ({
-                        subject: g.subject,
-                        code: g.code,
-                        score: g.score,
-                        period: g.period
-                    }))
-                }));
-            }
-        } catch (error) {
-            console.error("Error al cargar el kardex:", error);
-        }
-    };
-
     const currentCycleName = useMemo(() => {
         const cycle = availableCycles.find((c: any) => c.id.toString() === cycleFilter?.toString());
         return cycle ? cycle.nombre : '';
@@ -393,10 +377,9 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
                 />
             }>
                 <StudentTable
-                    students={formattedStudents}
+                    students={filteredStudents}
                     onOpenEditModal={openEditModal}
                     onOpenBajaModal={handleToggleStatus}
-                    onOpenKardexModal={openKardexModal}
                     onDelete={handleDeleteStudent}
                 />
             </Deferred>
@@ -412,15 +395,6 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
                 errors={errors}
                 processing={processing}
                 onSubmit={handleFormSubmit}
-            />
-
-            <StudentKardexModal
-                isOpen={isKardexModalOpen}
-                onClose={() => setIsKardexModalOpen(false)}
-                student={selectedStudent}
-                onDownloadKardex={(student) => {
-                    triggerToast(`Descargando Kardex oficial de ${student.name}...`);
-                }}
             />
         </AdminPageLayout>
     );

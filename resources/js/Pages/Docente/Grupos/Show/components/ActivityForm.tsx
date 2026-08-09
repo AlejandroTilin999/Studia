@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Pencil, Paperclip, Upload } from 'lucide-react';
 import { Task } from '../services/constants';
 import DatePickerEs from '@/Components/ui/DatePickerEs';
+import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 export interface ActivityFormProps {
     editingTask: Task | null;
@@ -15,9 +16,11 @@ export interface ActivityFormProps {
         puntos?: number;
     }) => void;
     onCancelEdit: () => void;
+    themeKey?: string;
 }
 
-export default function ActivityForm({ editingTask, onSave, onCancelEdit }: ActivityFormProps) {
+export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeKey = 'blue' }: ActivityFormProps) {
+    const activeTheme = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
     const [activityType, setActivityType] = useState<'task' | 'material'>('task');
     const [nombre, setNombre] = useState('');
     const [fecha_entrega, setFechaEntrega] = useState('');
@@ -132,7 +135,11 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit }: Acti
             {/* Header del Formulario (Título + Botón de Cancelar) */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-2">
-                    {editingTask !== null ? <Pencil size={20} className="text-amber-500" /> : <Plus size={20} className="text-[#1e88e5]" />}
+                    {editingTask !== null ? (
+                        <Pencil size={20} style={{ color: activeTheme.strokeColor }} />
+                    ) : (
+                        <Plus size={20} style={{ color: activeTheme.strokeColor }} />
+                    )}
                     <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
                         {editingTask !== null ? 'Editar Tarea' : 'Crear Tarea'}
                     </h3>
@@ -291,9 +298,8 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit }: Acti
                     <div className="pt-4 border-t border-slate-200 space-y-2">
                         <button
                             type="submit"
-                            className={`w-full flex items-center justify-center gap-2 text-white py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm ${
-                                editingTask !== null ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#1e88e5] hover:bg-blue-600'
-                            }`}
+                            style={{ backgroundColor: activeTheme.strokeColor }}
+                            className="w-full flex items-center justify-center gap-2 text-white py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm hover:brightness-105"
                         >
                             {editingTask !== null ? <Pencil size={15} /> : <Plus size={15} />}
                             {editingTask !== null ? 'Guardar Cambios' : 'Publicar Tarea'}

@@ -8,7 +8,6 @@ interface StudentTableProps {
     students: StudentFormatted[];
     onOpenEditModal: (student: StudentFormatted) => void;
     onOpenBajaModal: (student: StudentFormatted) => void;
-    onOpenKardexModal: (student: StudentFormatted) => void;
     onDelete: (id: number, name: string) => void;
 }
 
@@ -16,7 +15,6 @@ export default function StudentTable({
     students,
     onOpenEditModal,
     onOpenBajaModal,
-    onOpenKardexModal,
     onDelete,
 }: StudentTableProps) {
     const columns: AppTableColumn<StudentFormatted>[] = [
@@ -42,20 +40,6 @@ export default function StudentTable({
             accessor: (student: StudentFormatted) => student.groupName,
             align: "left",
             className: "text-slate-500 font-normal text-[13px]",
-        },
-        {
-            header: "Kardex",
-            align: "center",
-            headerClassName: "text-center",
-            accessor: (student: StudentFormatted) => (
-                <TableActions align="center">
-                    <TableActionButton
-                        onClick={() => onOpenKardexModal(student)}
-                        title="Ver Kardex"
-                        icon="kardex"
-                    />
-                </TableActions>
-            )
         },
         {
             header: "Acciones",

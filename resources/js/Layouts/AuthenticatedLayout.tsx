@@ -31,7 +31,7 @@ function LayoutContent({
                     </button>
 
                     <div className="flex-1 flex justify-center pr-8">
-                        <img src="/assets/phid_logo.webp" alt="Prepa Hidalgo" className="h-7 w-auto object-contain" />
+                        <img src="/assets/phid_logo.webp" alt="Prepa Hidalgo" className="h-7 w-auto object-contain" fetchPriority="high" decoding="async" />
                     </div>
                 </div>
             )}

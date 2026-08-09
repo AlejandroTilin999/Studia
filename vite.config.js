@@ -10,6 +10,16 @@ export default defineConfig({
         }),
         react(),
     ],
+    optimizeDeps: {
+        include: [
+            '@inertiajs/react',
+            'react',
+            'react-dom',
+            'lucide-react',
+            'axios',
+            'sweetalert2',
+        ],
+    },
     server: {
         host: '127.0.0.1',
         port: 5173,

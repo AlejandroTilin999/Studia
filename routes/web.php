@@ -1,15 +1,18 @@
 <?php
 
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\TeacherController;
-use App\Http\Controllers\CourseController;
-use App\Http\Controllers\GroupController;
-use App\Http\Controllers\AcademicLoadController;
-use App\Http\Controllers\AcademicPeriodController;
+use App\Http\Controllers\Admin\StudentController;
+use App\Http\Controllers\Admin\TeacherController;
+use App\Http\Controllers\Admin\CourseController;
+use App\Http\Controllers\Admin\GroupController;
+use App\Http\Controllers\Admin\AcademicLoadController;
+use App\Http\Controllers\Admin\AcademicPeriodController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SpecialtyController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\PromotionController;
+use App\Http\Controllers\Docente\DocenteClassroomController;
+use App\Http\Controllers\Alumno\StudentClassroomController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\SpecialtyController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use Illuminate\Foundation\Application;
@@ -81,22 +84,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $activeCycleId = $activeCycle ? $activeCycle->id : null;
                 $isNones = $activeCycle ? (\Carbon\Carbon::parse($activeCycle->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activeCycle->fecha_inicio)->month === 1) : null;
 
-                // [INTELIGENCIA v4.0] Resumen Global del Sistema (No restrictivo al ciclo activo)
-                $studentsCount = Inertia::defer(fn() => \DB::table('users')->where('rol', 'alumno')->count());
-                $teachersCount = Inertia::defer(fn() => \DB::table('users')->where('rol', 'docente')->count());
-                $groupsCount   = Inertia::defer(fn() => \DB::table('grupos')->where('activo', true)->count());
-                $coursesCount  = Inertia::defer(fn() => \DB::table('materias')->count());
+                // [OPTIMIZACIÓN ZERO-LATENCY v5.0] Obtener todas las métricas en 1 sola consulta SQL con Caché
+                $metricsData = \Cache::remember('admin_system_metrics', 120, function() {
+                    $raw = \DB::selectOne("
+                        SELECT 
+                            (SELECT COUNT(*) FROM users WHERE rol = 'alumno') as students_count,
+                            (SELECT COUNT(*) FROM users WHERE rol = 'docente') as teachers_count,
+                            (SELECT COUNT(*) FROM grupos WHERE activo = true) as groups_count,
+                            (SELECT COUNT(*) FROM materias) as courses_count,
+                            (SELECT COUNT(*) FROM especialidades) as specialties_count,
+                            (SELECT COUNT(*) FROM users) as users_count
+                    ");
 
-                $specialtiesCount = Inertia::defer(fn() => \DB::table('especialidades')->count());
-                $usersCount    = Inertia::defer(fn() => \DB::table('users')->count());
+                    return [
+                        'studentsCount' => (int)($raw->students_count ?? 0),
+                        'teachersCount' => (int)($raw->teachers_count ?? 0),
+                        'groupsCount' => (int)($raw->groups_count ?? 0),
+                        'coursesCount' => (int)($raw->courses_count ?? 0),
+                        'specialtiesCount' => (int)($raw->specialties_count ?? 0),
+                        'usersCount' => (int)($raw->users_count ?? 0),
+                    ];
+                });
 
                 // Actividades Recientes (Auditoría)
                 $recentActivities = Inertia::defer(fn() => \App\Models\AdminAuditLog::with('user:id,nombre,apellido_paterno')
                     ->orderBy('created_at', 'desc')
-                    ->limit(20)
+                    ->limit(15)
                     ->get()
                     ->map(function($log) {
-                        // [FORMAT v2.9.4] Mapeo de acciones técnicas a etiquetas legibles
                         $actionLabel = match($log->accion) {
                             'TOGGLE_PARCIAL' => isset($log->metadata['nuevo_estado'])
                                 ? (($log->metadata['nuevo_estado'] === 'abierto' ? 'Abrió ' : 'Cerró ') . 'Parcial ' . ($log->metadata['parcial'] ?? ''))
@@ -112,22 +127,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         return [
                             'id' => $log->id,
                             'action' => $actionLabel,
-                            'description' => $log->descripcion, // [NEW] Para mayor detalle
+                            'description' => $log->descripcion,
                             'user' => $log->user ? $log->user->nombre_completo : 'Sistema',
-                            'time' => $log->created_at->isoFormat('D/MM/YYYY - h:mm A'),
+                            'time' => $log->created_at ? $log->created_at->format('d/m/Y - h:i A') : '',
                         ];
                     }));
 
-                return Inertia::render('Admin/Dashboard/Index', [
+                return Inertia::render('Admin/Dashboard/Index', array_merge([
                     'cycles' => $cycles,
-                    'studentsCount' => $studentsCount,
-                    'teachersCount' => $teachersCount,
-                    'groupsCount' => $groupsCount,
-                    'coursesCount' => $coursesCount,
-                    'specialtiesCount' => $specialtiesCount,
-                    'usersCount' => $usersCount,
                     'recentActivities' => $recentActivities,
-                ]);
+                ], $metricsData));
             })->name('admin.dashboard');
 
             Route::post('/cycles', [AcademicPeriodController::class, 'store'])->name('admin.cycles.store');
@@ -182,7 +191,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/especialidades/{id}', [SpecialtyController::class, 'destroy'])->name('admin.especialidades.destroy');
 
             // Gestión de Promociones y Cargas
-            Route::post('/promociones/procesar', [\App\Http\Controllers\PromotionController::class, 'promote'])->name('admin.promociones.promote');
+            Route::post('/promociones/procesar', [PromotionController::class, 'promote'])->name('admin.promociones.promote');
             Route::post('/cargas/importar', [AcademicLoadController::class, 'cloneLoad'])->name('admin.loads.import');
 
             Route::get('/reportes', [ReportController::class, 'index'])->name('admin.reportes.index');
@@ -244,21 +253,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 return Inertia::render('Docente/Grupos/Index');
             })->name('docente.grupos.index');
 
-            Route::get('/grupos/show', [App\Http\Controllers\DocenteClassroomController::class, 'show'])->name('docente.grupos.show');
+            Route::get('/grupos/show', [DocenteClassroomController::class, 'show'])->name('docente.grupos.show');
 
-            Route::get('/clases/{uuid}/full-data', [App\Http\Controllers\DocenteClassroomController::class, 'getFullData']);
-            Route::get('/clases/{uuid}/config', [App\Http\Controllers\DocenteClassroomController::class, 'getConfig']);
-            Route::post('/clases/{uuid}/theme', [App\Http\Controllers\DocenteClassroomController::class, 'updateTheme'])->name('docente.clases.update_theme');
+            Route::get('/clases/{uuid}/full-data', [DocenteClassroomController::class, 'getFullData']);
+            Route::get('/clases/{uuid}/config', [DocenteClassroomController::class, 'getConfig']);
+            Route::post('/clases/{uuid}/theme', [DocenteClassroomController::class, 'updateTheme'])->name('docente.clases.update_theme');
 
             Route::middleware('captura.abierta')->group(function() {
-                Route::post('/clases/{uuid}/criterios', [App\Http\Controllers\DocenteClassroomController::class, 'saveCriterios']);
-                Route::post('/clases/{uuid}/calificaciones', [App\Http\Controllers\DocenteClassroomController::class, 'saveCalificaciones']);
-                Route::post('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'saveTareas']);
-                Route::post('/clases/{uuid}/return-grade', [App\Http\Controllers\DocenteClassroomController::class, 'returnGrade']);
-                Route::post('/clases/{uuid}/conclude', [App\Http\Controllers\DocenteClassroomController::class, 'concludeParcial'])->name('docente.clases.conclude');
+                Route::post('/clases/{uuid}/criterios', [DocenteClassroomController::class, 'saveCriterios']);
+                Route::post('/clases/{uuid}/calificaciones', [DocenteClassroomController::class, 'saveCalificaciones']);
+                Route::post('/clases/{uuid}/tareas', [DocenteClassroomController::class, 'saveTareas']);
+                Route::post('/clases/{uuid}/return-grade', [DocenteClassroomController::class, 'returnGrade']);
+                Route::post('/clases/{uuid}/conclude', [DocenteClassroomController::class, 'concludeParcial'])->name('docente.clases.conclude');
             });
 
-            Route::get('/clases/{uuid}/tareas', [App\Http\Controllers\DocenteClassroomController::class, 'getTareas']);
+            Route::get('/clases/{uuid}/tareas', [DocenteClassroomController::class, 'getTareas']);
         });
 
         // ------------------------------------------
@@ -363,8 +372,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ]);
             })->name('alumno.materias.index');
 
-            Route::post('/tareas/entregar', [App\Http\Controllers\StudentClassroomController::class, 'submitTask'])->name('alumno.tareas.entregar');
-            Route::post('/tareas/anular', [App\Http\Controllers\StudentClassroomController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
+            Route::post('/tareas/entregar', [StudentClassroomController::class, 'submitTask'])->name('alumno.tareas.entregar');
+            Route::post('/tareas/quitar-archivo', [StudentClassroomController::class, 'removeSingleFile'])->name('alumno.tareas.quitar_archivo');
+            Route::post('/tareas/anular', [StudentClassroomController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
         });
 
         Route::get('/perfil', [ProfileController::class, 'edit'])->name('perfil.edit');

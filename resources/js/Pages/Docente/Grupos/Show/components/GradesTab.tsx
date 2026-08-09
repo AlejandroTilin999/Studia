@@ -3,6 +3,7 @@ import { Folder, Loader2, Cloud, CheckCircle2 } from 'lucide-react';
 import AppTable from '@/Components/table/AppTable';
 import { StudentGrade, Criterion, MINIMUM_PASSING_GRADE } from '../services/constants';
 import GradeSelector from './GradeSelector';
+import ParcialHeader from '@/Components/common/ParcialHeader';
 import { cn } from '@/lib/utils';
 
 interface GradesTabProps {
@@ -15,6 +16,7 @@ interface GradesTabProps {
     handleConcludeParcial: () => void;
     isReadOnly?: boolean;
     isSaving?: boolean;
+    themeKey?: string;
 }
 
 export default function GradesTab({
@@ -26,7 +28,8 @@ export default function GradesTab({
     handleAsentarCalificaciones,
     handleConcludeParcial,
     isReadOnly = false,
-    isSaving = false
+    isSaving = false,
+    themeKey = 'blue'
 }: GradesTabProps) {
 
     // Actualización instantánea para el promedio en la UI
@@ -118,7 +121,12 @@ export default function GradesTab({
     ], [activeCriteria, isReadOnly, isSaving, getStudentTasksAverage]);
 
     return (
-        <div>
+        <div className="space-y-6">
+            <ParcialHeader
+                title="Registro de Calificaciones Parciales"
+                themeKey={themeKey}
+            />
+
             <AppTable
                 data={studentGrades}
                 keyExtractor={r => r.id}

@@ -38,13 +38,18 @@ class HandleInertiaRequests extends Middleware
             return \App\Models\AcademicPeriod::where('activo', true)->first();
         });
 
+        // Caché para notificaciones no leídas por usuario (60 segundos)
+        $unreadCount = $user ? \Cache::remember("unread_notifs_{$user->id}", 60, function() use ($user) {
+            return \App\Models\Notificacion::where('usuario_id', $user->id)->where('leido', false)->count();
+        }) : 0;
+
         return [
             ...parent::share($request),
-            'activePeriod' => Inertia::defer(fn() => $activePeriod ? [
+            'activePeriod' => $activePeriod ? [
                 'id' => $activePeriod->id,
                 'nombre' => $activePeriod->nombre,
                 'es_nones' => $activePeriod->fecha_inicio ? (\Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month == 1) : true,
-            ] : null),
+            ] : null,
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,
@@ -56,8 +61,7 @@ class HandleInertiaRequests extends Middleware
                     'rol' => strtoupper($user->rol ?? ''),
                 ] : null,
             ],
-            // [OPTIMIZACIÓN v2.2] Carga diferida (Deferred) para no bloquear la navegación principal
-            'unreadNotificationsCount' => Inertia::defer(fn() => $user ? \App\Models\Notificacion::where('usuario_id', $user->id)->where('leido', false)->count() : 0),
+            'unreadNotificationsCount' => $unreadCount,
             'docenteGroups' => $this->getDocenteGroups($user),
             'alumnoGroups' => $this->getAlumnoGroups($user),
         ];

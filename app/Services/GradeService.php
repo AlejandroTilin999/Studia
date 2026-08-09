@@ -219,10 +219,19 @@ class GradeService
                     if ($delivery) {
                         $status = ($delivery->calificacion !== '') ? 'Calificado' : (($delivery->estatus === 'submitted') ? 'Entregado' : 'Pendiente');
                         if ($delivery->archivo_url) {
-                            $archivo = [
-                                'url' => $delivery->archivo_url,
-                                'nombre' => $delivery->archivo_nombre
-                            ];
+                            $decoded = json_decode($delivery->archivo_url, true);
+                            if (is_array($decoded)) {
+                                $archivo = $decoded;
+                            } else {
+                                $archivo = [
+                                    [
+                                        'url' => $delivery->archivo_url ?: $delivery->google_drive_url,
+                                        'nombre' => $delivery->archivo_nombre ?: 'Documento de Entrega',
+                                        'google_drive_file_id' => $delivery->google_drive_file_id,
+                                        'google_drive_url' => $delivery->google_drive_url
+                                    ]
+                                ];
+                            }
                         }
                     }
 

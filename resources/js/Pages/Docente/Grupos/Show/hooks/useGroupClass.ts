@@ -184,16 +184,17 @@ export function useGroupClass(classInfoProp?: any) {
             setThemeKey(classInfo.color_tema);
         }
 
-        // Sincronizar vista actual si hay un parcial en la URL
+        // Sincronizar vista actual y estados activos de tareas/alumnos
         const params = new URLSearchParams(window.location.search);
         const pNum = params.get('parcial');
-        if (pNum) {
-            const num = parseInt(pNum);
-            const pData = classInfo.parciales[num];
-            if (pData) {
-                setActiveParcial(num);
-                setStudentGrades(pData.students);
-                setTasks(pData.tasks);
+        const targetParcial = pNum ? parseInt(pNum) : (activeParcial || 1);
+
+        const pData = classInfo.parciales?.[targetParcial];
+        if (pData) {
+            setActiveParcial(targetParcial);
+            setStudentGrades(pData.students);
+            setTasks(pData.tasks);
+            if (pNum) {
                 if (pData.config?.configured) {
                     setScreen('grades');
                 } else {
@@ -203,40 +204,60 @@ export function useGroupClass(classInfoProp?: any) {
         }
     }, [classInfo]);
 
-    // Función maestra de refresco (ThunderSync V7 - Atómica)
+    // Función maestra de refresco en tiempo real (100% en memoria via Axios sin re-renders de Inertia)
     const refreshClassData = (isBurst = false) => {
         if (!loadId) return;
 
-        // [ESTABILIDAD] No refrescar props si el usuario está interactuando con un input
-        const isInputActive = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '');
-        if (isInputActive && isBurst) {
-            console.log('[RT] ✋ Refresco omitido por actividad de usuario.');
-            return;
-        }
+        console.log(`%c[RT] ⚡ Consultando datos actualizados vía API silenciosa...`, 'color: #10b981; font-weight: bold;');
 
-        console.log(`%c[RT] 🔄 Recargando props de Inertia...`, 'color: #0266E0; font-weight: bold;');
+        axios.get(`/docente/clases/${loadId}/full-data`)
+            .then((res) => {
+                const updatedData = res.data;
+                if (!updatedData || !updatedData.parciales) return;
 
-        // La magia ocurre aquí: al recargar classInfo, el useEffect de arriba se dispara
-        router.reload({
-            only: ['classInfo'],
-            onSuccess: () => console.log('[RT] ✅ Props sincronizadas.')
-        });
+                console.log('%c[RT] ✅ Datos del docente actualizados silenciosamente en vivo', 'color: #10b981;');
+
+                const newLockInfos: Record<number, any> = {};
+                const newConfigLockInfos: Record<number, any> = {};
+                const newConfigs: Record<number, any> = {};
+                const newAllGrades: Record<number, any> = {};
+                const newAllTasks: Record<number, any> = {};
+
+                [1, 2, 3].forEach(num => {
+                    const pData = updatedData.parciales[num];
+                    if (pData) {
+                        newLockInfos[num] = pData.lock_info;
+                        newConfigLockInfos[num] = pData.lock_config;
+                        newConfigs[num] = pData.config;
+                        newAllGrades[num] = pData.students;
+                        newAllTasks[num] = pData.tasks;
+                    }
+                });
+
+                setLockInfos(newLockInfos);
+                setConfigLockInfos(newConfigLockInfos);
+                setConfigs(newConfigs);
+                setAllGrades(newAllGrades);
+                setAllTasks(newAllTasks);
+
+                const currentP = activeParcial || 1;
+                const pTasks = updatedData.parciales?.[currentP]?.tasks || [];
+                const pStudents = updatedData.parciales?.[currentP]?.students || [];
+
+                setTasks(JSON.parse(JSON.stringify(pTasks)));
+                setStudentGrades(JSON.parse(JSON.stringify(pStudents)));
+            })
+            .catch((err) => {
+                console.error("Error al actualizar datos silenciosos del docente:", err);
+            });
     };
 
     // Lanzador de ráfaga
     const startBurstRefresh = () => {
-        if (burstTimerRef.current) clearInterval(burstTimerRef.current);
+        if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
 
-        console.log('%c[ThunderSync] ⚡ Sincronización ráfaga activa...', 'background: #0266E0; color: #fff; padding: 4px 10px; border-radius: 20px;');
-
-        const delays = [0, 800, 2000]; // Ráfaga reducida gracias a la optimización del backend
-
-        delays.forEach((delay, index) => {
-            setTimeout(() => {
-                refreshClassData(true);
-                if (index === delays.length - 1) setRefreshCounter(Date.now());
-            }, delay);
-        });
+        // Refresco único silencioso en tiempo real sin ráfaga repetida
+        refreshClassData(true);
     };
 
     // Sincronizar configuraciones únicamente si se solicita refresco manual
@@ -244,20 +265,14 @@ export function useGroupClass(classInfoProp?: any) {
 
     // 3.2 Escuchar ráfagas de señales en tiempo real
     useEffect(() => {
-        const cicloId = classInfo?.ciclo_id;
-        if (!cicloId) return;
-
-        const targetId = Number(cicloId);
-
         const mySenderId = Math.random().toString(36).substring(2);
 
         const handleSignal = (data: any) => {
             if (!data) return;
             if (data.senderId === mySenderId) return; // Ignorar el propio rebote
-            if (data.type === 'cycle-update' || data.msg?.includes('FORCE_REFRESH')) {
-                if (Number(data.id) === targetId) {
-                    startBurstRefresh();
-                }
+            if (data.type === 'cycle-update' || data.msg?.includes('SUBMISSION') || data.msg?.includes('PARCIAL') || data.msg?.includes('FORCE_REFRESH')) {
+                console.log('%c[ThunderSync] ⚡ Actualización silenciosa ultrarrápida (sin recargar):', 'color: #10b981; font-weight: bold;', data);
+                refreshClassData(true);
             }
         };
 
@@ -779,6 +794,7 @@ export function useGroupClass(classInfoProp?: any) {
         isSaving,
         lockReason: activeParcial ? lockInfos[activeParcial]?.reason : '',
         lockInfos,
-        configLockInfos
+        configLockInfos,
+        refreshClassData
     };
 }

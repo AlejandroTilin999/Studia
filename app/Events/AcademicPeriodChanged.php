@@ -34,7 +34,15 @@ class AcademicPeriodChanged implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('Admin.Dashboard'),
-            new Channel('Public.Global'), // Canal público para avisar a todos del cambio de ciclo
+            new Channel('Public.Global'),
         ];
+    }
+
+    /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'AcademicPeriodChanged';
     }
 }

@@ -130,8 +130,8 @@ class GoogleDriveService
     }
 
     /**
-     * Construye y/o recupera la ruta de carpetas para la entrega de tareas:
-     * Prepahid / Académico / {Ciclo Escolar} / {Grupo} / {Materia} / {Tarea}
+     * Construye y/o recupera la ruta de carpetas organizada para la entrega de tareas:
+     * Prepahid / Académico / {Ciclo Escolar} / {Grupo} / {Materia} / {Docente} / {Tarea}
      */
     public function getOrCreateTaskFolder(Tarea $tarea): string
     {
@@ -139,6 +139,9 @@ class GoogleDriveService
         $cicloNombre = $load && $load->academicPeriod ? $load->academicPeriod->nombre : 'General';
         $grupoNombre = $load && $load->academicGroup ? $load->academicGroup->nombre : 'Sin_Grupo';
         $materiaNombre = $load && $load->course ? $load->course->nombre : 'Materia';
+        $docenteNombre = ($load && $load->teacher && $load->teacher->user) 
+            ? trim("{$load->teacher->user->nombre} {$load->teacher->user->apellido_paterno}")
+            : 'Docente';
         $tareaNombre = $tarea->nombre ?: "Tarea_{$tarea->id}";
 
         $rootId = $this->findOrCreateFolder('Prepahid');
@@ -146,8 +149,9 @@ class GoogleDriveService
         $cicloFolderId = $this->findOrCreateFolder($cicloNombre, $academicoFolderId);
         $grupoFolderId = $this->findOrCreateFolder($grupoNombre, $cicloFolderId);
         $materiaFolderId = $this->findOrCreateFolder($materiaNombre, $grupoFolderId);
+        $docenteFolderId = $this->findOrCreateFolder($docenteNombre, $materiaFolderId);
 
-        return $this->findOrCreateFolder($tareaNombre, $materiaFolderId);
+        return $this->findOrCreateFolder($tareaNombre, $docenteFolderId);
     }
 
     /**

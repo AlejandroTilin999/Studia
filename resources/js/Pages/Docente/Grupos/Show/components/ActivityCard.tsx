@@ -6,18 +6,20 @@ import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 const formatHumanDate = (dateStr?: string) => {
     if (!dateStr) return 'Sin fecha';
-    
-    // Si la cadena contiene espacio (ej: '2026-08-09 13:00:00'), formatear con hora incluida
-    const hasTime = dateStr.includes(' ');
-    const normalizedStr = hasTime ? dateStr.replace(' ', 'T') : dateStr + 'T00:00:00';
+
+    const hasTime = dateStr.includes(' ') || dateStr.includes('T');
+    const normalizedStr = dateStr.includes(' ') ? dateStr.replace(' ', 'T') : (!dateStr.includes('T') ? dateStr + 'T00:00:00' : dateStr);
     const date = new Date(normalizedStr);
 
     if (isNaN(date.getTime())) return dateStr;
 
-    const formattedDate = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-    const formattedTime = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+    // Formato largo (ej: 09 de Agosto, 12:00 AM)
+    const day = date.toLocaleDateString('es-ES', { day: '2-digit' });
+    const month = date.toLocaleDateString('es-ES', { month: 'long' });
+    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+    const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    return hasTime ? `${formattedDate}, ${formattedTime}` : formattedDate;
+    return hasTime ? `${day} de ${capitalizedMonth}, ${formattedTime}` : `${day} de ${capitalizedMonth}`;
 };
 
 export interface ActivityCardProps {
@@ -28,6 +30,7 @@ export interface ActivityCardProps {
     onSelectTask: (id: number) => void;
     isReadOnly?: boolean;
     themeKey?: string;
+    totalStudents?: number;
 }
 
 export default function ActivityCard({
@@ -37,15 +40,39 @@ export default function ActivityCard({
     onDelete,
     onSelectTask,
     isReadOnly = false,
-    themeKey = 'blue'
+    themeKey = 'blue',
+    totalStudents = 0
 }: ActivityCardProps) {
     const isExpired = task.fecha_entrega && new Date(task.fecha_entrega + 'T00:00:00') < new Date(new Date().setHours(0, 0, 0, 0));
     const activeTheme = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
 
+    // Calcular estadísticas de entregas, pendientes y calificadas
+    const archivosEntries = Object.entries(task.archivos || {});
+    const calificacionesEntries = Object.entries(task.calificaciones || {});
+
+    // Una tarea se considera entregada si el estatus es 'submitted', 'graded' o 'entregado' (y no 'pending')
+    const entregadasCount = archivosEntries.filter(([_, val]) => {
+        if (!val) return false;
+        const estatus = (val.estatus || '').toLowerCase();
+        if (estatus === 'pending') return false;
+        return estatus === 'submitted' || estatus === 'graded' || estatus === 'entregado' || estatus === 'entregada';
+    }).length;
+
+    const calificadasCount = calificacionesEntries.filter(([_, val]) => {
+        if (val === "" || val === undefined || val === null) return false;
+        const num = Number(val);
+        return !isNaN(num) && num >= 0;
+    }).length;
+    
+    // Si totalStudents está disponible, usarlo como total del grupo; de lo contrario usar asignadas a la tarea o 1
+    const totalGrupo = totalStudents > 0 ? totalStudents : (calificacionesEntries.length > 0 ? calificacionesEntries.length : 1);
+    const pendientesCount = Math.max(0, totalGrupo - entregadasCount);
+
     return (
-        <div className="py-5 border-b border-slate-200/90 last:border-b-0 space-y-4">
-            {/* Header Limpio (Estilo Google Classroom Directo) */}
-            <div className="flex items-start justify-between gap-4">
+        <div className="py-5 border-b border-slate-200/90 last:border-b-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Izquierda: Info de la tarea */}
+            <div className="space-y-3.5 flex-1 min-w-0">
+                {/* Header Título e Icono */}
                 <div className="flex items-start gap-4 min-w-0">
                     <div
                         style={{ backgroundColor: `${activeTheme.strokeColor}18`, color: activeTheme.strokeColor }}
@@ -67,13 +94,80 @@ export default function ActivityCard({
                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-normal">
                             <span>{task.fecha_entrega ? `Fecha límite: ${formatHumanDate(task.fecha_entrega)}` : 'Sin fecha límite'}</span>
                             <span>•</span>
-                            <span className="font-semibold text-slate-700">{task.puntos || 10} pts</span>
+                            <span className="font-semibold text-slate-700">{task.puntos || 10} puntos</span>
                         </div>
                     </div>
                 </div>
 
+                {/* Contenido / Descripción */}
+                {task.descripcion && (
+                    <div className="pl-14 text-xs md:text-sm text-slate-600 font-normal leading-relaxed whitespace-pre-line">
+                        {task.descripcion}
+                    </div>
+                )}
+
+                {/* Adjuntos */}
+                {task.attachments && task.attachments.length > 0 && (
+                    <div className="pl-14 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {task.attachments.map((file, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200/80 px-3.5 py-2.5 rounded-xl">
+                                <div className="flex items-center gap-2 truncate">
+                                    <FileText size={15} className={activeTheme.text} />
+                                    <span className="text-xs text-slate-700 font-medium truncate">{file.name}</span>
+                                </div>
+                                <button className="text-slate-400 hover:text-slate-700 p-1 transition-all">
+                                    <Download size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Botón Ver Entregas */}
+                <div className="pl-14 pt-1 flex justify-start">
+                    <button
+                        type="button"
+                        onClick={() => onSelectTask(task.id)}
+                        className={cn("flex items-center gap-1.5 text-xs font-bold transition-colors hover:underline", activeTheme.text)}
+                    >
+                        <span>Ver Entregas y Calificar</span>
+                        <ChevronRight size={14} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Derecha: Estadísticas centradas verticalmente y más grandes + botones de edición */}
+            <div className="flex items-center gap-6 shrink-0 sm:self-center pl-14 sm:pl-0 pt-2 sm:pt-0">
+                {/* Estadísticas (Entregadas / Pendientes / Calificadas) */}
+                <div className="flex items-center gap-7 text-center">
+                    <div className="flex flex-col items-center">
+                        <span className="text-3xl md:text-4xl font-light text-slate-700 leading-none">
+                            {entregadasCount}
+                        </span>
+                        <span className="text-xs font-normal text-slate-400 mt-1.5">
+                            Entregadas
+                        </span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <span className="text-3xl md:text-4xl font-light text-slate-700 leading-none">
+                            {pendientesCount}
+                        </span>
+                        <span className="text-xs font-normal text-slate-400 mt-1.5">
+                            Pendientes
+                        </span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <span className="text-3xl md:text-4xl font-light text-slate-700 leading-none">
+                            {calificadasCount}
+                        </span>
+                        <span className="text-xs font-normal text-slate-400 mt-1.5">
+                            Calificadas
+                        </span>
+                    </div>
+                </div>
+
                 {!isReadOnly && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1">
                         <button
                             onClick={() => onEdit(task)}
                             className="text-slate-400 hover:text-slate-700 p-2 rounded-lg hover:bg-slate-100 transition-all"
@@ -90,42 +184,6 @@ export default function ActivityCard({
                         </button>
                     </div>
                 )}
-            </div>
-
-            {/* Contenido / Descripción */}
-            {task.descripcion && (
-                <div className="pl-14 text-xs md:text-sm text-slate-600 font-normal leading-relaxed whitespace-pre-line">
-                    {task.descripcion}
-                </div>
-            )}
-
-            {/* Adjuntos */}
-            {task.attachments && task.attachments.length > 0 && (
-                <div className="pl-14 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {task.attachments.map((file, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200/80 px-3.5 py-2.5 rounded-xl">
-                            <div className="flex items-center gap-2 truncate">
-                                <FileText size={15} className={activeTheme.text} />
-                                <span className="text-xs text-slate-700 font-medium truncate">{file.name}</span>
-                            </div>
-                            <button className="text-slate-400 hover:text-slate-700 p-1 transition-all">
-                                <Download size={14} />
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Botón Ver Entregas */}
-            <div className="pl-14 pt-1 flex justify-start">
-                <button
-                    type="button"
-                    onClick={() => onSelectTask(task.id)}
-                    className={cn("flex items-center gap-1.5 text-xs font-bold transition-colors hover:underline", activeTheme.text)}
-                >
-                    <span>Ver Entregas y Calificar</span>
-                    <ChevronRight size={14} />
-                </button>
             </div>
         </div>
     );

@@ -15,6 +15,7 @@ interface ActivitiesTabProps {
     materia: string;
     isReadOnly?: boolean;
     themeKey?: string;
+    studentGrades?: any[];
 }
 
 export default function ActivitiesTab({
@@ -22,7 +23,8 @@ export default function ActivitiesTab({
     saveTasks,
     setSelectedTaskId,
     isReadOnly = false,
-    themeKey = 'blue'
+    themeKey = 'blue',
+    studentGrades = []
 }: ActivitiesTabProps) {
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
     const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -101,6 +103,7 @@ export default function ActivitiesTab({
                             setIsCreating(false);
                             setEditingTaskId(null);
                         }}
+                        themeKey={themeKey}
                     />
                 </div>
             ) : (
@@ -146,6 +149,7 @@ export default function ActivitiesTab({
                                             onSelectTask={setSelectedTaskId}
                                             isReadOnly={isReadOnly}
                                             themeKey={themeKey}
+                                            totalStudents={studentGrades.length}
                                         />
                                     ))}
                                 </div>

@@ -80,14 +80,46 @@ export default function SubjectAssignment({
     const [localComment, setLocalComment] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [driveLink, setDriveLink] = useState('');
-    const [attachedFiles, setAttachedFiles] = useState<any[]>(
-        (task as any)?.archivo ? [(task as any).archivo] : []
-    );
+    const parseTaskFiles = (rawFile: any): any[] => {
+        if (!rawFile) return [];
+        let items: any[] = [];
+        if (Array.isArray(rawFile)) {
+            items = rawFile;
+        } else if (typeof rawFile === 'object' && rawFile.url) {
+            items = [rawFile];
+        } else if (typeof rawFile === 'string') {
+            try {
+                const parsed = JSON.parse(rawFile);
+                if (Array.isArray(parsed)) {
+                    items = parsed;
+                } else if (typeof parsed === 'object' && parsed.url) {
+                    items = [parsed];
+                } else if (typeof parsed === 'string' && parsed.includes('http')) {
+                    items = [{ url: parsed, nombre: parsed.split('/').pop() }];
+                }
+            } catch (e) {
+                if (rawFile.includes('http')) {
+                    items = [{ url: rawFile, nombre: rawFile.split('/').pop() }];
+                }
+            }
+        }
+
+        return items.map(item => {
+            if (typeof item !== 'object' || !item) {
+                const urlStr = String(item || '');
+                return { url: urlStr, nombre: urlStr.split('/').pop() };
+            }
+            return item;
+        });
+    };
+
+    const [attachedFiles, setAttachedFiles] = useState<any[]>(() => parseTaskFiles((task as any)?.archivo));
 
     React.useEffect(() => {
         setTaskStatus(task?.status || 'Pendiente');
-        setCurrentServerFile((task as any)?.archivo || null);
-        setAttachedFiles((task as any)?.archivo ? [(task as any).archivo] : []);
+        const parsed = parseTaskFiles((task as any)?.archivo);
+        setCurrentServerFile(parsed[0] || null);
+        setAttachedFiles(parsed);
         setDriveLink('');
     }, [task]);
 
@@ -104,24 +136,24 @@ export default function SubjectAssignment({
         formData.append('archivo', file);
 
         import('@/utils/SwalHelper').then(({ SwalHelper }) => {
-            SwalHelper.toast('Subiendo archivo a Google Drive...', 'info');
+            SwalHelper.loading('Subiendo archivo...', 'Por favor espera mientras se sube tu archivo a la plataforma.');
 
             import('axios').then(({ default: axios }) => {
                 axios.post('/alumno/tareas/entregar', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 })
                 .then((res) => {
-                    const newFileObj = {
-                        url: res.data?.url || '#',
-                        nombre: res.data?.nombre || file.name
-                    };
+                    const newFilesList = res.data?.archivos && Array.isArray(res.data.archivos)
+                        ? res.data.archivos
+                        : [...attachedFiles, { url: res.data?.url || '#', nombre: res.data?.nombre || file.name }];
 
-                    setAttachedFiles(prev => [...prev, newFileObj]);
-                    setCurrentServerFile(newFileObj);
+                    setAttachedFiles(newFilesList);
+                    setCurrentServerFile(newFilesList[newFilesList.length - 1]);
+                    (task as any).archivo = newFilesList;
 
                     SwalHelper.confirm(
                         '¡Archivo adjuntado!',
-                        'El archivo se subió a Google Drive. ¿Deseas marcar la tarea como ENTREGADA o quieres adjuntar otro archivo?',
+                        'El archivo se subió a la plataforma. ¿Deseas marcar la tarea como ENTREGADA o quieres adjuntar otro archivo?',
                         'Sí, Entregar Tarea',
                         'Adjuntar otro archivo',
                         'question'
@@ -129,12 +161,14 @@ export default function SubjectAssignment({
                         if (result.isConfirmed) {
                             setTaskStatus('Entregado');
                             task.status = 'Entregado';
-                            (task as any).archivo = newFileObj;
+                            (task as any).archivo = newFilesList;
 
                             try {
+                                const payload = { type: 'cycle-update', msg: 'SUBMISSION_CREATED', timestamp: Date.now() };
                                 const bc = new BroadcastChannel('school-cycle-channel');
-                                bc.postMessage({ type: 'cycle-update', msg: 'SUBMISSION_CREATED' });
+                                bc.postMessage(payload);
                                 bc.close();
+                                localStorage.setItem('studia_rt_update', JSON.stringify(payload));
                             } catch(e) {}
 
                             SwalHelper.toast('¡Tarea entregada con éxito!', 'success');
@@ -145,7 +179,7 @@ export default function SubjectAssignment({
                 })
                 .catch(err => {
                     console.error(err);
-                    SwalHelper.error('Error', 'Hubo un problema al subir tu archivo a Google Drive.');
+                    SwalHelper.error('Error', 'Hubo un problema al subir tu archivo a la plataforma.');
                 })
                 .finally(() => setIsUploading(false));
             });
@@ -205,9 +239,11 @@ export default function SubjectAssignment({
                                 .then(() => {
                                     SwalHelper.toast('Entrega anulada', 'info');
                                     try {
+                                        const payload = { type: 'cycle-update', msg: 'SUBMISSION_CANCELLED', timestamp: Date.now() };
                                         const bc = new BroadcastChannel('school-cycle-channel');
-                                        bc.postMessage({ type: 'cycle-update', msg: 'SUBMISSION_CANCELLED' });
+                                        bc.postMessage(payload);
                                         bc.close();
+                                        localStorage.setItem('studia_rt_update', JSON.stringify(payload));
                                     } catch(e) {}
 
                                     task.status = 'Pendiente';
@@ -219,6 +255,47 @@ export default function SubjectAssignment({
                         });
                     }
                 });
+        });
+    };
+
+    const handleRemoveSingleFile = (fileUrl: string) => {
+        import('@/utils/SwalHelper').then(({ SwalHelper }) => {
+            SwalHelper.confirm(
+                '¿Quitar este archivo?',
+                'El archivo será eliminado de tu entrega.',
+                'Sí, quitar',
+                'Cancelar',
+                'warning'
+            ).then((res) => {
+                if (res.isConfirmed) {
+                    SwalHelper.loading('Eliminando archivo...', 'Por favor espera mientras se remueve el archivo.');
+
+                    import('axios').then(({ default: axios }) => {
+                        axios.post('/alumno/tareas/quitar-archivo', {
+                            tarea_id: task.id,
+                            file_url: fileUrl
+                        })
+                        .then((response) => {
+                            SwalHelper.toast('¡Archivo eliminado correctamente!', 'success');
+                            const remainingFiles = response.data?.archivos || [];
+                            setAttachedFiles(remainingFiles);
+                            if (remainingFiles.length === 0) {
+                                (task as any).archivo = null;
+                                setTaskStatus('Pendiente');
+                                task.status = 'Pendiente';
+                                setCurrentServerFile(null);
+                            } else {
+                                (task as any).archivo = remainingFiles;
+                                setCurrentServerFile(remainingFiles[remainingFiles.length - 1]);
+                            }
+                        })
+                        .catch((err) => {
+                            console.error(err);
+                            SwalHelper.error('Error', 'No se pudo eliminar el archivo.');
+                        });
+                    });
+                }
+            });
         });
     };
 
@@ -421,14 +498,20 @@ export default function SubjectAssignment({
                                 <span className="text-sm font-extrabold text-slate-800 truncate pr-2">
                                     {task.title}
                                 </span>
-                                <span className={`px-2.5 py-0.5 text-[9px] font-black rounded-md ${
-                                    isMaterialType
-                                        ? 'bg-purple-50 text-purple-700 border border-purple-100'
-                                        : (isDelivered
-                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                            : 'bg-amber-50 text-amber-700 border border-amber-100')
-                                }`}>
-                                    {isMaterialType ? 'Aviso Informativo' : task.status}
+                                <span className="flex items-center gap-1.5 shrink-0">
+                                    {isMaterialType ? (
+                                        <span className="px-2.5 py-0.5 text-[9px] font-black rounded-md bg-purple-50 text-purple-700 border border-purple-100">
+                                            Aviso Informativo
+                                        </span>
+                                    ) : isDelivered ? (
+                                        <span className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-sm shadow-emerald-500/20" title="Entregado">
+                                            <Check size={16} className="stroke-[3.5]" />
+                                        </span>
+                                    ) : (
+                                        <span className="w-7 h-7 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600" title="Pendiente">
+                                            <Calendar size={14} className="stroke-[2.5]" />
+                                        </span>
+                                    )}
                                 </span>
                             </div>
                         </div>
@@ -473,33 +556,84 @@ export default function SubjectAssignment({
                                 <div className="space-y-3 pt-2">
                                     {isDelivered ? (
                                         <div className="space-y-4">
-                                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-[20px] p-4 text-center text-emerald-600 flex flex-col items-center justify-center gap-2">
-                                                <CheckCircle2 size={24} className="text-emerald-500" />
-                                                <div>
-                                                    <span className="text-xs font-black block uppercase tracking-wide">Actividad Entregada</span>
-                                                    <span className="text-[10px] text-emerald-600/70 font-semibold block mt-0.5">La entrega fue registrada correctamente</span>
-                                                </div>
-                                            </div>
+                                             {/* Renderizar todos los archivos adjuntados sin elevaciones/sombras y con botón para quitar */}
+                                             {attachedFiles && attachedFiles.length > 0 ? (
+                                                 <div className="space-y-2">
+                                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                                                         Archivos Entregados ({attachedFiles.length})
+                                                     </span>
+                                                     <div className="space-y-2">
+                                                         {attachedFiles.map((fileItem, idx) => {
+                                                              let targetUrl = (typeof fileItem === 'object') ? (fileItem.google_drive_url || fileItem.url || fileItem.webViewLink) : fileItem;
+                                                              const driveId = (typeof fileItem === 'object') ? fileItem.google_drive_file_id : null;
+                                                              
+                                                              if (driveId) {
+                                                                  targetUrl = `https://drive.google.com/file/d/${driveId}/view`;
+                                                              } else if (targetUrl && targetUrl.includes('drive.google.com') && targetUrl.includes('/file/d/')) {
+                                                                  const match = targetUrl.match(/\/file\/d\/([^\/]+)/);
+                                                                  if (match && match[1]) {
+                                                                      targetUrl = `https://drive.google.com/file/d/${match[1]}/view`;
+                                                                  }
+                                                              }
 
-                                            {serverFile && (
-                                                <a
-                                                    href={serverFile.url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="border border-slate-200/80 bg-slate-50/70 hover:bg-blue-50/40 rounded-lg p-3 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all group cursor-pointer"
-                                                >
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        {getFileIcon(serverFile.nombre || serverFile.url)}
-                                                        <span className="text-xs font-bold text-slate-800 group-hover:text-[#0266E0] truncate max-w-[200px] transition-colors">
-                                                            {serverFile.nombre || serverFile.url}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <span className="text-[9px] font-black text-slate-300 group-hover:text-[#0266E0]/60 uppercase transition-colors">Drive</span>
-                                                        <ExternalLink size={14} className="text-slate-400 group-hover:text-[#0266E0] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                                                    </div>
-                                                </a>
-                                            )}
+                                                              return (
+                                                                  <div
+                                                                      key={idx}
+                                                                      className="border border-slate-200 bg-slate-50/60 rounded-lg p-3 flex items-center justify-between gap-3 transition-all group"
+                                                                  >
+                                                                      <a
+                                                                          href={targetUrl}
+                                                                          target="_blank"
+                                                                          rel="noreferrer"
+                                                                          className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-85"
+                                                                      >
+                                                                          {getFileIcon((typeof fileItem === 'object' ? (fileItem.nombre || targetUrl) : targetUrl))}
+                                                                          <span className="text-xs font-bold text-slate-800 truncate max-w-[190px]">
+                                                                              {(typeof fileItem === 'object' ? (fileItem.nombre || targetUrl) : targetUrl)}
+                                                                          </span>
+                                                                          <ExternalLink size={13} className="text-slate-400 shrink-0" />
+                                                                      </a>
+                                                                      {task.status !== 'Calificado' && (
+                                                                          <button
+                                                                              type="button"
+                                                                              onClick={() => handleRemoveSingleFile(targetUrl)}
+                                                                              className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-200/60 transition-all shrink-0"
+                                                                              title="Quitar este archivo"
+                                                                          >
+                                                                              <X size={15} />
+                                                                          </button>
+                                                                      )}
+                                                                  </div>
+                                                              );
+                                                          })}
+                                                     </div>
+                                                 </div>
+                                             ) : serverFile && (
+                                                 <div className="border border-slate-200 bg-slate-50/60 rounded-lg p-3 flex items-center justify-between gap-3 transition-all group">
+                                                     <a
+                                                         href={serverFile.google_drive_url || serverFile.url || serverFile.webViewLink}
+                                                         target="_blank"
+                                                         rel="noreferrer"
+                                                         className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-85"
+                                                     >
+                                                         {getFileIcon(serverFile.nombre || serverFile.url)}
+                                                         <span className="text-xs font-bold text-slate-800 truncate max-w-[190px]">
+                                                             {serverFile.nombre || serverFile.url}
+                                                         </span>
+                                                         <ExternalLink size={13} className="text-slate-400 shrink-0" />
+                                                     </a>
+                                                     {task.status !== 'Calificado' && (
+                                                         <button
+                                                             type="button"
+                                                             onClick={() => handleRemoveSingleFile(serverFile.url)}
+                                                             className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-200/60 transition-all shrink-0"
+                                                             title="Quitar este archivo"
+                                                         >
+                                                             <X size={15} />
+                                                         </button>
+                                                     )}
+                                                 </div>
+                                             )}
 
                                             {task.status !== 'Calificado' && (
                                                 <button
@@ -521,39 +655,56 @@ export default function SubjectAssignment({
                                                     </span>
                                                     <div className="space-y-2">
                                                         {attachedFiles.map((file, idx) => (
-                                                            <a
+                                                            <div
                                                                 key={idx}
-                                                                href={file.url}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="border border-slate-200/80 bg-slate-50/70 hover:bg-blue-50/40 rounded-lg p-3 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all group cursor-pointer"
+                                                                className="border border-slate-200 bg-slate-50/60 rounded-lg p-3 flex items-center justify-between gap-3 transition-all group"
                                                             >
-                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                <a
+                                                                    href={file.url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-85"
+                                                                >
                                                                     {getFileIcon(file.nombre || file.url)}
-                                                                    <span className="text-xs font-bold text-slate-800 group-hover:text-[#0266E0] truncate max-w-[180px] transition-colors">
+                                                                    <span className="text-xs font-bold text-slate-800 truncate max-w-[190px]">
                                                                         {file.nombre || file.url}
                                                                     </span>
-                                                                </div>
-                                                                <div className="flex items-center gap-2 shrink-0">
-                                                                    <span className="text-[9px] font-black text-slate-300 group-hover:text-[#0266E0]/60 uppercase transition-colors">Drive</span>
-                                                                    <ExternalLink size={14} className="text-slate-400 group-hover:text-[#0266E0] shrink-0" />
-                                                                </div>
-                                                            </a>
+                                                                    <ExternalLink size={13} className="text-slate-400 shrink-0" />
+                                                                </a>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveSingleFile(file.url)}
+                                                                    className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-200/60 transition-all shrink-0"
+                                                                    title="Quitar este archivo"
+                                                                >
+                                                                    <X size={15} />
+                                                                </button>
+                                                            </div>
                                                         ))}
                                                     </div>
 
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            setTaskStatus('Entregado');
-                                                            task.status = 'Entregado';
-                                                            try {
-                                                                const bc = new BroadcastChannel('school-cycle-channel');
-                                                                bc.postMessage({ type: 'cycle-update', msg: 'SUBMISSION_CREATED' });
-                                                                bc.close();
-                                                            } catch(e) {}
                                                             import('@/utils/SwalHelper').then(({ SwalHelper }) => {
-                                                                SwalHelper.success('¡Entregado!', 'Tu tarea ha sido entregada al docente.');
+                                                                SwalHelper.loading('Entregando tarea...', 'Registrando tu entrega al docente.');
+                                                                import('axios').then(({ default: axios }) => {
+                                                                    axios.post('/alumno/tareas/entregar', { tarea_id: task.id })
+                                                                        .then(() => {
+                                                                            setTaskStatus('Entregado');
+                                                                            task.status = 'Entregado';
+                                                                            try {
+                                                                                const bc = new BroadcastChannel('school-cycle-channel');
+                                                                                bc.postMessage({ type: 'cycle-update', msg: 'SUBMISSION_CREATED' });
+                                                                                bc.close();
+                                                                            } catch(e) {}
+                                                                            SwalHelper.success('¡Entregado!', 'Tu tarea ha sido entregada al docente.');
+                                                                        })
+                                                                        .catch((err) => {
+                                                                            console.error(err);
+                                                                            SwalHelper.error('Error', 'No se pudo registrar la entrega.');
+                                                                        });
+                                                                });
                                                             });
                                                         }}
                                                         className="w-full h-11 mt-2 bg-[#0266E0] hover:bg-blue-700 text-white rounded-l-full rounded-tr-full rounded-br-none flex items-center justify-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] shadow-none border-0"
@@ -587,7 +738,7 @@ export default function SubjectAssignment({
                                                                 <Upload size={20} />
                                                             </div>
                                                             <span className="text-xs font-black text-[#0266E0] uppercase tracking-wide">
-                                                                {isUploading ? 'Subiendo a Google Drive...' : (attachedFiles.length > 0 ? 'Seleccionar otro archivo' : 'Seleccionar o Subir Archivo')}
+                                                                {isUploading ? 'Subiendo a la plataforma...' : (attachedFiles.length > 0 ? 'Seleccionar otro archivo' : 'Seleccionar o Subir Archivo')}
                                                             </span>
                                                             <span className="text-[10px] text-slate-400 font-semibold">PDF, Documentos o Imágenes</span>
                                                         </label>

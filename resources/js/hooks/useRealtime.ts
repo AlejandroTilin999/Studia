@@ -70,8 +70,12 @@ export function useRealtime() {
         // 3. Public Global Channel
         window.Echo.channel('Public.Global')
             .listen('.AcademicPeriodChanged', (e: any) => {
-                console.log('[RT] Period Update (Public):', e);
-                debouncedReload({ only: ['isCycleActive', 'activePeriod'] });
+                console.log('[RT] ⚡ Parcial/Ciclo Cambiado en Admin:', e);
+                try {
+                    const bc = new BroadcastChannel('school-cycle-channel');
+                    bc.postMessage({ type: 'cycle-update', msg: 'PARCIAL_TOGGLED', timestamp: Date.now() });
+                    bc.close();
+                } catch(err) {}
             })
             .listen('.TaskCreated', (e: any) => {
                 console.log('[RT] Global Task Created:', e);
@@ -100,7 +104,7 @@ export function useRealtime() {
     /**
      * Subscribe to a specific academic group channel.
      */
-    const subscribeToGroup = (groupId: number | string) => {
+    const subscribeToGroup = (groupId: number | string, onGroupUpdate?: (e: any) => void) => {
         useEffect(() => {
             if (!groupId || !window.Echo) return;
 
@@ -127,8 +131,24 @@ export function useRealtime() {
             });
 
             groupChannel.listen('.GroupDataUpdated', (e: any) => {
-                console.log('[RT] Group Data Mass Update Received:', e);
-                debouncedReload({ only: ['kardex', 'taskList', 'studentInfo', 'alumnoGroups', 'classInfo'] });
+                console.log('[RT] ⚡ Group Data Mass Update Received:', e);
+                if (onGroupUpdate) {
+                    onGroupUpdate(e);
+                } else {
+                    router.reload({
+                        only: ['classInfo'],
+                        preserveScroll: true,
+                        preserveState: true,
+                    });
+                }
+            });
+
+            // ⚡ Escuchar cambio de parciales emitido a nivel grupo/global
+            groupChannel.listen('.AcademicPeriodChanged', (e: any) => {
+                console.log('%c[RT] ⚡ Actualización silenciosa de Parcial recibida:', 'color: #10b981; font-weight: bold;', e);
+                if (onGroupUpdate) {
+                    onGroupUpdate(e);
+                }
             });
 
             return () => {

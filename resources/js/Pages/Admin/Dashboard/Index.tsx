@@ -198,30 +198,41 @@ export default function AdminDashboardIndex() {
         });
     };
 
+    const [localParcialStates, setLocalParcialStates] = useState<Record<number, boolean>>({});
+
     const handleToggleParcial = (parcial: number, currentStatus: boolean) => {
         if (!workingCycle) return;
 
-        const action = currentStatus ? 'Cerrar' : 'Abrir';
+        const key = `p${parcial}_activo`;
+        const currentActive = localParcialStates[parcial] ?? (workingCycle as any)[key];
+
+        const action = currentActive ? 'Cerrar' : 'Abrir';
         SwalHelper.confirm(
             `¿${action} Parcial ${parcial}?`,
             `Esta acción permitirá o bloqueará la captura de calificaciones para el parcial ${parcial}.`,
             `Sí, ${action}`,
             'Cancelar',
-            currentStatus ? 'warning' : 'info'
+            currentActive ? 'warning' : 'info'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Actualizando estado...', 'Comunicando con el servidor escolar');
-                router.post(route('admin.cycles.toggle_parcial', { id: workingCycle.id }), {
+                const nextState = !currentActive;
+
+                // 1. Respuesta instantánea en UI (0 ms) sin esperar al servidor ni recargar
+                setLocalParcialStates(prev => ({ ...prev, [parcial]: nextState }));
+                (workingCycle as any)[key] = nextState;
+                
+                broadcastCycleUpdate(workingCycle.id);
+                SwalHelper.toast(`Parcial ${parcial} ${nextState ? 'abierto' : 'cerrado'}.`, 'success');
+
+                // 2. Persistir en base de datos via Axios síncrono ultra liviano (no bloqueante)
+                window.axios.post(route('admin.cycles.toggle_parcial', { id: workingCycle.id }), {
                     parcial,
-                    activo: !currentStatus
-                }, {
-                    preserveScroll: true,   // Mantener posición de scroll
-                    only: ['cycles'],       // Partial reload: solo actualizar ciclos desde el servidor
-                    onSuccess: () => {
-                        SwalHelper.success('¡Actualizado!', `El Parcial ${parcial} ahora está ${!currentStatus ? 'abierto' : 'cerrado'}.`);
-                        broadcastCycleUpdate(workingCycle.id);
-                    },
-                    onError: () => SwalHelper.error('Error', 'No se pudo cambiar el estado del parcial.')
+                    activo: nextState
+                }).catch(() => {
+                    // Revertir en caso de error de red
+                    setLocalParcialStates(prev => ({ ...prev, [parcial]: currentActive }));
+                    (workingCycle as any)[key] = currentActive;
+                    SwalHelper.error('Error', 'No se pudo cambiar el estado del parcial.');
                 });
             }
         });

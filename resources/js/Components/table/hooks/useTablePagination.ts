@@ -13,21 +13,18 @@ export function useTablePagination<T>(
 
 
 
-    useEffect(() => {
-
-        setCurrentPage(1);
-
-    }, [data]);
-
-
-
     const totalRecords = data.length;
-
 
     const totalPages = Math.max(
         1,
         Math.ceil(totalRecords / pageSize)
     );
+
+    useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(1);
+        }
+    }, [data, totalPages, currentPage]);
 
 
 

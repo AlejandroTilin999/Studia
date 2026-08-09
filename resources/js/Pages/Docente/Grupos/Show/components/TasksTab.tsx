@@ -2,6 +2,7 @@ import React from 'react';
 import AppTable from '@/Components/table/AppTable';
 import { Task, StudentGrade } from '../services/constants';
 import GradeSelector from './GradeSelector';
+import ParcialHeader from '@/Components/common/ParcialHeader';
 
 import { Loader2, Cloud, CalendarDays } from 'lucide-react';
 
@@ -32,6 +33,7 @@ interface TasksTabProps {
     saveTasks: (newTasks: Task[]) => void;
     isReadOnly?: boolean;
     isSaving?: boolean;
+    themeKey?: string;
 }
 
 export default function TasksTab({
@@ -41,7 +43,8 @@ export default function TasksTab({
     getStudentTasksAverage,
     saveTasks,
     isReadOnly = false,
-    isSaving = false
+    isSaving = false,
+    themeKey = 'blue'
 }: TasksTabProps) {
 
     // [ESTRATÉGICO] Actualización de UI puramente local para promedios instantáneos
@@ -137,6 +140,12 @@ export default function TasksTab({
 
     return (
         <div className="space-y-6">
+            <ParcialHeader
+                title="Calificación de Tareas y Actividades"
+                count={tasks.length}
+                themeKey={themeKey}
+            />
+
             {/* Tabla de notas de tareas */}
             {tasks.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center text-slate-400 font-semibold text-sm">
