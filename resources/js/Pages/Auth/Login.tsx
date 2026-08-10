@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { Head, useForm, Link } from "@inertiajs/react";
 import { ButtonLogin } from "@/Components/ButtonLogin";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import BackButton from "@/Components/common/BackButton";
+import { Eye, EyeOff } from "lucide-react";
+import { router } from "@inertiajs/react";
 import { SwalHelper } from "@/utils/SwalHelper";
 
 export default function LoginPage() {
@@ -29,6 +31,22 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!data.email.trim() && !data.password.trim()) {
+      SwalHelper.alert('Campos Incompletos', 'Por favor ingresa tu correo electrónico y contraseña.', 'warning');
+      return;
+    }
+
+    if (!data.email.trim()) {
+      SwalHelper.alert('Correo Requerido', 'Por favor ingresa tu correo electrónico.', 'warning');
+      return;
+    }
+
+    if (!data.password.trim()) {
+      SwalHelper.alert('Contraseña Requerida', 'Por favor ingresa tu contraseña.', 'warning');
+      return;
+    }
+
     post('/login');
   };
 
@@ -54,13 +72,10 @@ export default function LoginPage() {
         <div className="w-full max-w-[500px] relative">
           {/* Botón superior de regresar (Alineado con el contenido) */}
           <div className="mb-4 lg:mb-6">
-            <Link
-              href="/"
-              className="text-[11px] lg:text-[12px] text-slate-400 hover:text-[#0266E0] font-black flex items-center gap-2 transition-all cursor-pointer group uppercase tracking-widest"
-            >
-              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-              Volver al inicio
-            </Link>
+            <BackButton 
+              onClick={() => router.visit('/')} 
+              label="Volver al inicio" 
+            />
           </div>
 
           {/* Formulario */}
@@ -140,7 +155,8 @@ export default function LoginPage() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
                   <Link
-                    href={route('password.request')}
+                    href="/olvidaste-tu-contrasena"
+                    data={{ acceso: profile }}
                     className="text-[#0266E0] text-sm font-black hover:underline underline-offset-4 decoration-2 transition-all uppercase tracking-widest cursor-pointer text-center sm:text-left"
                   >
                     ¿Olvidaste tu contraseña?
@@ -148,7 +164,7 @@ export default function LoginPage() {
                   <ButtonLogin
                     type="submit"
                     disabled={processing}
-                    className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] text-white px-14 h-14 rounded-full font-black text-base transition-all active:scale-[0.98] shadow-[0_10px_20px_-5px_rgba(2,102,224,0.3)]"
+                    className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] text-white px-14 h-14 rounded-full font-black text-base transition-all active:scale-[0.98] shadow-none"
                   >
                     {processing ? "Ingresando..." : "Acceso"}
                   </ButtonLogin>
@@ -180,7 +196,7 @@ export default function LoginPage() {
             loading="eager"
             // @ts-ignore
             fetchpriority="high"
-            className="absolute bottom-0 right-0 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 lg:translate-x-16 object-bottom"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 object-bottom"
           />
           {/* Degradado para integrar la imagen al azul */}
           <div className="absolute inset-0 bg-gradient-to-b lg:bg-gradient-to-l from-transparent via-transparent to-[#0266E0]/40"></div>

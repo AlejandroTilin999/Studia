@@ -27,13 +27,13 @@ export default function AssignmentComments({
             <div className="flex items-center gap-2">
                 <MessageCircle size={16} className="text-slate-500" />
                 <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Foro de Mensajes Privados
+                    Mensajes Privados
                 </h4>
             </div>
 
             <div className="space-y-3">
                 {comments.length === 0 ? (
-                    <p className="text-xs text-slate-400 font-medium italic pl-1">
+                    <p className="text-xs text-slate-400 font-medium pl-1">
                         No hay comentarios en esta entrega. Puedes escribirle a tu docente.
                     </p>
                 ) : (

@@ -31,7 +31,7 @@ export default function Hero() {
                                 href="/login?acceso=alumno"
                                 className="w-full sm:w-auto block"
                             >
-                                <span className="inline-flex items-center justify-center text-white px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:opacity-90 hover:scale-105 bg-[#0066CC] w-full sm:w-auto border-2 border-transparent shadow-lg shadow-blue-200">
+                                <span className="inline-flex items-center justify-center text-white px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:opacity-90 hover:scale-105 bg-[#0066CC] w-full sm:w-auto border-2 border-transparent shadow-none">
                                     Acceso Alumnos
                                 </span>
                             </Link>
@@ -40,7 +40,7 @@ export default function Hero() {
                                 href="/login?acceso=institucional"
                                 className="w-full sm:w-auto block"
                             >
-                                <span className="inline-flex items-center justify-center text-slate-800 px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 hover:scale-105 bg-white border-2 border-slate-100 w-full sm:w-auto shadow-sm">
+                                <span className="inline-flex items-center justify-center text-slate-800 px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 hover:scale-105 bg-white border-2 border-slate-100 w-full sm:w-auto shadow-none">
                                     Acceso Institucional
                                 </span>
                             </Link>
@@ -50,7 +50,7 @@ export default function Hero() {
                             href={route('dashboard')}
                             className="w-full sm:w-auto block group"
                         >
-                            <span className="inline-flex items-center justify-center text-white px-12 py-4 rounded-full font-black text-[11px] uppercase tracking-[0.2em] transition-all bg-[#0266E0] hover:bg-blue-700 w-full sm:w-auto border-2 border-transparent shadow-xl shadow-blue-100 group-active:scale-95">
+                            <span className="inline-flex items-center justify-center text-white px-12 py-4 rounded-full font-black text-[11px] uppercase tracking-[0.2em] transition-all bg-[#0266E0] hover:bg-blue-700 w-full sm:w-auto border-2 border-transparent shadow-none group-active:scale-95">
                                 Ir a mi Panel de Control
                             </span>
                         </Link>

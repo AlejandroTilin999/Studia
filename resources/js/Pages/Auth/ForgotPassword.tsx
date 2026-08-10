@@ -1,11 +1,12 @@
 "use client";
 
-import { Head, useForm, Link } from "@inertiajs/react";
+import { Head, useForm } from "@inertiajs/react";
 import { ButtonLogin } from "@/Components/ButtonLogin";
-import { ArrowLeft } from "lucide-react";
+import BackButton from "@/Components/common/BackButton";
+import { router } from "@inertiajs/react";
 import { FormEventHandler } from "react";
 
-export default function ForgotPassword({ status }: { status?: string }) {
+export default function ForgotPassword({ status, acceso = 'alumno' }: { status?: string; acceso?: string }) {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
     });
@@ -13,6 +14,10 @@ export default function ForgotPassword({ status }: { status?: string }) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('password.email'));
+    };
+
+    const handleBackToLogin = () => {
+        router.visit(`/login?acceso=${acceso}`);
     };
 
     return (
@@ -41,13 +46,10 @@ export default function ForgotPassword({ status }: { status?: string }) {
                 <div className="w-full max-w-[500px] relative">
                     {/* Botón superior de regresar (Alineado con el contenido) */}
                     <div className="mb-4 lg:mb-6">
-                        <Link
-                            href={route('login')}
-                            className="text-[11px] lg:text-[12px] text-slate-400 hover:text-[#0266E0] font-black flex items-center gap-2 transition-all cursor-pointer group uppercase tracking-widest"
-                        >
-                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            Volver al inicio de sesión
-                        </Link>
+                        <BackButton
+                            onClick={handleBackToLogin}
+                            label="Volver al inicio de sesión"
+                        />
                     </div>
 
                     {/* Formulario */}
@@ -65,7 +67,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         </div>
 
                         <div className="mb-6 lg:mb-8">
-                            <h2 className="text-4xl lg:text-5xl font-black text-slate-800 tracking-tighter mb-3 leading-none">
+                            <h2 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[42px] font-black text-slate-800 tracking-tighter mb-3 leading-none whitespace-nowrap">
                                 ¿Olvidaste tu contraseña?
                             </h2>
                             <p className="text-base font-semibold text-slate-400">
@@ -107,7 +109,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                 <ButtonLogin
                                     type="submit"
                                     disabled={processing}
-                                    className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] text-white px-10 h-14 rounded-full font-black text-base transition-all active:scale-[0.98] shadow-[0_10px_20px_-5px_rgba(2,102,224,0.3)] uppercase tracking-widest"
+                                    className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] text-white px-10 h-14 rounded-full font-black text-base transition-all active:scale-[0.98] shadow-none uppercase tracking-widest"
                                 >
                                     {processing ? "Enviando..." : "Enviar enlace"}
                                 </ButtonLogin>
@@ -127,7 +129,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         loading="eager"
                         // @ts-ignore
                         fetchpriority="high"
-                        className="absolute bottom-0 right-0 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 lg:translate-x-16 object-bottom"
+                        className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[95%] w-auto max-w-none opacity-100 brightness-105 transition-all duration-500 object-bottom"
                     />
                     <div className="absolute inset-0 bg-gradient-to-b lg:bg-gradient-to-l from-transparent via-transparent to-[#0266E0]/40"></div>
                 </div>

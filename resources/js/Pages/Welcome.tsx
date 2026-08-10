@@ -1,9 +1,10 @@
 import Hero from '@/Components/Hero';
-import { Link } from '@inertiajs/react';
+import { Link, Head } from '@inertiajs/react';
 
 export default function Welcome() {
     return (
         <div className="relative min-h-screen lg:h-screen flex flex-col justify-between overflow-x-hidden lg:overflow-hidden bg-white select-none">
+            <Head title="Inicio" />
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-full lg:w-[45%] h-[340px] sm:h-80 lg:h-screen bg-[#0266E0] z-0">
                     <div className="absolute inset-0 z-0 overflow-hidden">
@@ -13,7 +14,7 @@ export default function Welcome() {
                             loading="eager"
                             // @ts-ignore
                             fetchpriority="high"
-                            className="absolute bottom-0 left-0 w-full h-[95%] lg:h-full object-contain lg:object-cover object-bottom lg:scale-95 origin-bottom opacity-100 brightness-105 transition-all duration-500"
+                            className="absolute bottom-0 left-0 w-full h-[95%] lg:h-full object-contain lg:object-cover object-bottom lg:scale-95 origin-bottom opacity-100 brightness-105 transition-all duration-500 lg:translate-x-[10px]"
                         />
                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0266E0]/40 lg:hidden" />
                     </div>

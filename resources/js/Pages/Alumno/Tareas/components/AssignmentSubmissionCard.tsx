@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, CheckCircle2, Upload, Paperclip, X, ExternalLink, Send } from 'lucide-react';
+import { Award, Upload, X, ExternalLink, Send } from 'lucide-react';
 import { SwalHelper } from '@/utils/SwalHelper';
 import axios from 'axios';
 
@@ -93,35 +93,10 @@ export default function AssignmentSubmissionCard({
         .finally(() => setIsUploading(false));
     };
 
-    const handleRealDeliver = () => {
-        if (!driveLink.trim()) return;
-        setIsUploading(true);
-
-        axios.post('/alumno/tareas/entregar', {
-            tarea_id: taskId,
-            enlace: driveLink,
-            nombre: 'Documento de Drive'
-        })
-        .then((res) => {
-            SwalHelper.success('¡Entregado!', 'Tu tarea ha sido entregada al docente.');
-            notifyRealtimeUpdate('SUBMISSION_CREATED');
-            task.status = 'Entregado';
-            setTaskStatus('Entregado');
-            const fileObj = { url: driveLink, nombre: res.data?.nombre || driveLink };
-            task.archivo = fileObj;
-            setCurrentServerFile(fileObj);
-        })
-        .catch((err) => {
-            console.error(err);
-            SwalHelper.error('Error', 'Asegúrate de poner un enlace válido.');
-        })
-        .finally(() => setIsUploading(false));
-    };
-
     const handleCancelRealSubmission = () => {
         SwalHelper.confirm(
             '¿Anular entrega?',
-            'Podrás cambiar el enlace si el docente aún no ha calificado.',
+            'Podrás cambiar los archivos si el docente aún no ha calificado.',
             'Sí, anular',
             'Cancelar',
             'warning'
@@ -141,7 +116,10 @@ export default function AssignmentSubmissionCard({
         });
     };
 
-    const handleRemoveSingleFile = (fileUrl: string) => {
+    const handleRemoveSingleFile = (fileUrl: string, e: React.MouseEvent) => {
+        e.preventDefault(); 
+        e.stopPropagation();
+
         SwalHelper.confirm(
             '¿Quitar este archivo?',
             'El archivo será eliminado de tu entrega.',
@@ -178,19 +156,10 @@ export default function AssignmentSubmissionCard({
     };
 
     return (
-        <div className="bg-white border border-slate-150 rounded-2xl p-5 md:p-6 space-y-5 shadow-xs relative overflow-hidden">
-            {/* Adorno sutil de fondo */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full blur-2xl -z-0 pointer-events-none opacity-50" />
-
+        <div className="bg-white border-y border-slate-200 py-6 space-y-5 relative">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 relative z-10">
                 <div className="flex items-center gap-2">
-                    <div style={{ backgroundColor: `${strokeColor}15`, color: strokeColor }} className="p-1.5 rounded-lg">
-                        <Award size={16} />
-                    </div>
-                    <div>
-                        <h4 className="text-xs font-black text-slate-900 tracking-tight">Estado de Entrega</h4>
-                        <p className="text-[10px] text-slate-400 font-semibold">Expediente del Alumno</p>
-                    </div>
+                    <h4 className="text-xs font-black text-slate-900 tracking-tight">Estado de Entrega</h4>
                 </div>
 
                 <span className={`text-[10px] px-3 py-1 rounded-xl font-extrabold tracking-wide uppercase shadow-2xs ${
@@ -209,19 +178,34 @@ export default function AssignmentSubmissionCard({
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Documentos Adjuntos</span>
                     <div className="space-y-2">
                         {attachedFiles.map((fileItem, idx) => (
-                            <div key={idx} className="p-3 bg-slate-50/80 hover:bg-slate-50 border border-slate-200/70 rounded-xl flex items-center justify-between gap-2 transition-all group/file">
-                                <a href={fileItem.url || '#'} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="p-1.5 bg-white rounded-lg border border-slate-200/60 shadow-2xs group-hover/file:scale-105 transition-transform">
+                            <a
+                                key={idx}
+                                href={fileItem.url || '#'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="border border-slate-200 bg-slate-50/60 rounded-lg p-3 flex items-center justify-between gap-3 transition-all group cursor-pointer hover:bg-slate-100"
+                            >
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="shrink-0 flex items-center justify-center">
                                         {getFileIcon(fileItem.nombre || fileItem.url)}
                                     </div>
-                                    <span className="text-xs font-bold text-slate-800 truncate group-hover/file:text-blue-600 transition-colors">{fileItem.nombre || 'Archivo adjunto'}</span>
-                                </a>
-                                {!isDelivered && (
-                                    <button onClick={() => handleRemoveSingleFile(fileItem.url)} className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors">
-                                        <X size={14} />
+                                    <span className="text-xs font-bold text-slate-800 group-hover:text-[#0266E0] truncate flex-1 transition-colors">
+                                        {fileItem.nombre || 'Archivo adjunto'}
+                                    </span>
+                                </div>
+                                
+                                {!isDelivered ? (
+                                    <button 
+                                        onClick={(e) => handleRemoveSingleFile(fileItem.url, e)} 
+                                        className="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition-colors shrink-0"
+                                        title="Quitar archivo"
+                                    >
+                                        <X size={16} />
                                     </button>
+                                ) : (
+                                    <ExternalLink size={14} className="text-slate-400 group-hover:text-[#0266E0] shrink-0 transition-colors" />
                                 )}
-                            </div>
+                            </a>
                         ))}
                     </div>
                 </div>
@@ -242,14 +226,6 @@ export default function AssignmentSubmissionCard({
                         </div>
                         <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUploadOnly(e.target.files[0])} disabled={isUploading} />
                     </label>
-
-                    <div className="flex items-center gap-2 pt-1">
-                        <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="O pega un enlace web / Drive..." className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 font-medium transition-all" />
-                        <button onClick={handleRealDeliver} disabled={!driveLink.trim() || isUploading} style={{ backgroundColor: strokeColor }} className="px-4 py-2.5 text-white rounded-xl font-bold text-xs hover:opacity-90 disabled:opacity-40 transition-all active:scale-95 flex items-center gap-1.5 shrink-0 shadow-xs">
-                            <Send size={14} />
-                            <span>Entregar</span>
-                        </button>
-                    </div>
                 </div>
             ) : (
                 <div className="pt-2 relative z-10">
