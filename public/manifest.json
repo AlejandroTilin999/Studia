@@ -1,0 +1,37 @@
+{
+  "name": "Prepahid",
+  "short_name": "Prepahid",
+  "description": "Plataforma educativa integral para la gestión académica, tareas y calificaciones de Prepahid.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "minimal-ui", "standalone"],
+  "background_color": "#0266E0",
+  "theme_color": "#0266E0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

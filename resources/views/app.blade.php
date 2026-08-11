@@ -6,8 +6,18 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- Favicon Explícito -->
+        <!-- Web Application Manifest (PWA) -->
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0266E0" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Prepahid" />
+
+        <!-- Favicon y PWA Iconos -->
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/assets/icon-512.png" />
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

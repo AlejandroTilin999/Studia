@@ -5,25 +5,15 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
-const appName = import.meta.env.VITE_APP_NAME || 'PREPAHID';
+const appName = import.meta.env.VITE_APP_NAME || 'Prepahid';
 
 createInertiaApp({
-    title: (title) => title ? `${title} - ${appName}` : appName,
-    resolve: (name) => {
-        const page = resolvePageComponent(
+    title: (title) => title || appName,
+    resolve: (name) =>
+        resolvePageComponent(
             `./Pages/${name}.tsx`,
             import.meta.glob('./Pages/**/*.tsx'),
-        );
-
-        // @ts-ignore
-        page.then((module) => {
-            if (!module.default) return;
-            // Si la página no define un layout propio pero lo envuelve manualmente en el render,
-            // podemos detectar si queremos forzar la persistencia aquí en el futuro.
-        });
-
-        return page;
-    },
+        ),
     setup({ el, App, props }) {
         const root = createRoot(el);
 
@@ -34,3 +24,12 @@ createInertiaApp({
         showSpinner: true,
     },
 });
+
+// Registro del Service Worker para PWA
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.error('ServiceWorker error:', err);
+        });
+    });
+}
