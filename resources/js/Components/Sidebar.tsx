@@ -16,6 +16,7 @@ import {
   ChevronRight,
   PanelLeft,
   Bell,
+  Mail
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,12 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       name: "Notificaciones",
       icon: Bell,
       path: "/admin/notificaciones",
+      roles: ["ADMIN"]
+    },
+    {
+      name: "Correos",
+      icon: Mail,
+      path: "/admin/plantillas-correo",
       roles: ["ADMIN"]
     },
   ];

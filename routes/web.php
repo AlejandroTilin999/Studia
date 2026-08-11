@@ -208,6 +208,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('admin.notificaciones.index');
             Route::post('/notificaciones/{id}/leer', [NotificacionController::class, 'markAsRead'])->name('admin.notificaciones.read');
             Route::post('/notificaciones/leer-todas', [NotificacionController::class, 'markAllAsRead'])->name('admin.notificaciones.read_all');
+
+            // Plantillas de Correo (Brevo)
+            Route::get('/plantillas-correo', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'index'])->name('admin.plantillas_correo.index');
+            Route::post('/plantillas-correo', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'store'])->name('admin.plantillas_correo.store');
+            Route::put('/plantillas-correo/{id}', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'update'])->name('admin.plantillas_correo.update');
+            Route::delete('/plantillas-correo/{id}', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'destroy'])->name('admin.plantillas_correo.destroy');
+            Route::post('/plantillas-correo/send', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'sendEmail'])->name('admin.plantillas_correo.send');
         });
 
         // ------------------------------------------
@@ -248,6 +255,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('docente.dashboard');
+
+            Route::get('/calendar/events', [\App\Http\Controllers\Docente\TeacherCalendarController::class, 'index'])->name('docente.calendar.index');
+            Route::post('/calendar/upload', [\App\Http\Controllers\Docente\TeacherCalendarController::class, 'upload'])->name('docente.calendar.upload');
 
             Route::get('/grupos', function () {
                 return Inertia::render('Docente/Grupos/Index');
