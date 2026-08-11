@@ -12,9 +12,14 @@ use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\Auth\PasswordChangeController;
+use App\Http\Controllers\Docente\TeacherCalendarController;
+
+use App\Mail\AutomatedWelcomeEmail;
+
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 // ==========================================
@@ -28,6 +33,33 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+
+// ==========================================
+// RUTAS PARA PRUEBAS DE ENVÍO DE CORREO (Brevo)
+// ==========================================
+Route::get('/test-email-view', function () {
+    return view('test-email');
+});
+
+// Usamos Route::match para soportar GET y POST en la prueba
+Route::match(['get', 'post'], '/send-test-email', function (Request $request) {
+    // Si entran directamente escribiendo la URL (GET), redirige al formulario
+    if ($request->isMethod('get')) {
+        return redirect('/test-email-view');
+    }
+
+    $request->validate([
+        'name' => 'required|string',
+        'email' => 'required|email',
+    ]);
+
+    Mail::to($request->email)->send(new AutomatedWelcomeEmail($request->name));
+
+    return back()->with('success', '¡Correo enviado correctamente a ' . $request->email . '!');
+})->name('send.test.email');
+
+
 
 // ==========================================
 // 3. RUTAS PROTEGIDAS
@@ -187,6 +219,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/reportes/log/{id}', [ReportController::class, 'destroyDownload'])->name('admin.reportes.log_destroy');
             Route::delete('/reportes/history/clear', [ReportController::class, 'clearDownloadHistory'])->name('admin.reportes.history_clear');
 
+            Route::post('/send-welcome-email', [EmailController::class, 'sendWelcome']);
+
             // Notificaciones
             Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('admin.notificaciones.index');
             Route::post('/notificaciones/{id}/leer', [NotificacionController::class, 'markAsRead'])->name('admin.notificaciones.read');
@@ -230,7 +264,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ]),
                     'isCycleActive' => (bool)$activeCycle
                 ]);
+            
             })->name('docente.dashboard');
+
+            Route::get('/calendar/events', [TeacherCalendarController::class, 'index'])->name('docente.calendar.index');
+            Route::post('/calendar/upload', [TeacherCalendarController::class, 'upload'])->name('docente.calendar.upload');
 
             Route::get('/grupos', function () {
                 return Inertia::render('Docente/Grupos/Index');
