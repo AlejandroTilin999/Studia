@@ -34,6 +34,7 @@ export default function AlumnoDashboard({
     kardex,
     subjectKardex = null,
     alumnoGroups: propAlumnoGroups = [],
+    initialParcial = null,
     initialTask = null,
     isCycleActive = true
 }: any) {
@@ -44,7 +45,10 @@ export default function AlumnoDashboard({
     const [currentView, setCurrentView] = useState<'perfil' | 'tareas'>(defaultView);
     const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [selectedTask, setSelectedTask] = useState<StudentTask | null>(() => initialTask);
-    const [selectedParcial, setSelectedParcial] = useState<number | null>(null);
+    const [selectedParcial, setSelectedParcial] = useState<number | null>(() => {
+        if (typeof initialParcial === 'number' && initialParcial >= 1 && initialParcial <= 3) return initialParcial;
+        return getAlumnoClassRoute().parcial;
+    });
     const [activeSubjectTab, setActiveSubjectTab] = useState<'novedades' | 'trabajo'>('novedades');
     const [isPageLoading, setIsPageLoading] = useState(() => !subjectKardex && !Array.isArray(kardex));
     const [themeOverrides, setThemeOverrides] = useState<Record<string, string>>({});
@@ -58,11 +62,12 @@ export default function AlumnoDashboard({
     const navigateLocally = useCallback((url: string, replace = false) => {
         // Si el usuario vuelve antes de que termine una visita anterior, esa
         // respuesta ya no puede volver a montar una materia sobre Inicio.
-        // Sólo cancelamos visitas que sí pueden reemplazar la página. Las
-        // precargas se guardan en caché y no deben rechazarse al navegar.
         router.cancelAll({ sync: true, async: true, prefetch: false });
-        window.history[replace ? 'replaceState' : 'pushState']({}, '', url);
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        if (router.page) {
+            router.page.url = url;
+        }
+        const state = window.history.state ? { ...window.history.state, url } : { url };
+        window.history[replace ? 'replaceState' : 'pushState'](state, '', url);
         window.dispatchEvent(new CustomEvent('studia:navigation', { detail: { url } }));
     }, []);
 
@@ -510,8 +515,9 @@ export default function AlumnoDashboard({
                                                                             key={num}
                                                             onClick={() => {
                                                                 if (isLoadingKardex || isLocked || !selectedSubject) return;
+                                                                const subjectTargetUuid = selectedSubject.uuid || selectedSubject.id;
                                                                 setSelectedParcial(num);
-                                                                navigateLocally(buildAlumnoClassUrl(selectedSubject.id, num));
+                                                                navigateLocally(buildAlumnoClassUrl(subjectTargetUuid, num));
                                                             }}
                                                                             onMouseEnter={(e) => {
                                                                                 if (!isLocked && !isLoadingKardex) e.currentTarget.style.borderColor = activeTheme.strokeColor;
@@ -673,7 +679,10 @@ export default function AlumnoDashboard({
                                                         <BackButton
                                                             onClick={() => {
                                                                 setSelectedParcial(null);
-                                                                if (selectedSubject) navigateLocally(buildAlumnoClassUrl(selectedSubject.id));
+                                                                if (selectedSubject) {
+                                                                    const subjectTargetUuid = selectedSubject.uuid || selectedSubject.id;
+                                                                    navigateLocally(buildAlumnoClassUrl(subjectTargetUuid));
+                                                                }
                                                             }}
                                                             label="Volver a los parciales"
                                                         />
@@ -683,7 +692,8 @@ export default function AlumnoDashboard({
                                                             isLoading={!Array.isArray(propTaskList)}
                                                             onSelectTask={(t) => {
                                                                 setSelectedTask(t);
-                                                                navigateLocally(buildAlumnoClassUrl(selectedSubject.id, selectedParcial, t.id));
+                                                                const subjectTargetUuid = selectedSubject.uuid || selectedSubject.id;
+                                                                navigateLocally(buildAlumnoClassUrl(subjectTargetUuid, selectedParcial, t.id));
                                                             }}
                                                         />
                                                     </div>
@@ -698,10 +708,11 @@ export default function AlumnoDashboard({
                                                         const taskParcial = Number(selectedTask?.parcial) || selectedParcial;
                                                         setSelectedTask(null);
                                                         if (selectedSubject) {
+                                                            const subjectTargetUuid = selectedSubject.uuid || selectedSubject.id;
                                                             navigateLocally(
                                                                 taskParcial
-                                                                    ? buildAlumnoClassUrl(selectedSubject.id, taskParcial)
-                                                                    : buildAlumnoClassUrl(selectedSubject.id)
+                                                                    ? buildAlumnoClassUrl(subjectTargetUuid, taskParcial)
+                                                                    : buildAlumnoClassUrl(subjectTargetUuid)
                                                             );
                                                         }
                                                 }}
@@ -710,7 +721,8 @@ export default function AlumnoDashboard({
                                                     const taskParcial = Number((t as any).parcial) || selectedParcial;
                                                     if (taskParcial) setSelectedParcial(taskParcial);
                                                     if (selectedSubject && taskParcial) {
-                                                        navigateLocally(buildAlumnoClassUrl(selectedSubject.id, taskParcial, t.id));
+                                                        const subjectTargetUuid = selectedSubject.uuid || selectedSubject.id;
+                                                        navigateLocally(buildAlumnoClassUrl(subjectTargetUuid, taskParcial, t.id));
                                                     }
                                                 }}
                                                 teacherName={selectedSubject.teacher}

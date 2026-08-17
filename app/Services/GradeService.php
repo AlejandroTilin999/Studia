@@ -389,7 +389,8 @@ class GradeService
                     $deadlineFormatted = $deadlineAt?->format('d \d\e F, h:i A') ?? 'Sin fecha';
                     foreach ($months as $en => $es) $deadlineFormatted = str_replace($en, $es, $deadlineFormatted);
 
-                    if ($status === 'Pendiente' && $task->isOverdue()) {
+                    $isOverdue = $deadlineAt ? $deadlineAt->isPast() : false;
+                    if ($status === 'Pendiente' && $isOverdue) {
                         $status = 'Vencida';
                     }
 
@@ -407,7 +408,7 @@ class GradeService
                         'points' => ($task->puntos ?: 10) . ' puntos',
                         'deadline' => $deadlineFormatted,
                         'deadlineAt' => $deadlineAt?->toIso8601String(),
-                        'isOverdue' => $task->isOverdue(),
+                        'isOverdue' => $isOverdue,
                         // Material publicado por el docente. Este campo es distinto
                         // de `archivo`, que contiene únicamente la entrega del alumno.
                         'attachments' => is_array($task->archivos)

@@ -48,6 +48,7 @@ class MateriaAlumnoController extends Controller
             'taskList' => Inertia::defer(fn() => \App\Services\GradeService::getStudentTasks($studentId, $loadUuid)),
             // La tarea de un enlace directo se entrega en la primera respuesta.
             // El resto de tareas continúa siendo diferido para no frenar la vista.
+            'initialParcial' => $parcial ? (int)$parcial : null,
             'initialTask' => $task ? \App\Services\GradeService::getStudentTask($studentId, $task, $load->id) : null,
             'isCycleActive' => $datosAlumno->existeCicloActivo(),
         ]);
