@@ -17,6 +17,7 @@ interface ActivitiesTabProps {
     isReadOnly?: boolean;
     themeKey?: string;
     studentGrades?: any[];
+    classInfo?: any;
 }
 
 export default function ActivitiesTab({
@@ -26,7 +27,8 @@ export default function ActivitiesTab({
     parcialLabel = 'Primer Parcial',
     isReadOnly = false,
     themeKey = 'blue',
-    studentGrades = []
+    studentGrades = [],
+    classInfo
 }: ActivitiesTabProps) {
     const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
     const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -106,6 +108,7 @@ export default function ActivitiesTab({
                             setEditingTaskId(null);
                         }}
                         themeKey={themeKey}
+                        classInfo={classInfo}
                     />
                 </div>
             ) : (

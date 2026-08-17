@@ -22,6 +22,8 @@ class AcademicPeriod extends Model
     ];
 
     protected $casts = [
+        'fecha_inicio' => 'date',
+        'fecha_fin' => 'date',
         'activo' => 'boolean',
         'p1_activo' => 'boolean',
         'p2_activo' => 'boolean',

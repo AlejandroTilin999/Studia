@@ -2,16 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Forzar que el diseño ocupe siempre el 100% de la ventana sin deformarse */
-@media (min-width: 1024px) {
-  html, body {
-    width: 100vw !important;
-    height: 100vh !important;
-    min-width: 100vw !important;
-    min-height: 100vh !important;
-    overflow: hidden !important;
-  }
+/* Las ilustraciones y logotipos son decorativos: evitar arrastre accidental
+   mantiene la navegación limpia en escritorio y táctil. */
+img {
+    -webkit-user-drag: none;
+    user-select: none;
 }
+
+
 
 /* Custom elegant scrollbar styling */
 ::-webkit-scrollbar {
@@ -62,4 +60,23 @@
    66% {
       background-size: calc(100%/3) 100%,calc(100%/3) 100%,calc(100%/3) 0%;
    }
+}
+
+/* Ocultar icono de revelación por defecto de navegadores (Edge/IE) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}
+
+/* Custom sleek NProgress styling: flat solid bar, no shadow/glow, hidden spinner */
+#nprogress .bar {
+  height: 3px !important;
+  background: #0266E0 !important;
+  box-shadow: none !important;
+}
+#nprogress .peg {
+  box-shadow: none !important;
+}
+#nprogress .spinner {
+  display: none !important;
 }

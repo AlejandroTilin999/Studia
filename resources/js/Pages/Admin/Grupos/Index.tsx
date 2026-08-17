@@ -40,6 +40,7 @@ export default function GruposIndex({
         code: g.codigo || 'S/C',
         name: g.nombre || 'Sin nombre',
         semestre: g.semestre || 1,
+        seccion: g.seccion || g.codigo?.charAt(1) || '',
         generacion: g.generacion || 'N/A',
         shift: g.turno || 'Matutino',
         teacherName: g.profesor || 'Pendiente de Asignación',
@@ -83,11 +84,12 @@ export default function GruposIndex({
         nombre: '',
         turno: 'Matutino',
         semestre: 1,
+        seccion: '',
         generacion: '',
         especialidad: '',
         docente_tutor_id: '' as string | number,
         activo: true,
-        crear_escalera: false,
+        crear_escalera: true,
     });
 
     const handleExportExcel = () => {
@@ -180,6 +182,7 @@ export default function GruposIndex({
             nombre: group.name,
             turno: group.shift,
             semestre: group.semestre ?? 1,
+            seccion: (group as any).seccion ?? group.code?.charAt(1) ?? '',
             generacion: group.generacion ?? '',
             especialidad: group.specialty,
             docente_tutor_id: group.teacher_id ?? '',

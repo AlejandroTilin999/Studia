@@ -46,6 +46,8 @@ class NotificacionController extends Controller
             ->where('usuario_id', $request->user()->id)
             ->update(['leido' => true]);
 
+        cache()->forget("unread_notifs_{$request->user()->id}");
+
         return redirect()->back();
     }
 
@@ -55,7 +57,8 @@ class NotificacionController extends Controller
             ->where('leido', false)
             ->update(['leido' => true]);
 
+        cache()->forget("unread_notifs_{$request->user()->id}");
+
         return redirect()->back();
     }
 }
-

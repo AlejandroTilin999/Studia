@@ -149,5 +149,21 @@ export const SwalHelper = {
             icon,
             title
         });
+    },
+
+    /**
+     * Toast de progreso no invasivo para operaciones largas, como subir a Drive.
+     */
+    toastLoading: (title: string) => {
+        return Swal.fire({
+            toast: true,
+            position: 'top-end',
+            title,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
     }
 };

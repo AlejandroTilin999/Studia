@@ -14,17 +14,18 @@ class GroupDataUpdated implements ShouldBroadcastNow
 
     public $groupId;
     public $type;
+    public $data;
 
     /**
      * Create a new event instance.
      * @param int|string $groupId
      * @param string $type 'grades', 'tasks', 'all'
      */
-    public function __construct($groupId, $type = 'all')
+    public function __construct($groupId, $type = 'all', array $data = [])
     {
         $this->groupId = $groupId;
         $this->type = $type;
-        \Illuminate\Support\Facades\Log::info("RT_DEBUG: GroupDataUpdated Event Created for Group ID: {$groupId}");
+        $this->data = $data;
     }
 
     /**
@@ -32,7 +33,6 @@ class GroupDataUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        \Illuminate\Support\Facades\Log::info("RT_DEBUG: Broadcasting GroupDataUpdated to AcademicGroup.{$this->groupId}");
         return [
             new PrivateChannel('AcademicGroup.' . $this->groupId),
         ];
@@ -44,5 +44,10 @@ class GroupDataUpdated implements ShouldBroadcastNow
     public function broadcastAs(): string
     {
         return 'GroupDataUpdated';
+    }
+
+    public function broadcastWith(): array
+    {
+        return array_merge(['type' => $this->type], $this->data);
     }
 }

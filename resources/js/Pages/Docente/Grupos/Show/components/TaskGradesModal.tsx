@@ -1,11 +1,11 @@
 import React from 'react';
-import { ArrowLeft, Calendar, FileText, ChevronRight, ChevronLeft, X, UserCircle2, ExternalLink, Image as ImageIcon, FileSpreadsheet, FileCode, FileArchive, Globe } from 'lucide-react';
+import { Calendar, FileText, ChevronRight, ChevronLeft, ExternalLink, Image as ImageIcon, FileSpreadsheet, FileArchive, Globe, ChevronDown } from 'lucide-react';
 import PdfIcon from '@/Components/ui/PdfIcon';
 import { Task, StudentGrade } from '../services/constants';
 import GradeSelector from './GradeSelector';
-import StudiaPDFViewer from './StudiaPDFViewer';
 import BackButton from '@/Components/common/BackButton';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
+import { SwalHelper } from '@/utils/SwalHelper';
 
 const getFileIcon = (filename: string = '') => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -53,10 +53,6 @@ interface TaskGradesModalProps {
     studentGrades: StudentGrade[];
     selectedStudentId: number | null;
     setSelectedStudentId: (id: number | null) => void;
-    privateMessages: Record<string, { sender: 'alumno' | 'docente', senderName: string, text: string, timestamp: string }[]>;
-    chatInputText: string;
-    setChatInputText: (text: string) => void;
-    sendPrivateMessage: (key: string) => void;
     isPdfModalOpen: boolean;
     setIsPdfModalOpen: (open: boolean) => void;
     saveTasks: (newTasks: Task[]) => void;
@@ -72,10 +68,6 @@ export default function TaskGradesModal({
     studentGrades,
     selectedStudentId,
     setSelectedStudentId,
-    privateMessages,
-    chatInputText,
-    setChatInputText,
-    sendPrivateMessage,
     isPdfModalOpen,
     setIsPdfModalOpen,
     saveTasks,
@@ -88,7 +80,9 @@ export default function TaskGradesModal({
     if (!selectedTask) return null;
 
     const [isReturning, setIsReturning] = React.useState(false);
+    const [returnedScores, setReturnedScores] = React.useState<Record<number, string>>({});
     const [isStudentDropdownOpen, setIsStudentDropdownOpen] = React.useState(false);
+    const [studentSort, setStudentSort] = React.useState<'status' | 'name'>('status');
     const studentDropdownRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
@@ -101,9 +95,32 @@ export default function TaskGradesModal({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    React.useEffect(() => {
+        setReturnedScores({});
+    }, [selectedTaskId]);
+
     const currentStudentId = selectedStudentId || (studentGrades[0]?.id);
     const currentIndex = studentGrades.findIndex(s => s.id === currentStudentId);
     const activeStudent = studentGrades[currentIndex] || studentGrades[0];
+    const currentScore = activeStudent ? String(selectedTask.calificaciones?.[activeStudent.id] ?? '') : '';
+    const wasReturned = activeStudent ? returnedScores[activeStudent.id] === currentScore : false;
+
+    const getStudentStatus = (studentId: number) => {
+        const grade = selectedTask.calificaciones?.[studentId];
+        const hasGrade = grade !== '' && grade !== undefined && grade !== null;
+        const delivery = selectedTask.archivos?.[studentId] as any;
+        const hasDelivery = Boolean(delivery && (delivery.url || delivery.raw_url || delivery));
+
+        if (hasGrade) return { label: 'Calificado', order: 0, grade };
+        if (hasDelivery) return { label: 'Entregada', order: 1, grade: null };
+        return { label: 'Sin entregar', order: 2, grade: null };
+    };
+
+    const orderedStudents = [...studentGrades].sort((a, b) => {
+        if (studentSort === 'name') return a.nombre.localeCompare(b.nombre, 'es');
+        const byStatus = getStudentStatus(a.id).order - getStudentStatus(b.id).order;
+        return byStatus || a.nombre.localeCompare(b.nombre, 'es');
+    });
 
     const studentFileRaw = activeStudent ? selectedTask.archivos?.[activeStudent.id] : null;
     
@@ -134,9 +151,6 @@ export default function TaskGradesModal({
     }, [studentFileRaw]);
 
     const studentFile = studentFilesList[0] || null;
-
-    const chatKey = `${selectedTask.id}:${currentStudentId}`;
-    const chatList = privateMessages[chatKey] || [];
 
     const fileNames = ["Resolucion_Algebra.pdf", "Ejercicios_Geometria.pdf", "Entregable_Final.pdf"];
     const selectedFileName = fileNames[currentIndex !== -1 ? currentIndex % fileNames.length : 0];
@@ -184,51 +198,69 @@ export default function TaskGradesModal({
                 </div>
             </div>
 
-            {/* BARRA DE NAVEGACIÓN "ZEN" Plano con líneas nítidas finas */}
-            <div className="bg-transparent border-y border-slate-300 py-3 px-1 flex items-center justify-between gap-4">
+            {/* BARRA DE NAVEGACIÓN ESTILO GOOGLE CLASSROOM (Líneas finas, responsiva a todo el ancho en móvil) */}
+            <div className="sticky top-0 z-20 bg-white border-b border-slate-200/90 pb-3.5 pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
 
-                {/* Navegación Izquierda */}
-                <div className="flex items-center gap-4">
+                {/* Controles de Navegación + Contador de Alumno (Alineados a todo el ancho en móvil) */}
+                <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto shrink-0">
                     <button
                         onClick={goToPrev}
                         disabled={currentIndex === 0}
-                        className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                        className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors shrink-0"
+                        title="Alumno anterior"
                     >
-                        <ChevronLeft size={18} />
+                        <ChevronLeft size={20} />
                     </button>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Alumno</span>
-                        <span className="text-xs font-black text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{currentIndex + 1} / {studentGrades.length}</span>
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ALUMNO</span>
+                        <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                            {currentIndex + 1} <span className="text-slate-400 font-normal">/</span> {studentGrades.length}
+                        </span>
                     </div>
+
+                    <button
+                        onClick={goToNext}
+                        disabled={currentIndex === studentGrades.length - 1}
+                        className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors shrink-0"
+                        title="Alumno siguiente"
+                    >
+                        <ChevronRight size={20} />
+                    </button>
                 </div>
 
-                {/* Selector Integrado de Alumno Estilizado con Ancho Uniforme */}
-                <div className="flex-1 flex justify-end px-2">
-                    <div className="relative group w-64" ref={studentDropdownRef}>
+                {/* Selector de Alumno (Estilo Google Classroom, 100% de ancho en móvil) */}
+                <div className="w-full sm:flex-1 sm:min-w-[280px] max-w-full">
+                    <div className="relative group w-full" ref={studentDropdownRef}>
                         <button
                             type="button"
                             onClick={() => setIsStudentDropdownOpen(!isStudentDropdownOpen)}
-                            className="w-full h-10 px-4 bg-[#e5e7eb]/80 hover:bg-[#d1d5db]/80 text-slate-700 text-xs font-semibold rounded-t-lg rounded-b-none border-b-2 border-slate-400/60 flex items-center justify-between gap-3 transition-all select-none cursor-pointer outline-none"
+                            className="w-full h-11 px-3.5 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold rounded-lg border border-slate-200 border-b-2 focus:border-blue-500 flex items-center justify-between gap-2.5 transition-all select-none cursor-pointer outline-none"
                         >
-                            <span className="truncate max-w-[200px]">
+                            <span className="truncate text-left font-semibold text-slate-800">
                                 {activeStudent?.nombre || 'Seleccionar alumno...'}
                             </span>
-                            <svg
-                                className={`w-3.5 h-3.5 text-slate-700 shrink-0 transition-transform ${isStudentDropdownOpen ? 'rotate-180' : ''}`}
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                            >
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
+                            <ChevronDown size={14} className={`text-slate-600 shrink-0 transition-transform ${isStudentDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
 
-                        {/* Menú Flotante de Alumnos con el mismo ancho w-full */}
+                        {/* Menú Flotante de Alumnos */}
                         {isStudentDropdownOpen && (
-                            <div className="absolute right-0 top-full w-full bg-white border border-slate-200/90 rounded-b-lg shadow-xl py-1 z-50 overflow-y-auto max-h-64 text-xs">
-                                {studentGrades.map((s) => {
-                                    const gradeValue = selectedTask.calificaciones[s.id];
-                                    const hasGrade = gradeValue !== "" && gradeValue !== undefined;
+                            <div className="absolute right-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden text-xs">
+                                <div className="flex items-center justify-end px-3 py-2 bg-slate-50 border-b border-slate-200">
+                                    <label className="sr-only" htmlFor="student-status-sort">Ordenar alumnos</label>
+                                    <select
+                                        id="student-status-sort"
+                                        value={studentSort}
+                                        onChange={(event) => setStudentSort(event.target.value as 'status' | 'name')}
+                                        className="bg-transparent text-[11px] font-semibold text-slate-600 outline-none cursor-pointer"
+                                    >
+                                        <option value="status">Ordenar por estado</option>
+                                        <option value="name">Ordenar por nombre</option>
+                                    </select>
+                                </div>
+                                <div className="overflow-y-auto max-h-[min(20rem,calc(100vh-13rem))] py-1">
+                                {orderedStudents.map((s, idx) => {
+                                    const status = getStudentStatus(s.id);
                                     const isSelected = s.id === currentStudentId;
                                     return (
                                         <button
@@ -239,39 +271,33 @@ export default function TaskGradesModal({
                                                 setIsStudentDropdownOpen(false);
                                             }}
                                             style={isSelected ? { backgroundColor: `${activeTheme.strokeColor}15`, color: activeTheme.strokeColor } : undefined}
-                                            className={`w-full text-left px-4 py-2.5 transition-colors font-semibold flex items-center justify-between ${
+                                            className={`w-full text-left px-4 py-3 transition-colors font-medium flex items-center justify-between ${
                                                 isSelected
                                                     ? 'font-bold'
-                                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                                                    : 'text-slate-700 hover:bg-slate-50'
                                             }`}
                                         >
-                                            <span className="truncate max-w-[170px]">{s.nombre}</span>
-                                            <span className="text-[10px] font-black opacity-70">
-                                                {hasGrade ? `(${gradeValue})` : '—'}
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className="text-[10px] text-slate-400 font-mono w-4 shrink-0 text-right">{idx + 1}.</span>
+                                                <span className="truncate max-w-[200px]">{s.nombre}</span>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-slate-500 shrink-0 ml-2">
+                                                {status.grade !== null ? `${status.grade} / ${selectedTask.puntos || 10}` : status.label}
                                             </span>
                                         </button>
                                     );
                                 })}
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {/* Navegación Derecha */}
-                <div className="flex items-center">
-                    <button
-                        onClick={goToNext}
-                        disabled={currentIndex === studentGrades.length - 1}
-                        className="w-9 h-9 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                    >
-                        <ChevronRight size={18} />
-                    </button>
-                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-7 space-y-6">
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+                {/* 1. Instrucciones de la Actividad (Arriba a la Izquierda en Desktop, Primero en Móvil) */}
+                <div className="lg:col-span-7 order-1 space-y-6">
+                    <div className="bg-white border border-slate-100 p-5 sm:p-6 rounded-2xl space-y-4">
                         <div className="space-y-1 text-left">
                             <span 
                                 style={{ color: activeTheme.strokeColor }}
@@ -294,52 +320,97 @@ export default function TaskGradesModal({
                                 {selectedTask.descripcion || 'Sin instrucciones adicionales.'}
                             </div>
                         </div>
-                    </div>
 
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl space-y-4 text-left">
-                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">Comentarios Privados</h3>
+                        {/* Materiales y Recursos Adjuntos de la Actividad (Sección de Detalles) */}
+                        {(() => {
+                            const rawFiles = selectedTask.attachments || (selectedTask as any).archivos_adjuntos || (selectedTask as any).materiales;
+                            let filesList: any[] = [];
 
-                        {chatList.length > 0 && (
-                            <div className="bg-slate-50 rounded-2xl p-4 max-h-40 overflow-y-auto space-y-3.5 border border-slate-100/50">
-                                {chatList.map((msg, mIdx) => (
-                                    <div key={mIdx} className={`flex flex-col max-w-[85%] ${msg.sender === 'docente' ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                        <span className="text-[9px] font-black text-slate-400 uppercase mb-1">{msg.senderName} · {msg.timestamp}</span>
-                                        <div 
-                                            style={msg.sender === 'docente' ? { backgroundColor: activeTheme.strokeColor } : undefined}
-                                            className={`p-3 rounded-2xl text-xs font-semibold leading-relaxed ${msg.sender === 'docente' ? 'text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'}`}
-                                        >
-                                            {msg.text}
-                                        </div>
+                            if (Array.isArray(rawFiles)) {
+                                filesList = rawFiles;
+                            } else if (typeof rawFiles === 'string') {
+                                try {
+                                    const parsed = JSON.parse(rawFiles);
+                                    if (Array.isArray(parsed)) filesList = parsed;
+                                    else if (parsed) filesList = [parsed];
+                                } catch {
+                                    if (rawFiles.trim().length > 0) filesList = [rawFiles];
+                                }
+                            } else if (rawFiles && typeof rawFiles === 'object') {
+                                filesList = [rawFiles];
+                            }
+
+                            if (!filesList || filesList.length === 0) return null;
+
+                            const getFileUrl = (f: any): string => {
+                                if (!f) return '#';
+                                if (typeof f === 'string') {
+                                    const trimmed = f.trim();
+                                    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/')) return trimmed;
+                                    try {
+                                        const parsed = JSON.parse(trimmed);
+                                        return getFileUrl(parsed);
+                                    } catch {
+                                        return trimmed;
+                                    }
+                                }
+                                return f.url || f.google_drive_url || f.archivo_url || f.raw_url || f.path || f.link || f.href || '#';
+                            };
+
+                            return (
+                                <div className="pt-4 border-t border-slate-100 text-left space-y-2">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                                        Materiales y Recursos Adjuntos
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        {filesList.map((file: any, idx: number) => {
+                                            const fileUrl = getFileUrl(file);
+                                            const rawName = (typeof file === 'object' && (file?.name || file?.nombre)) ? (file.name || file.nombre) : (typeof file === 'string' && !file.startsWith('http') ? file : '');
+                                            const fileName = rawName || (fileUrl !== '#' ? fileUrl.split('/').pop()?.split('?')[0] : 'Archivo adjunto');
+                                            const isPdf = fileName.toLowerCase().endsWith('.pdf') || (typeof file === 'object' && (file?.type || '').toLowerCase().includes('pdf'));
+                                            const hasValidUrl = fileUrl !== '#' && fileUrl.length > 1;
+
+                                            return (
+                                                <a
+                                                    key={idx}
+                                                    href={hasValidUrl ? fileUrl : '#'}
+                                                    target={hasValidUrl ? "_blank" : "_self"}
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        if (hasValidUrl) {
+                                                            window.open(fileUrl, '_blank', 'noopener,noreferrer');
+                                                        } else {
+                                                            SwalHelper.toast('Este archivo fue creado sin enlace previo. Vuelve a adjuntarlo para vincularlo a Google Drive.', 'info');
+                                                        }
+                                                    }}
+                                                    className="flex items-center justify-between bg-white border border-slate-200/90 hover:bg-slate-50/80 hover:border-slate-300 px-3.5 py-2.5 rounded-md transition-all shadow-2xs group cursor-pointer select-none"
+                                                >
+                                                    <div className="flex items-center gap-2.5 min-w-0 mr-2">
+                                                        {isPdf ? (
+                                                            <PdfIcon size={20} className="shrink-0" />
+                                                        ) : (
+                                                            <FileText size={18} className="text-slate-700 shrink-0" />
+                                                        )}
+                                                        <span className="text-xs font-bold text-slate-900 group-hover:underline truncate">
+                                                            {fileName}
+                                                        </span>
+                                                    </div>
+                                                    <ExternalLink size={16} className="text-slate-400 group-hover:text-slate-700 shrink-0 transition-colors" />
+                                                </a>
+                                            );
+                                        })}
                                     </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {!isReadOnly ? (
-                            <form onSubmit={e => { e.preventDefault(); currentStudentId && sendPrivateMessage(chatKey); }} className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={chatInputText}
-                                    onChange={e => setChatInputText(e.target.value)}
-                                    placeholder="Añadir un comentario para el alumno..."
-                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-700 font-semibold outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all"
-                                />
-                                <button 
-                                    type="submit" 
-                                    style={{ backgroundColor: activeTheme.strokeColor }}
-                                    className="text-white px-5 rounded-xl font-extrabold text-xs transition-all hover:opacity-90"
-                                >
-                                    Enviar
-                                </button>
-                            </form>
-                        ) : (
-                            <div className="p-3 bg-slate-50 rounded-xl text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest border border-slate-100/50">El foro de mensajes está cerrado</div>
-                        )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
 
-                <div className="lg:col-span-5 space-y-6">
-                    <div className="bg-white border border-slate-100 p-6 rounded-2xl space-y-5">
+                {/* 2. Detalle de Calificación y Entregas (Columna Derecha en Desktop, Segundo en Móvil) */}
+                <div className="lg:col-span-5 order-2 lg:row-span-2 space-y-6">
+                    <div className="bg-white border border-slate-100 p-5 sm:p-6 rounded-2xl space-y-5">
                         {(() => {
                             const studentGradeVal = activeStudent ? selectedTask.calificaciones[activeStudent.id] : undefined;
                             const hasGrade = studentGradeVal !== "" && studentGradeVal !== undefined && studentGradeVal !== null;
@@ -387,25 +458,24 @@ export default function TaskGradesModal({
                                     <button
                                         type="button"
                                         style={selectedTask.calificaciones[activeStudent.id] ? { backgroundColor: activeTheme.strokeColor } : undefined}
-                                        disabled={isReturning || !selectedTask.calificaciones[activeStudent.id]}
+                                        disabled={isReturning || wasReturned || !selectedTask.calificaciones[activeStudent.id]}
                                         onClick={() => {
+                                            if (isReturning || wasReturned) return;
                                             setIsReturning(true);
-                                            returnTaskGrade(selectedTask.id, activeStudent.id, selectedTask.calificaciones[activeStudent.id])
+                                            returnTaskGrade(selectedTask.id, activeStudent.id, currentScore)
                                                 .then(() => {
-                                                    import('@/utils/SwalHelper').then(({ SwalHelper }) => {
-                                                        SwalHelper.success('¡Enviado!', 'La calificación ha sido devuelta al alumno.');
-                                                    });
+                                                    setReturnedScores((current) => ({ ...current, [activeStudent.id]: currentScore }));
                                                 })
                                                 .finally(() => setIsReturning(false));
                                         }}
                                         className={`w-full py-3 rounded-xl font-extrabold text-xs text-white transition-all shadow-sm flex items-center justify-center gap-2 ${
-                                            isReturning || !selectedTask.calificaciones[activeStudent.id]
+                                            isReturning || wasReturned || !selectedTask.calificaciones[activeStudent.id]
                                                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                                 : 'hover:opacity-90'
                                         }`}
                                     >
                                         <ChevronLeft size={16} />
-                                        <span>DEVOLVER CALIFICACIÓN</span>
+                                        <span>{isReturning ? 'DEVOLVIENDO...' : wasReturned ? 'CALIFICACIÓN DEVUELTA' : 'DEVOLVER CALIFICACIÓN'}</span>
                                     </button>
                                     <p className="text-[9px] text-slate-400 font-medium text-center mt-2 px-4 leading-tight">
                                         Al devolver, se notificará al alumno y se actualizará su promedio oficial.
@@ -445,6 +515,7 @@ export default function TaskGradesModal({
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     );

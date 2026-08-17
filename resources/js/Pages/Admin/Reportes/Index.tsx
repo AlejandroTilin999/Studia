@@ -45,9 +45,10 @@ interface AdminReportesProps {
         lote: number;
     };
     recentDownloads?: any[];
+    defaultPeriodId?: number | null;
 }
 
-export default function AdminReportesIndex({ groups = [], students = [], periods = [], stats, recentDownloads = [] }: AdminReportesProps) {
+export default function AdminReportesIndex({ groups = [], students = [], periods = [], stats, recentDownloads = [], defaultPeriodId = null }: AdminReportesProps) {
     const { toastMessage, triggerToast } = useToast();
 
     // Recuperar la pestaña activa de localStorage o por defecto 'generador'
@@ -62,7 +63,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
 
     const [groupFilter, setGroupFilter] = useState<string>('');
     const [selectedStudentMatricula, setSelectedStudentMatricula] = useState<string>('');
-    const [periodFilter, setPeriodFilter] = useState<string>('');
+    const [periodFilter, setPeriodFilter] = useState<string>(() => defaultPeriodId?.toString() ?? '');
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
@@ -504,6 +505,18 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
         }
     };
 
+    const handleExportAttendanceExcel = () => {
+        if (!groupFilter || !periodFilter) {
+            SwalHelper.alert('Filtros requeridos', 'Selecciona un grupo y el ciclo escolar vigente para exportar la lista.', 'warning');
+            return;
+        }
+
+        window.location.assign(route('admin.reportes.asistencia_excel', {
+            grupo_id: groupFilter,
+            ciclo_id: periodFilter,
+        }));
+    };
+
     const handleReset = () => {
         setGroupFilter('');
         setSelectedStudentMatricula('');
@@ -520,10 +533,10 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             subtitle="Generación y consulta de expedientes grupales y personales"
             breadcrumb="Reportes"
             metrics={[
-                { code: "T1", label: "Descargas totales", value: (stats === null || stats === undefined) ? null : (stats?.total || 0) },
-                { code: "T2", label: "Asistencia", value: (stats === null || stats === undefined) ? null : (stats?.asistencia || 0) },
-                { code: "T3", label: "Boletas", value: (stats === null || stats === undefined) ? null : (stats?.boleta || 0) },
-                { code: "T4", label: "Constancias", value: (stats === null || stats === undefined) ? null : (stats?.constancia || 0) }
+                { code: "T1", label: "Descargas totales", value: stats ? (stats?.total || 0) : 0 },
+                { code: "T2", label: "Asistencia", value: stats ? (stats?.asistencia || 0) : 0 },
+                { code: "T3", label: "Boletas", value: stats ? (stats?.boleta || 0) : 0 },
+                { code: "T4", label: "Constancias", value: stats ? (stats?.constancia || 0) : 0 }
             ]}
             isLoading={stats === null || stats === undefined}
             quickActions={[
@@ -615,6 +628,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
                                 groups={groups}
                                 periods={periods}
                                 onDownload={handleDownloadReport}
+                                onExportExcel={handleExportAttendanceExcel}
                                 onReset={handleReset}
                             />
                         </div>

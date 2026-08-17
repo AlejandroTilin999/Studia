@@ -1,18 +1,10 @@
 import React from 'react';
-
-interface Task {
-    id: number;
-    title: string;
-    status: string;
-    desc: string;
-    points?: string;
-    deadline?: string;
-}
+import type { StudentTask } from '@/types/alumno';
 
 interface AssignmentSidebarListProps {
-    otherTasks: Task[];
+    otherTasks: StudentTask[];
     currentTaskId: number;
-    onSwitchTask: (task: Task) => void;
+    onSwitchTask: (task: StudentTask) => void;
 }
 
 export default function AssignmentSidebarList({

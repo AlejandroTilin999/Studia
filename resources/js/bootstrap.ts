@@ -27,6 +27,3 @@ window.Echo = new Echo({
 /**
  * Monitoring connection health
  */
-window.Echo.connector.pusher.connection.bind('state_change', (states: any) => {
-    console.log(`%c[RT] 🛰️ Connection state: ${states.current}`, 'color: #3b82f6; font-weight: bold;');
-});

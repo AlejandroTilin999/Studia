@@ -78,6 +78,123 @@ class GoogleDriveService
     }
 
     /**
+     * Busca una carpeta existente sin crearla. Cuando no se indica padre, la
+     * búsqueda queda limitada a la raíz de Drive para evitar coincidencias
+     * accidentales en otra parte de la unidad.
+     */
+    public function findFolderId(string $folderName, ?string $parentId = null): ?string
+    {
+        $sanitizedName = str_replace("'", "\\'", trim($folderName));
+        $query = "mimeType='application/vnd.google-apps.folder' and name='{$sanitizedName}' and trashed=false";
+        $query .= $parentId
+            ? " and '{$parentId}' in parents"
+            : " and 'root' in parents";
+
+        $results = $this->service->files->listFiles([
+            'q' => $query,
+            'fields' => 'files(id, name)',
+            'pageSize' => 2,
+        ]);
+
+        $folders = $results->getFiles();
+
+        if (count($folders) > 1) {
+            throw new Exception("Se encontraron varias carpetas con el nombre '{$folderName}' en la misma ubicación.");
+        }
+
+        return $folders[0]->getId() ?? null;
+    }
+
+    /**
+     * Cuenta el contenido de una carpeta sin modificar Drive.
+     * Incluye todos los niveles inferiores, pero no cuenta la carpeta raíz.
+     *
+     * @return array{files: int, folders: int}
+     */
+    public function summarizeFolderContents(string $folderId): array
+    {
+        $summary = ['files' => 0, 'folders' => 0];
+        $this->summarizeFolderContentsRecursively($folderId, $summary);
+
+        return $summary;
+    }
+
+    /**
+     * Elimina de forma recursiva una carpeta y únicamente sus descendientes.
+     * La carpeta indicada también se elimina al final.
+     *
+     * @return array{files: int, folders: int}
+     */
+    public function deleteFolderRecursively(string $folderId): array
+    {
+        $deleted = ['files' => 0, 'folders' => 0];
+        $this->deleteFolderContents($folderId, $deleted);
+        $this->deleteFile($folderId);
+        $deleted['folders']++;
+
+        return $deleted;
+    }
+
+    /**
+     * @param array{files: int, folders: int} $summary
+     */
+    private function summarizeFolderContentsRecursively(string $folderId, array &$summary): void
+    {
+        foreach ($this->listFolderChildren($folderId) as $child) {
+            if ($child->getMimeType() === 'application/vnd.google-apps.folder') {
+                $summary['folders']++;
+                $this->summarizeFolderContentsRecursively($child->getId(), $summary);
+                continue;
+            }
+
+            $summary['files']++;
+        }
+    }
+
+    /**
+     * @param array{files: int, folders: int} $deleted
+     */
+    private function deleteFolderContents(string $folderId, array &$deleted): void
+    {
+        foreach ($this->listFolderChildren($folderId) as $child) {
+            if ($child->getMimeType() === 'application/vnd.google-apps.folder') {
+                $this->deleteFolderContents($child->getId(), $deleted);
+                if (!$this->deleteFile($child->getId())) {
+                    throw new Exception("No se pudo eliminar la carpeta de Drive '{$child->getName()}'.");
+                }
+                $deleted['folders']++;
+                continue;
+            }
+
+            if (!$this->deleteFile($child->getId())) {
+                throw new Exception("No se pudo eliminar el archivo de Drive '{$child->getName()}'.");
+            }
+            $deleted['files']++;
+        }
+    }
+
+    /** @return array<int, DriveFile> */
+    private function listFolderChildren(string $folderId): array
+    {
+        $children = [];
+        $pageToken = null;
+
+        do {
+            $result = $this->service->files->listFiles([
+                'q' => "'{$folderId}' in parents and trashed=false",
+                'fields' => 'nextPageToken, files(id, name, mimeType)',
+                'pageSize' => 100,
+                'pageToken' => $pageToken,
+            ]);
+
+            array_push($children, ...$result->getFiles());
+            $pageToken = $result->getNextPageToken();
+        } while ($pageToken);
+
+        return $children;
+    }
+
+    /**
      * Crear una carpeta en Drive
      */
     public function createFolder(string $folderName, ?string $parentId = null): DriveFile
@@ -135,6 +252,13 @@ class GoogleDriveService
      */
     public function getOrCreateTaskFolder(Tarea $tarea): string
     {
+        // La carpeta queda registrada en la propia tarea desde la primera
+        // entrega. Reutilizarla evita 7 consultas consecutivas a Drive por
+        // cada archivo posterior y reduce notablemente la espera del alumno.
+        if (!empty($tarea->drive_folder_id)) {
+            return $tarea->drive_folder_id;
+        }
+
         $load = $tarea->academicLoad;
         $cicloNombre = $load && $load->academicPeriod ? $load->academicPeriod->nombre : 'General';
         $grupoNombre = $load && $load->academicGroup ? $load->academicGroup->nombre : 'Sin_Grupo';
@@ -153,9 +277,9 @@ class GoogleDriveService
 
         $folderId = $this->findOrCreateFolder($tareaNombre, $docenteFolderId);
         
-        if (empty($tarea->drive_folder_id)) {
-            $tarea->update(['drive_folder_id' => $folderId]);
-        }
+        // Es un dato técnico de almacenamiento: evitar un evento TaskUpdated
+        // adicional antes de que la entrega se haya guardado completamente.
+        $tarea->forceFill(['drive_folder_id' => $folderId])->saveQuietly();
 
         return $folderId;
     }
@@ -163,12 +287,13 @@ class GoogleDriveService
     /**
      * Subir archivo a una carpeta específica de Google Drive y hacerlo accesible vía link.
      */
-    public function uploadFileToFolder(string $filePath, string $fileName, string $folderId): DriveFile
+    public function uploadFileToFolder(string $filePath, string $fileName, ?string $folderId = null): DriveFile
     {
-        $fileMetadata = new DriveFile([
-            'name' => $fileName,
-            'parents' => [$folderId]
-        ]);
+        $meta = ['name' => $fileName];
+        if (!empty($folderId)) {
+            $meta['parents'] = [$folderId];
+        }
+        $fileMetadata = new DriveFile($meta);
 
         $content = file_get_contents($filePath);
         $mimeType = mime_content_type($filePath) ?: 'application/octet-stream';
@@ -230,6 +355,11 @@ class GoogleDriveService
             $this->service->files->delete($fileId);
             return true;
         } catch (Exception $e) {
+            // Un 404 significa que ya fue eliminado en una operación previa.
+            // Tratarlo como éxito hace que reintentos de limpieza sean seguros.
+            if ((int) $e->getCode() === 404) {
+                return true;
+            }
             \Illuminate\Support\Facades\Log::error("GoogleDriveService deleteFile Error: " . $e->getMessage());
             return false;
         }

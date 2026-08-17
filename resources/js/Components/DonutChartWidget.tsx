@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import StudiaSkeleton from "@/Components/ui/StudiaSkeleton";
 
 export interface ChartSegment {
   name: string;
@@ -87,7 +88,7 @@ export default function DonutChartWidget({
         {/* Inner label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {isLoading ? (
-            <div className="dots-loader scale-50"></div>
+            <StudiaSkeleton className="h-8 w-10 rounded-md" />
           ) : (
             <span className="text-3xl 2xl:text-[32px] font-black text-[#0266E0] leading-none transition-all">
               {displayValue}

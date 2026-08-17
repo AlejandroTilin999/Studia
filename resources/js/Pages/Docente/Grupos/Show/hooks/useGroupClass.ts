@@ -17,6 +17,7 @@ import {
 } from '../services/loadService';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 import { SwalHelper } from '@/utils/SwalHelper';
+import { buildDocenteClassUrl, getDocenteClassRoute } from '@/utils/docenteClassUrl';
 
 function storageKey(grupo: string, materia: string, parcial: number) {
     return `studia:docente:${grupo}:${materia}:parcial${parcial}:config`;
@@ -50,13 +51,14 @@ export function useGroupClass(classInfoProp?: any) {
     const [semestre, setSemestre] = useState('');
     const [themeKey, setThemeKey] = useState<string>('blue');
     const [showPaletteMenu, setShowPaletteMenu] = useState(false);
+    const [themeCooldownUntil, setThemeCooldownUntil] = useState<number | null>(null);
+    const themeCooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [students, setStudents] = useState<any[]>(() => {
         return classInfo?.alumnos || MOCK_STUDENTS;
     });
 
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const queryId = params.get('id');
+        const queryId = getDocenteClassRoute().classId;
 
         if (classInfo) {
             setLoadId(classInfo.id);
@@ -90,39 +92,56 @@ export function useGroupClass(classInfoProp?: any) {
     }, [loadId, grupo, materia]);
 
     function handleThemeChange(newKey: string) {
+        const now = Date.now();
+        if (themeCooldownUntil && now < themeCooldownUntil) {
+            const remainingSeconds = Math.max(1, Math.ceil((themeCooldownUntil - now) / 1000));
+            SwalHelper.toast(`Espera ${remainingSeconds} segundos antes de cambiar el tema otra vez.`, 'info');
+            return;
+        }
+
+        if (newKey === themeKey) {
+            setShowPaletteMenu(false);
+            return;
+        }
+
+        const cooldownUntil = now + 10_000;
         setThemeKey(newKey);
         localStorage.setItem(`studia:docente:${grupo}:${materia}:banner-color`, newKey);
         setShowPaletteMenu(false);
+        setThemeCooldownUntil(cooldownUntil);
+
+        if (themeCooldownTimerRef.current) clearTimeout(themeCooldownTimerRef.current);
+        themeCooldownTimerRef.current = setTimeout(() => {
+            setThemeCooldownUntil(null);
+            themeCooldownTimerRef.current = null;
+        }, 10_000);
 
         if (loadId) {
             // @ts-ignore
             axios.post(route('docente.clases.update_theme', { uuid: loadId }), { color: newKey })
                 .then(() => {
-                    SwalHelper.toast('Apariencia de la clase actualizada', 'success');
-
-                    // Emite evento en tiempo real a alumnos y otras pestañas
-                    try {
-                        const bc = new BroadcastChannel('school-cycle-channel');
-                        bc.postMessage({ type: 'cycle-update', msg: 'THEME_UPDATED' });
-                        bc.close();
-                    } catch(e) {}
+                    SwalHelper.toast('Tema actualizado. Los alumnos lo verán al instante.', 'success');
                 })
                 .catch(err => {
                     console.error("Error al guardar tema:", err);
+                    setThemeCooldownUntil(null);
+                    if (themeCooldownTimerRef.current) clearTimeout(themeCooldownTimerRef.current);
+                    themeCooldownTimerRef.current = null;
                     SwalHelper.error('Error', 'No se pudo sincronizar el nuevo color.');
                 });
         }
     }
 
+    useEffect(() => () => {
+        if (themeCooldownTimerRef.current) clearTimeout(themeCooldownTimerRef.current);
+    }, []);
+
     // 3. Pantalla actual y parcial activo
     const [screen, setScreen] = useState<Screen>(() => {
-        const params = new URLSearchParams(window.location.search);
-        return (params.get('parcial') ? 'grades' : 'parciales') as Screen;
+        return (getDocenteClassRoute().parcial ? 'grades' : 'parciales') as Screen;
     });
     const [activeParcial, setActiveParcial] = useState<number | null>(() => {
-        const params = new URLSearchParams(window.location.search);
-        const p = params.get('parcial');
-        return p ? parseInt(p) : null;
+        return getDocenteClassRoute().parcial;
     });
     const [configs, setConfigs] = useState<Record<number, ParcialConfig>>({});
     const [allGrades, setAllGrades] = useState<Record<number, StudentGrade[]>>({});
@@ -185,16 +204,15 @@ export function useGroupClass(classInfoProp?: any) {
         }
 
         // Sincronizar vista actual y estados activos de tareas/alumnos
-        const params = new URLSearchParams(window.location.search);
-        const pNum = params.get('parcial');
-        const targetParcial = pNum ? parseInt(pNum) : (activeParcial || 1);
+        const routeState = getDocenteClassRoute();
+        const targetParcial = routeState.parcial || activeParcial || 1;
 
         const pData = classInfo.parciales?.[targetParcial];
         if (pData) {
             setActiveParcial(targetParcial);
             setStudentGrades(pData.students);
             setTasks(pData.tasks);
-            if (pNum) {
+            if (routeState.parcial) {
                 if (pData.config?.configured) {
                     setScreen('grades');
                 } else {
@@ -206,7 +224,7 @@ export function useGroupClass(classInfoProp?: any) {
 
     // Función maestra de refresco en tiempo real (100% en memoria via Axios sin re-renders de Inertia)
     const refreshClassData = (isBurst = false) => {
-        const targetLoadId = loadId || classInfo?.id || new URLSearchParams(window.location.search).get('id');
+        const targetLoadId = loadId || classInfo?.id || getDocenteClassRoute().classId;
         if (!targetLoadId) return;
 
         console.log(`%c[RT] ⚡ Consultando datos actualizados vía API silenciosa para Carga: ${targetLoadId}...`, 'color: #10b981; font-weight: bold;');
@@ -271,6 +289,7 @@ export function useGroupClass(classInfoProp?: any) {
         const handleSignal = (data: any) => {
             if (!data) return;
             if (data.senderId === mySenderId) return; // Ignorar el propio rebote
+            if (data.msg === 'THEME_UPDATED' || data.type === 'THEME_UPDATED') return; // [CORRECCIÓN] No recargar la verdad académica por cambio de tema
             if (data.type === 'cycle-update' || data.msg?.includes('SUBMISSION') || data.msg?.includes('PARCIAL') || data.msg?.includes('FORCE_REFRESH')) {
                 console.log('%c[ThunderSync] ⚡ Actualización silenciosa ultrarrápida (sin recargar):', 'color: #10b981; font-weight: bold;', data);
                 refreshClassData(true);
@@ -449,7 +468,16 @@ export function useGroupClass(classInfoProp?: any) {
                 parcial: activeParcial,
                 tareas: newTasks
             })
-            .then(() => {
+            .then((response) => {
+                // Sustituir los IDs temporales del formulario por los IDs
+                // reales de la base de datos. Así la siguiente edición no
+                // crea una tarea duplicada y ambos roles ven la misma tarea.
+                const savedTasks = response.data?.tareas;
+                if (Array.isArray(savedTasks)) {
+                    setTasks(savedTasks);
+                    setAllTasks(prev => ({ ...prev, [activeParcial]: savedTasks }));
+                }
+
                 // Emite evento en tiempo real a alumnos y otras pestañas
                 try {
                     const bc = new BroadcastChannel('school-cycle-channel');
@@ -510,9 +538,7 @@ export function useGroupClass(classInfoProp?: any) {
         setSelectedTaskId(null);
 
         // Persistir estado en la URL sin recargar la página
-        const url = new URL(window.location.href);
-        url.searchParams.set('parcial', parcialNum.toString());
-        window.history.replaceState({}, '', url.toString());
+        window.history.pushState({}, '', buildDocenteClassUrl(loadId || classInfo?.id, parcialNum));
 
         const config = configs[parcialNum];
         if (config?.configured) {
@@ -577,16 +603,20 @@ export function useGroupClass(classInfoProp?: any) {
         if (!loadId) return Promise.resolve();
 
         setIsSaving(true);
+        SwalHelper.toastLoading('Devolviendo calificación al alumno...');
         return axios.post(`/docente/clases/${loadId}/return-grade`, {
             tarea_id: taskId,
             usuario_id: studentId,
             calificacion: score
         })
         .then(res => {
+            SwalHelper.close();
+            SwalHelper.toast('Calificación devuelta al alumno.', 'success');
             refreshClassData();
             return res.data;
         })
         .catch(err => {
+            SwalHelper.close();
             console.error("Error al devolver calificación:", err);
             SwalHelper.error('Error', 'No se pudo procesar el envío.');
             throw err;
@@ -653,12 +683,10 @@ export function useGroupClass(classInfoProp?: any) {
     }
 
     // 6. Modales y Estado de Chat/Selección
-    const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+    const [selectedTaskId, setSelectedTaskId] = useState<number | null>(() => getDocenteClassRoute().taskId);
     const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
-    const [chatInputText, setChatInputText] = useState('');
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
     const [isGradesModalOpen, setIsGradesModalOpen] = useState(false);
-    const [privateMessages, setPrivateMessages] = useState<Record<string, { sender: 'alumno' | 'docente', senderName: string, text: string, timestamp: string }[]>>({});
 
     useEffect(() => {
         if (studentGrades.length > 0 && selectedStudentId === null) {
@@ -777,15 +805,10 @@ export function useGroupClass(classInfoProp?: any) {
         setSelectedTaskId,
         selectedStudentId,
         setSelectedStudentId,
-        chatInputText,
-        setChatInputText,
         isPdfModalOpen,
         setIsPdfModalOpen,
         isGradesModalOpen,
         setIsGradesModalOpen,
-        privateMessages,
-        setPrivateMessages,
-        sendPrivateMessage: (msg: string) => {},
         getParcialAverage,
         getFinalAverage,
         isParcialClosed,

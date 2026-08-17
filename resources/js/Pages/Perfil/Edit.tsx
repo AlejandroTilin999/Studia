@@ -1,6 +1,6 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AuthenticatedLayout, { getAuthenticatedNoPaddingLayout } from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
-import { Head, usePage, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import { User, Lock, ShieldAlert } from 'lucide-react';
 import DeleteUserForm from './Partials/DeleteUserForm';
@@ -13,8 +13,6 @@ export default function Edit({
     mustVerifyEmail,
     status,
 }: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
-    const { auth } = usePage<PageProps>().props;
-    const role = auth.user.rol || 'admin';
     const [activeTab, setActiveTab] = useState<'detalles' | 'password' | 'seguridad'>('detalles');
 
     const steps = [
@@ -24,7 +22,7 @@ export default function Edit({
     ];
 
     return (
-        <AuthenticatedLayout noPadding>
+        <>
             <Head title="Mi Perfil" />
 
             <div className="bg-white min-h-full flex flex-col font-body">
@@ -75,23 +73,23 @@ export default function Edit({
                 <div className="flex-1 flex flex-col lg:flex-row border-t border-slate-100 min-h-0 bg-white">
 
                     {/* Panel Izquierdo: Stepper Vertical (Solo Desktop) */}
-                    <aside className="hidden lg:flex w-[320px] xl:w-[380px] bg-slate-50/30 p-12 border-r border-slate-100 shrink-0">
+                    <aside className="hidden lg:flex w-[280px] xl:w-[320px] bg-slate-50/40 p-8 xl:p-10 border-r border-slate-200 shrink-0">
                         <div className="space-y-10 relative w-full">
-                            <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-300 z-0" />
+                            <div className="absolute left-[19px] top-5 bottom-5 w-0.5 bg-slate-200 z-0" />
 
-                            <nav className="flex flex-col gap-12 relative z-10">
+                            <nav className="flex flex-col gap-10 relative z-10">
                                 {steps.map((step) => {
                                     const isActive = activeTab === step.id;
                                     return (
                                         <button
                                             key={step.id}
                                             onClick={() => setActiveTab(step.id as any)}
-                                            className="flex items-start gap-4 text-left group outline-none"
+                                            className="flex items-center gap-4 text-left group outline-none"
                                         >
                                             <div className={cn(
-                                                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-300 border-2",
+                                                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-all duration-300 border-2 shrink-0 z-10",
                                                 isActive
-                                                    ? "bg-[#0266E0] border-[#0266E0] text-white"
+                                                    ? "bg-[#0266E0] border-[#0266E0] text-white shadow-md shadow-blue-500/20"
                                                     : "bg-white border-slate-200 text-slate-400 group-hover:border-slate-300"
                                             )}>
                                                 {step.num}
@@ -160,6 +158,8 @@ export default function Edit({
 
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </>
     );
 }
+
+Edit.layout = getAuthenticatedNoPaddingLayout;

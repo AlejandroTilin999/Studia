@@ -58,9 +58,11 @@ export default function PromotionModal({
                 setTargetGroupId('');
             }
 
-            // Sugerir ciclo activo o siguiente
-            const activeCycle = cycles.find(c => c.activo);
-            if (activeCycle) setTargetCycleId(activeCycle.id.toString());
+            // El ciclo origen no puede ser también destino. Se sugiere solo
+            // un ciclo abierto distinto, nunca uno cerrado.
+            const sourceCycle = cycles.find(c => c.status === 'activo') ?? cycles.find(c => c.status === 'planificacion');
+            const destinationCycle = cycles.find(c => c.id !== sourceCycle?.id && c.status !== 'cerrado');
+            setTargetCycleId(destinationCycle?.id?.toString() ?? '');
         }
     }, [isOpen, sourceGroup]);
 
@@ -98,9 +100,15 @@ export default function PromotionModal({
         e.preventDefault();
         if (selectedStudents.length === 0) return SwalHelper.alert("Selección requerida", "Debes seleccionar al menos un alumno para promover.", "warning");
 
+        const sourceCycle = cycles.find(c => c.status === 'activo') ?? cycles.find(c => c.status === 'planificacion');
+        if (!sourceCycle) {
+            return SwalHelper.alert("Ciclo requerido", "No hay un ciclo escolar vigente para identificar las inscripciones de origen.", "warning");
+        }
+
         onConfirm({
             grupo_origen_id: sourceGroup.id,
             grupo_destino_id: targetGroupId,
+            ciclo_origen_id: sourceCycle.id,
             ciclo_destino_id: targetCycleId,
             alumnos_ids: selectedStudents,
             marcar_egresados: isLastSemester

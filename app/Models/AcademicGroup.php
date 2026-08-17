@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class AcademicGroup extends Model
 {
     protected $table = 'grupos';
-    protected $fillable = ['codigo', 'nombre', 'semestre', 'generacion', 'turno', 'especialidad', 'docente_tutor_id', 'activo'];
+    protected $fillable = ['codigo', 'nombre', 'semestre', 'seccion', 'generacion', 'turno', 'especialidad', 'docente_tutor_id', 'activo'];
 
     public function tutor()
     {

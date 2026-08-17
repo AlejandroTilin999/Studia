@@ -3,6 +3,11 @@ import { Calendar } from 'lucide-react';
 import { usePage, Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 
+// La imagen ya descargada permanece en la caché del navegador. Conservamos ese
+// estado entre montajes del banner para no volver a mostrar un placeholder al
+// regresar al inicio desde una materia.
+const dashboardImagesLoaded = new Set<string>();
+
 interface DashboardWelcomeBannerProps {
     greeting: string;
     title?: string;
@@ -34,7 +39,21 @@ export default function DashboardWelcomeBanner({
         ? '/assets/admin-dashboard.webp'
         : role === 'DOCENTE'
             ? '/assets/docente-dashboard.webp'
-            : '/assets/docente-dashboard.webp';
+            : '/assets/alumno-dashboard.webp';
+    const imageRef = React.useRef<HTMLImageElement>(null);
+    const [imageLoaded, setImageLoaded] = React.useState(() => dashboardImagesLoaded.has(imageSrc));
+
+    React.useLayoutEffect(() => {
+        const image = imageRef.current;
+        const isReady = dashboardImagesLoaded.has(imageSrc)
+            || Boolean(image?.complete && image.naturalWidth > 0);
+
+        if (isReady) {
+            dashboardImagesLoaded.add(imageSrc);
+        }
+
+        setImageLoaded(isReady);
+    }, [imageSrc]);
 
     const currentDate = new Date().toLocaleDateString('es-ES', {
         weekday: 'long',
@@ -125,12 +144,33 @@ export default function DashboardWelcomeBanner({
                     </div>
 
                     {/* Right Side: Image */}
-                    <div className="w-full min-[1352px]:w-auto flex justify-center min-[1352px]:justify-end items-center">
-                        <div
-                            className="relative w-full h-40 sm:h-48 md:h-56 lg:h-64 xl:h-72 min-[1352px]:w-64 bg-contain bg-no-repeat bg-center min-[1352px]:bg-right pointer-events-none select-none transition-all duration-300"
-                            style={{ backgroundImage: `url('${imageSrc}')` }}
-                            role="img"
-                            aria-label="Personaje Dashboard"
+                    <div className="relative w-full min-[1352px]:w-auto flex justify-center min-[1352px]:justify-end items-center shrink-0">
+                        {!imageLoaded && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div
+                                    aria-label="Cargando ilustración"
+                                    className="h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 lg:h-48 lg:w-48 animate-pulse bg-slate-200/65 shadow-[inset_12px_-10px_0_rgba(255,255,255,0.2)]"
+                                    style={{ borderRadius: '42% 58% 61% 39% / 45% 42% 58% 55%' }}
+                                />
+                            </div>
+                        )}
+                        <img
+                            ref={imageRef}
+                            src={imageSrc}
+                            alt="Personaje Dashboard"
+                            loading="eager"
+                            // @ts-ignore
+                            fetchpriority="high"
+                            decoding="sync"
+                            onLoad={() => {
+                                dashboardImagesLoaded.add(imageSrc);
+                                setImageLoaded(true);
+                            }}
+                            onError={() => setImageLoaded(true)}
+                            className={cn(
+                                "relative w-full h-40 sm:h-48 md:h-56 lg:h-64 xl:h-72 min-[1352px]:w-64 object-contain object-center min-[1352px]:object-right pointer-events-none select-none transition-opacity duration-150 drop-shadow-sm",
+                                imageLoaded ? "opacity-100" : "opacity-0"
+                            )}
                         />
                     </div>
 

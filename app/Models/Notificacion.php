@@ -12,7 +12,16 @@ class Notificacion extends Model
     protected static function booted()
     {
         static::created(function ($notificacion) {
+            cache()->forget("unread_notifs_{$notificacion->usuario_id}");
             event(new \App\Events\NotificationCreated($notificacion));
+        });
+
+        static::updated(function ($notificacion) {
+            cache()->forget("unread_notifs_{$notificacion->usuario_id}");
+        });
+
+        static::deleted(function ($notificacion) {
+            cache()->forget("unread_notifs_{$notificacion->usuario_id}");
         });
     }
 

@@ -1,8 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Pencil, Paperclip, Upload } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { Plus, Pencil, Paperclip, Upload, Loader2, CheckCircle2, FileText, ExternalLink } from 'lucide-react';
+import axios from 'axios';
 import { Task } from '../services/constants';
 import DatePickerEs from '@/Components/ui/DatePickerEs';
+import DeadlineTimeInput, { normalizeDeadlineTime } from '@/Components/ui/DeadlineTimeInput';
+import PdfIcon from '@/Components/ui/PdfIcon';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
+import { SwalHelper } from '@/utils/SwalHelper';
+import { getDocenteClassRoute } from '@/utils/docenteClassUrl';
+
+type Attachment = {
+    name: string;
+    size: string;
+    type: string;
+    url?: string;
+    google_drive_url?: string | null;
+    google_drive_file_id?: string | null;
+};
 
 export interface ActivityFormProps {
     editingTask: Task | null;
@@ -10,16 +25,19 @@ export interface ActivityFormProps {
         nombre: string;
         descripcion: string;
         type: 'task' | 'material';
-        attachments: { name: string; size: string; type: string }[];
+        attachments: Attachment[];
         fecha_entrega?: string;
         hora_entrega?: string;
         puntos?: number;
     }) => void;
     onCancelEdit: () => void;
     themeKey?: string;
+    classInfo?: any;
 }
 
-export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeKey = 'blue' }: ActivityFormProps) {
+export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeKey = 'blue', classInfo: propClassInfo }: ActivityFormProps) {
+    const { classInfo: pageClassInfo } = usePage().props as any;
+    const classInfo = propClassInfo || pageClassInfo;
     const activeTheme = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
     const [activityType, setActivityType] = useState<'task' | 'material'>('task');
     const [nombre, setNombre] = useState('');
@@ -27,7 +45,7 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
     const [hora_entrega, setHoraEntrega] = useState('');
     const [puntos, setPuntos] = useState<string>('');
     const [descripcion, setDescripcion] = useState('');
-    const [attachments, setAttachments] = useState<{ name: string; size: string; type: string }[]>([]);
+    const [attachments, setAttachments] = useState<Attachment[]>([]);
     
     // Estado de errores Inline (Estilo Google Classroom)
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -43,10 +61,10 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
             if (editingTask.fecha_entrega) {
                 const parts = editingTask.fecha_entrega.split(' ');
                 setFechaEntrega(parts[0].split('T')[0]);
-                if (parts[1]) {
-                    setHoraEntrega(parts[1].substring(0, 5));
-                } else if ((editingTask as any).hora_entrega) {
-                    setHoraEntrega((editingTask as any).hora_entrega);
+                if (editingTask.hora_entrega) {
+                    setHoraEntrega(normalizeDeadlineTime(editingTask.hora_entrega));
+                } else if (parts[1]) {
+                    setHoraEntrega(normalizeDeadlineTime(parts[1]));
                 } else {
                     setHoraEntrega('');
                 }
@@ -73,14 +91,69 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return;
-        const filesArray = Array.from(e.target.files).map(file => ({
-            name: file.name,
-            size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
-            type: file.type || 'application/pdf'
-        }));
-        setAttachments(prev => [...prev, ...filesArray]);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFiles = Array.from(e.currentTarget.files || []);
+        // Se limpia de inmediato para que este control nunca participe en un
+        // envío nativo del formulario y permita volver a elegir el mismo archivo.
+        e.currentTarget.value = '';
+        if (selectedFiles.length === 0) return;
+
+        // Obtener UUID de la clase actual desde props o URL
+        const classUuid = classInfo?.id || classInfo?.uuid || getDocenteClassRoute().classId;
+
+        setIsUploading(true);
+        SwalHelper.toastLoading(selectedFiles.length > 1
+            ? `Subiendo ${selectedFiles.length} archivos a Google Drive...`
+            : `Subiendo ${selectedFiles[0].name} a Google Drive...`);
+        let uploadedFiles = 0;
+        const failedFiles: string[] = [];
+
+        for (const file of selectedFiles) {
+            try {
+                const formData = new FormData();
+                formData.append('archivo', file);
+
+                const targetUuid = classUuid || 'general';
+                const res = await axios.post(`/docente/clases/${targetUuid}/upload-material`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                const uploadedUrl = res.data?.url || res.data?.google_drive_url;
+
+                if (res.data && uploadedUrl) {
+                    uploadedFiles += 1;
+                    setAttachments(prev => [...prev, {
+                        name: res.data.name || file.name,
+                        url: uploadedUrl,
+                        google_drive_url: res.data.google_drive_url || uploadedUrl,
+                        google_drive_file_id: res.data.google_drive_file_id || null,
+                        size: res.data.size || (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                        type: res.data.type || file.type || 'application/pdf'
+                    }]);
+                } else {
+                    failedFiles.push(file.name);
+                }
+            } catch (err: any) {
+                console.error('Error al subir material de apoyo:', err);
+                failedFiles.push(file.name);
+            }
+        }
+
+        setIsUploading(false);
+        SwalHelper.close();
+        if (uploadedFiles > 0) {
+            SwalHelper.toast(uploadedFiles === 1
+                ? 'Archivo adjuntado correctamente.'
+                : `${uploadedFiles} archivos adjuntados correctamente.`, 'success');
+        }
+        if (failedFiles.length > 0) {
+            SwalHelper.toast(failedFiles.length === 1
+                ? `No se pudo subir ${failedFiles[0]}.`
+                : `No se pudieron subir ${failedFiles.length} archivos.`, 'error');
+        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleRemoveAttachment = (index: number) => {
@@ -153,68 +226,134 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                 </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
-                {/* Columna Izquierda (2/3 de ancho): Título e Instrucciones */}
-                <div className="lg:col-span-2 space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+                {/* Columna Izquierda (2/3 de ancho): Detalles (Título, Instrucciones, Adjuntos) */}
+                <div className="lg:col-span-2 space-y-6">
                     <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                            Título <span className="text-rose-500">*</span>
+                            Título de la tarea <span className="text-rose-500">*</span>
                         </label>
                         <input
                             ref={titleInputRef}
                             type="text"
                             value={nombre}
+                            placeholder="Ej. Examen Parcial, Tarea de Ecuaciones..."
                             onChange={e => {
                                 setNombre(e.target.value);
                                 if (errors.nombre) setErrors(prev => ({ ...prev, nombre: '' }));
                             }}
-                            placeholder="Ej. Tarea 3: Ecuaciones de primer grado"
-                            className={`w-full border rounded-xl px-4 py-3 text-sm text-slate-800 font-medium outline-none transition-all ${
+                            className={`w-full border rounded-xl px-4 py-2.5 text-sm font-semibold outline-none transition-all ${
                                 errors.nombre
-                                    ? 'bg-rose-50/40 border-rose-400 focus:ring-1 focus:ring-rose-400'
-                                    : 'bg-slate-50/60 border-slate-200/90 focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5]'
+                                    ? 'bg-rose-50/40 border-rose-400 focus:ring-1 focus:ring-rose-400 text-slate-800'
+                                    : 'bg-slate-50/60 border-slate-200/90 focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] text-slate-800'
                             }`}
                         />
                         {errors.nombre && (
-                            <span className="text-xs font-semibold text-rose-500 mt-1 block animate-in fade-in slide-in-from-top-1 duration-200">
+                            <span className="text-[11px] font-semibold text-rose-500 mt-1 block animate-in fade-in slide-in-from-top-1 duration-200">
                                 {errors.nombre}
                             </span>
                         )}
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Instrucciones (opcional)</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                            Instrucciones o descripción <span className="text-slate-400 font-normal">(Opcional)</span>
+                        </label>
                         <textarea
+                            rows={4}
                             value={descripcion}
+                            placeholder="Instrucciones detalladas para los alumnos..."
                             onChange={e => setDescripcion(e.target.value)}
-                            placeholder="Escribe las instrucciones detalladas de la tarea aquí..."
-                            rows={8}
-                            className="w-full bg-slate-50/60 border border-slate-200/90 rounded-xl px-4 py-3 text-sm text-slate-800 font-normal outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all resize-none leading-relaxed"
+                            className="w-full bg-slate-50/60 border border-slate-200/90 rounded-xl px-4 py-3 text-sm text-slate-800 font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all resize-none"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Material de Apoyo / Adjuntos</label>
-                        <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className="border-2 border-dashed border-slate-250 hover:border-[#1e88e5] hover:bg-blue-50/20 rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none group"
+                        <label className="block text-xs font-bold text-slate-700 mb-2">
+                            Material de apoyo <span className="text-slate-400 font-normal">(Archivos adjuntos, guías, PDFs)</span>
+                        </label>
+                        
+                        <button
+                            type="button"
+                            disabled={isUploading}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!isUploading) fileInputRef.current?.click();
+                            }}
+                            className="w-full border-2 border-dashed border-slate-250 hover:border-[#1e88e5] hover:bg-blue-50/20 rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none group"
                         >
-                            <Upload size={22} className="text-slate-400 group-hover:text-[#1e88e5] transition-colors" />
-                            <span className="text-xs font-bold text-slate-600 group-hover:text-[#1e88e5] transition-colors">Adjuntar archivos o documentos</span>
-                        </div>
+                            {isUploading ? (
+                                <Loader2 size={24} className="text-[#1e88e5] animate-spin" />
+                            ) : (
+                                <Upload size={22} className="text-slate-400 group-hover:text-[#1e88e5] transition-colors" />
+                            )}
+                            <span className="text-xs font-bold text-slate-600 group-hover:text-[#1e88e5] transition-colors">
+                                {isUploading ? 'Subiendo material a Google Drive...' : 'Adjuntar archivos o documentos PDF'}
+                            </span>
+                        </button>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" />
 
                         {attachments.length > 0 && (
                             <div className="mt-3 space-y-2">
-                                {attachments.map((file, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200/80 text-xs">
-                                        <div className="flex items-center gap-2 truncate">
-                                            <Paperclip size={14} className="text-[#1e88e5] shrink-0" />
-                                            <span className="font-medium text-slate-700 truncate">{file.name}</span>
+                                {attachments.map((file, index) => {
+                                    const fileUrl = (file as any).url || (file as any).google_drive_url;
+                                    const fileName = file.name || 'Documento adjunto';
+                                    const isPdf = fileName.toLowerCase().endsWith('.pdf') || (file as any).type?.toLowerCase().includes('pdf');
+
+                                    return (
+                                        <div 
+                                            key={index} 
+                                            className="flex items-center justify-between bg-white border border-slate-200/90 px-3.5 py-2.5 rounded-md text-xs shadow-2xs transition-all hover:border-slate-300"
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                                                {isPdf ? (
+                                                    <PdfIcon size={20} className="shrink-0" />
+                                                ) : (
+                                                    <FileText size={18} className="text-slate-700 shrink-0" />
+                                                )}
+                                                
+                                                {fileUrl ? (
+                                                    <a
+                                                        href={fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="font-bold text-slate-900 hover:underline truncate text-xs"
+                                                    >
+                                                        {fileName}
+                                                    </a>
+                                                ) : (
+                                                    <span className="font-bold text-slate-900 truncate text-xs">{fileName}</span>
+                                                )}
+
+                                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 flex items-center gap-1">
+                                                    <CheckCircle2 size={10} /> Google Drive
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {fileUrl && (
+                                                    <a
+                                                        href={fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+                                                        title="Abrir enlace"
+                                                    >
+                                                        <ExternalLink size={16} />
+                                                    </a>
+                                                )}
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => handleRemoveAttachment(index)} 
+                                                    className="text-slate-400 hover:text-rose-500 font-bold text-xs p-1 transition-colors"
+                                                >
+                                                    Quitar
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button type="button" onClick={() => handleRemoveAttachment(index)} className="text-slate-400 hover:text-rose-500 font-bold text-xs">Quitar</button>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -274,18 +413,13 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                             <label className="block text-xs font-bold text-slate-700 mb-1.5">
                                 Hora límite <span className="text-rose-500">*</span>
                             </label>
-                            <input
-                                type="time"
+                            <DeadlineTimeInput
                                 value={hora_entrega}
-                                onChange={e => {
-                                    setHoraEntrega(e.target.value);
+                                onChange={value => {
+                                    setHoraEntrega(value);
                                     if (errors.hora_entrega) setErrors(prev => ({ ...prev, hora_entrega: '' }));
                                 }}
-                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium outline-none transition-all ${
-                                    errors.hora_entrega
-                                        ? 'bg-rose-50/40 border-rose-400 focus:ring-1 focus:ring-rose-400'
-                                        : 'bg-slate-50/60 border-slate-200/90 focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5]'
-                                }`}
+                                hasError={!!errors.hora_entrega}
                             />
                             {errors.hora_entrega && (
                                 <span className="text-[11px] font-semibold text-rose-500 mt-1 block animate-in fade-in slide-in-from-top-1 duration-200">

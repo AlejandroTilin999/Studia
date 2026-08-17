@@ -1,9 +1,9 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, Deferred } from '@inertiajs/react';
+import AuthenticatedLayout, { getAuthenticatedNoPaddingLayout } from '@/Layouts/AuthenticatedLayout';
+import { Head, Link } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 import DashboardWelcomeBanner from '@/Components/layout/DashboardWelcomeBanner';
 import TeacherInfoCard from '@/Components/docente/TeacherInfoCard';
-import TeacherRightSidebar from '@/Components/docente/TeacherRightSidebar';
+import TeacherRightSidebar from '@/Components/TeacherRightSidebar';
 import DotsLoader from '@/Components/ui/DotsLoader';
 
 interface AssignedLoadItem {
@@ -17,20 +17,18 @@ interface AssignedLoadItem {
 }
 
 interface DocenteDashboardProps {
-    teacherInfo?: {
-        nombre: string;
-        especialidad: string;
-        email: string;
-    };
+    teacherInfo?: any;
     assignedLoad?: AssignedLoadItem[];
+    calendarEvents?: any[];
     isCycleActive?: boolean;
 }
 
 export default function DocenteDashboard({
     teacherInfo: propTeacherInfo,
     assignedLoad: propAssignedLoad,
+    calendarEvents = [],
     isCycleActive = true
-}: DocenteDashboardProps) {
+}: any) {
     // 1. Datos del docente con fallback seguro
     const teacherInfo = {
         name: propTeacherInfo?.nombre || 'Docente',
@@ -48,7 +46,7 @@ export default function DocenteDashboard({
     ];
 
     return (
-        <AuthenticatedLayout noPadding>
+        <>
             <Head title="Panel del Docente" />
 
             <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body w-full text-left">
@@ -72,19 +70,11 @@ export default function DocenteDashboard({
                         </div>
                     )}
 
-                    <Deferred data={['teacherInfo', 'assignedLoad']} fallback={
-                        <div className="flex flex-col items-center justify-center py-20 min-h-[400px]">
-                            <DotsLoader
-                                label="Cargando panel de control"
-                                sublabel="Sincronizando tus grupos y expedientes..."
-                            />
-                        </div>
-                    }>
                         {/* Ficha Resumen del Profesor */}
                         <TeacherInfoCard
-                            name={teacherInfo.name}
-                            specialty={teacherInfo.specialty}
-                            email={teacherInfo.email}
+                            name={(teacherInfo as any)?.name || (teacherInfo as any)?.nombre || ''}
+                            specialty={(teacherInfo as any)?.specialty || (teacherInfo as any)?.especialidad || ''}
+                            email={(teacherInfo as any)?.email || ''}
                             groupsCount={assignedLoad.length}
                         />
 
@@ -102,7 +92,7 @@ export default function DocenteDashboard({
                                 {assignedLoad.length > 0 ? assignedLoad.map((load) => (
                                     <Link
                                         key={load.id}
-                                        href={`/docente/grupos/show?id=${load.id}`}
+                                        href={`/docente/clases/${load.id}`}
                                         className="group flex items-center justify-between p-5 bg-white border border-slate-200 hover:border-[#1e88e5] hover:bg-slate-50 transition-all duration-200 rounded-2xl shadow-none"
                                     >
                                         <div className="flex items-center gap-4 min-w-0">
@@ -140,11 +130,12 @@ export default function DocenteDashboard({
                                 )}
                             </div>
                         </div>
-                    </Deferred>
                 </div>
-                <TeacherRightSidebar tasks={upcomingTasks} />
+                <TeacherRightSidebar tasks={upcomingTasks} initialEvents={calendarEvents} />
 
             </div>
-        </AuthenticatedLayout>
+        </>
     );
 }
+
+DocenteDashboard.layout = getAuthenticatedNoPaddingLayout;

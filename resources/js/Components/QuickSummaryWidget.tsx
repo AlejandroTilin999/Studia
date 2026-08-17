@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import StudiaSkeleton from "@/Components/ui/StudiaSkeleton";
 
 export interface MetricItem {
   code: string; // e.g. "T1"
@@ -18,7 +19,7 @@ export default function QuickSummaryWidget({ title = "Resumen del Sistema", metr
     <div className="space-y-3 text-left font-body">
       <h4 className="font-semibold text-slate-400 text-[11px] uppercase tracking-wider select-none ml-1">{title}</h4>
       <div className="grid grid-cols-2 gap-2.5">
-        {metrics.map((item, index) => {
+        {(metrics || []).map((item, index) => {
           const isLastOdd = metrics.length % 2 !== 0 && index === metrics.length - 1;
 
           // Si el valor es null, undefined o isLoading es true, mostramos el cargador
@@ -41,9 +42,7 @@ export default function QuickSummaryWidget({ title = "Resumen del Sistema", metr
               </p>
 
               {showSkeleton ? (
-                <div className="mt-4 flex items-center justify-start h-8 overflow-visible">
-                   <div className="dots-loader scale-90 origin-left"></div>
-                </div>
+                <StudiaSkeleton className="mt-4 h-8 w-16 rounded-md" />
               ) : (
                 <p className="text-2xl md:text-3xl font-semibold text-slate-900 mt-2 tracking-tight animate-in fade-in duration-500 transition-all">{item.value}</p>
               )}

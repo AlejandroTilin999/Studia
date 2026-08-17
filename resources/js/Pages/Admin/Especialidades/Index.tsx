@@ -32,7 +32,7 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
 
     const handleExportExcel = () => {
         const headers = ["Código / Abreviación", "Nombre de la Especialidad", "Áreas Técnicas"];
-        const rows = filteredSpecialties.map(s => [
+        const rows = filteredSpecialties.map((s: any) => [
             s.codigo,
             s.nombre,
             s.sub_areas ? s.sub_areas.join(', ') : 'N/A'
@@ -50,7 +50,7 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
 
     const handleExportPDF = () => {
         const headers = ["Código", "Especialidad", "Ramas Técnicas"];
-        const rows = filteredSpecialties.map(s => [
+        const rows = filteredSpecialties.map((s: any) => [
             s.codigo,
             s.nombre,
             s.sub_areas ? s.sub_areas.join(', ') : 'Sin áreas'
@@ -59,7 +59,7 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
         exportToPDF("Catálogo de Especialidades y Carreras", headers, rows, "reporte_especialidades");
     };
 
-    const filteredSpecialties = (especialidades || []).filter(s =>
+    const filteredSpecialties = (especialidades || []).filter((s: any) =>
         (s.nombre?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (s.codigo?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );

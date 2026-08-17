@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { FileSpreadsheet, Layers, FileText, Home, Users } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Layers, Home } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa";
 import { RiFileExcel2Fill } from "react-icons/ri";
-import { useForm, router, Deferred } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
 import DotsLoader from '@/Components/ui/DotsLoader';
 import { useToast } from '@/hooks/useToast';
 import { useExportExcel } from '@/hooks/useExportExcel';
@@ -13,18 +13,17 @@ import { studentService } from './services/studentService';
 import StudentTable from './components/StudentTable';
 import StudentTableControls from './components/StudentTableControls';
 import StudentFormModal from './components/StudentFormModal';
-import { AlumnosIndexProps, StudentFormatted, BackendStudent, BackendGrade } from './types';
+import { StudentFormatted, BackendStudent } from './types';
 
 export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [], filters = { search: '', group: 'all', cycle: null }, isCycleActive, canRegister }: any) {
-    const { toastMessage, triggerToast } = useToast();
+    const { toastMessage } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
 
     // Soportar tanto array directo como objeto de paginación de Laravel
-    const studentData = useMemo(() => {
-        if (Array.isArray(alumnos)) return alumnos;
-        return alumnos?.data || [];
-    }, [alumnos]);
+    const studentPage = alumnos?.items ?? alumnos;
+    const studentData = useMemo(() => Array.isArray(studentPage) ? studentPage : studentPage?.data || [], [studentPage]);
+    const isStudentsLoading = alumnos === null || alumnos === undefined;
 
     // Mapeamos los datos simplificados directamente de la tabla única de alumnos
     const formattedStudents: StudentFormatted[] = useMemo(() => studentData.map((student: BackendStudent) => ({
@@ -40,48 +39,39 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
         rawNombre: student.rawNombre || '',
         rawPaterno: student.rawPaterno || '',
         rawMaterno: student.rawMaterno || '',
-        grades: student.calificaciones?.map((g: any) => ({
-            subject: g.subject || g.course?.nombre || 'Materia Desconocida',
-            code: g.code || g.course?.codigo || 'S/C',
-            score: g.score,
-            period: g.period || '2026-A'
-        })) || []
     })), [studentData]);
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [groupFilter, setGroupFilter] = useState(filters.group || 'all');
     const [cycleFilter, setCycleFilter] = useState(filters.cycle || '');
     const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
+    const [isTableRefreshing, setIsTableRefreshing] = useState(false);
+    const isFirstFilterRender = useRef(true);
 
     // [BÚSQUEDA INSTANTÁNEA EN MEMORIA 0 MS] Filtrar reactivamente los alumnos descargados
-    const filteredStudents: StudentFormatted[] = useMemo(() => {
-        if (!searchQuery.trim()) return formattedStudents;
-        const q = searchQuery.toLowerCase().trim();
-        return formattedStudents.filter(student => 
-            student.name.toLowerCase().includes(q) ||
-            student.matricula.toLowerCase().includes(q) ||
-            student.email.toLowerCase().includes(q) ||
-            student.groupName.toLowerCase().includes(q)
-        );
-    }, [formattedStudents, searchQuery]);
-
     // Sincronización con servidor únicamente cuando cambian los selects de grupo o ciclo
     useEffect(() => {
-        if (
-            groupFilter !== (filters.group || 'all') ||
-            cycleFilter?.toString() !== (filters.cycle || '').toString()
-        ) {
+        if (isFirstFilterRender.current) {
+            isFirstFilterRender.current = false;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            setIsTableRefreshing(true);
             router.get(window.location.pathname, {
-                search: '',
+                search: searchQuery.trim() || undefined,
                 group: groupFilter,
-                cycle: cycleFilter
+                cycle: cycleFilter,
             }, {
                 preserveState: true,
                 replace: true,
-                only: ['alumnos']
+                only: ['alumnos'],
+                onFinish: () => setIsTableRefreshing(false),
             });
-        }
-    }, [groupFilter, cycleFilter]);
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [searchQuery, groupFilter, cycleFilter]);
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
@@ -123,7 +113,7 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
                 const maternalInit = materno.charAt(0) || '';
                 const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
 
-                const groupSelected = groups.find(g => g.id === Number(data.grupo_id));
+                const groupSelected = groups.find((g: any) => g.id === Number(data.grupo_id));
                 const groupCode = groupSelected ? groupSelected.id : '00';
                 const currentYear = new Date().getFullYear();
                 const generatedMatricula = `${initials}${groupCode}${currentYear}`;
@@ -182,9 +172,26 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
         exportToPDF("Reporte General de Alumnos", headers, rows, "reporte_alumnos");
     };
 
-    const totalCount = useMemo(() => (alumnos === null || alumnos === undefined ? null : (Array.isArray(alumnos) ? alumnos.length : alumnos?.total || 0)), [alumnos]);
-    const activeCount = useMemo(() => alumnos === null || alumnos === undefined ? null : formattedStudents.filter(s => s.status === 'active').length, [formattedStudents, alumnos]);
-    const inactiveCount = useMemo(() => alumnos === null || alumnos === undefined ? null : formattedStudents.filter(s => s.status === 'suspended').length, [formattedStudents, alumnos]);
+    const totalCount = alumnos === null || alumnos === undefined ? null : alumnos?.summary?.total ?? studentPage?.total ?? formattedStudents.length;
+    const activeCount = alumnos === null || alumnos === undefined ? null : alumnos?.summary?.active ?? 0;
+    const inactiveCount = alumnos === null || alumnos === undefined ? null : alumnos?.summary?.suspended ?? 0;
+
+    const goToPage = (page: number) => {
+        if (page < 1 || page > (studentPage?.last_page || 1) || page === studentPage?.current_page) return;
+        setIsTableRefreshing(true);
+        router.get(window.location.pathname, {
+            search: searchQuery.trim() || undefined,
+            group: groupFilter,
+            cycle: cycleFilter,
+            page,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: ['alumnos'],
+            onFinish: () => setIsTableRefreshing(false),
+        });
+    };
 
 
     const openCreateModal = () => {
@@ -313,7 +320,7 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
             subtitle={`Consultando expedientes e inscripciones para el periodo: ${currentCycleName}`}
             breadcrumb="Alumnos"
             toastMessage={toastMessage}
-            isLoading={alumnos === null || alumnos === undefined}
+            isLoading={isStudentsLoading}
             metrics={[
                 { code: "T1", label: "Alumnos totales", value: totalCount },
                 { code: "T3", label: "Activos", value: activeCount },
@@ -370,19 +377,33 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
                 isCycleActive={canRegister}
             />
 
-            <Deferred data="alumnos" fallback={
+            {isStudentsLoading || isTableRefreshing ? (
                 <DotsLoader
-                    label="Cargando alumnos"
-                    sublabel="Por favor espera un momento..."
+                    label={isTableRefreshing ? "Actualizando alumnos" : "Cargando alumnos"}
+                    sublabel={isTableRefreshing ? "Aplicando filtros..." : "Preparando expedientes..."}
                 />
-            }>
-                <StudentTable
-                    students={filteredStudents}
-                    onOpenEditModal={openEditModal}
-                    onOpenBajaModal={handleToggleStatus}
-                    onDelete={handleDeleteStudent}
-                />
-            </Deferred>
+            ) : (
+                <>
+                    <StudentTable
+                        students={formattedStudents}
+                        onOpenEditModal={openEditModal}
+                        onOpenBajaModal={handleToggleStatus}
+                        onDelete={handleDeleteStudent}
+                    />
+                    {(studentPage?.last_page || 1) > 1 && (
+                        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                            <p className="text-xs font-medium text-slate-500">
+                                Mostrando {studentPage.from}-{studentPage.to} de {studentPage.total} alumnos
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={() => goToPage((studentPage.current_page || 1) - 1)} disabled={!studentPage.prev_page_url} aria-label="Página anterior" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /></button>
+                                <span className="min-w-20 text-center text-xs font-semibold text-slate-600">Página {studentPage.current_page} de {studentPage.last_page}</span>
+                                <button type="button" onClick={() => goToPage((studentPage.current_page || 1) + 1)} disabled={!studentPage.next_page_url} aria-label="Página siguiente" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight size={16} /></button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
 
             <StudentFormModal
                 isOpen={isFormModalOpen}

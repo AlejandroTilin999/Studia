@@ -5,6 +5,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <meta name="description" content="Prepahid: plataforma escolar para consultar actividades, calificaciones y servicios académicos.">
+        @if (request()->is('admin*', 'docente*', 'alumno*', 'perfil*'))
+            <meta name="robots" content="noindex, nofollow">
+        @endif
 
         <!-- Web Application Manifest (PWA) -->
         <link rel="manifest" href="/manifest.json" />
@@ -23,14 +27,14 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Preload Critical Images -->
+        <!-- Recurso común a todas las sesiones. Los banners por rol se cargan
+             desde su componente para no descargar imágenes que no se usan. -->
         <link rel="preload" href="/assets/phid_logo.webp" as="image">
-        <link rel="preload" href="/assets/logo-ph-blanco.webp" as="image">
-        <link rel="preload" href="/assets/alumna.webp" as="image">
-        <link rel="preload" href="/assets/hero-img.webp" as="image">
-        <link rel="preload" href="/assets/studia-logo.webp" as="image">
-        <link rel="preload" href="/assets/admin-dashboard.webp" as="image">
-        <link rel="preload" href="/assets/docente-dashboard.webp" as="image">
+        @if (request()->is('alumno'))
+            {{-- Se usa en la primera pantalla del alumno: descargarla antes de
+                 hidratar React evita que aparezca tarde tras el loader. --}}
+            <link rel="preload" href="/assets/alumno-dashboard.webp" as="image" type="image/webp" fetchpriority="high">
+        @endif
 
         <!-- Scripts -->
         @routes

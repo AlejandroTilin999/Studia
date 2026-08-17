@@ -1,11 +1,10 @@
 import { Link } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
-import { IconType } from 'react-icons';
 
 interface ContactButtonProps {
     href: string;
     label: string;
-    icon: LucideIcon | IconType;
+    icon: LucideIcon;
     external?: boolean;
     isLink?: boolean;
 }

@@ -1,13 +1,24 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 
 /**
  * Hook for handling real-time events via Laravel Echo and Reverb.
  */
-export function useRealtime() {
+export function useRealtime(options: { onAcademicPeriodChanged?: (event: any) => void } = {}) {
+    const { onAcademicPeriodChanged } = options;
     const { auth } = usePage().props as any;
     const user = auth?.user;
+    const isStudent = (user?.rol || user?.role || '').toUpperCase() === 'ALUMNO';
     const reloadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [isRealtimeReady, setIsRealtimeReady] = useState(false);
+
+    // La conexión a Reverb no debe competir con el contenido visible inicial.
+    // Se activa poco después de pintar el portal, sin perder actualizaciones
+    // durante la navegación normal.
+    useEffect(() => {
+        const timer = window.setTimeout(() => setIsRealtimeReady(true), 1200);
+        return () => window.clearTimeout(timer);
+    }, []);
 
     /**
      * Executes a debounced reload to prevent "reload storms"
@@ -19,35 +30,46 @@ export function useRealtime() {
         }
 
         reloadTimeoutRef.current = setTimeout(() => {
-            console.log('[RT] 🔄 Executing consolidated reload...');
-            router.reload({
+            // La navegación instantánea del alumno actualiza la URL con History API.
+            // Inertia puede conservar la URL anterior en su estado interno; recargarla
+            // restauraría, por ejemplo, /alumno mientras el usuario ya está en una materia.
+            // Siempre refrescamos la ruta que el navegador muestra en este momento.
+            router.visit(window.location.pathname + window.location.search, {
+                method: 'get',
                 preserveScroll: true,
                 preserveState: true,
+                replace: true,
                 ...options
             });
             reloadTimeoutRef.current = null;
-        }, 300); // 300ms window to group consecutive events and prevent 409 conflicts
+        }, 75); // Una sola notificación por operación: ventana breve sin retrasar al alumno.
     };
 
     useEffect(() => {
-        if (!user || !window.Echo) return;
-
-        console.log('[RT] Initializing Real-time listeners for user:', user.id);
+        if (!isRealtimeReady || !user || !window.Echo) return;
 
         // 1. Private User Channel (Notifications, Personal academic updates)
         const userChannel = window.Echo.private(`App.Models.User.${user.id}`);
 
-        userChannel.on('pusher:subscription_succeeded', () => {
-            console.log('%c[RT] ✅ Conectado al canal privado del usuario.', 'color: #10b981; font-weight: bold;');
-        });
-
-        userChannel.listen('.NotificationCreated', (e: any) => {
-            console.log('[RT] Notification Received:', e);
-            debouncedReload({ only: ['unreadNotificationsCount', 'recentActivities'] });
-        });
+        if (user.rol === 'ADMIN') {
+            userChannel.listen('.NotificationCreated', (e: any) => {
+                debouncedReload({ only: ['unreadNotificationsCount', 'recentActivities'] });
+            });
+        }
 
         userChannel.listen('.GradeUpdated', (e: any) => {
-            console.log('[RT] Grade Updated:', e);
+            // El alumno puede estar viendo el detalle de una tarea. Actualizar
+            // también la tarea inicial y el kardex de la materia abierta evita
+            // que tenga que recargar el navegador para ver su nota devuelta.
+            if (isStudent) {
+                // La vista de la tarea escucha este evento y cambia su estado
+                // local inmediatamente. La visita parcial posterior sólo
+                // revalida kardex y datos derivados en segundo plano.
+                window.dispatchEvent(new CustomEvent('studia:grade-updated', { detail: e }));
+                debouncedReload({ only: ['subjectKardex', 'kardex', 'taskList', 'initialTask'] });
+                return;
+            }
+
             debouncedReload({ only: ['kardex', 'alumnos', 'calificaciones'] });
         });
 
@@ -56,112 +78,126 @@ export function useRealtime() {
             const adminChannel = window.Echo.private('Admin.Dashboard');
 
             adminChannel.listen('.AuditLogCreated', (e: any) => {
-                console.log('[RT] Audit Log Received:', e);
                 debouncedReload({ only: ['recentActivities'] });
             });
 
             adminChannel.listen('.AcademicPeriodChanged', (e: any) => {
-                console.log('[RT] Period Update (Admin):', e);
                 debouncedReload({ only: ['cycles'] });
             });
 
             adminChannel.listen('.EnrollmentChanged', (e: any) => {
-                console.log('[RT] Enrollment Change Received:', e);
                 debouncedReload({ only: ['studentsCount', 'usersCount', 'alumnos'] });
             });
         }
 
-        // 3. Public Global Channel
-        window.Echo.channel('Public.Global')
+        // 3. Canal privado compartido por usuarios autenticados.
+        window.Echo.private('Academic.Cycle')
             .listen('.AcademicPeriodChanged', (e: any) => {
-                console.log('[RT] ⚡ Parcial/Ciclo Cambiado en Admin:', e);
-                try {
-                    const bc = new BroadcastChannel('school-cycle-channel');
-                    bc.postMessage({ type: 'cycle-update', msg: 'PARCIAL_TOGGLED', timestamp: Date.now() });
-                    bc.close();
-                } catch(err) {}
+                if (isStudent && onAcademicPeriodChanged) {
+                    onAcademicPeriodChanged(e);
+                    return;
+                }
+                debouncedReload();
             })
             .listen('.TaskCreated', (e: any) => {
-                console.log('[RT] Global Task Created:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                // El alumno recibe GroupDataUpdated con el listado puntual de tareas.
+                // Una segunda visita Inertia global es redundante y puede competir
+                // con la navegación instantánea entre materias.
+                if (isStudent) return;
+                debouncedReload({ only: ['taskList'] });
             })
             .listen('.TaskUpdated', (e: any) => {
-                console.log('[RT] Global Task Updated:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                if (isStudent) return;
+                debouncedReload({ only: ['taskList'] });
             })
             .listen('.TaskDeleted', (e: any) => {
-                console.log('[RT] Global Task Deleted:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                if (isStudent) return;
+                debouncedReload({ only: ['taskList'] });
+            })
+            .listen('.CriteriaUpdated', (e: any) => {
+                debouncedReload();
             });
 
         return () => {
-            console.log('[RT] Leaving channels...');
             window.Echo.leave(`App.Models.User.${user.id}`);
-            window.Echo.leave('Public.Global');
+            window.Echo.leave('Academic.Cycle');
             if (user.rol === 'ADMIN') {
                 window.Echo.leave('Admin.Dashboard');
             }
             if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
         };
-    }, [user?.id]);
+    }, [isRealtimeReady, user?.id, isStudent, onAcademicPeriodChanged]);
 
     /**
      * Subscribe to a specific academic group channel.
      */
-    const subscribeToGroup = (groupId: number | string, onGroupUpdate?: (e: any) => void) => {
+    const useGroupSubscription = (
+        groupId: number | string,
+        onGroupUpdate?: (e: any) => void,
+        onTasksUpdate?: (e: any) => void,
+    ) => {
         useEffect(() => {
-            if (!groupId || !window.Echo) return;
+            if (!isRealtimeReady || !groupId || !window.Echo) return;
 
-            console.log('[RT] Subscribing to group:', groupId);
             const groupChannel = window.Echo.private(`AcademicGroup.${groupId}`);
 
-            groupChannel.on('pusher:subscription_succeeded', () => {
-                console.log(`%c[RT] ✅ Conectado al canal del Grupo Académico: ${groupId}`, 'color: #10b981; font-weight: bold;');
-            });
-
             groupChannel.listen('.TaskCreated', (e: any) => {
-                console.log('[RT] Task Created Received:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                if (isStudent) return;
+                debouncedReload({ only: ['taskList'] });
             });
 
             groupChannel.listen('.TaskUpdated', (e: any) => {
-                console.log('[RT] Task Updated Received:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                if (isStudent) return;
+                debouncedReload({ only: ['taskList'] });
             });
 
             groupChannel.listen('.TaskDeleted', (e: any) => {
-                console.log('[RT] Task Deleted Received:', e);
-                debouncedReload({ only: ['taskList', 'kardex'] });
+                if (isStudent) return;
+                debouncedReload({ only: ['taskList'] });
+            });
+
+            groupChannel.listen('.CriteriaUpdated', (e: any) => {
+                if (onGroupUpdate) onGroupUpdate(e);
+                debouncedReload({ only: ['classInfo', 'kardex', 'alumnos', 'taskList'] });
             });
 
             groupChannel.listen('.GroupDataUpdated', (e: any) => {
-                console.log('[RT] ⚡ Group Data Mass Update Received:', e);
-                if (onGroupUpdate) {
-                    onGroupUpdate(e);
-                } else {
-                    router.reload({
-                        only: ['classInfo', 'alumnoGroups', 'kardex', 'taskList'],
-                        preserveScroll: true,
-                        preserveState: true,
-                    } as any);
+                if (e?.type === 'tasks' && Array.isArray(e?.tasks) && onTasksUpdate) {
+                    onTasksUpdate(e);
+                    return;
                 }
+                // El tema se puede aplicar directamente en el cliente. Evitar
+                // una visita Inertia mantiene el cambio perceptiblemente instantáneo.
+                if (e?.type === 'theme') {
+                    onGroupUpdate?.(e);
+                    return;
+                }
+                // Una entrega debe actualizar al docente desde su API de aula
+                // inmediatamente. No basta con recargar taskList, porque las
+                // evidencias viven dentro de los datos completos de la clase.
+                if (e?.type === 'submission') {
+                    onGroupUpdate?.(e);
+                    return;
+                }
+                if (onGroupUpdate && !['tasks', 'submission'].includes(e?.type)) onGroupUpdate(e);
+                const only = ['tasks', 'submission'].includes(e?.type)
+                    ? ['taskList']
+                    : ['alumnoGroups', 'kardex', 'taskList'];
+                debouncedReload({ only });
             });
 
             // ⚡ Escuchar cambio de parciales emitido a nivel grupo/global
             groupChannel.listen('.AcademicPeriodChanged', (e: any) => {
-                console.log('%c[RT] ⚡ Actualización silenciosa de Parcial recibida:', 'color: #10b981; font-weight: bold;', e);
-                if (onGroupUpdate) {
-                    onGroupUpdate(e);
-                }
+                if (onGroupUpdate) onGroupUpdate(e);
+                debouncedReload({ only: ['classInfo', 'kardex', 'alumnoGroups'] });
             });
 
             return () => {
-                console.log('[RT] Leaving group channel:', groupId);
                 window.Echo.leave(`AcademicGroup.${groupId}`);
                 if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
             };
-        }, [groupId]);
+        }, [groupId, isStudent, isRealtimeReady]);
     };
 
-    return { subscribeToGroup };
+    return { useGroupSubscription };
 }

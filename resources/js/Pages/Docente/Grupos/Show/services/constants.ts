@@ -10,6 +10,7 @@ export interface Task {
     nombre: string;
     descripcion?: string;
     fecha_entrega?: string;
+    hora_entrega?: string;
     puntos?: number;
     type?: 'task' | 'material';
     attachments?: { name: string; size: string; type: string }[];

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, Layers, Trash2, Plus, ArrowRight, ArrowLeft } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Check, Layers, Trash2, Plus, ArrowRight, CornerDownLeft, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Criterion } from '../services/constants';
 import BackButton from '@/Components/common/BackButton';
 
@@ -36,204 +36,373 @@ export default function WizardSetup({
     finishWizard,
     onBack
 }: WizardSetupProps) {
-    return (
-        <div>
-            {/* Botón de regreso usando componente reutilizable BackButton */}
-            {onBack && (
-                <div className="mb-4">
-                    <BackButton onClick={onBack} />
-                </div>
-            )}
+    const nameInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const pctInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const [warningMsg, setWarningMsg] = useState<{ id: number; msg: string } | null>(null);
 
-            {/* Stepper */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    {[{ n: 1, label: 'Criterios' }, { n: 2, label: 'Confirmar' }].map((s, i) => (
-                        <div key={s.n} className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold transition-all ${wizardStep >= s.n ? 'bg-[#1e88e5] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                    {wizardStep > s.n ? <Check size={13} /> : s.n}
-                                </div>
-                                <span className={`text-xs font-extrabold ${wizardStep >= s.n ? 'text-slate-700' : 'text-slate-400'}`}>
-                                    {s.label}
-                                </span>
-                            </div>
-                            {i < 1 && <div className="w-12 h-px bg-slate-200" />}
-                        </div>
-                    ))}
+    // Validación inteligente de porcentaje disponible (no permite exceder el 100%)
+    const handlePctChange = (criterionId: number, rawVal: string) => {
+        const cleanVal = rawVal.replace(/[^0-9]/g, '');
+        const num = cleanVal === '' ? 0 : parseInt(cleanVal, 10);
+
+        // Suma de los demás criterios
+        const otherSum = draftCriteria
+            .filter(c => c.id !== criterionId)
+            .reduce((sum, c) => sum + (c.porcentaje || 0), 0);
+
+        const available = Math.max(0, 100 - otherSum);
+
+        if (num > available) {
+            // Se excede del disponible -> limitar automáticamente al máximo disponible
+            updateCriterion(criterionId, 'porcentaje', available);
+            setWarningMsg({
+                id: criterionId,
+                msg: available > 0
+                    ? `Solo tienes ${available}% disponible para este criterio.`
+                    : `Ya asignaste el 100% de la ponderación.`
+            });
+            setTimeout(() => {
+                setWarningMsg(prev => (prev?.id === criterionId ? null : prev));
+            }, 3500);
+        } else {
+            updateCriterion(criterionId, 'porcentaje', num);
+            if (warningMsg?.id === criterionId) setWarningMsg(null);
+        }
+    };
+
+    // Salto automático de input con la tecla Enter
+    const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (idx < draftCriteria.length - 1) {
+                nameInputRefs.current[idx + 1]?.focus();
+                nameInputRefs.current[idx + 1]?.select();
+            } else {
+                addCriterion();
+                setTimeout(() => {
+                    nameInputRefs.current[idx + 1]?.focus();
+                    nameInputRefs.current[idx + 1]?.select();
+                }, 60);
+            }
+        }
+    };
+
+    const handlePctKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (idx < draftCriteria.length - 1) {
+                nameInputRefs.current[idx + 1]?.focus();
+                nameInputRefs.current[idx + 1]?.select();
+            } else {
+                addCriterion();
+                setTimeout(() => {
+                    nameInputRefs.current[idx + 1]?.focus();
+                    nameInputRefs.current[idx + 1]?.select();
+                }, 60);
+            }
+        }
+    };
+
+    const handleAddClick = () => {
+        addCriterion();
+        setTimeout(() => {
+            const nextIdx = draftCriteria.length;
+            nameInputRefs.current[nextIdx]?.focus();
+            nameInputRefs.current[nextIdx]?.select();
+        }, 60);
+    };
+
+    const hasPlatformSync = draftCriteria.some(c => c.sincronizar_tareas);
+
+    return (
+        <div className="w-full space-y-6">
+            {/* Encabezado con Botón de Regreso y Stepper Minimalista */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {onBack ? (
+                    <BackButton onClick={onBack} />
+                ) : <div />}
+
+                {/* Stepper Píldora Minimalista Menos Redondeado */}
+                <div className="inline-flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/60 self-start sm:self-auto select-none">
+                    <button
+                        type="button"
+                        onClick={() => setWizardStep(1)}
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            wizardStep === 1
+                                ? 'bg-white text-[#0266E0] shadow-xs'
+                                : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <span className="w-4 h-4 rounded-md bg-[#0266E0]/10 text-[#0266E0] flex items-center justify-center text-[10px] font-black">1</span>
+                        <span>Criterios</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => pctValid && setWizardStep(2)}
+                        disabled={!pctValid}
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                            wizardStep === 2
+                                ? 'bg-white text-[#0266E0] shadow-xs'
+                                : 'text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed hover:text-slate-700'
+                        }`}
+                    >
+                        <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-black ${
+                            wizardStep === 2 ? 'bg-[#0266E0]/10 text-[#0266E0]' : 'bg-slate-200 text-slate-500'
+                        }`}>2</span>
+                        <span>Confirmación</span>
+                    </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                {/* Step 1: Criterios */}
+            {/* Contenedor Principal Estilo Tarjeta Blanca Menos Redondeado (rounded-2xl) */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                {/* STEP 1: CONFIGURAR CRITERIOS */}
                 {wizardStep === 1 && (
-                    <div className="p-8">
-                        <h2 className="text-lg font-extrabold text-slate-800 mb-1">
-                            Criterios de evaluación
-                        </h2>
-                        <p className="text-sm text-slate-400 font-semibold mb-6">
-                            {parcialLabel} · {grupo} · {materia}
-                        </p>
+                    <div className="p-6 sm:p-8 space-y-7">
+                        {/* Título y Subtítulo de la Unidad */}
+                        <div className="text-left space-y-1">
+                            <span className="text-[11px] font-black text-[#0266E0] uppercase tracking-widest block">Configuración de Evaluación</span>
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                                Criterios de evaluación
+                            </h2>
+                            <p className="text-xs sm:text-sm font-medium text-slate-500">
+                                {parcialLabel} · <span className="font-bold text-slate-700">{grupo}</span> · {materia}
+                            </p>
+                        </div>
 
-                        {/* Indicador suma */}
-                        <div className={`flex flex-col gap-1.5 mb-5 px-4 py-3 rounded-xl ${pctValid ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>
-                            <div className="flex items-center gap-2 text-xs font-extrabold">
-                                <div className={`w-2 h-2 rounded-full ${pctValid ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                                Distribución: {totalPct}% {pctValid ? '— Configuración lista para guardar' : '— Pendiente por asignar (Total 100%)'}
-                            </div>
-                            {!draftCriteria.some(c => c.sincronizar_tareas) && (
-                                <div className="text-[10px] font-bold ml-4 text-slate-400">
-                                    * Es necesario vincular un criterio con la plataforma.
+                        {/* Pauta de Estado de Distribución (Líneas arriba y abajo, sin bordes laterales) */}
+                        <div className="py-4 border-y border-slate-200/80 select-none">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
+                                <div className="text-left space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`w-2.5 h-2.5 rounded-full inline-block ${
+                                            pctValid ? 'bg-emerald-500' : totalPct > 100 ? 'bg-rose-500' : 'bg-amber-400'
+                                        }`} />
+                                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                                            {pctValid ? 'Distribución completa (100%)' : totalPct > 100 ? `Excedido por ${totalPct - 100}%` : `Faltan ${100 - totalPct}% por asignar`}
+                                        </h4>
+                                    </div>
+                                    <p className="text-[11.5px] font-medium text-slate-500 pl-4">
+                                        {pctValid ? 'Todo listo para revisar y guardar la ponderación' : 'La suma total de porcentajes debe dar exactamente 100%'}
+                                    </p>
                                 </div>
+
+                                <div className="text-right shrink-0">
+                                    <span className={`text-2xl font-black ${
+                                        pctValid ? 'text-emerald-600' : totalPct > 100 ? 'text-rose-600' : 'text-slate-800'
+                                    }`}>{totalPct}%</span>
+                                    <span className="text-xs font-bold text-slate-400 block">de 100%</span>
+                                </div>
+                            </div>
+
+                            {/* Barra de Ponderación Global */}
+                            <div className="w-full bg-slate-100 h-2 rounded-lg overflow-hidden">
+                                <div
+                                    className={`h-full rounded-lg transition-all duration-500 ${
+                                        pctValid ? 'bg-emerald-500' : totalPct > 100 ? 'bg-rose-500' : 'bg-[#0266E0]'
+                                    }`}
+                                    style={{ width: `${Math.min(totalPct, 100)}%` }}
+                                />
+                            </div>
+
+                            {!hasPlatformSync && (
+                                <p className="text-[11px] font-bold text-amber-600 mt-2 flex items-center gap-1.5 text-left">
+                                    <span>*</span> Recuerda activar la casilla "Plataforma" en al menos 1 criterio para vincular tareas del curso.
+                                </p>
                             )}
                         </div>
 
-                        {/* Lista de criterios */}
-                        <div className="space-y-3 mb-6">
-                            {draftCriteria.map((c, idx) => (
-                                <div key={c.id} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <span className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[11px] font-extrabold text-slate-500 shrink-0">
-                                        {idx + 1}
-                                    </span>
+                        {/* Lista de Filas de Criterios (Menos Redondeados: rounded-xl y rounded-lg) */}
+                        <div className="space-y-3">
+                            {draftCriteria.map((c, idx) => {
+                                // Calculamos disponible restante para guiar al usuario
+                                const otherSum = draftCriteria
+                                    .filter(item => item.id !== c.id)
+                                    .reduce((sum, item) => sum + (item.porcentaje || 0), 0);
+                                const availableForThis = Math.max(0, 100 - otherSum);
 
-                                    {/* Nombre */}
-                                    <input
-                                        type="text"
-                                        value={c.nombre}
-                                        onChange={e => updateCriterion(c.id, 'nombre', e.target.value)}
-                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 font-semibold outline-none focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
-                                        placeholder="Nombre del criterio"
-                                    />
+                                return (
+                                    <div key={c.id} className="space-y-1">
+                                        <div className="group relative flex flex-col md:flex-row items-stretch md:items-center gap-3 p-3.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-200/80 hover:border-slate-300 rounded-xl transition-all duration-200 shadow-2xs">
+                                            {/* Nombre e Índice */}
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <span className="w-7 h-7 rounded-md bg-white border border-slate-200/80 text-slate-700 flex items-center justify-center text-xs font-black shrink-0 shadow-2xs">
+                                                    {idx + 1}
+                                                </span>
 
-                                    {/* Porcentaje */}
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            value={c.porcentaje === 0 ? '' : c.porcentaje}
-                                            onChange={e => {
-                                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                                const num = val === '' ? 0 : parseInt(val);
-                                                if (num <= 100) updateCriterion(c.id, 'porcentaje', num);
-                                            }}
-                                            className="w-16 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-extrabold text-slate-800 outline-none focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all"
-                                            placeholder="0"
-                                        />
-                                        <span className="text-xs font-extrabold text-slate-400">%</span>
+                                                {/* Input del Nombre con marco de esquinas rectas/suaves (rounded-lg) */}
+                                                <div className="flex-1 min-w-0 bg-white border border-slate-200/80 rounded-lg px-3 py-1.5 focus-within:border-[#0266E0] focus-within:ring-2 focus-within:ring-blue-500/10 shadow-2xs transition-all">
+                                                    <input
+                                                        ref={el => (nameInputRefs.current[idx] = el)}
+                                                        type="text"
+                                                        value={c.nombre}
+                                                        onChange={e => updateCriterion(c.id, 'nombre', e.target.value)}
+                                                        onKeyDown={e => handleNameKeyDown(e, idx)}
+                                                        className="w-full bg-transparent border-0 p-0 text-sm font-extrabold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-0"
+                                                        placeholder="Nombre del criterio (Ej: Examen, Tareas, Proyecto...)"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Controles de Porcentaje, Barra y Acciones */}
+                                            <div className="flex items-center justify-between md:justify-end gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200/60">
+                                                {/* Barra de progreso visual integrada */}
+                                                <div className="hidden lg:flex items-center gap-2 w-40">
+                                                    <div className="flex-1 bg-slate-200/80 h-2 rounded-md overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-[#0266E0] rounded-md transition-all duration-300"
+                                                            style={{ width: `${Math.min(c.porcentaje, 100)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Input de Porcentaje (Validado que no supere el disponible) */}
+                                                <div className="flex items-center gap-2 bg-white border border-slate-200/80 rounded-lg px-3 py-1.5 shadow-2xs focus-within:border-[#0266E0] focus-within:ring-2 focus-within:ring-blue-500/10 shrink-0">
+                                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Ponderación</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            ref={el => (pctInputRefs.current[idx] = el)}
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            value={c.porcentaje === 0 ? '' : c.porcentaje}
+                                                            onChange={e => handlePctChange(c.id, e.target.value)}
+                                                            onKeyDown={e => handlePctKeyDown(e, idx)}
+                                                            className="w-10 text-center bg-transparent border-0 p-0 text-sm font-black text-slate-900 outline-none focus:ring-0"
+                                                            placeholder="0"
+                                                            title={`Disponible: ${availableForThis}%`}
+                                                        />
+                                                        <span className="text-xs font-black text-slate-400">%</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Botón Toggle de Vinculación a Plataforma */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleSyncTasks(c.id)}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shrink-0 ${
+                                                        c.sincronizar_tareas
+                                                            ? 'bg-[#0266E0] text-white border-transparent shadow-xs'
+                                                            : 'bg-white border-slate-200/80 text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+                                                    }`}
+                                                    title={c.sincronizar_tareas ? 'Vinculado a tareas del curso' : 'Haz clic para vincular a tareas'}
+                                                >
+                                                    <Layers size={13} className={c.sincronizar_tareas ? 'text-white' : 'text-slate-400'} />
+                                                    <span>Plataforma</span>
+                                                </button>
+
+                                                {/* Botón de Eliminar */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeCriterion(c.id)}
+                                                    disabled={draftCriteria.length <= 1}
+                                                    className="w-7 h-7 rounded-lg hover:bg-rose-50 text-slate-300 hover:text-rose-500 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center transition-colors shrink-0"
+                                                    title="Eliminar criterio"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Mensaje de Advertencia Inteligente sobre Porcentaje Máximo Disponible */}
+                                        {warningMsg?.id === c.id && (
+                                            <div className="flex items-center gap-1.5 px-3 text-[11px] font-extrabold text-amber-600 bg-amber-50/80 py-1 rounded-lg border border-amber-200/60 text-left">
+                                                <AlertTriangle size={13} className="shrink-0 text-amber-500" />
+                                                <span>{warningMsg.msg}</span>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {/* Barra de progreso */}
-                                    <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
-                                        <div
-                                            className="h-full bg-[#1e88e5] rounded-full transition-all"
-                                            style={{ width: `${Math.min(c.porcentaje, 100)}%` }}
-                                        />
-                                    </div>
-
-                                    {/* Sincronizar con plataforma */}
-                                    <button
-                                        onClick={() => toggleSyncTasks(c.id)}
-                                        type="button"
-                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border shrink-0 ${c.sincronizar_tareas
-                                                ? 'bg-blue-50 border-blue-200 text-[#1e88e5]'
-                                                : 'bg-white border-slate-200 text-slate-400 hover:text-slate-655 hover:bg-slate-50'
-                                            }`}
-                                    >
-                                        <Layers size={13} className={c.sincronizar_tareas ? 'text-[#1e88e5]' : 'text-slate-400'} />
-                                        <span>Plataforma</span>
-                                    </button>
-
-                                    {/* Eliminar */}
-                                    <button
-                                        onClick={() => removeCriterion(c.id)}
-                                        disabled={draftCriteria.length <= 1}
-                                        className="w-7 h-7 rounded-full hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
-                                    >
-                                        <Trash2 size={13} />
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
-                        {/* Agregar criterio */}
+                        {/* Botón punteado Agregar Criterio (Estilo Cuadrado rounded-lg) */}
                         <button
-                            onClick={addCriterion}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-xs font-extrabold text-slate-400 hover:border-[#1e88e5] hover:text-[#1e88e5] hover:bg-blue-50/30 transition-all mb-8"
+                            type="button"
+                            onClick={handleAddClick}
+                            className="w-full py-3 border-2 border-dashed border-slate-200/90 hover:border-[#0266E0] bg-slate-50/50 hover:bg-blue-50/30 rounded-lg text-xs font-black text-slate-500 hover:text-[#0266E0] transition-all flex items-center justify-center gap-2 cursor-pointer group shadow-2xs select-none"
                         >
-                            <Plus size={14} />
-                            Agregar criterio
+                            <Plus size={15} className="stroke-[3] group-hover:scale-110 transition-transform" />
+                            <span>Agregar criterio</span>
+                            <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-white border border-slate-200 text-slate-400 group-hover:border-blue-200 group-hover:text-[#0266E0] transition-colors">
+                                <CornerDownLeft size={10} /> Presiona Enter
+                            </span>
                         </button>
 
-                        {/* Acciones */}
-                        <div className="flex justify-end">
+                        {/* Pie con Acción Principal */}
+                        <div className="flex justify-end pt-3 border-t border-slate-100">
                             <button
+                                type="button"
                                 onClick={() => setWizardStep(2)}
                                 disabled={!pctValid}
-                                className="flex items-center gap-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]"
+                                className="flex items-center gap-2 bg-[#0266E0] hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-black text-xs transition-all shadow-sm hover:shadow active:scale-[0.98]"
                             >
-                                Revisar y confirmar
-                                <ArrowRight size={15} />
+                                <span>Revisar y confirmar</span>
+                                <ArrowRight size={15} className="stroke-[3]" />
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* Step 2: Confirmar */}
+                {/* STEP 2: CONFIRMAR CONFIGURACIÓN */}
                 {wizardStep === 2 && (
-                    <div className="p-8">
-                        <h2 className="text-lg font-extrabold text-slate-800 mb-1">
-                            Confirmar configuración
-                        </h2>
-                        <p className="text-sm text-slate-400 font-semibold mb-6">
-                            {parcialLabel} · {grupo} · {materia}
-                        </p>
+                    <div className="p-6 sm:p-8 space-y-7">
+                        <div className="text-left space-y-1">
+                            <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest block">Paso Final</span>
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                                Confirmar ponderación
+                            </h2>
+                            <p className="text-xs sm:text-sm font-medium text-slate-500">
+                                {parcialLabel} · <span className="font-bold text-slate-700">{grupo}</span> · {materia}
+                            </p>
+                        </div>
 
-                        {/* Resumen */}
-                        <div className="bg-slate-50 rounded-2xl border border-slate-100 divide-y divide-slate-100 mb-6 overflow-hidden">
+                        {/* Tarjeta Resumen */}
+                        <div className="bg-slate-50/80 rounded-xl border border-slate-200/80 divide-y divide-slate-200/60 overflow-hidden text-left">
                             {draftCriteria.map((c, idx) => (
                                 <div key={c.id} className="flex items-center justify-between px-5 py-3.5">
                                     <div className="flex items-center gap-3">
-                                        <span className="w-5 h-5 rounded-full bg-[#1e88e5]/10 text-[#1e88e5] flex items-center justify-center text-[10px] font-extrabold">
+                                        <span className="w-6 h-6 rounded-md bg-[#0266E0]/10 text-[#0266E0] flex items-center justify-center text-xs font-black">
                                             {idx + 1}
                                         </span>
-                                        <span className="text-sm font-semibold text-slate-700">{c.nombre}</span>
+                                        <span className="text-sm font-extrabold text-slate-900">{c.nombre}</span>
                                         {c.sincronizar_tareas && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-[#1e88e5] border border-blue-100 px-2 py-0.5 rounded-md">
-                                                <Layers size={9} />
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold bg-blue-50 text-[#0266E0] border border-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                                <Layers size={10} />
                                                 Plataforma
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {/* mini barra */}
-                                        <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#1e88e5] rounded-full" style={{ width: `${c.porcentaje}%` }} />
+                                    <div className="flex items-center gap-3">
+                                        <div className="hidden sm:block w-28 h-2 bg-slate-200 rounded-md overflow-hidden">
+                                            <div className="h-full bg-[#0266E0] rounded-md" style={{ width: `${c.porcentaje}%` }} />
                                         </div>
-                                        <span className="text-sm font-extrabold text-slate-800 w-10 text-right">
-                                            {c.porcentaje === 0 ? '' : `${c.porcentaje}%`}
+                                        <span className="text-sm font-black text-slate-900 w-12 text-right">
+                                            {c.porcentaje}%
                                         </span>
                                     </div>
                                 </div>
                             ))}
-                            <div className="flex items-center justify-between px-5 py-3 bg-[#e8f2ff]/60">
-                                <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total</span>
-                                <span className="text-sm font-black text-[#1e88e5]">100%</span>
+
+                            <div className="flex items-center justify-between px-5 py-3.5 bg-blue-50/60">
+                                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Suma Total</span>
+                                <span className="text-base font-black text-[#0266E0]">100%</span>
                             </div>
                         </div>
 
-                        {/* Acciones */}
-                        <div className="flex items-center justify-between">
+                        {/* Acciones Finales */}
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                             <BackButton
                                 onClick={() => setWizardStep(1)}
-                                label="Editar criterios"
+                                label="Modificar criterios"
                             />
                             <button
+                                type="button"
                                 onClick={finishWizard}
-                                className="flex items-center gap-2 bg-[#1e88e5] hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-extrabold text-sm transition-all shadow-sm active:scale-[0.98]"
+                                className="flex items-center gap-2 bg-[#0266E0] hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-black text-xs transition-all shadow-sm hover:shadow active:scale-[0.98]"
                             >
-                                <Check size={15} />
-                                Guardar y entrar al parcial
+                                <Check size={15} className="stroke-[3]" />
+                                <span>Guardar y comenzar parcial</span>
                             </button>
                         </div>
                     </div>

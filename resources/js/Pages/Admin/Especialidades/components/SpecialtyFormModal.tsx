@@ -35,11 +35,9 @@ export default function SpecialtyFormModal({
     useEffect(() => {
         if (isOpen) {
             if (mode === 'create') {
-                setData({
-                    nombre: '',
-                    codigo: '',
-                    sub_areas: []
-                });
+                setData('nombre', '');
+                setData('codigo', '');
+                setData('sub_areas', []);
             }
         }
     }, [isOpen, mode]);

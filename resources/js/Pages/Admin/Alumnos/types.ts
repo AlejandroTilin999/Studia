@@ -1,13 +1,3 @@
-export interface BackendGrade {
-    id: number;
-    score: number;
-    period: string;
-    course?: {
-        id: number;
-        nombre: string;
-    };
-}
-
 export interface BackendStudent {
     id: number;
     matricula: string;
@@ -19,7 +9,6 @@ export interface BackendStudent {
         id: number;
         nombre: string;
     };
-    calificaciones?: BackendGrade[];
     telefono?: string;
     fecha_nacimiento?: string;
     rawNombre?: string;
@@ -47,15 +36,4 @@ export interface StudentFormatted {
     rawNombre?: string;
     rawPaterno?: string;
     rawMaterno?: string;
-    grades: {
-        subject: string;
-        code: string;
-        score: number;
-        period: string;
-    }[];
-}
-
-export interface AlumnosIndexProps {
-    alumnos: BackendStudent[];
-    groups: AcademicGroupProp[];
 }

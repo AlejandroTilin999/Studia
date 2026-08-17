@@ -116,9 +116,9 @@ export default function TeacherFormModal({
                                 <FormLabel>Correo Institucional</FormLabel>
                                 <FormInput
                                     type="email"
-                                    readOnly
                                     value={data.email || 'PROCESANDO...'}
-                                    className="bg-slate-50 border border-slate-200 text-slate-500 font-mono focus:ring-0 cursor-not-allowed h-9 text-xs"
+                                    onChange={e => setData('email', e.target.value)}
+                                    className="bg-white border border-slate-200 text-slate-700 font-mono h-9 text-xs"
                                     icon={<Mail size={13} />}
                                 />
                             </div>

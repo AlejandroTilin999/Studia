@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { usePage, Link, router } from '@inertiajs/react';
 import {
   Users,
@@ -21,6 +21,7 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SwalHelper } from "@/utils/SwalHelper";
+import ImageWithSkeleton from '@/Components/ui/ImageWithSkeleton';
 
 export type Role = 'ADMIN' | 'DOCENTE' | 'ALUMNO';
 
@@ -29,8 +30,32 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ role: propRole }: SidebarProps) {
-  const { url } = usePage();
-  const pathname = url.split('?')[0];
+  const { url: inertiaUrl } = usePage();
+  const [currentLocationUrl, setCurrentLocationUrl] = useState(() => window.location.pathname + window.location.search);
+
+  useEffect(() => {
+    const syncCurrentLocation = (event?: Event) => {
+      const localUrl = event instanceof CustomEvent ? event.detail?.url : null;
+      setCurrentLocationUrl(localUrl || window.location.pathname + window.location.search);
+    };
+    syncCurrentLocation();
+    window.addEventListener('popstate', syncCurrentLocation);
+    // Las transiciones locales del aula no generan un evento nativo de
+    // navegación. Este evento mantiene el estado activo del menú sincronizado.
+    window.addEventListener('studia:navigation', syncCurrentLocation);
+    return () => {
+      window.removeEventListener('popstate', syncCurrentLocation);
+      window.removeEventListener('studia:navigation', syncCurrentLocation);
+    };
+  }, [inertiaUrl]);
+
+  const [currentPathname, currentSearchStr] = currentLocationUrl.split('?');
+  const activeSubjectId = useMemo(() => {
+    const routeMatch = currentPathname.match(/^\/alumno\/materias\/([^/]+)/);
+    if (routeMatch) return decodeURIComponent(routeMatch[1]);
+    const params = new URLSearchParams(currentSearchStr || '');
+    return params.get('c') || params.get('id');
+  }, [currentPathname, currentSearchStr]);
 
   const {
     auth,
@@ -43,9 +68,9 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const userRole = (user?.rol || user?.role || '').toUpperCase();
 
   let resolvedRole: Role = 'ADMIN';
-  if (userRole === 'DOCENTE' || url.startsWith('/docente')) {
+  if (userRole === 'DOCENTE' || currentPathname.startsWith('/docente')) {
     resolvedRole = 'DOCENTE';
-  } else if (userRole === 'ALUMNO' || url.startsWith('/alumno')) {
+  } else if (userRole === 'ALUMNO' || currentPathname.startsWith('/alumno')) {
     resolvedRole = 'ALUMNO';
   }
 
@@ -66,7 +91,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       roles: ["ADMIN"]
     },
     {
-      name: "Profesores",
+      name: "Docentes",
       icon: Users,
       path: "/admin/docentes",
       roles: ["ADMIN"]
@@ -80,7 +105,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     {
       name: "Grupos",
       icon: Layers,
-      path: role === "ADMIN" ? "/admin/grupos" : (deferredDocenteGroups?.length > 0 ? `/docente/grupos/show?id=${deferredDocenteGroups[0].id}` : '/docente'),
+      path: role === "ADMIN" ? "/admin/grupos" : (deferredDocenteGroups?.length > 0 ? `/docente/clases/${deferredDocenteGroups[0].id}` : '/docente'),
       roles: ["ADMIN", "DOCENTE"]
     },
     {
@@ -126,8 +151,8 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
   const alumnoGroups = deferredAlumnoGroups || [];
   const unreadCount = deferredUnreadCount || 0;
 
-  const [gruposOpen, setGruposOpen] = useState(() => url.startsWith('/docente/grupos') || role === 'DOCENTE');
-  const [materiasOpen, setMateriasOpen] = useState(() => (url.startsWith('/alumno') && url.includes('tab=tasks')) || role === 'ALUMNO');
+  const [gruposOpen, setGruposOpen] = useState(() => currentLocationUrl.startsWith('/docente/grupos') || role === 'DOCENTE');
+  const [materiasOpen, setMateriasOpen] = useState(() => (currentLocationUrl.startsWith('/alumno') && currentLocationUrl.includes('tab=tasks')) || role === 'ALUMNO');
 
   const SidebarInner = ({ isSheet = false }) => {
     const isMenuExpanded = expanded || isSheet;
@@ -153,14 +178,17 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
       )}>
         {isMenuExpanded ? (
           <>
-            <div
-              className="h-[34px] w-32 bg-[url('/assets/phid_logo.webp')] bg-contain bg-no-repeat bg-left shrink-0"
-              role="img"
-              aria-label="Logo Prepa Hidalgo"
+            <ImageWithSkeleton
+              src="/assets/phid_logo.webp"
+              alt="Logo Prepa Hidalgo"
+              containerClassName="h-[34px] w-32"
+              className="h-full w-full object-contain object-left"
             />
             <button
                 type="button"
                 onClick={() => isMobile ? setOpenMobile(!openMobile) : setExpanded(!expanded)}
+                aria-label={isMobile ? 'Cerrar menú lateral' : 'Contraer menú lateral'}
+                title={isMobile ? 'Cerrar menú lateral' : 'Contraer menú lateral'}
                 className="absolute right-4 p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
             >
                 <PanelLeft size={18} />
@@ -171,14 +199,18 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
             <button
                 type="button"
                 onClick={() => isMobile ? setOpenMobile(!openMobile) : setExpanded(!expanded)}
+                aria-label={isMobile ? 'Cerrar menú lateral' : 'Expandir menú lateral'}
+                title={isMobile ? 'Cerrar menú lateral' : 'Expandir menú lateral'}
                 className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"
             >
                 <PanelLeft size={18} />
             </button>
-            <div
-              className="h-8 w-8 bg-[url('/assets/icono-sidebar.webp')] bg-contain bg-no-repeat bg-center shrink-0"
-              role="img"
-              aria-label="Icono"
+            <ImageWithSkeleton
+              src="/assets/icono-sidebar.webp"
+              alt="Icono de Prepahid"
+              containerClassName="h-8 w-8"
+              className="h-full w-full object-contain object-center"
+              skeletonClassName="rounded-lg"
             />
           </>
         )}
@@ -188,11 +220,13 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
         <SidebarMenu className="px-0">
           {filteredItems.map((item) => {
             const itemPathname = item.path.split('?')[0];
-            const isActive = item.name === 'Inicio' ? pathname === itemPathname : (pathname === itemPathname || (itemPathname !== '/' && pathname.startsWith(itemPathname + '/')));
+            const isActive = item.name === 'Inicio'
+              ? (currentPathname === itemPathname && !activeSubjectId)
+              : (currentPathname === itemPathname || (itemPathname !== '/' && currentPathname.startsWith(itemPathname + '/')));
 
             // ─── Bloque especial: "Materias" para ALUMNO ───────────────────
             if (role === 'ALUMNO' && item.name === 'Materias') {
-              const isAnySubjectActive = pathname.startsWith('/alumno/materias') || (pathname === '/alumno' && (url.includes('c=') || url.includes('id=')));
+              const isAnySubjectActive = currentPathname.startsWith('/alumno/materias') || (currentPathname === '/alumno' && !!activeSubjectId);
               return (
                 <SidebarMenuItem key={item.name} className="mb-1">
                   <button
@@ -200,14 +234,14 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                     className={cn(
                       "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
                       isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full",
-                      isAnySubjectActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-semibold"
+                      isAnySubjectActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-[#526985] hover:bg-slate-50 hover:text-slate-800 font-semibold"
                     )}
                   >
-                    <BookOpen className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnySubjectActive ? "text-[#0266E0]" : "text-slate-300")} />
+                    <BookOpen className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnySubjectActive ? "text-[#0266E0]" : "text-[#6b7f99]")} />
                     {isMenuExpanded && (
                       <>
-                        <span className={cn("text-[14px] ml-1 flex-1 text-left", isAnySubjectActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold")}>Materias</span>
-                        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200", materiasOpen ? "rotate-0" : "-rotate-90")} />
+                        <span className={cn("text-[14px] ml-1 flex-1 text-left", isAnySubjectActive ? "text-[#0266E0] font-bold" : "text-[#526985] font-bold")}>Materias</span>
+                        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-[#6b7f99] transition-transform duration-200", materiasOpen ? "rotate-0" : "-rotate-90")} />
                       </>
                     )}
                   </button>
@@ -215,23 +249,64 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   {isMenuExpanded && materiasOpen && (
                     <div className="mt-1 ml-10 mr-4 space-y-1 animate-in slide-in-from-top-1 duration-200">
                       {alumnoGroups.map((s: any) => {
-                        const isSubActive = url.includes(`c=${s.id}`) || url.includes(`id=${s.id}`);
+                        const isSubActive = !!activeSubjectId && (
+                          s.id?.toString() === activeSubjectId.toString() ||
+                          s.uuid?.toString() === activeSubjectId.toString()
+                        );
                         return (
-                          <Link
+                          <a
                             key={s.id}
-                            href={`/alumno/materias?c=${s.id}`}
-                            prefetch="hover"
+                            href={`/alumno/materias/${s.id}`}
+                            onMouseEnter={() => {
+                              // Si el cursor ya apunta a una materia, usamos ese
+                              // instante para calentar su respuesta específica.
+                              router.prefetch(
+                                `/alumno/materias/${s.id}`,
+                                { only: ['subjectKardex', 'taskList'] },
+                                { cacheFor: '1m' },
+                              );
+                            }}
+                            onClick={(event) => {
+                              // El aula ya está montada y conoce el catálogo de
+                              // materias. Cambiar el historial localmente hace
+                              // que el sidebar responda al instante; los datos
+                              // diferidos continúan actualizándose en segundo plano.
+                              if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                                return;
+                              }
+
+                              event.preventDefault();
+                              router.cancelAll({ sync: true, async: true, prefetch: false });
+                              window.history.pushState({}, '', `/alumno/materias/${s.id}`);
+                              window.dispatchEvent(new PopStateEvent('popstate'));
+                              window.dispatchEvent(new CustomEvent('studia:navigation', {
+                                detail: { url: `/alumno/materias/${s.id}` },
+                              }));
+                              // El cambio visual y la URL ocurren de inmediato.
+                              // Después pedimos sólo el resumen de la materia
+                              // seleccionada; así no esperamos el kardex global
+                              // cuando la aplicación acaba de iniciar en frío.
+                              window.setTimeout(() => {
+                                router.get(`/alumno/materias/${s.id}`, {}, {
+                                  only: ['subjectKardex', 'taskList'],
+                                  preserveState: true,
+                                  preserveScroll: true,
+                                  replace: true,
+                                });
+                              }, 0);
+                              setOpenMobile(false);
+                            }}
                             className={cn(
                                 "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all",
-                                isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                                isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-[#526985] hover:bg-slate-50 hover:text-slate-800"
                             )}
                           >
                             <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isSubActive ? "bg-[#0266E0]" : "bg-slate-300")} />
                             <div className="min-w-0">
                                 <span className={cn("block text-[13px] leading-tight", isSubActive ? "font-bold" : "font-semibold")}>{s.nombre}</span>
-                                <span className="block text-[10px] text-slate-400 font-medium truncate mt-0.5">{s.docente}</span>
+                                <span className="block text-[10px] text-[#7186a3] font-medium truncate mt-0.5">{s.docente}</span>
                             </div>
-                          </Link>
+                          </a>
                         );
                       })}
                     </div>
@@ -242,36 +317,39 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
 
             // ─── Bloque especial: "Grupos" para DOCENTE ───────────────────
             if (role === 'DOCENTE' && item.name === 'Grupos') {
-              const isAnyGroupActive = pathname.startsWith('/docente/grupos');
+                const isAnyGroupActive = currentPathname.startsWith('/docente/clases');
               return (
                 <SidebarMenuItem key={item.name} className="mb-1">
-                  <button onClick={() => isMenuExpanded && setGruposOpen(prev => !prev)} className={cn("flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full", isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full", isAnyGroupActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-bold")}>
-                    <Layers className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnyGroupActive ? "text-[#0266E0]" : "text-slate-300")} />
+                  <button onClick={() => isMenuExpanded && setGruposOpen(prev => !prev)} className={cn("flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full", isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full", isAnyGroupActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-[#526985] hover:bg-slate-50 hover:text-slate-800 font-bold")}>
+                    <Layers className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isAnyGroupActive ? "text-[#0266E0]" : "text-[#6b7f99]")} />
                     {isMenuExpanded && (
                       <>
-                        <span className={cn("text-[14px] ml-1 flex-1 text-left", isAnyGroupActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold")}>Grupos</span>
-                        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200", gruposOpen ? "rotate-0" : "-rotate-90")} />
+                        <span className={cn("text-[14px] ml-1 flex-1 text-left", isAnyGroupActive ? "text-[#0266E0] font-bold" : "text-[#526985] font-bold")}>Grupos</span>
+                        <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 text-[#6b7f99] transition-transform duration-200", gruposOpen ? "rotate-0" : "-rotate-90")} />
                       </>
                     )}
                   </button>
                   {isMenuExpanded && gruposOpen && (
                     <div className="mt-1 ml-10 mr-4 space-y-1 animate-in slide-in-from-top-1 duration-200">
                       {docenteGroups.map((g: any) => {
-                        const isSubActive = pathname === '/docente/grupos/show' && url.includes(`id=${g.id}`);
+                        const isSubActive = currentPathname.startsWith(`/docente/clases/${g.id}`);
                         return (
                           <Link
                             key={g.id}
-                            href={`/docente/grupos/show?id=${g.id}`}
+                            href={`/docente/clases/${g.id}`}
+                            preserveState
+                            preserveScroll
                             prefetch="hover"
+                            onClick={() => setOpenMobile(false)}
                             className={cn(
                                 "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-left transition-all",
-                                isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                                isSubActive ? "bg-[#f0f7ff] text-[#0266E0]" : "text-[#526985] hover:bg-slate-50 hover:text-slate-800"
                             )}
                           >
                             <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", isSubActive ? "bg-[#0266E0]" : "bg-slate-300")} />
                             <div className="min-w-0">
                                 <span className={cn("block text-[13px] leading-tight", isSubActive ? "font-bold" : "font-semibold")}>Grupo {g.nombre_grupo}</span>
-                                <span className="block text-[10px] text-slate-400 font-medium truncate mt-0.5">{g.materia}</span>
+                                <span className="block text-[10px] text-[#7186a3] font-medium truncate mt-0.5">{g.materia}</span>
                             </div>
                           </Link>
                         );
@@ -287,14 +365,54 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                 <Link
                   href={item.path}
                   prefetch={item.name === 'Inicio' ? ['mount', 'hover'] : 'hover'}
+                  onClick={(event) => {
+                    if (role === 'ADMIN') {
+                      // Inertia actualiza la URL al finalizar la visita. Para
+                      // que el primer clic se sienta inmediato, adelantamos el
+                      // historial y mostramos el estado de carga antes de pedir
+                      // el contenido. `replace` evita duplicar esa entrada.
+                      if (window.location.pathname !== item.path) {
+                        event.preventDefault();
+                        router.cancelAll({ sync: true, async: true, prefetch: false });
+                        window.history.pushState({}, '', item.path);
+                        setCurrentLocationUrl(item.path);
+                        window.dispatchEvent(new CustomEvent('studia:navigation', {
+                          detail: { url: item.path },
+                        }));
+                        setOpenMobile(false);
+
+                        router.visit(item.path, {
+                          replace: true,
+                          preserveScroll: true,
+                        });
+                      }
+                      return;
+                    }
+
+                    if (role === 'ALUMNO' && item.name === 'Inicio') {
+                      event.preventDefault();
+                      router.cancelAll({ sync: true, async: true, prefetch: false });
+                      window.history.pushState({}, '', item.path);
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                      window.dispatchEvent(new CustomEvent('studia:navigation', {
+                        detail: { url: item.path },
+                      }));
+                      setOpenMobile(false);
+                      return;
+                    }
+                    // Actualiza el resaltado de inmediato; Inertia completa la
+                    // navegación y sus props después sin dejar una selección vieja.
+                    setCurrentLocationUrl(item.path);
+                    setOpenMobile(false);
+                  }}
                   className={cn(
                     "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
                     isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full",
-                    isActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600 font-bold"
+                    isActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-[#526985] hover:bg-slate-50 hover:text-slate-800 font-bold"
                   )}
                 >
                   <div className="relative">
-                    <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-slate-300 group-hover:text-slate-500")} />
+                    <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-[#6b7f99] group-hover:text-slate-700")} />
                     {item.name === 'Notificaciones' && unreadCount > 0 && (
                       <span className={cn(
                         "absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white border-2 border-white",
@@ -306,7 +424,7 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   </div>
                   {isMenuExpanded && (
                     <>
-                      <span className={cn("text-[14px] ml-1 transition-all duration-300", isActive ? "text-[#0266E0] font-bold" : "text-slate-400 font-bold group-hover:text-slate-600")}>{item.name}</span>
+                      <span className={cn("text-[14px] ml-1 transition-all duration-300", isActive ? "text-[#0266E0] font-bold" : "text-[#526985] font-bold group-hover:text-slate-800")}>{item.name}</span>
                       {isActive && (
                         <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#0266E0] ml-auto shrink-0">
                           <ChevronRight size={14} strokeWidth={4} />

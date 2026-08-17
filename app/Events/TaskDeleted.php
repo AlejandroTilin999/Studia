@@ -27,12 +27,7 @@ class TaskDeleted implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        $channels = [\Illuminate\Broadcasting\Channel::class => new \Illuminate\Broadcasting\Channel('Public.Global')];
-        $channels = [new \Illuminate\Broadcasting\Channel('Public.Global')];
-        if ($this->groupId) {
-            $channels[] = new PrivateChannel('AcademicGroup.' . $this->groupId);
-        }
-        return $channels;
+        return $this->groupId ? [new PrivateChannel('AcademicGroup.' . $this->groupId)] : [];
     }
 
     public function broadcastAs(): string

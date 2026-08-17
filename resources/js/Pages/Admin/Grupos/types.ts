@@ -3,6 +3,7 @@ export interface GrupoBackend {
     codigo: string;
     nombre: string;
     semestre: number;
+    seccion: string;
     generacion: string;
     turno: string;
     especialidad: string;
@@ -48,6 +49,7 @@ export interface GroupFormatted {
     code: string;
     name: string;
     semestre: number;
+    seccion: string;
     generacion: string;
     shift: string;
     teacherName: string;

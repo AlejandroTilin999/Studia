@@ -39,7 +39,8 @@ class HandleInertiaRequests extends Middleware
         });
 
         // Caché para notificaciones no leídas por usuario (60 segundos)
-        $unreadCount = $user ? \Cache::remember("unread_notifs_{$user->id}", 60, function() use ($user) {
+        $isAdmin = strtolower($user?->rol ?? '') === 'admin';
+        $unreadCount = $isAdmin ? \Cache::remember("unread_notifs_{$user->id}", 60, function() use ($user) {
             return \App\Models\Notificacion::where('usuario_id', $user->id)->where('leido', false)->count();
         }) : 0;
 
@@ -88,7 +89,8 @@ class HandleInertiaRequests extends Middleware
 
     private function getAlumnoGroups($user) {
         if (!$user || strtolower($user->rol ?? '') !== 'alumno') return [];
-
+        // Las tareas no alteran las materias del menú. Mantener esta caché
+        // independiente evita reconstruir el menú en cada publicación.
         return \Cache::remember("sidebar_alumno_{$user->id}", 600, function() use ($user) {
             $enrollment = \App\Models\Enrollment::where('usuario_id', $user->id)->where('estatus', 'active')->first();
             if (!$enrollment) return [];
@@ -101,6 +103,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $load->uuid,
                     'nombre' => $load->course?->nombre ?? 'N/A',
                     'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
+                    'description' => $load->course?->descripcion ?? 'Sin descripción',
                     'descripcion' => $load->course?->descripcion ?? 'Sin descripción',
                     'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A',
                     'color_tema' => $load->color_tema ?? 'blue'

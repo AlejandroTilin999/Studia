@@ -1,31 +1,35 @@
 import { useEffect, useState } from 'react';
-import { Mail, ArrowRight, Loader2 } from 'lucide-react';
-import { FaWhatsapp } from "react-icons/fa";
+import { Mail, ArrowRight, Loader2, MessageCircle } from 'lucide-react';
+import { SCHOOL_CONTACT } from '@/constants/SchoolContact';
 import ContactButton from './ContactButton';
 import TeacherCalendarCard, { CalendarEvent } from './TeacherCalendarCard';
 
 interface TeacherRightSidebarProps {
     initialEvents?: CalendarEvent[];
+    tasks?: any[];
 }
 
 export default function TeacherRightSidebar({ initialEvents = [] }: TeacherRightSidebarProps) {
     const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
-    const [loading, setLoading] = useState<boolean>(initialEvents.length === 0);
+    const [loading, setLoading] = useState<boolean>(events.length === 0);
 
-    // Cargar eventos directamente desde la API de Laravel
     useEffect(() => {
-        if (initialEvents.length === 0) {
-            fetch('/docente/calendar/events')
+        if (initialEvents.length > 0) {
+            setEvents(initialEvents);
+            setLoading(false);
+        } else {
+            fetch('/calendar/events')
                 .then((res) => {
-                    if (!res.ok) throw new Error('Error al cargar eventos');
+                    if (!res.ok) throw new Error('Network error');
                     return res.json();
                 })
                 .then((data: CalendarEvent[]) => {
-                    setEvents(data);
+                    if (Array.isArray(data) && data.length > 0) {
+                        setEvents(data);
+                    }
                     setLoading(false);
                 })
-                .catch((err) => {
-                    console.error("Error al obtener eventos del calendario:", err);
+                .catch(() => {
                     setLoading(false);
                 });
         }
@@ -47,9 +51,10 @@ export default function TeacherRightSidebar({ initialEvents = [] }: TeacherRight
     };
 
     return (
-        <div className="w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-100 p-6 lg:px-8 flex flex-col justify-between shrink-0 lg:h-full overflow-y-auto scrollbar-hide text-left">
+        <div className="w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-100 p-6 lg:px-8 flex flex-col justify-between shrink-0 lg:h-full overflow-hidden text-left">
             
-            <div className="space-y-6">
+            {/* Scrollable middle area for Calendar and Activities */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-6 pr-1 pb-4">
                 {/* Header de Sección */}
                 <h4 className="font-black text-slate-400 text-[11px] uppercase tracking-[0.2em] mb-4">
                     Avisos y calendario
@@ -111,17 +116,17 @@ export default function TeacherRightSidebar({ initialEvents = [] }: TeacherRight
                 </div>
             </div>
 
-            {/* Botones de contacto rápido */}
-            <div className="grid grid-cols-2 gap-3 pt-8 border-t border-slate-50 mt-10 mb-2">
+            {/* Botones de contacto rápido fijados al fondo */}
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 shrink-0 bg-white z-10 mt-auto">
                 <ContactButton
-                    href="mailto:contacto@prepahidalgo.edu.mx"
+                    href={SCHOOL_CONTACT.mailtoLink}
                     label="Correo Escolar"
                     icon={Mail}
                 />
                 <ContactButton
-                    href="https://wa.me/7710000000"
+                    href={SCHOOL_CONTACT.whatsappLink}
                     label="WhatsApp"
-                    icon={FaWhatsapp}
+                    icon={MessageCircle}
                     external
                 />
             </div>

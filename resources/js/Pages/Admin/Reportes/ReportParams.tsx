@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { RotateCcw, Users, User, Calendar } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { RotateCcw, Users, User, Calendar, FileSpreadsheet, Search } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import { FormSelect } from '@/Components/forms/FormSelect';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,8 @@ interface ReportParamsProps {
     groups: GroupItem[];
     periods: PeriodItem[];
     onDownload: () => void;
+    onExportExcel?: () => void;
+    onSendEmail?: () => void;
     onReset: () => void;
 }
 
@@ -47,8 +49,11 @@ export default function ReportParams({
     groups,
     periods,
     onDownload,
+    onExportExcel,
+    onSendEmail,
     onReset,
 }: ReportParamsProps) {
+    const [studentSearch, setStudentSearch] = useState('');
     if (!selectedReport) return null;
 
     const showStudent = selectedReport === 'constancia' || selectedReport === 'boleta' || selectedReport === 'kardex';
@@ -72,6 +77,15 @@ export default function ReportParams({
     const isAnyFilterSelected = useMemo(() => {
         return !!groupFilter || !!selectedStudentMatricula || !!periodFilter;
     }, [groupFilter, selectedStudentMatricula, periodFilter]);
+
+    const visibleStudents = useMemo(() => {
+        const term = studentSearch.trim().toLocaleLowerCase('es-MX');
+        if (!term) return filteredStudents;
+        return filteredStudents.filter((student) =>
+            student.nombre.toLocaleLowerCase('es-MX').includes(term) ||
+            student.matricula.toLocaleLowerCase('es-MX').includes(term),
+        );
+    }, [filteredStudents, studentSearch]);
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
@@ -111,13 +125,22 @@ export default function ReportParams({
                                 Estudiante seleccionado <span className="text-red-500 font-bold ml-0.5">*</span>
                             </label>
                         </div>
+                        <div className="relative mb-2">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                value={studentSearch}
+                                onChange={(event) => setStudentSearch(event.target.value)}
+                                placeholder="Buscar por nombre o matrícula..."
+                                className="h-9 w-full rounded-lg border border-slate-100 bg-slate-50 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-[#0266E0]"
+                            />
+                        </div>
                         <FormSelect
                             value={selectedStudentMatricula}
                             onChange={e => setSelectedStudentMatricula(e.target.value)}
                             className="h-11 bg-slate-50 border-slate-100 rounded-xl text-[13.5px] text-slate-700"
                         >
                             <option value="">Seleccionar alumno...</option>
-                            {filteredStudents.map((s) => (
+                            {visibleStudents.map((s) => (
                                 <option key={s.matricula} value={s.matricula}>{s.nombre}</option>
                             ))}
                         </FormSelect>
@@ -148,7 +171,7 @@ export default function ReportParams({
             </div>
 
             {/* Fila 2: Acciones Ancladas a la derecha */}
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-3">
                 <button
                     type="button"
                     onClick={onReset}
@@ -168,6 +191,18 @@ export default function ReportParams({
                     <FaFilePdf size={16} className={cn("transition-colors", isFormValid ? "text-rose-500" : "text-slate-300")} />
                     Generar reporte PDF
                 </button>
+
+                {selectedReport === 'asistencia' && onExportExcel && (
+                    <button
+                        type="button"
+                        onClick={onExportExcel}
+                        disabled={!isFormValid}
+                        className="h-11 px-5 bg-emerald-600 border border-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[12px] rounded-lg flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-[0.95]"
+                    >
+                        <FileSpreadsheet size={16} />
+                        Exportar para Excel
+                    </button>
+                )}
             </div>
         </div>
     );

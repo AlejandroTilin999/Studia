@@ -29,7 +29,7 @@ export default function TeacherInfoCard({ name, specialty, email, groupsCount = 
     }
 
     return (
-        <div className="bg-slate-50 rounded-[32px] p-6 md:p-8 border border-slate-100 select-none transition-all duration-300 hover:shadow-sm">
+        <div className="bg-slate-50 rounded-xl p-6 md:p-8 border border-slate-200/80 select-none transition-all duration-300 hover:shadow-xs">
             <div className="max-w-7xl mx-auto space-y-5">
 
                 {/* Profile Header with Basic Info (Aligned to Grid) */}
@@ -41,8 +41,8 @@ export default function TeacherInfoCard({ name, specialty, email, groupsCount = 
                         <p className="text-xs text-slate-500 font-semibold">{email}</p>
                     </div>
 
-                    <div className="hidden lg:flex flex-col items-start gap-1 shrink-0">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Institución</span>
+                    <div className="hidden lg:flex flex-col items-end text-right gap-1 shrink-0 ml-auto">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block text-right">Institución</span>
                         <img src="/assets/phid_logo.webp" alt="Prepa Hidalgo" className="h-7 w-auto grayscale opacity-70" />
                     </div>
                 </div>

@@ -61,15 +61,12 @@ export default function AdminPageLayout({
 
         const originalOverflow = mainEl.style.overflow;
         const originalPadding = mainEl.style.padding;
-
         mainEl.style.padding = '0';
 
         const handleResize = () => {
-            if (window.innerWidth >= 1024) {
-                mainEl.style.overflow = 'hidden';
-            } else {
-                mainEl.style.overflow = originalOverflow || 'auto';
-            }
+            mainEl.style.overflow = window.innerWidth >= 1024
+                ? 'hidden'
+                : (originalOverflow || 'auto');
         };
 
         handleResize();
@@ -86,7 +83,6 @@ export default function AdminPageLayout({
         <AuthenticatedLayout>
             <Head title={headTitle} />
 
-            {/* Notification Toast */}
             {toastMessage && (
                 <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-sm select-none animate-in fade-in slide-in-from-bottom-5 duration-200">
                     <div className="bg-emerald-500 p-1 rounded-full text-white">
@@ -96,20 +92,10 @@ export default function AdminPageLayout({
                 </div>
             )}
 
-            {/* Layout split container */}
             <div className="flex flex-col lg:flex-row bg-white lg:h-full lg:overflow-hidden font-body">
-
-                {/* Left Side: Banner + Workspace */}
                 <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
+                    <PageHeaderBanner title={title} subtitle={subtitle} breadcrumb={breadcrumb} />
 
-                    {/* Header Banner */}
-                    <PageHeaderBanner
-                        title={title}
-                        subtitle={subtitle}
-                        breadcrumb={breadcrumb}
-                    />
-
-                    {/* Workspace panel container */}
                     <div className="p-3 md:p-6 flex-1 lg:overflow-y-auto flex flex-col lg:min-h-0">
                         <div className="bg-white rounded-lg md:rounded-lg p-4 md:p-8 shadow-none border border-slate-100 flex flex-col flex-1">
                             {children}
@@ -117,24 +103,25 @@ export default function AdminPageLayout({
                     </div>
                 </div>
 
-                {/* Right Side: Sidebar Widgets */}
-                <div className="w-full lg:w-[330px] xl:w-[380px] 2xl:w-[420px] bg-white border-l border-slate-50 p-5 lg:p-6 xl:p-8 2xl:p-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-between">
-                    <div className="space-y-8 xl:space-y-10 2xl:space-y-12">
-                        <QuickSummaryWidget metrics={metrics} isLoading={isLoading} />
-                        <QuickActionsWidget actions={quickActions} />
-                    </div>
-
-                    {donutChartSegments && donutChartLabel && (
-                        <div className="pt-8 border-t border-slate-50 mt-auto">
-                            <DonutChartWidget
-                                title={donutChartTitle}
-                                centerLabel={donutChartLabel}
-                                segments={donutChartSegments}
-                                isLoading={isLoading}
-                            />
+                {((metrics?.length ?? 0) > 0 || (quickActions?.length ?? 0) > 0 || (donutChartSegments && donutChartLabel)) && (
+                    <div className="w-full lg:w-[330px] xl:w-[380px] 2xl:w-[420px] bg-white border-l border-slate-50 p-5 lg:p-6 xl:p-8 2xl:p-10 shrink-0 lg:h-full lg:overflow-y-auto lg:flex lg:flex-col lg:justify-between">
+                        <div className="space-y-8 xl:space-y-10 2xl:space-y-12">
+                            {metrics?.length > 0 && <QuickSummaryWidget metrics={metrics} isLoading={isLoading} />}
+                            {quickActions?.length > 0 && <QuickActionsWidget actions={quickActions} />}
                         </div>
-                    )}
-                </div>
+
+                        {donutChartSegments && donutChartLabel && (
+                            <div className="pt-8 border-t border-slate-50 mt-auto">
+                                <DonutChartWidget
+                                    title={donutChartTitle}
+                                    centerLabel={donutChartLabel}
+                                    segments={donutChartSegments}
+                                    isLoading={isLoading}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

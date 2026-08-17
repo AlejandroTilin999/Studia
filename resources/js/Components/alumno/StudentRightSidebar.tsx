@@ -1,92 +1,159 @@
-import {
-    Mail,
-    Download
-} from 'lucide-react';
-import { FaWhatsapp } from "react-icons/fa";
+import { useEffect, useState } from 'react';
+import { Mail, MessageCircle } from 'lucide-react';
 import ContactButton from '../common/ContactButton';
-import StudentCalendarCard from './StudentCalendarCard';
+import TeacherCalendarCard, { CalendarEvent } from '../TeacherCalendarCard';
+import StudiaSkeleton from '@/Components/ui/StudiaSkeleton';
 
-interface EventItem {
-    title: string;
-    date: string;
-    colorClass: string;
-}
+import { SCHOOL_CONTACT } from '@/constants/SchoolContact';
 
 interface StudentRightSidebarProps {
-    events?: EventItem[];
-    calendarDays?: number[];
+    initialEvents?: CalendarEvent[];
 }
 
-export default function StudentRightSidebar({
-    events = [
-        { title: 'Examen física', date: '13 de Junio, 10 AM', colorClass: 'bg-[#00c853]' },
-        { title: 'Entrega Ensayo', date: '12 de Junio, 11 AM', colorClass: 'bg-orange-500' },
-        { title: 'Examen física hoy', date: '12 de Junio, 8 AM', colorClass: 'bg-rose-600' }
-    ],
-    calendarDays = Array.from({ length: 31 }, (_, i) => i + 1)
-}: StudentRightSidebarProps) {
+const EMPTY_EVENTS: CalendarEvent[] = [];
+const CALENDAR_CACHE_KEY = 'studia.student-calendar-events';
+
+let memoryCalendarEvents: CalendarEvent[] | null = null;
+
+const getCachedCalendarEvents = (): CalendarEvent[] | null => {
+    if (memoryCalendarEvents !== null) return memoryCalendarEvents;
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const cached = window.sessionStorage.getItem(CALENDAR_CACHE_KEY);
+        if (!cached) return null;
+
+        const events = JSON.parse(cached);
+        if (!Array.isArray(events)) return null;
+
+        memoryCalendarEvents = events;
+        return events;
+    } catch {
+        return null;
+    }
+};
+
+const cacheCalendarEvents = (events: CalendarEvent[]) => {
+    memoryCalendarEvents = events;
+    if (typeof window === 'undefined') return;
+
+    try {
+        window.sessionStorage.setItem(CALENDAR_CACHE_KEY, JSON.stringify(events));
+    } catch {
+        // El calendario sigue disponible en memoria aunque el navegador no permita almacenamiento.
+    }
+};
+
+export default function StudentRightSidebar({ initialEvents = EMPTY_EVENTS }: StudentRightSidebarProps) {
+    const cachedEvents = getCachedCalendarEvents();
+    const [events, setEvents] = useState<CalendarEvent[]>(() => initialEvents.length > 0 ? initialEvents : cachedEvents ?? EMPTY_EVENTS);
+    const [isLoading, setIsLoading] = useState(() => initialEvents.length === 0 && cachedEvents === null);
+
+    useEffect(() => {
+        if (initialEvents.length > 0) {
+            setEvents(initialEvents);
+            cacheCalendarEvents(initialEvents);
+            setIsLoading(false);
+        } else if (getCachedCalendarEvents() !== null) {
+            setEvents(getCachedCalendarEvents()!);
+            setIsLoading(false);
+        } else {
+            setIsLoading(true);
+            fetch('/calendar/events')
+                .then((res) => {
+                    if (!res.ok) throw new Error('Network error');
+                    return res.json();
+                })
+                .then((data: CalendarEvent[]) => {
+                    if (Array.isArray(data)) {
+                        setEvents(data);
+                        cacheCalendarEvents(data);
+                    }
+                })
+                .catch(() => {})
+                .finally(() => setIsLoading(false));
+        }
+    }, [initialEvents]);
+
+    const getBadgeStyles = (category: string = '') => {
+        const catUpper = category.toUpperCase();
+        if (catUpper.includes('EXAMEN') || catUpper.includes('EVALUACIÓN')) {
+            return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+        }
+        if (catUpper.includes('TAREA') || catUpper.includes('ENTREGA')) {
+            return 'bg-amber-50 text-amber-600 border-amber-100';
+        }
+        if (catUpper.includes('URGENTE') || catUpper.includes('INHÁBIL') || catUpper.includes('INHABIL')) {
+            return 'bg-rose-50 text-rose-600 border-rose-100';
+        }
+        return 'bg-blue-50 text-blue-600 border-blue-100';
+    };
+
     return (
-        <div className="w-full h-full bg-white p-6 lg:p-8 flex flex-col justify-between overflow-y-auto scrollbar-hide">
+        <div className="w-full h-full bg-white p-6 lg:p-8 flex flex-col justify-between overflow-hidden text-left">
 
-            <div className="space-y-8">
+            {/* Scrollable middle area for Calendar and Reminders */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-6 pr-1 pb-4">
                 {/* Section Header */}
-                <h4 className="font-black text-slate-400 text-[11px] uppercase tracking-[0.2em] mb-4 text-left">Avisos y agenda</h4>
+                <h4 className="font-black text-slate-400 text-[11px] uppercase tracking-[0.2em] mb-4 text-left">
+                    Avisos y calendario escolar
+                </h4>
 
-                {/* Calendar Card Component (Flat design now) */}
-                <div className="pb-4 border-b border-slate-50">
-                    <StudentCalendarCard calendarDays={calendarDays} />
-                </div>
+                {/* Calendar Card Component (Interactive Excel Calendar) */}
+                {isLoading ? (
+                    <div className="space-y-4 pb-5 border-b border-slate-50">
+                        <StudiaSkeleton className="h-7 w-40 rounded-lg" />
+                        <div className="grid grid-cols-7 gap-1.5">
+                            {Array.from({ length: 28 }).map((_, index) => <StudiaSkeleton key={index} className="h-7 rounded-lg" />)}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="pb-2 border-b border-slate-50">
+                        <TeacherCalendarCard events={events} />
+                    </div>
+                )}
 
-                {/* Reminders List */}
-                <div className="space-y-3 mt-6 text-left">
-                    {events.map((ev, idx) => {
-                        let badgeText = "Aviso";
-                        let badgeBg = "bg-slate-50 text-slate-500 border-slate-100";
-
-                        if (ev.colorClass.includes('emerald') || ev.colorClass.includes('#00c853') || ev.colorClass.includes('green') || ev.colorClass.includes('bg-[#00c853]')) {
-                            badgeText = "Examen";
-                            badgeBg = "bg-emerald-50 text-emerald-600 border-emerald-100";
-                        } else if (ev.colorClass.includes('orange') || ev.colorClass.includes('amber') || ev.colorClass.includes('orange-500')) {
-                            badgeText = "Tarea";
-                            badgeBg = "bg-amber-50 text-amber-600 border-amber-100";
-                        } else if (ev.colorClass.includes('rose') || ev.colorClass.includes('red') || ev.colorClass.includes('rose-600')) {
-                            badgeText = "Urgente";
-                            badgeBg = "bg-rose-50 text-rose-600 border-rose-100";
-                        }
-
-                        return (
-                            <div
-                                key={idx}
-                                className="flex flex-col gap-2 p-4 rounded-xl border border-slate-100 bg-white hover:border-blue-100 transition-all duration-300 select-none group"
-                            >
-                                <div className="flex justify-between items-center">
-                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${badgeBg}`}>
-                                        {badgeText}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 font-bold block">
-                                        {ev.date}
-                                    </span>
-                                </div>
-                                <span className="font-bold text-slate-800 text-[13.5px] leading-tight tracking-tight block">
-                                    {ev.title}
+                {/* Reminders List from Excel */}
+                <div className="space-y-3 mt-4 text-left">
+                    {isLoading ? Array.from({ length: 3 }).map((_, idx) => (
+                        <StudiaSkeleton key={idx} className="h-20 border border-slate-100" />
+                    )) : events.slice(0, 4).map((ev, idx) => (
+                        <div
+                            key={ev.id || idx}
+                            className="flex flex-col gap-1.5 p-3.5 rounded-xl border border-slate-100 bg-white hover:border-blue-100 transition-all duration-300 select-none group"
+                        >
+                            <div className="flex justify-between items-center">
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-lg border ${getBadgeStyles(ev.category)}`}>
+                                    {ev.category || 'Aviso'}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-bold block">
+                                    {ev.start}
                                 </span>
                             </div>
-                        );
-                    })}
+                            <span className="font-bold text-slate-800 text-[13px] leading-tight tracking-tight block mt-1">
+                                {ev.title}
+                            </span>
+                            {ev.description && (
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed truncate">
+                                    {ev.description}
+                                </p>
+                            )}
+                        </div>
+                    ))}
                 </div>
             </div>
 
-            {/* Bottom Quick Contact Buttons (Expediente removed as requested) */}
-            <div className="grid grid-cols-2 gap-3 pt-8 border-t border-slate-50 mt-10 mb-2">
+            {/* Pinned Bottom Quick Contact Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 shrink-0 bg-white z-10 mt-auto">
                 <ContactButton
-                    href="mailto:contacto@prepahidalgo.edu.mx"
+                    href={SCHOOL_CONTACT.mailtoLink}
                     label="Correo Escolar"
                     icon={Mail}
                 />
                 <ContactButton
-                    href="https://wa.me/7710000000"
+                    href={SCHOOL_CONTACT.whatsappLink}
                     label="WhatsApp"
-                    icon={FaWhatsapp}
+                    icon={MessageCircle}
                     external
                 />
             </div>

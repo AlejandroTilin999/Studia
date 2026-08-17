@@ -2,16 +2,14 @@
 export { default as AdminPageLayout } from './admin/AdminPageLayout';
 
 // Alumno
-export { default as StudentCalendarCard } from './alumno/StudentCalendarCard';
-export { default as StudentInfoCard } from './alumno/StudentInfoCard';
 export { default as StudentRightSidebar } from './alumno/StudentRightSidebar';
 
 // Docente
 export { default as TeacherInfoCard } from './docente/TeacherInfoCard';
-export { default as TeacherRightSidebar } from './docente/TeacherRightSidebar';
+export { default as TeacherRightSidebar } from './TeacherRightSidebar';
 
 // Layout
-export { default as Sidebar } from './layout/Sidebar';
+export { default as Sidebar } from './Sidebar';
 export { default as Topbar } from './layout/Topbar';
 export { default as DashboardWelcomeBanner } from './layout/DashboardWelcomeBanner';
 export { default as PageHeaderBanner } from './layout/PageHeaderBanner';

@@ -150,7 +150,7 @@ export default function StudentFormModal({
                             <p className="text-[11px] md:text-xs text-blue-100 leading-relaxed font-normal">
                                 {mode === 'create'
                                     ? 'Al registrar la matrícula, el alumno recibirá sus credenciales de acceso institucional y se creará su expediente de calificaciones.'
-                                    : 'Modifica los datos personales y de grupo. Por seguridad, la matrícula y el correo no pueden ser editados.'}
+                                    : 'Modifica los datos personales, de contacto y de grupo. La matrícula permanece protegida.'}
                             </p>
                         </div>
                     </div>
@@ -178,9 +178,9 @@ export default function StudentFormModal({
                                 <FormLabel>Correo Electrónico (Acceso)</FormLabel>
                                 <FormInput
                                     type="email"
-                                    readOnly
                                     value={data.email || 'PROCESANDO...'}
-                                    className="bg-slate-50 border border-slate-200 hover:border-slate-200 text-slate-500 font-mono focus:border-slate-200 focus:ring-0 cursor-not-allowed select-none h-9 text-xs"
+                                    onChange={e => setData('email', e.target.value)}
+                                    className="bg-white border border-slate-200 text-slate-700 font-mono h-9 text-xs"
                                     icon={<Mail size={13} />}
                                 />
                             </div>

@@ -18,15 +18,40 @@ const DAYS_ES = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
 
 export default function DatePickerEs({ value, onChange, placeholder = 'dd/mm/aaaa', required = false, hasError = false }: DatePickerEsProps) {
     const [isOpen, setIsOpen] = useState(false);
-    
+    const [openUpward, setOpenUpward] = useState(false);
+    const [alignRight, setAlignRight] = useState(false);
+
     // Parse selected date
     const parsedDate = value ? new Date(value + 'T00:00:00') : null;
     const initialView = parsedDate || new Date();
-    
+
     const [viewYear, setViewYear] = useState(initialView.getFullYear());
     const [viewMonth, setViewMonth] = useState(initialView.getMonth());
 
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Calcula si debe desplegarse hacia arriba o hacia la derecha para no salirse de la pantalla
+    const updatePosition = () => {
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            // Si hay menos de 330px de espacio libre abajo y hay suficiente espacio arriba, abre hacia arriba
+            if (spaceBelow < 330 && spaceAbove > 280) {
+                setOpenUpward(true);
+            } else {
+                setOpenUpward(false);
+            }
+
+            // Si el calendario se saldría del borde derecho de la ventana
+            if (rect.left + 288 > window.innerWidth - 16) {
+                setAlignRight(true);
+            } else {
+                setAlignRight(false);
+            }
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -37,6 +62,18 @@ export default function DatePickerEs({ value, onChange, placeholder = 'dd/mm/aaa
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (isOpen) {
+            updatePosition();
+            window.addEventListener('scroll', updatePosition, true);
+            window.addEventListener('resize', updatePosition);
+        }
+        return () => {
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        };
+    }, [isOpen]);
 
     useEffect(() => {
         if (value) {
@@ -120,7 +157,13 @@ export default function DatePickerEs({ value, onChange, placeholder = 'dd/mm/aaa
             </div>
 
             {isOpen && (
-                <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-72 animate-in fade-in zoom-in-95 duration-150 select-none">
+                <div
+                    className={`absolute bg-white border border-slate-200/90 rounded-2xl shadow-2xl p-4 z-50 w-72 animate-in fade-in zoom-in-95 duration-150 select-none ${
+                        openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
+                    } ${
+                        alignRight ? 'right-0' : 'left-0'
+                    }`}
+                >
                     {/* Month / Year Header */}
                     <div className="flex items-center justify-between mb-3">
                         <button

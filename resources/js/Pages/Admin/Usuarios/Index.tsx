@@ -52,7 +52,7 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
 
-    const filteredUsers = useMemo(() => userData.filter(user => {
+    const filteredUsers = useMemo(() => userData.filter((user: any) => {
         const matchesRole = roleFilter === 'all' || user.rol === roleFilter;
         // Búsqueda local residual
         const matchesSearch = user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -223,7 +223,7 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {resetRequests.map((req) => (
+                            {resetRequests.map((req: any) => (
                                 <div key={req.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col justify-between group hover:border-blue-200 transition-all duration-300">
                                     <div>
                                         <div className="flex items-center justify-between mb-1">

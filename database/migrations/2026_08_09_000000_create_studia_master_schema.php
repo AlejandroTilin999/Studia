@@ -124,10 +124,16 @@ return new class extends Migration
             $table->string('nombre', 50);
             $table->string('codigo', 20)->unique();
             $table->string('especialidad', 100)->nullable();
+            $table->string('turno', 30)->default('Matutino');
+            $table->unsignedBigInteger('docente_tutor_id')->nullable();
+            $table->string('generacion', 20);
+            $table->unsignedTinyInteger('semestre');
+            $table->string('seccion', 1);
             $table->boolean('activo')->default(true);
             $table->timestamps();
 
             $table->index('activo', 'idx_grupos_activo');
+            $table->unique(['generacion', 'semestre', 'seccion', 'especialidad'], 'grupos_ruta_generacion_unique');
         });
 
         // 11. Alumnos
@@ -137,6 +143,7 @@ return new class extends Migration
             $table->string('matricula', 50)->unique();
             $table->date('fecha_nacimiento')->nullable();
             $table->text('estatus')->nullable()->default('active');
+            $table->string('folio_egreso', 50)->nullable()->unique();
             $table->timestamps();
 
             $table->index('usuario_id', 'idx_alumnos_usuario_id_perf');
@@ -153,6 +160,10 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::table('grupos', function (Blueprint $table) {
+            $table->foreign('docente_tutor_id')->references('id')->on('docentes')->nullOnDelete();
+        });
+
         // 13. Inscripciones
         Schema::create('inscripciones', function (Blueprint $table) {
             $table->id();
@@ -165,6 +176,7 @@ return new class extends Migration
 
             $table->index(['ciclo_id', 'grupo_id', 'estatus'], 'idx_inscripciones_ciclo_grupo_estatus');
             $table->index('usuario_id', 'idx_inscripciones_usuario_id');
+            $table->unique(['usuario_id', 'ciclo_id'], 'inscripciones_usuario_ciclo_unique');
         });
 
         // 14. Cargas Académicas

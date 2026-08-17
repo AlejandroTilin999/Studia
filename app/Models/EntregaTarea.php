@@ -18,26 +18,6 @@ class EntregaTarea extends Model
         'google_drive_url'
     ];
 
-    protected static function booted()
-    {
-        $notifyGroup = function ($entrega) {
-            try {
-                $tarea = $entrega->assignment;
-                $groupId = $tarea?->academicLoad?->grupo_id;
-                if ($groupId) {
-                    \Illuminate\Support\Facades\Log::info("RT_DEBUG: EntregaTarea notifyGroup for Group ID: {$groupId}");
-                    event(new \App\Events\GroupDataUpdated($groupId, 'all'));
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("Error notifying group from EntregaTarea: " . $e->getMessage());
-            }
-        };
-
-        static::created($notifyGroup);
-        static::updated($notifyGroup);
-        static::deleted($notifyGroup);
-    }
-
     public function assignment()
     {
         return $this->belongsTo(Tarea::class, 'tarea_id');

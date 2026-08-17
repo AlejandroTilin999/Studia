@@ -16,6 +16,7 @@ interface GroupFormModalProps {
         nombre: string;
         turno: string;
         semestre: number | string;
+        seccion: string;
         generacion: string;
         especialidad: string;
         docente_tutor_id: string | number;
@@ -57,7 +58,7 @@ export default function GroupFormModal({
                     const firstPart = parts[0];
                     if (firstPart.length >= 2) {
                         setSelectedSemester(firstPart.charAt(0));
-                        setSelectedSection(firstPart.charAt(1).toUpperCase());
+                        setSelectedSection(data.seccion || firstPart.charAt(1).toUpperCase());
                     }
                 }
             } else {
@@ -80,7 +81,7 @@ export default function GroupFormModal({
             if (sem === 3 || sem === 4) targetStartYear -= 1;
             else if (sem === 5 || sem === 6) targetStartYear -= 2;
 
-            const gen = `${targetStartYear}-${targetStartYear + 1}`;
+            const gen = `${targetStartYear}-${targetStartYear + 3}`;
             setData('generacion', gen);
         }
     }, [selectedSemester, isOpen, mode, currentYear]);
@@ -100,13 +101,14 @@ export default function GroupFormModal({
         if (isOpen) {
             const suffix = getSpecialtySuffix(data.especialidad);
             if (selectedSemester && selectedSection && suffix) {
-                setData('codigo', `${selectedSemester}${selectedSection}-${suffix}`);
+                setData('codigo', `${selectedSemester}${selectedSection}-${suffix}-${data.generacion.split('-')[0] || currentYear}`);
                 setData('semestre', Number(selectedSemester));
+                setData('seccion', selectedSection);
             } else {
                 setData('codigo', '');
             }
         }
-    }, [selectedSemester, selectedSection, data.especialidad, isOpen]);
+    }, [selectedSemester, selectedSection, data.especialidad, data.generacion, isOpen, currentYear]);
 
     useEffect(() => {
         if (isOpen) {

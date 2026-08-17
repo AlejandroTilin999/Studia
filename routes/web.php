@@ -1,17 +1,17 @@
 <?php
 
-use App\Http\Controllers\Admin\StudentController;
-use App\Http\Controllers\Admin\TeacherController;
-use App\Http\Controllers\Admin\CourseController;
-use App\Http\Controllers\Admin\GroupController;
-use App\Http\Controllers\Admin\AcademicLoadController;
-use App\Http\Controllers\Admin\AcademicPeriodController;
-use App\Http\Controllers\Admin\ReportController;
-use App\Http\Controllers\Admin\SpecialtyController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\PromotionController;
-use App\Http\Controllers\Docente\DocenteClassroomController;
-use App\Http\Controllers\Alumno\StudentClassroomController;
+use App\Http\Controllers\Admin\AlumnoController as StudentController;
+use App\Http\Controllers\Admin\DocenteController as TeacherController;
+use App\Http\Controllers\Admin\MateriaController as CourseController;
+use App\Http\Controllers\Admin\GrupoController as GroupController;
+use App\Http\Controllers\Admin\CargaAcademicaController as AcademicLoadController;
+use App\Http\Controllers\Admin\CicloEscolarController as AcademicPeriodController;
+use App\Http\Controllers\Admin\ReporteController as ReportController;
+use App\Http\Controllers\Admin\EspecialidadController as SpecialtyController;
+use App\Http\Controllers\Admin\UsuarioController as UserController;
+use App\Http\Controllers\Admin\PromocionController as PromotionController;
+use App\Http\Controllers\Docente\MateriaDocenteController;
+use App\Http\Controllers\Alumno\EntregaTareaAlumnoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\Auth\PasswordChangeController;
@@ -196,6 +196,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/reportes', [ReportController::class, 'index'])->name('admin.reportes.index');
             Route::get('/reportes/asistencia-data/{grupo_id}/{ciclo_id}', [ReportController::class, 'getAttendanceData'])->name('admin.reportes.asistencia_data');
+            Route::get('/reportes/asistencia-excel/{grupo_id}/{ciclo_id}', [ReportController::class, 'exportAttendanceCsv'])->name('admin.reportes.asistencia_excel');
             Route::get('/reportes/constancia-data/{matricula}', [ReportController::class, 'getCertificateData'])->name('admin.reportes.constancia_data');
             Route::get('/reportes/boleta-data/{matricula}/{periodId}', [ReportController::class, 'getGradeReportData'])->name('admin.reportes.boleta_data');
             Route::get('/reportes/kardex-data-full/{matricula}', [ReportController::class, 'getFullKardexData'])->name('admin.reportes.kardex_data_full');
@@ -210,11 +211,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/notificaciones/leer-todas', [NotificacionController::class, 'markAllAsRead'])->name('admin.notificaciones.read_all');
 
             // Plantillas de Correo (Brevo)
-            Route::get('/plantillas-correo', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'index'])->name('admin.plantillas_correo.index');
-            Route::post('/plantillas-correo', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'store'])->name('admin.plantillas_correo.store');
-            Route::put('/plantillas-correo/{id}', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'update'])->name('admin.plantillas_correo.update');
-            Route::delete('/plantillas-correo/{id}', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'destroy'])->name('admin.plantillas_correo.destroy');
-            Route::post('/plantillas-correo/send', [\App\Http\Controllers\Admin\EmailTemplateController::class, 'sendEmail'])->name('admin.plantillas_correo.send');
+            Route::get('/plantillas-correo', [\App\Http\Controllers\Admin\PlantillaCorreoController::class, 'index'])->name('admin.plantillas_correo.index');
+            Route::post('/plantillas-correo', [\App\Http\Controllers\Admin\PlantillaCorreoController::class, 'store'])->name('admin.plantillas_correo.store');
+            Route::put('/plantillas-correo/{id}', [\App\Http\Controllers\Admin\PlantillaCorreoController::class, 'update'])->name('admin.plantillas_correo.update');
+            Route::delete('/plantillas-correo/{id}', [\App\Http\Controllers\Admin\PlantillaCorreoController::class, 'destroy'])->name('admin.plantillas_correo.destroy');
+            Route::post('/plantillas-correo/send', [\App\Http\Controllers\Admin\PlantillaCorreoController::class, 'sendEmail'])->name('admin.plantillas_correo.send');
         });
 
         // ------------------------------------------
@@ -226,59 +227,82 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
                 $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
 
-                return Inertia::render('Docente/Dashboard', [
-                    'assignedLoad' => Inertia::defer(function() use ($teacher, $activeCycle) {
-                        if (!$teacher || !$activeCycle) return [];
+                $teacherInfo = [
+                    'nombre' => $user->nombre_completo,
+                    'especialidad' => $teacher?->especialidad ?? 'General',
+                    'email' => $user->email,
+                ];
 
-                        return \App\Models\AcademicLoad::where('docente_id', $teacher->id)
+                $assignedLoad = [];
+                if ($teacher && $activeCycle) {
+                    $assignedLoad = \Cache::remember("docente_dashboard_loads_{$teacher->id}_c{$activeCycle->id}", 300, function() use ($teacher, $activeCycle) {
+                        $loads = \App\Models\AcademicLoad::where('docente_id', $teacher->id)
                             ->where('ciclo_id', $activeCycle->id)
                             ->with(['academicGroup', 'course'])
-                            ->get()
-                            ->map(fn($load) => [
-                                'id' => $load->uuid,
-                                'codigo' => $load->course->codigo ?? 'N/A',
-                                'nombre_materia' => $load->course->nombre ?? 'N/A',
-                                'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
-                                'cantidad_alumnos' => \App\Models\Enrollment::where('grupo_id', $load->grupo_id)
-                                    ->where('ciclo_id', $activeCycle->id)
-                                    ->where('estatus', 'active')
-                                    ->count(),
-                                'turno' => 'Turno Matutino',
-                                'estatus' => 'pending',
-                            ]);
-                    }),
-                    'teacherInfo' => Inertia::defer(fn() => [
-                        'nombre' => auth()->user()->nombre_completo,
-                        'especialidad' => \App\Models\Teacher::where('usuario_id', auth()->id())->first()->especialidad ?? 'General',
-                        'email' => auth()->user()->email,
-                    ]),
+                            ->get();
+
+                        $groupIds = $loads->pluck('grupo_id');
+                        $studentCounts = \App\Models\Enrollment::whereIn('grupo_id', $groupIds)
+                            ->where('ciclo_id', $activeCycle->id)
+                            ->where('estatus', 'active')
+                            ->selectRaw('grupo_id, count(*) as total')
+                            ->groupBy('grupo_id')
+                            ->pluck('total', 'grupo_id');
+
+                        return $loads->map(fn($load) => [
+                            'id' => $load->uuid,
+                            'codigo' => $load->course->codigo ?? 'N/A',
+                            'nombre_materia' => $load->course->nombre ?? 'N/A',
+                            'nombre_grupo' => $load->academicGroup->nombre ?? 'N/A',
+                            'cantidad_alumnos' => (int)($studentCounts[$load->grupo_id] ?? 0),
+                            'turno' => 'Turno Matutino',
+                            'estatus' => 'pending',
+                        ])->toArray();
+                    });
+                }
+
+                return Inertia::render('Docente/Dashboard', [
+                    'assignedLoad' => $assignedLoad,
+                    'teacherInfo' => $teacherInfo,
+                    'calendarEvents' => \App\Http\Controllers\Docente\CalendarioEscolarController::getEvents(),
                     'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('docente.dashboard');
 
-            Route::get('/calendar/events', [\App\Http\Controllers\Docente\TeacherCalendarController::class, 'index'])->name('docente.calendar.index');
-            Route::post('/calendar/upload', [\App\Http\Controllers\Docente\TeacherCalendarController::class, 'upload'])->name('docente.calendar.upload');
+            Route::get('/calendar/events', [\App\Http\Controllers\Docente\CalendarioEscolarController::class, 'index'])->name('docente.calendar.index');
+            Route::post('/calendar/upload', [\App\Http\Controllers\Docente\CalendarioEscolarController::class, 'upload'])->name('docente.calendar.upload');
 
             Route::get('/grupos', function () {
                 return Inertia::render('Docente/Grupos/Index');
             })->name('docente.grupos.index');
 
-            Route::get('/grupos/show', [DocenteClassroomController::class, 'show'])->name('docente.grupos.show');
+            Route::get('/grupos/show', [MateriaDocenteController::class, 'show'])->name('docente.grupos.show');
 
-            Route::get('/clases/{uuid}/full-data', [DocenteClassroomController::class, 'getFullData']);
-            Route::get('/clases/{uuid}/config', [DocenteClassroomController::class, 'getConfig']);
-            Route::post('/clases/{uuid}/theme', [DocenteClassroomController::class, 'updateTheme'])->name('docente.clases.update_theme');
+            Route::get('/clases/{uuid}/full-data', [MateriaDocenteController::class, 'getFullData']);
+            Route::post('/clases/{uuid}/theme', [MateriaDocenteController::class, 'updateTheme'])->name('docente.clases.update_theme');
 
             Route::middleware('captura.abierta')->group(function() {
-                Route::post('/clases/{uuid}/criterios', [DocenteClassroomController::class, 'saveCriterios']);
-                Route::post('/clases/{uuid}/calificaciones', [DocenteClassroomController::class, 'saveCalificaciones']);
-                Route::post('/clases/{uuid}/tareas', [DocenteClassroomController::class, 'saveTareas']);
-                Route::post('/clases/{uuid}/return-grade', [DocenteClassroomController::class, 'returnGrade']);
-                Route::post('/clases/{uuid}/conclude', [DocenteClassroomController::class, 'concludeParcial'])->name('docente.clases.conclude');
+                Route::post('/clases/{uuid}/criterios', [MateriaDocenteController::class, 'saveCriterios']);
+                Route::post('/clases/{uuid}/calificaciones', [MateriaDocenteController::class, 'saveCalificaciones']);
+                Route::post('/clases/{uuid}/tareas', [MateriaDocenteController::class, 'saveTareas']);
+                Route::post('/clases/{uuid}/upload-material', [MateriaDocenteController::class, 'uploadTaskMaterial']);
+                Route::post('/clases/{uuid}/return-grade', [MateriaDocenteController::class, 'returnGrade']);
+                Route::post('/clases/{uuid}/conclude', [MateriaDocenteController::class, 'concludeParcial'])->name('docente.clases.conclude');
             });
 
-            Route::get('/clases/{uuid}/tareas', [DocenteClassroomController::class, 'getTareas']);
+
+            Route::get('/clases/{uuid}', [MateriaDocenteController::class, 'show'])->name('docente.clases.show');
+            Route::get('/clases/{uuid}/parcial/{parcial}', [MateriaDocenteController::class, 'show'])
+                ->whereNumber('parcial')
+                ->name('docente.clases.parcial');
+            Route::get('/clases/{uuid}/parcial/{parcial}/tareas/{task}', [MateriaDocenteController::class, 'show'])
+                ->whereNumber('parcial')
+                ->whereNumber('task')
+                ->name('docente.clases.tarea');
         });
+
+        // Alias de compatibilidad para subida de material de apoyo
+        Route::post('/clases/{uuid}/upload-material', [MateriaDocenteController::class, 'uploadTaskMaterial'])->middleware(['auth', 'role:docente']);
 
         // ------------------------------------------
         // Módulo de Alumno
@@ -287,19 +311,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/', function () {
                 $studentId = auth()->id();
                 $user = auth()->user();
-                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+                // Se comparte con Inertia: no abrir otra consulta remota al
+                // recargar el inicio del alumno.
+                $activeCycle = \Cache::remember('active_academic_period', 1800, fn() => \App\Models\AcademicPeriod::where('activo', true)->first());
 
-                // [INTELIGENCIA v4.1] Mostrar inscripción activa más reciente (soporte para promociones)
-                $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
-                    ->where('estatus', 'active')
-                    ->with(['academicGroup.tutor.user', 'academicPeriod'])
-                    ->orderBy('ciclo_id', 'desc')
-                    ->first();
+                // [INTELIGENCIA v4.1] Mostrar inscripción activa más reciente (con caché a 0ms)
+                $enrollment = \Cache::remember("student_enrollment_{$studentId}", 600, function() use ($studentId, $activeCycle) {
+                    if ($activeCycle) {
+                        $e = \App\Models\Enrollment::where('usuario_id', $studentId)
+                            ->where('ciclo_id', $activeCycle->id)
+                            ->where('estatus', 'active')
+                            ->with(['academicGroup.tutor.user', 'academicPeriod'])
+                            ->first();
+                        if ($e) return $e;
+                    }
+                    return \App\Models\Enrollment::where('usuario_id', $studentId)
+                        ->where('estatus', 'active')
+                        ->with(['academicGroup.tutor.user', 'academicPeriod'])
+                        ->orderBy('ciclo_id', 'desc')
+                        ->first();
+                });
 
                     $cycleName = $enrollment?->academicPeriod?->nombre ?? 'Ciclo No Activo';
                     $fullCicloLabel = str_starts_with($cycleName, 'Ciclo') ? $cycleName : "Ciclo Escolar " . $cycleName;
 
                     $studentInfo = [
+                        'groupId' => $enrollment?->grupo_id,
                         'name' => $user->nombre_completo,
                         'firstName' => $user->nombre,
                         'lastNamePaternal' => $user->apellido_paterno,
@@ -314,28 +351,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'ciclo' => $fullCicloLabel,
                     ];
 
-                $alumnoGroupsData = \App\Models\AcademicLoad::where('grupo_id', $enrollment?->grupo_id)
-                    ->where('ciclo_id', $enrollment?->ciclo_id)
-                    ->with(['course', 'teacher.user'])
-                    ->get()
-                    ->map(fn($load) => [
-                        'id' => $load->uuid,
-                        'nombre' => $load->course?->nombre ?? 'N/A',
-                        'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
-                        'description' => $load->course?->descripcion ?? 'Sin descripción',
-                        'color_tema' => $load->color_tema ?? 'blue'
-                    ])->toArray();
-
                 return Inertia::render('Alumno/Dashboard', [
                     'studentInfo' => $studentInfo,
                     'kardex' => Inertia::defer(fn() => \App\Services\GradeService::getStudentKardex($studentId)),
                     'taskList' => Inertia::defer(fn() => \App\Services\GradeService::getStudentTasks($studentId)),
-                    'alumnoGroups' => $alumnoGroupsData,
                     'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('alumno.dashboard');
 
-            Route::get('/materias', function () {
+            Route::get('/materias', function (\Illuminate\Http\Request $request) {
+                if ($legacyLoad = ($request->query('c') ?: $request->query('id'))) {
+                    $path = '/alumno/materias/' . rawurlencode($legacyLoad);
+                    $legacyParcial = $request->query('parcial');
+                    if (ctype_digit((string) $legacyParcial)) {
+                        $path .= '/parcial/' . $legacyParcial;
+
+                        $legacyTask = $request->query('a') ?: $request->query('task');
+                        if ($legacyTask) {
+                            $task = \App\Models\Tarea::whereHas('academicLoad', fn($query) => $query->where('uuid', $legacyLoad))
+                                ->get()
+                                ->first(fn($item) => (string) $item->id === (string) $legacyTask
+                                    || strtoupper(substr(md5('t_' . $item->id), 0, 6)) === strtoupper((string) $legacyTask));
+                            if ($task && (int) $task->parcial === (int) $legacyParcial) {
+                                $path .= '/tareas/' . $task->id;
+                            }
+                        }
+                    }
+                    return redirect()->to($path);
+                }
                 $studentId = auth()->id();
                 $user = auth()->user();
                 $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
@@ -368,28 +411,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'studentInfo' => $studentInfo,
                     'kardex' => Inertia::defer(fn() => \App\Services\GradeService::getStudentKardex($studentId)),
                     'taskList' => Inertia::defer(fn() => \App\Services\GradeService::getStudentTasks($studentId)),
-                    'alumnoGroups' => Inertia::defer(function() use ($studentId) {
-                        $k = \App\Services\GradeService::getStudentKardex($studentId);
-                        return array_map(fn($item) => [
-                            'id' => $item['uuid'],
-                            'nombre' => $item['subject'],
-                            'docente' => $item['teacher'],
-                            'description' => $item['description'] ?? '',
-                            'color_tema' => $item['color_tema'] ?? 'blue'
-                        ], $k);
-                    }),
                     'isCycleActive' => (bool)$activeCycle
                 ]);
             })->name('alumno.materias.index');
 
-            Route::post('/tareas/entregar', [StudentClassroomController::class, 'submitTask'])->name('alumno.tareas.entregar');
-            Route::post('/tareas/quitar-archivo', [StudentClassroomController::class, 'removeSingleFile'])->name('alumno.tareas.quitar_archivo');
-            Route::post('/tareas/anular', [StudentClassroomController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
+            Route::get('/materias/{loadUuid}', [\App\Http\Controllers\Alumno\MateriaAlumnoController::class, 'show'])->name('alumno.materias.show');
+            Route::get('/materias/{loadUuid}/parcial/{parcial}', [\App\Http\Controllers\Alumno\MateriaAlumnoController::class, 'show'])
+                ->where('parcial', '[1-3]')
+                ->name('alumno.materias.parcial');
+            Route::get('/materias/{loadUuid}/parcial/{parcial}/tareas/{task}', [\App\Http\Controllers\Alumno\MateriaAlumnoController::class, 'show'])
+                ->where('parcial', '[1-3]')
+                ->whereNumber('task')
+                ->name('alumno.materias.tarea');
+
+            Route::post('/tareas/entregar', [EntregaTareaAlumnoController::class, 'submitTask'])->name('alumno.tareas.entregar');
+            Route::post('/tareas/confirmar', [EntregaTareaAlumnoController::class, 'confirmSubmission'])->name('alumno.tareas.confirmar');
+            Route::post('/tareas/quitar-archivo', [EntregaTareaAlumnoController::class, 'removeSingleFile'])->name('alumno.tareas.quitar_archivo');
+            Route::post('/tareas/anular', [EntregaTareaAlumnoController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
         });
 
         Route::get('/perfil', [ProfileController::class, 'edit'])->name('perfil.edit');
         Route::patch('/perfil', [ProfileController::class, 'update'])->name('perfil.update');
         Route::delete('/perfil', [ProfileController::class, 'destroy'])->name('perfil.destroy');
+        Route::get('/calendar/events', [\App\Http\Controllers\Docente\CalendarioEscolarController::class, 'index'])->name('calendar.index');
     });
 });
 

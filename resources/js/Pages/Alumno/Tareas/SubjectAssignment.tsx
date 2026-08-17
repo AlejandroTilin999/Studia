@@ -2,27 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 import AssignmentHeader from './components/AssignmentHeader';
 import AssignmentMaterials from './components/AssignmentMaterials';
-import AssignmentComments from './components/AssignmentComments';
 import AssignmentSidebarList from './components/AssignmentSidebarList';
 import AssignmentSubmissionCard from './components/AssignmentSubmissionCard';
 import { getFileIcon } from '@/utils/FileHelper';
-
-interface Task {
-    id: number;
-    title: string;
-    status: string;
-    desc: string;
-    points?: string;
-    deadline?: string;
-}
+import BackButton from '@/Components/common/BackButton';
+import type { StudentTask } from '@/types/alumno';
 
 interface SubjectAssignmentProps {
-    task: Task;
-    otherTasks: Task[];
+    task: StudentTask;
+    otherTasks: StudentTask[];
     onBack: () => void;
-    onSwitchTask: (task: Task) => void;
-    comments: string[];
-    onAddComment: (text: string) => void;
+    onSwitchTask: (task: StudentTask) => void;
     teacherName: string;
     themeKey?: string;
 }
@@ -32,15 +22,12 @@ export default function SubjectAssignment({
     otherTasks,
     onBack,
     onSwitchTask,
-    comments,
-    onAddComment,
     teacherName,
     themeKey = 'blue'
 }: SubjectAssignmentProps) {
     const activeTheme = COLOR_THEMES[themeKey] || COLOR_THEMES.blue;
     const [taskStatus, setTaskStatus] = useState(task?.status || 'Pendiente');
     const [currentServerFile, setCurrentServerFile] = useState((task as any)?.archivo || null);
-    const [localComment, setLocalComment] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [driveLink, setDriveLink] = useState('');
     const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
@@ -100,51 +87,54 @@ export default function SubjectAssignment({
     const isMaterialType = (task as any).type === 'material' || task.status === 'Aviso';
 
     return (
-        <div className="space-y-6 text-left animate-in fade-in duration-200 pt-2 bg-white">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Columna Izquierda: Encabezado + Materiales + Comentarios */}
-                <div className="lg:col-span-8 space-y-8 min-w-0">
+        <div className="space-y-1 text-left animate-in fade-in duration-200 bg-white">
+            {/* Navegación, título y evaluación forman una sola franja del tema. */}
+            <BackButton onClick={onBack} label="Volver al trabajo de clase" />
+
+            <section className="-mx-4 sm:-mx-6 md:-mx-8 grid grid-cols-1 lg:grid-cols-12">
+                    <div className="lg:col-span-8 border-b border-slate-200">
                     <AssignmentHeader
                         title={task.title}
                         teacherName={teacherName}
                         deadline={task.deadline}
                         isMaterialType={isMaterialType}
                         strokeColor={activeTheme.strokeColor}
-                        onBack={onBack}
+                        backgroundColor="#ffffff"
+                        textColor="#0f172a"
                     />
+                    </div>
+            </section>
 
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <article className="lg:col-span-8 min-w-0">
                     <AssignmentMaterials
                         desc={task.desc}
-                        attachments={(task as any).attachments}
-                        materialUrl={(task as any).material_url}
+                        attachments={(task as any).attachments || (task as any).archivos_adjuntos || (task as any).archivos}
+                        materialUrl={(task as any).material_url || (task as any).material}
                         strokeColor={activeTheme.strokeColor}
                     />
-
-                    <AssignmentComments
-                        comments={comments}
-                        localComment={localComment}
-                        setLocalComment={setLocalComment}
-                        onAddComment={onAddComment}
-                        strokeColor={activeTheme.strokeColor}
-                    />
-                </div>
+                </article>
 
                 {/* Columna Derecha: Tarjeta alineada a la altura de ACTIVIDAD ACADÉMICA */}
-                <div className="lg:col-span-4 space-y-6 lg:pt-[44px]">
+                <div className="lg:col-span-4 space-y-6 lg:-mt-[185px] lg:sticky lg:top-6">
                     {!isMaterialType && (
                         <AssignmentSubmissionCard
                             taskId={task.id}
-                            taskStatus={taskStatus}
-                            setTaskStatus={setTaskStatus}
-                            attachedFiles={attachedFiles}
-                            setAttachedFiles={setAttachedFiles}
-                            currentServerFile={currentServerFile}
-                            setCurrentServerFile={setCurrentServerFile}
-                            driveLink={driveLink}
-                            setDriveLink={setDriveLink}
-                            isUploading={isUploading}
-                            setIsUploading={setIsUploading}
+                            submission={{
+                                taskStatus,
+                                setTaskStatus,
+                                attachedFiles,
+                                setAttachedFiles,
+                                currentServerFile,
+                                setCurrentServerFile,
+                                driveLink,
+                                setDriveLink,
+                                isUploading,
+                                setIsUploading,
+                            }}
                             task={task}
+                            points={task.points}
+                            grade={task.grade}
                             strokeColor={activeTheme.strokeColor}
                             getFileIcon={getFileIcon}
                         />

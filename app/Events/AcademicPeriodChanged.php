@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\AcademicPeriod;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -34,7 +33,7 @@ class AcademicPeriodChanged implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('Admin.Dashboard'),
-            new Channel('Public.Global'),
+            new PrivateChannel('Academic.Cycle'),
         ];
     }
 
@@ -44,5 +43,17 @@ class AcademicPeriodChanged implements ShouldBroadcastNow
     public function broadcastAs(): string
     {
         return 'AcademicPeriodChanged';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'periodId' => $this->period->id,
+            'partialAvailability' => [
+                1 => $this->period->p1_activo === null ? true : (bool) $this->period->p1_activo,
+                2 => $this->period->p2_activo === null ? true : (bool) $this->period->p2_activo,
+                3 => $this->period->p3_activo === null ? true : (bool) $this->period->p3_activo,
+            ],
+        ];
     }
 }

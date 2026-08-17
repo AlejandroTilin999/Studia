@@ -85,7 +85,7 @@ export default function CargasIndex({
 
     const handleExportPDF = () => {
         const headers = ["Grupo", "Clave Materia", "Materia", "Docente"];
-        const rows = filteredLoads.map(l => [
+        const rows = filteredLoads.map((l: any) => [
             l.nombre_grupo,
             l.codigo_materia,
             l.nombre_materia,
@@ -96,7 +96,7 @@ export default function CargasIndex({
     };
 
     const filteredLoads = useMemo(() => {
-        return loadData.filter(load => {
+        return loadData.filter((load: any) => {
             const matchesPeriod = periodFilter === 'all' || load.ciclo_id.toString() === periodFilter;
             const matchesGroup = groupFilter === 'all' || load.grupo_id.toString() === groupFilter;
 
@@ -112,12 +112,12 @@ export default function CargasIndex({
     }, [loadData, searchQuery, periodFilter, groupFilter]);
 
     const totalLoadsCount = useMemo(() => (loads === null || loads === undefined ? null : (Array.isArray(loads) ? loads.length : loads?.total || 0)), [loads]);
-    const coveredGroupsCount = useMemo(() => (loads === null || loads === undefined) ? null : new Set(loadData.map(l => l.grupo_id)).size, [loadData, loads]);
+    const coveredGroupsCount = useMemo(() => (loads === null || loads === undefined) ? null : new Set(loadData.map((l: any) => l.grupo_id)).size, [loadData, loads]);
 
     const handleExportExcel = () => {
 
         const headers = ["Grupo", "Materia (Clave)", "Materia (Nombre)", "Docente"];
-        const rows = filteredLoads.map(l => [
+        const rows = filteredLoads.map((l: any) => [
             l.nombre_grupo,
             l.codigo_materia,
             l.nombre_materia,
@@ -151,12 +151,12 @@ export default function CargasIndex({
         // Validar si quedan grupos disponibles para asignación masiva
         if (workingPeriod) {
             const isOddCycle = workingPeriod.mes_inicio ? (workingPeriod.mes_inicio >= 8 || workingPeriod.mes_inicio === 1) : true;
-            const availableGroups = groups.filter(g => {
+            const availableGroups = groups.filter((g: any) => {
                 const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
                 const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
                 if (!matchesParity) return false;
 
-                const alreadyAssigned = loadData.some(l =>
+                const alreadyAssigned = loadData.some((l: any) =>
                     l.grupo_id.toString() === g.id.toString() &&
                     l.ciclo_id.toString() === workingPeriod.id.toString()
                 );

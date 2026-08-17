@@ -4,6 +4,7 @@ import { Bell, CheckCheck, Clock, ShieldCheck, Home, FileText } from 'lucide-rea
 import AdminPageLayout from '@/Components/AdminPageLayout';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { cn } from '@/lib/utils';
+import StudiaSkeleton from '@/Components/ui/StudiaSkeleton';
 
 interface Notificacion {
     id: number;
@@ -54,8 +55,8 @@ export default function NotificacionesIndex({ notificaciones, notifStats }: Inde
             breadcrumb="Notificaciones"
             isLoading={notifStats === null || notifStats === undefined}
             metrics={[
-                { code: "N1", label: "Totales", value: (notifStats === null || notifStats === undefined) ? null : (notifStats?.total || 0) },
-                { code: "N2", label: "Sin leer", value: (notifStats === null || notifStats === undefined) ? null : (notifStats?.unread || 0) },
+                { code: "N1", label: "Totales", value: notifStats?.total || 0 },
+                { code: "N2", label: "Sin leer", value: notifStats?.unread || 0 },
             ]}
             quickActions={[
                 { label: "Marcar todas como leídas", onClick: handleMarkAllAsRead, icon: CheckCheck },
@@ -65,8 +66,8 @@ export default function NotificacionesIndex({ notificaciones, notifStats }: Inde
         >
             <div className="space-y-4 max-w-4xl mx-auto py-4">
                 {(notificaciones === null || notificaciones === undefined) ? (
-                    <div className="py-20 flex justify-center">
-                         <div className="dots-loader"></div>
+                    <div className="space-y-3 py-8">
+                         {[0, 1, 2, 3].map((item) => <StudiaSkeleton key={item} className="h-20 w-full rounded-lg" />)}
                     </div>
                 ) : (
                     notifData.length === 0 ? (

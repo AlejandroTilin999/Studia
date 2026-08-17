@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { FormSelect } from '@/Components/forms/FormSelect';
-import { History, Search, User, X, Filter, Trash2 } from 'lucide-react';
+import { History, Search, User, X, Filter, Trash2, ExternalLink, Cloud } from 'lucide-react';
 import { FaFilePdf } from 'react-icons/fa';
 import AppTable from '@/Components/table/AppTable';
 import { TableActions, TableActionButton } from '@/Components/TableActions';
@@ -165,14 +165,40 @@ export default function AuditHistory({ downloads = [], onViewItem, onDeleteItem,
                             header: "Acciones",
                             align: "right",
                             accessor: (row) => (
-                                <TableActions align="end">
-                                    <TableActionButton
-                                        onClick={() => onDeleteItem(row)}
-                                        title="Eliminar del historial"
-                                        icon="delete"
-                                        variant="danger"
-                                    />
-                                </TableActions>
+                                <div className="flex items-center justify-end gap-2">
+                                    {row.metadata?.local_url && (
+                                        <a
+                                            href={row.metadata.local_url}
+                                            download
+                                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 flex items-center gap-1.5 text-xs font-bold transition-all"
+                                            title="Descargar copia guardada en servidor local"
+                                        >
+                                            <FaFilePdf size={12} />
+                                            <span>Local</span>
+                                        </a>
+                                    )}
+                                    {row.metadata?.drive_url && (
+                                        <a
+                                            href={row.metadata.drive_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100 flex items-center gap-1.5 text-xs font-bold transition-all"
+                                            title="Ver respaldo en Google Drive"
+                                        >
+                                            <Cloud size={13} />
+                                            <span>Drive</span>
+                                            <ExternalLink size={11} />
+                                        </a>
+                                    )}
+                                    <TableActions align="end">
+                                        <TableActionButton
+                                            onClick={() => onDeleteItem(row)}
+                                            title="Eliminar del historial"
+                                            icon="delete"
+                                            variant="danger"
+                                        />
+                                    </TableActions>
+                                </div>
                             )
                         }
                     ]}

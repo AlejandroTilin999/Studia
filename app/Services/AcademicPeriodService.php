@@ -4,9 +4,31 @@ namespace App\Services;
 
 use App\Models\AcademicPeriod;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class AcademicPeriodService
 {
+    /** Obtiene el ciclo operativo sin repetir la misma consulta en cada vista. */
+    public static function workingPeriod(?int $selectedCycleId = null): ?AcademicPeriod
+    {
+        if ($selectedCycleId) {
+            return AcademicPeriod::find($selectedCycleId);
+        }
+
+        return Cache::remember('academic-period:working', now()->addSeconds(15), function () {
+            return AcademicPeriod::query()
+                ->whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])
+                ->orderByRaw("CASE WHEN status = ? THEN 0 ELSE 1 END", [AcademicPeriod::STATUS_ACTIVE])
+                ->orderByDesc('fecha_inicio')
+                ->first();
+        });
+    }
+
+    public static function clearWorkingPeriodCache(): void
+    {
+        Cache::forget('academic-period:working');
+    }
+
     /**
      * Valida si la captura de calificaciones o tareas está habilitada para un parcial específico.
      * SOPORTA DOS MODOS:
@@ -21,78 +43,29 @@ class AcademicPeriodService
     public static function isCapturaHabilitada(AcademicPeriod $period, $parcial, $tipo = 'operacion', $load = null)
     {
         // 1. Validación de Estado de Ciclo
-        if ($tipo === 'config') {
-            // Permitido si el ciclo está en Planificación o Activo
-            if (!in_array($period->status, [AcademicPeriod::STATUS_PLANNING, AcademicPeriod::STATUS_ACTIVE])) {
-                return [
-                    'allowed' => false,
-                    'reason' => 'El ciclo escolar se encuentra cerrado. No se pueden modificar criterios.'
-                ];
-            }
-
-            // En modo 'config', si el ciclo está listo para operar, no aplicamos restricciones de fechas todavía
-            return [
-                'allowed' => true,
-                'reason' => 'Configuración habilitada.'
-            ];
-        }
-
-        // --- LÓGICA DE OPERACIÓN (Notas / Tareas) ---
-
-        // 1. El ciclo DEBE ser el vigente (activo)
-        if ($period->status !== AcademicPeriod::STATUS_ACTIVE) {
-            $msg = ($period->status === AcademicPeriod::STATUS_PLANNING)
-                ? 'El ciclo escolar aún se encuentra en fase de Planeación. La captura de notas se habilitará al iniciar clases.'
-                : 'El ciclo escolar se encuentra concluido / cerrado.';
+        if ($period->status !== AcademicPeriod::STATUS_ACTIVE && $period->status !== AcademicPeriod::STATUS_PLANNING) {
             return [
                 'allowed' => false,
-                'reason' => $msg
+                'reason' => 'El ciclo escolar se encuentra concluido / cerrado.'
             ];
         }
 
-        $now = Carbon::now();
         $prefix = "p{$parcial}";
+        $switchActivo = $period->{"{$prefix}_activo"};
 
-        $inicio = $period->{"{$prefix}_inicio"};
-        $fin = $period->{"{$prefix}_fin"};
-        $switchActivo = (bool)$period->{"{$prefix}_activo"};
+        // 2. Validación Pura del Switch del Admin: Si el Admin lo tiene en false, se bloquea.
+        $isAllowed = ($switchActivo === null) ? true : (bool)$switchActivo;
 
-        // 2. Validación de Cierre por Docente
-        // Si el docente concluyó este parcial, se mantendrá cerrado salvo que el Administrador fuerce el Switch activo
-        if ($load && !empty($load->{"{$prefix}_cerrado"}) && !$switchActivo) {
+        if (!$isAllowed) {
             return [
                 'allowed' => false,
-                'reason' => "El Parcial {$parcial} ha sido concluido oficialmente por el docente."
-            ];
-        }
-
-        // 3. Validación de Switch Manual del Admin (Prioridad Máxima)
-        // Si el switch está encendido, el administrador abrió el periodo manualmente (bypassea fechas y cierres)
-        if ($switchActivo) {
-            return [
-                'allowed' => true,
-                'reason' => 'Captura habilitada.'
-            ];
-        }
-
-        // 3. Validación de Rango de Fechas (Solo aplica si el switch está apagado)
-        if ($inicio && $now->lt($inicio)) {
-            return [
-                'allowed' => false,
-                'reason' => "El periodo de captura para el Parcial {$parcial} inicia el " . $inicio->format('d/m/Y') . "."
-            ];
-        }
-
-        if ($fin && $now->gt($fin)) {
-            return [
-                'allowed' => false,
-                'reason' => "El periodo de captura para el Parcial {$parcial} concluyó el " . $fin->format('d/m/Y') . "."
+                'reason' => "El Parcial {$parcial} se encuentra bloqueado por la administración."
             ];
         }
 
         return [
-            'allowed' => false,
-            'reason' => "El Parcial {$parcial} no se encuentra activo para captura."
+            'allowed' => true,
+            'reason' => 'Habilitado.'
         ];
     }
 }

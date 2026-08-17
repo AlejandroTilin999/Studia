@@ -1,10 +1,9 @@
 import React from 'react';
-import { Award, Upload, X, ExternalLink, Send } from 'lucide-react';
+import { Upload, X, ExternalLink, Clock3 } from 'lucide-react';
 import { SwalHelper } from '@/utils/SwalHelper';
 import axios from 'axios';
 
-interface AssignmentSubmissionCardProps {
-    taskId: number;
+export interface AssignmentSubmissionState {
     taskStatus: string;
     setTaskStatus: (status: string) => void;
     attachedFiles: any[];
@@ -15,28 +14,98 @@ interface AssignmentSubmissionCardProps {
     setDriveLink: (link: string) => void;
     isUploading: boolean;
     setIsUploading: (val: boolean) => void;
+}
+
+interface AssignmentSubmissionCardProps {
+    taskId: number;
+    submission: AssignmentSubmissionState;
     task: any;
+    points?: string;
+    grade?: string | number | null;
     strokeColor: string;
     getFileIcon: (filename: string) => React.ReactNode;
+    showEvaluation?: boolean;
+}
+
+interface AssignmentEvaluationSummaryProps {
+    points?: string;
+    grade?: string | number | null;
+    taskStatus: string;
+    strokeColor: string;
+    backgroundColor?: string;
+    textColor?: string;
+    headerBackgroundColor?: string;
+}
+
+export function AssignmentEvaluationSummary({
+    points = '10 puntos',
+    grade,
+    taskStatus,
+    strokeColor,
+    backgroundColor = '#ffffff',
+    textColor = '#ffffff',
+    headerBackgroundColor = strokeColor
+}: AssignmentEvaluationSummaryProps) {
+    const hasGrade = grade !== null && grade !== undefined && grade !== '';
+    const isDelivered = taskStatus === 'Entregado' || taskStatus === 'Calificado';
+    const formattedGrade = hasGrade
+        ? (String(grade).toLowerCase().includes('punto') ? String(grade) : `${grade} puntos`)
+        : null;
+
+    return (
+        <section style={{ backgroundColor }} className="h-full overflow-hidden">
+            <div style={{ backgroundColor: headerBackgroundColor, borderColor: `${strokeColor}35` }} className="px-5 py-3.5 border-b">
+                <span style={{ color: textColor }} className="text-[10px] font-black uppercase tracking-widest">Evaluación de la actividad</span>
+            </div>
+            <div className="grid grid-cols-2 divide-x divide-slate-200 bg-slate-50/60 h-[calc(100%-44px)]">
+                <div className="px-5 py-4">
+                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Puntos máximos</span>
+                    <span style={{ color: strokeColor }} className="block mt-1 text-xl font-black tracking-tight">{points}</span>
+                </div>
+                <div className="px-5 py-4">
+                    <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Resultado</span>
+                    {hasGrade ? (
+                        <span className="block mt-1 text-lg font-black tracking-tight text-slate-800">{formattedGrade}</span>
+                    ) : (
+                        <div className="flex items-center gap-1.5 mt-1 text-slate-600">
+                            <Clock3 size={15} style={{ color: strokeColor }} className="shrink-0" />
+                            <span className="text-xs font-bold leading-tight">{isDelivered ? 'En revisión' : 'Sin calificar'}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </section>
+    );
 }
 
 export default function AssignmentSubmissionCard({
     taskId,
-    taskStatus,
-    setTaskStatus,
-    attachedFiles,
-    setAttachedFiles,
-    currentServerFile,
-    setCurrentServerFile,
-    driveLink,
-    setDriveLink,
-    isUploading,
-    setIsUploading,
+    submission,
     task,
+    points = '10 puntos',
+    grade,
     strokeColor,
-    getFileIcon
+    getFileIcon,
+    showEvaluation = true
 }: AssignmentSubmissionCardProps) {
+    const {
+        taskStatus,
+        setTaskStatus,
+        attachedFiles,
+        setAttachedFiles,
+        currentServerFile,
+        setCurrentServerFile,
+        driveLink,
+        setDriveLink,
+        isUploading,
+        setIsUploading,
+    } = submission;
     const isDelivered = taskStatus === 'Entregado' || taskStatus === 'Calificado';
+    const isOverdue = taskStatus === 'Vencida' || task?.isOverdue === true;
+    const hasGrade = grade !== null && grade !== undefined && grade !== '';
+    const formattedGrade = hasGrade
+        ? (String(grade).toLowerCase().includes('punto') ? String(grade) : `${grade} puntos`)
+        : null;
 
     const notifyRealtimeUpdate = (msg: string) => {
         try {
@@ -48,18 +117,42 @@ export default function AssignmentSubmissionCard({
         } catch (e) {}
     };
 
+    const confirmSubmission = async (files: any[]) => {
+        const previousStatus = taskStatus;
+        setIsUploading(true);
+        setTaskStatus('Entregándose');
+        SwalHelper.toastLoading('Entregando tarea...');
+        try {
+            await axios.post('/alumno/tareas/confirmar', { tarea_id: taskId });
+            setTaskStatus('Entregado');
+            task.status = 'Entregado';
+            task.archivo = files;
+            notifyRealtimeUpdate('SUBMISSION_CREATED');
+            SwalHelper.close();
+            SwalHelper.toast('Tarea entregada con éxito', 'success');
+        } catch (err) {
+            console.error(err);
+            SwalHelper.close();
+            setTaskStatus(previousStatus);
+            SwalHelper.error('No se pudo entregar', 'Tus archivos siguen adjuntos; intenta confirmar la entrega nuevamente.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const handleFileUploadOnly = (file: File) => {
         setIsUploading(true);
         const formData = new FormData();
         formData.append('tarea_id', taskId.toString());
         formData.append('archivo', file);
 
-        SwalHelper.loading('Subiendo archivo...', 'Por favor espera mientras se sube tu archivo.');
+        SwalHelper.toastLoading('Subiendo archivo a Google Drive...');
 
         axios.post('/alumno/tareas/entregar', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
         .then((res) => {
+            SwalHelper.close();
             const newFilesList = res.data?.archivos && Array.isArray(res.data.archivos)
                 ? res.data.archivos
                 : [...attachedFiles, { url: res.data?.url || '#', nombre: res.data?.nombre || file.name }];
@@ -76,6 +169,7 @@ export default function AssignmentSubmissionCard({
                 'question'
             ).then((result) => {
                 if (result.isConfirmed) {
+                    return void confirmSubmission(newFilesList);
                     setTaskStatus('Entregado');
                     task.status = 'Entregado';
                     task.archivo = newFilesList;
@@ -88,6 +182,7 @@ export default function AssignmentSubmissionCard({
         })
         .catch((err) => {
             console.error(err);
+            SwalHelper.close();
             SwalHelper.error('Error', 'Hubo un problema al subir tu archivo.');
         })
         .finally(() => setIsUploading(false));
@@ -102,8 +197,13 @@ export default function AssignmentSubmissionCard({
             'warning'
         ).then((res) => {
             if (res.isConfirmed) {
+                const previousStatus = taskStatus;
+                setIsUploading(true);
+                setTaskStatus('Anulándose');
+                SwalHelper.toastLoading('Anulando entrega...');
                 axios.post('/alumno/tareas/anular', { tarea_id: taskId })
                     .then(() => {
+                        SwalHelper.close();
                         SwalHelper.toast('Entrega anulada', 'info');
                         notifyRealtimeUpdate('SUBMISSION_CANCELLED');
                         task.status = 'Pendiente';
@@ -111,7 +211,14 @@ export default function AssignmentSubmissionCard({
                         setTaskStatus('Pendiente');
                         setCurrentServerFile(null);
                         setDriveLink('');
-                    });
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        SwalHelper.close();
+                        setTaskStatus(previousStatus);
+                        SwalHelper.error('No se pudo anular', 'La entrega sigue disponible. Intenta nuevamente.');
+                    })
+                    .finally(() => setIsUploading(false));
             }
         });
     };
@@ -128,12 +235,14 @@ export default function AssignmentSubmissionCard({
             'warning'
         ).then((res) => {
             if (res.isConfirmed) {
-                SwalHelper.loading('Eliminando archivo...', 'Por favor espera.');
+                setIsUploading(true);
+                SwalHelper.toastLoading('Eliminando archivo de la entrega...');
                 axios.post('/alumno/tareas/quitar-archivo', {
                     tarea_id: taskId,
                     file_url: fileUrl
                 })
                 .then((response) => {
+                    SwalHelper.close();
                     SwalHelper.toast('¡Archivo eliminado correctamente!', 'success');
                     const remainingFiles = response.data?.archivos || [];
                     setAttachedFiles(remainingFiles);
@@ -149,14 +258,40 @@ export default function AssignmentSubmissionCard({
                 })
                 .catch((err) => {
                     console.error(err);
+                    SwalHelper.close();
                     SwalHelper.error('Error', 'No se pudo eliminar el archivo.');
-                });
+                })
+                .finally(() => setIsUploading(false));
             }
         });
     };
 
     return (
-        <div className="bg-white border-y border-slate-200 py-6 space-y-5 relative">
+        <div className="bg-white border border-slate-200 rounded-[10px] overflow-hidden relative">
+            {showEvaluation && <section>
+                <div style={{ backgroundColor: strokeColor }} className="px-5 py-3.5">
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Evaluación de la actividad</span>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-slate-200 bg-slate-50/60 border-b border-slate-200">
+                    <div className="px-5 py-4">
+                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Puntos máximos</span>
+                        <span style={{ color: strokeColor }} className="block mt-1 text-xl font-black tracking-tight">{points}</span>
+                    </div>
+                    <div className="px-5 py-4">
+                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">Resultado</span>
+                        {hasGrade ? (
+                            <span className="block mt-1 text-lg font-black tracking-tight text-slate-800">{formattedGrade}</span>
+                        ) : (
+                            <div className="flex items-center gap-1.5 mt-1 text-slate-600">
+                                <Clock3 size={15} style={{ color: strokeColor }} className="shrink-0" />
+                                <span className="text-xs font-bold leading-tight">{isDelivered ? 'En revisión' : 'Sin calificar'}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>}
+
+            <div className="p-5 sm:p-6 space-y-5">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 relative z-10">
                 <div className="flex items-center gap-2">
                     <h4 className="text-xs font-black text-slate-900 tracking-tight">Estado de Entrega</h4>
@@ -172,6 +307,24 @@ export default function AssignmentSubmissionCard({
                     {taskStatus}
                 </span>
             </div>
+
+            {!isDelivered && !isOverdue && (
+                <div className="border-y border-slate-100 py-3 flex items-start gap-3">
+                    <span style={{ backgroundColor: `${strokeColor}12`, color: strokeColor }} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0">1</span>
+                    <p className="text-[11px] leading-relaxed text-slate-500 pt-0.5">
+                        Adjunta tu archivo. Después podrás confirmar la entrega cuando estés listo.
+                    </p>
+                </div>
+            )}
+
+            {!isDelivered && isOverdue && (
+                <div className="border-y border-rose-100 bg-rose-50/60 py-3 px-3 flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 bg-rose-100 text-rose-700">!</span>
+                    <p className="text-[11px] leading-relaxed text-rose-700 pt-0.5">
+                        La fecha límite ya venció. Esta actividad ya no acepta entregas.
+                    </p>
+                </div>
+            )}
 
             {attachedFiles.length > 0 && (
                 <div className="space-y-2.5 relative z-10">
@@ -211,13 +364,25 @@ export default function AssignmentSubmissionCard({
                 </div>
             )}
 
-            {!isDelivered ? (
+            {!isDelivered && !isOverdue && attachedFiles.length > 0 && (
+                <button
+                    type="button"
+                    onClick={() => confirmSubmission(attachedFiles)}
+                    disabled={isUploading}
+                    style={{ backgroundColor: strokeColor }}
+                    className="w-full py-2.5 text-white text-xs font-extrabold transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                >
+                    {isUploading ? 'Subiendo archivo…' : 'Entregar tarea'}
+                </button>
+            )}
+
+            {!isDelivered && !isOverdue ? (
                 <div className="space-y-3.5 pt-1 relative z-10">
                     <label 
                         style={{ borderColor: `${strokeColor}40` }} 
-                        className="border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50/80 transition-all text-center group"
+                        className="border-2 border-dashed p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50/80 transition-all text-center group"
                     >
-                        <div style={{ backgroundColor: `${strokeColor}10` }} className="p-2.5 rounded-xl group-hover:scale-110 transition-transform">
+                        <div style={{ backgroundColor: `${strokeColor}10` }} className="p-2.5 rounded-full group-hover:scale-110 transition-transform">
                             <Upload size={18} style={{ color: strokeColor }} />
                         </div>
                         <div className="space-y-0.5">
@@ -227,7 +392,7 @@ export default function AssignmentSubmissionCard({
                         <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUploadOnly(e.target.files[0])} disabled={isUploading} />
                     </label>
                 </div>
-            ) : (
+            ) : isDelivered ? (
                 <div className="pt-2 relative z-10">
                     <button 
                         onClick={handleCancelRealSubmission} 
@@ -236,7 +401,8 @@ export default function AssignmentSubmissionCard({
                         Anular Entrega
                     </button>
                 </div>
-            )}
+            ) : null}
+            </div>
         </div>
     );
 }

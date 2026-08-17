@@ -1,7 +1,8 @@
 import React from 'react';
-import { FileText, Pencil, Trash2, Download, ChevronRight } from 'lucide-react';
+import { FileText, Pencil, Trash2, ExternalLink, ChevronRight } from 'lucide-react';
 import { Task } from '../services/constants';
 import { cn } from '@/lib/utils';
+import PdfIcon from '@/Components/ui/PdfIcon';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 
 const formatHumanDate = (dateStr?: string) => {
@@ -106,23 +107,6 @@ export default function ActivityCard({
                     </div>
                 )}
 
-                {/* Adjuntos */}
-                {task.attachments && task.attachments.length > 0 && (
-                    <div className="pl-14 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {task.attachments.map((file, idx) => (
-                            <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200/80 px-3.5 py-2.5 rounded-xl">
-                                <div className="flex items-center gap-2 truncate">
-                                    <FileText size={15} className={activeTheme.text} />
-                                    <span className="text-xs text-slate-700 font-medium truncate">{file.name}</span>
-                                </div>
-                                <button className="text-slate-400 hover:text-slate-700 p-1 transition-all">
-                                    <Download size={14} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
                 {/* Botón Ver Entregas */}
                 <div className="pl-14 pt-1 flex justify-start">
                     <button
@@ -136,10 +120,10 @@ export default function ActivityCard({
                 </div>
             </div>
 
-            {/* Derecha: Estadísticas centradas verticalmente y más grandes + botones de edición */}
-            <div className="flex items-center gap-6 shrink-0 sm:self-center pl-14 sm:pl-0 pt-2 sm:pt-0">
+            {/* Derecha: Estadísticas centradas verticalmente + botones de edición */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6 shrink-0 sm:self-center pl-14 sm:pl-0 pt-3 sm:pt-0">
                 {/* Estadísticas (Entregadas / Pendientes / Calificadas) */}
-                <div className="flex items-center gap-7 text-center">
+                <div className="flex items-center justify-between sm:justify-start gap-6 sm:gap-7 text-center">
                     <div className="flex flex-col items-center">
                         <span className="text-3xl md:text-4xl font-light text-slate-700 leading-none">
                             {entregadasCount}
@@ -166,8 +150,9 @@ export default function ActivityCard({
                     </div>
                 </div>
 
+                {/* Botones de edición/eliminación (Solo íconos en gris, colocados abajo en móvil) */}
                 {!isReadOnly && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-end sm:justify-start gap-1 pt-1.5 sm:pt-0 border-t border-slate-100 sm:border-t-0">
                         <button
                             onClick={() => onEdit(task)}
                             className="text-slate-400 hover:text-slate-700 p-2 rounded-lg hover:bg-slate-100 transition-all"

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, router, Deferred } from '@inertiajs/react';
-import DashboardWelcomeBanner from '@/Components/DashboardWelcomeBanner';
+import DashboardWelcomeBanner from '@/Components/layout/DashboardWelcomeBanner';
 import QuickSummaryWidget, { MetricItem } from '@/Components/QuickSummaryWidget';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { cycleService } from '@/services/cycleService';

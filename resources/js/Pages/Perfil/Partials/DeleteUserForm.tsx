@@ -1,8 +1,6 @@
 import { ButtonLogin } from '@/Components/ButtonLogin';
 import { useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
 import { SwalHelper } from "@/utils/SwalHelper";
-import Swal from 'sweetalert2';
 
 export default function DeleteUserForm({
     className = '',
@@ -12,7 +10,6 @@ export default function DeleteUserForm({
     const {
         setData,
         delete: destroy,
-        processing,
         reset,
     } = useForm({
         password: '',
@@ -26,15 +23,14 @@ export default function DeleteUserForm({
             (password) => {
                 setData('password', password);
                 setTimeout(() => {
-                    executeDelete(password);
+                    executeDelete();
                 }, 100);
             }
         );
     };
 
-    const executeDelete = (password: string) => {
+    const executeDelete = () => {
         destroy(route('perfil.destroy'), {
-            data: { password }, // Pasar password directo en el payload
             preserveScroll: true,
             onError: (err) => {
                 SwalHelper.error('Error de validación', err.password || 'La contraseña es incorrecta.');

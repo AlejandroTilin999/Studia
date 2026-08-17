@@ -14,8 +14,7 @@ interface AttendanceData {
 }
 
 export const generateAttendanceHTML = (data: AttendanceData): string => {
-    const { group, period, enrollments, generated_at } = data;
-    const logoUrl = "/assets/phid_logo.webp";
+    const { group, period, enrollments } = data;
 
     return `
         <html>
@@ -25,12 +24,6 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
                 * { box-sizing: border-box; }
                 body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; font-size: 15px; }
-
-                .header { display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 20px; margin-bottom: 25px; }
-                .logo { height: 60px; }
-                .institution-info { text-align: right; }
-                .institution-name { font-weight: 900; font-size: 16px; color: #0266E0; margin: 0; text-transform: uppercase; white-space: nowrap; }
-                .report-date { font-size: 12px; color: #64748b; margin-top: 4px; }
 
                 .title-section { margin-bottom: 20px; }
                 .main-title { font-size: 28px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: -0.02em; }
@@ -72,33 +65,6 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
                     .col-day { width: 18px; }
                 }
 
-                .footer {
-                    position: fixed;
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
-                    height: 120px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: flex-end;
-                    padding-bottom: 40px;
-                    background: white;
-                }
-                .sig-box { border-top: 0.3px solid #94a3b8; text-align: center; padding-top: 10px; font-size: 11px; font-weight: 900; color: #475569; text-transform: uppercase; width: 250px; margin: 0 30px; }
-
-                .footer {
-                    position: relative;
-                    margin-top: 50px;
-                    border-top: 1px solid #e2e8f0;
-                    padding-top: 15px;
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 10px;
-                    color: #94a3b8;
-                    font-weight: 600;
-                    background: white;
-                    text-transform: uppercase;
-                }
                 @media print {
                     body { padding: 0; }
                     @page { size: auto; margin: 1.5cm; }
@@ -106,14 +72,6 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
             </style>
         </head>
         <body>
-            <div class="header">
-                <img src="${logoUrl}" class="logo" />
-                <div class="institution-info">
-                    <p class="institution-name">Preparatoria Particular Hidalgo</p>
-                    <p class="report-date">Generado el ${generated_at}</p>
-                </div>
-            </div>
-
             <div class="title-section">
                 <h1 class="main-title">Lista de Control de Asistencia</h1>
                 <p class="sub-title">SISTEMA DE CONTROL ESCOLAR PREPAHID | Documento Oficial Académico</p>
@@ -158,11 +116,6 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
                     `).join('')}
                 </tbody>
             </table>
-
-            <div class="footer">
-                <div class="sig-box">Firma del Docente</div>
-                <div class="sig-box">Sello y Firma de Dirección</div>
-            </div>
         </body>
         </html>
     `;
