@@ -6,6 +6,7 @@ import { FormInput } from '@/Components/forms/FormInput';
 import { FormSelect } from '@/Components/forms/FormSelect';
 import { SpecialtySelect } from '@/Components/SpecialtySelect';
 import { GENERAL_AREAS } from '../../Alumnos/constants';
+import { capitalizeWords } from '@/utils/stringUtils';
 
 interface TeacherFormModalProps {
     open: boolean;
@@ -129,7 +130,7 @@ export default function TeacherFormModal({
                             <FormInput
                                 required
                                 value={data.nombre}
-                                onChange={e => setData('nombre', e.target.value)}
+                                onChange={e => setData('nombre', capitalizeWords(e.target.value))}
                                 placeholder="Ej: Roberto Carlos"
                                 className="h-9 text-xs font-normal"
                             />
@@ -142,7 +143,7 @@ export default function TeacherFormModal({
                                 <FormInput
                                     required
                                     value={data.apellido_paterno}
-                                    onChange={e => setData('apellido_paterno', e.target.value)}
+                                    onChange={e => setData('apellido_paterno', capitalizeWords(e.target.value))}
                                     placeholder="Ej: Silva"
                                     className="h-9 text-xs"
                                 />
@@ -153,7 +154,7 @@ export default function TeacherFormModal({
                                 <FormInput
                                     required
                                     value={data.apellido_materno}
-                                    onChange={e => setData('apellido_materno', e.target.value)}
+                                    onChange={e => setData('apellido_materno', capitalizeWords(e.target.value))}
                                     placeholder="Ej: Pérez"
                                     className="h-9 text-xs"
                                 />

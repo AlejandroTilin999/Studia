@@ -6,6 +6,7 @@ import { FormInput } from '@/Components/forms/FormInput';
 import { FormSelect } from '@/Components/forms/FormSelect';
 import { AcademicGroupProp } from '../types';
 import { MONTHS, YEARS } from '../constants';
+import { capitalizeWords } from '@/utils/stringUtils';
 
 interface StudentFormModalProps {
     isOpen: boolean;
@@ -193,7 +194,7 @@ export default function StudentFormModal({
                                 <FormInput
                                     required
                                     value={data.nombre}
-                                    onChange={e => setData('nombre', e.target.value)}
+                                    onChange={e => setData('nombre', capitalizeWords(e.target.value))}
                                     placeholder="Ej: José Eduardo"
                                     className="h-9 text-xs"
                                 />
@@ -205,7 +206,7 @@ export default function StudentFormModal({
                                 <FormInput
                                     required
                                     value={data.apellido_paterno}
-                                    onChange={e => setData('apellido_paterno', e.target.value)}
+                                    onChange={e => setData('apellido_paterno', capitalizeWords(e.target.value))}
                                     placeholder="Ej: Gómez"
                                     className="h-9 text-xs"
                                 />
@@ -219,7 +220,7 @@ export default function StudentFormModal({
                                 <FormLabel>Apellido Materno</FormLabel>
                                 <FormInput
                                     value={data.apellido_materno}
-                                    onChange={e => setData('apellido_materno', e.target.value)}
+                                    onChange={e => setData('apellido_materno', capitalizeWords(e.target.value))}
                                     placeholder="Ej: López"
                                     className="h-9 text-xs"
                                 />

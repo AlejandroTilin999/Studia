@@ -366,29 +366,6 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   href={item.path}
                   prefetch={item.name === 'Inicio' ? ['mount', 'hover'] : 'hover'}
                   onClick={(event) => {
-                    if (role === 'ADMIN') {
-                      // Inertia actualiza la URL al finalizar la visita. Para
-                      // que el primer clic se sienta inmediato, adelantamos el
-                      // historial y mostramos el estado de carga antes de pedir
-                      // el contenido. `replace` evita duplicar esa entrada.
-                      if (window.location.pathname !== item.path) {
-                        event.preventDefault();
-                        router.cancelAll({ sync: true, async: true, prefetch: false });
-                        window.history.pushState({}, '', item.path);
-                        setCurrentLocationUrl(item.path);
-                        window.dispatchEvent(new CustomEvent('studia:navigation', {
-                          detail: { url: item.path },
-                        }));
-                        setOpenMobile(false);
-
-                        router.visit(item.path, {
-                          replace: true,
-                          preserveScroll: true,
-                        });
-                      }
-                      return;
-                    }
-
                     if (role === 'ALUMNO' && item.name === 'Inicio') {
                       event.preventDefault();
                       router.cancelAll({ sync: true, async: true, prefetch: false });
@@ -400,9 +377,6 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                       setOpenMobile(false);
                       return;
                     }
-                    // Actualiza el resaltado de inmediato; Inertia completa la
-                    // navegación y sus props después sin dejar una selección vieja.
-                    setCurrentLocationUrl(item.path);
                     setOpenMobile(false);
                   }}
                   className={cn(

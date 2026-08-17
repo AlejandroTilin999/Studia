@@ -5,6 +5,7 @@ import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormInput } from '@/Components/forms/FormInput';
 import { FormSelect } from '@/Components/forms/FormSelect';
+import { capitalizeWords } from '@/utils/stringUtils';
 
 interface UserFormModalProps {
     isOpen: boolean;
@@ -93,17 +94,19 @@ export default function UserFormModal({
     };
 
     const handleNameChange = (val: string) => {
+        const cap = capitalizeWords(val);
         setFormData(prev => {
-            const next = { ...prev, nombre: val };
-            if (mode === 'create') next.email = generateEmailFromName(val, prev.apellido_paterno);
+            const next = { ...prev, nombre: cap };
+            if (mode === 'create') next.email = generateEmailFromName(cap, prev.apellido_paterno);
             return next;
         });
     };
 
     const handlePaternoChange = (val: string) => {
+        const cap = capitalizeWords(val);
         setFormData(prev => {
-            const next = { ...prev, apellido_paterno: val };
-            if (mode === 'create') next.email = generateEmailFromName(prev.nombre, val);
+            const next = { ...prev, apellido_paterno: cap };
+            if (mode === 'create') next.email = generateEmailFromName(prev.nombre, cap);
             return next;
         });
     };
@@ -112,7 +115,7 @@ export default function UserFormModal({
         e.preventDefault();
         const fullName = [formData.nombre, formData.apellido_paterno, formData.apellido_materno].filter(Boolean).join(' ');
         onSubmit({
-            nombre: fullName,
+            nombre: formData.nombre,
             apellido_paterno: formData.apellido_paterno,
             apellido_materno: formData.apellido_materno,
             email: formData.email,
@@ -156,7 +159,7 @@ export default function UserFormModal({
                             </div>
                             <div className="space-y-1.5 text-left">
                                 <FormLabel required>Apellido Materno</FormLabel>
-                                <FormInput required value={formData.apellido_materno} onChange={e => setFormData({ ...formData, apellido_materno: e.target.value })} placeholder="Ej: López" className="h-9 text-xs" />
+                                <FormInput required value={formData.apellido_materno} onChange={e => setFormData({ ...formData, apellido_materno: capitalizeWords(e.target.value) })} placeholder="Ej: López" className="h-9 text-xs" />
                             </div>
                         </div>
                         <div className="space-y-1.5 text-left">

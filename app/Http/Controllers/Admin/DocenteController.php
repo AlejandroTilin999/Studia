@@ -188,9 +188,9 @@ class DocenteController extends Controller
             } while (User::where('email', $generatedEmail)->exists());
         }
 
-        DB::transaction(function () use ($request, $employeeCode, $generatedEmail) {
+        $user = DB::transaction(function () use ($request, $employeeCode, $generatedEmail) {
             // 1. Crear el usuario correspondiente
-            $user = User::create([
+            $u = User::create([
                 'nombre'           => $request->nombre,
                 'apellido_paterno' => $request->apellido_paterno,
                 'apellido_materno' => $request->apellido_materno,
@@ -202,14 +202,16 @@ class DocenteController extends Controller
 
             // 2. Crear el docente enlazado
             Teacher::create([
-                'usuario_id'       => $user->id,
+                'usuario_id'       => $u->id,
                 'codigo_empleado'  => $employeeCode,
                 'especialidad'     => $request->especialidad,
                 'areas'            => $request->areas ?? [],
             ]);
+
+            return $u;
         });
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($user->id);
         return redirect()->route('admin.docentes.index');
     }
 
@@ -256,7 +258,7 @@ class DocenteController extends Controller
             ]);
         });
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($teacher->usuario_id);
         return redirect()->route('admin.docentes.index');
     }
 
@@ -287,12 +289,18 @@ class DocenteController extends Controller
             $teacher->delete();
         });
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($teacher->usuario_id);
         return redirect()->route('admin.docentes.index');
     }
 
-    private function invalidateListCache(): void
+    private function invalidateListCache(?int $teacherUserId = null): void
     {
+        Cache::add('admin:docentes:list:revision', 1, now()->addDays(30));
         Cache::increment('admin:docentes:list:revision');
+        Cache::forget('admin_system_metrics');
+        Cache::forget('admin_users_stats_cache');
+        if ($teacherUserId) {
+            Cache::forget("sidebar_docente_{$teacherUserId}");
+        }
     }
 }

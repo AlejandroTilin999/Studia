@@ -238,9 +238,9 @@ class AlumnoController extends Controller
 
         $targetCycleId = $targetCycle->id;
 
-        DB::transaction(function () use ($request, $generatedEmail, $finalMatricula, $targetCycleId) {
+        $user = DB::transaction(function () use ($request, $generatedEmail, $finalMatricula, $targetCycleId) {
             // 1. Crear el usuario correspondiente
-            $user = User::create([
+            $u = User::create([
                 'nombre'           => $request->nombre,
                 'apellido_paterno' => $request->apellido_paterno,
                 'apellido_materno' => $request->apellido_materno,
@@ -252,7 +252,7 @@ class AlumnoController extends Controller
 
             // 2. Crear el perfil de estudiante
             Student::create([
-                'usuario_id'       => $user->id,
+                'usuario_id'       => $u->id,
                 'matricula'        => $finalMatricula,
                 'fecha_nacimiento' => $request->fecha_nacimiento,
                 'estatus'          => 'active',
@@ -260,15 +260,17 @@ class AlumnoController extends Controller
 
             // 3. Registrar su inscripción en el grupo
             Enrollment::create([
-                'usuario_id'    => $user->id,
+                'usuario_id'    => $u->id,
                 'grupo_id'      => $request->grupo_id,
                 'ciclo_id'      => $targetCycleId,
                 'codigo_alumno' => $finalMatricula,
                 'estatus'       => 'active',
             ]);
+
+            return $u;
         });
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($user->id);
         return redirect()->route('admin.alumnos.index');
     }
 
@@ -343,7 +345,7 @@ class AlumnoController extends Controller
             }
         });
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($student->usuario_id);
         return redirect()->route('admin.alumnos.index');
     }
 
@@ -364,7 +366,7 @@ class AlumnoController extends Controller
             $student->enrollment->update(['estatus' => $newStatus]);
         }
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($student->usuario_id);
         return redirect()->back()->with('message', 'Estado del alumno actualizado.');
     }
 
@@ -408,13 +410,22 @@ class AlumnoController extends Controller
             $student->delete();
         });
 
-        $this->invalidateListCache();
+        $this->invalidateListCache($student->usuario_id);
         return redirect()->route('admin.alumnos.index');
     }
 
-    private function invalidateListCache(): void
+    private function invalidateListCache(?int $studentUserId = null): void
     {
+        Cache::add('admin:alumnos:list:revision', 1, now()->addDays(30));
         Cache::increment('admin:alumnos:list:revision');
+        Cache::forget('admin_system_metrics');
+        Cache::forget('admin_users_stats_cache');
+        if ($studentUserId) {
+            Cache::forget("student_enrollment_{$studentUserId}");
+            Cache::forget("sidebar_alumno_{$studentUserId}");
+            Cache::add("student_cache_version_{$studentUserId}", 1, now()->addDays(30));
+            Cache::increment("student_cache_version_{$studentUserId}");
+        }
     }
 
     /**

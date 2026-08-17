@@ -117,6 +117,7 @@ class UsuarioController extends Controller
             }
         });
 
+        $this->invalidateCache();
         return redirect()->back()->with('message', 'Usuario registrado con éxito.');
     }
 
@@ -146,6 +147,7 @@ class UsuarioController extends Controller
             ]);
         });
 
+        $this->invalidateCache($user->id);
         return redirect()->back()->with('message', 'Usuario actualizado con éxito.');
     }
 
@@ -155,6 +157,7 @@ class UsuarioController extends Controller
         $user->activo = !$user->activo;
         $user->save();
 
+        $this->invalidateCache($user->id);
         return redirect()->back()->with('message', 'Estado del usuario actualizado.');
     }
 
@@ -226,6 +229,19 @@ class UsuarioController extends Controller
             }
         });
 
+        $this->invalidateCache($user->id);
+
         return redirect()->back()->with('message', "Contraseña de {$user->nombre} restablecida con éxito. Se le envió correo de notificación.");
+    }
+
+    private function invalidateCache(?int $userId = null): void
+    {
+        \Cache::forget('admin_users_stats_cache');
+        \Cache::forget('admin_system_metrics');
+        if ($userId) {
+            \Cache::forget("sidebar_alumno_{$userId}");
+            \Cache::forget("sidebar_docente_{$userId}");
+            \Cache::forget("student_enrollment_{$userId}");
+        }
     }
 }
