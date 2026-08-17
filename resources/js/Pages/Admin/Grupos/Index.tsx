@@ -200,13 +200,13 @@ export default function GruposIndex({
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando grupo del sistema escolar');
+                SwalHelper.toastLoading('Eliminando grupo...');
                 groupService.destroy(id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Eliminado!', 'El grupo ha sido removido correctamente.');
+                        SwalHelper.toast('Grupo eliminado correctamente.', 'success');
                     },
                     onError: (err: any) => {
-                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar el grupo (podría tener alumnos inscritos).');
+                        SwalHelper.toast(err.delete || 'No se pudo eliminar el grupo.', 'error');
                     }
                 });
             }
@@ -215,15 +215,15 @@ export default function GruposIndex({
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        SwalHelper.loading('Registrando grupo...', 'Guardando datos en el servidor');
+        SwalHelper.toastLoading('Registrando grupo...');
         post('/admin/grupos', {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 reset();
-                SwalHelper.success('¡Hecho!', 'El grupo ha sido registrado correctamente.');
+                SwalHelper.toast('Grupo registrado correctamente.', 'success');
             },
             onError: () => {
-                SwalHelper.error('Error de validación', 'Por favor revisa los campos.');
+                SwalHelper.toast('Error al registrar grupo. Revisa los campos.', 'error');
             },
         });
     };
@@ -231,14 +231,14 @@ export default function GruposIndex({
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedGroup) {
-            SwalHelper.loading('Actualizando grupo...', 'Procesando cambios');
+            SwalHelper.toastLoading('Actualizando grupo...');
             put(`/admin/grupos/${selectedGroup.id}`, {
                 onSuccess: () => {
                     setIsEditModalOpen(false);
-                    SwalHelper.success('¡Actualizado!', 'Los datos del grupo han sido guardados.');
+                    SwalHelper.toast('Grupo actualizado correctamente.', 'success');
                 },
                 onError: () => {
-                    SwalHelper.error('Error', 'No se pudieron guardar los cambios.');
+                    SwalHelper.toast('No se pudieron guardar los cambios.', 'error');
                 },
             });
         }
@@ -246,16 +246,16 @@ export default function GruposIndex({
 
     const handlePromoteSubmit = async (promoteData: any) => {
         setIsPromoteProcessing(true);
-        SwalHelper.loading("Procesando Promoción", "Generando nuevas inscripciones y actualizando historial...");
+        SwalHelper.toastLoading('Procesando promoción académica...');
 
         try {
             await axios.post(route('admin.promociones.promote'), promoteData);
-            SwalHelper.success("¡Promoción Exitosa!", "Los alumnos han sido movidos al nuevo nivel académico.");
+            SwalHelper.toast('¡Promoción académica realizada correctamente!', 'success');
             setIsPromoteModalOpen(false);
             router.reload();
         } catch (error: any) {
             console.error(error);
-            SwalHelper.error("Error", error.response?.data?.error || "No se pudo procesar la promoción.");
+            SwalHelper.toast(error.response?.data?.error || 'No se pudo procesar la promoción.', 'error');
         } finally {
             setIsPromoteProcessing(false);
         }

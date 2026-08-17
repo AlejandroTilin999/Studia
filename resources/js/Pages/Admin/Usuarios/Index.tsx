@@ -91,23 +91,25 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
         };
 
         if (modalMode === 'create') {
+            SwalHelper.toastLoading('Registrando cuenta de usuario...');
             router.post('/admin/usuarios', payload, {
                 onSuccess: () => {
                     setIsModalOpen(false);
-                    SwalHelper.success('¡Hecho!', 'El usuario ha sido registrado con éxito.');
+                    SwalHelper.toast('Usuario registrado correctamente.', 'success');
                 },
                 onError: (errs) => {
-                    SwalHelper.error('Error', 'No se pudo registrar al usuario.');
+                    SwalHelper.toast('No se pudo registrar al usuario.', 'error');
                 }
             });
         } else if (modalMode === 'edit' && selectedUser) {
+            SwalHelper.toastLoading('Actualizando datos de usuario...');
             router.put(`/admin/usuarios/${selectedUser.id}`, payload, {
                 onSuccess: () => {
                     setIsModalOpen(false);
-                    SwalHelper.success('¡Actualizado!', 'Los datos del usuario han sido actualizados.');
+                    SwalHelper.toast('Datos de usuario actualizados.', 'success');
                 },
                 onError: (errs) => {
-                    SwalHelper.error('Error', 'No se pudieron actualizar los datos.');
+                    SwalHelper.toast('No se pudieron actualizar los datos.', 'error');
                 }
             });
         }
@@ -123,13 +125,13 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
             isActivating ? 'info' : 'warning'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Procesando...', 'Cambiando estado de cuenta.');
+                SwalHelper.toastLoading('Cambiando estado de cuenta...');
                 router.post(`/admin/usuarios/${user.id}/toggle`, {}, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Completado!', `La cuenta ha sido ${isActivating ? 'activada' : 'desactivada'}.`);
+                        SwalHelper.toast(`La cuenta ha sido ${isActivating ? 'activada' : 'desactivada'}.`, 'success');
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo cambiar el estado de la cuenta.');
+                        SwalHelper.toast('No se pudo cambiar el estado de la cuenta.', 'error');
                     }
                 });
             }
@@ -145,13 +147,13 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
             'warning'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Restableciendo...', 'Generando nueva clave temporal.');
+                SwalHelper.toastLoading('Restableciendo contraseña...');
                 router.post(`/admin/usuarios/${user.id}/reset-password`, {}, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Contraseña Cambiada!', 'Se ha enviado la nueva clave al usuario.');
+                        SwalHelper.toast('Contraseña restablecida correctamente.', 'success');
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo restablecer la contraseña.');
+                        SwalHelper.toast('No se pudo restablecer la contraseña.', 'error');
                     }
                 });
             }
@@ -167,13 +169,13 @@ export default function UsersIndex({ dbUsers, resetRequests = [], filters = { se
             'info'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Procesando...', 'Actualizando credenciales del usuario.');
+                SwalHelper.toastLoading('Aprobando restablecimiento...');
                 router.post(`/admin/usuarios/solicitudes-reset/${req.id}/aprobar`, {}, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Hecho!', 'La contraseña ha sido restablecida.');
+                        SwalHelper.toast('Contraseña restablecida y enviada al usuario.', 'success');
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo procesar la solicitud.');
+                        SwalHelper.toast('No se pudo procesar la solicitud.', 'error');
                     }
                 });
             }

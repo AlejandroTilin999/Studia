@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, TrendingUp, Users, CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
+import { X, GraduationCap, Users, CheckCircle2, Check, AlertCircle, HelpCircle } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormSelect } from '@/Components/forms/FormSelect';
@@ -134,7 +134,7 @@ export default function PromotionModal({
                         <div>
                             <img src="/assets/logo-ph-blanco.webp" alt="Prepa Hidalgo" className="h-8 w-auto object-contain mb-6" />
                             <h3 className="text-xl font-bold text-white leading-tight flex items-center gap-3">
-                                <TrendingUp size={24} />
+                                <GraduationCap size={24} />
                                 Gestión de Promociones
                             </h3>
                         </div>
@@ -189,7 +189,19 @@ export default function PromotionModal({
                         <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex items-center justify-between mb-3">
                                 <FormLabel className="mb-0">Alumnos a Promover ({selectedStudents.length})</FormLabel>
-                                <button type="button" onClick={() => setSelectedStudents(students.map(s => s.id))} className="text-[10px] font-bold text-[#0266E0] uppercase hover:underline">Seleccionar todos</button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (students.length > 0 && selectedStudents.length === students.length) {
+                                            setSelectedStudents([]);
+                                        } else {
+                                            setSelectedStudents(students.map(s => s.id));
+                                        }
+                                    }}
+                                    className="text-[10px] font-bold text-[#0266E0] uppercase hover:underline"
+                                >
+                                    {students.length > 0 && selectedStudents.length === students.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                                </button>
                             </div>
 
                             <div className="flex-1 overflow-y-auto border border-slate-100 rounded-xl bg-slate-50/50 p-2">
@@ -209,7 +221,7 @@ export default function PromotionModal({
                                                     )}
                                                 >
                                                     <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-colors", isSelected ? "bg-[#0266E0] border-[#0266E0]" : "bg-white border-slate-300")}>
-                                                        {isSelected && <CheckCircle2 size={10} className="text-white" />}
+                                                        {isSelected && <Check size={11} className="text-white stroke-[3]" />}
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-[11px] font-bold text-slate-700 truncate leading-none mb-1 uppercase">{s.nombre}</p>

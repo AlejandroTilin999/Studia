@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { Mail, Plus, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { SwalHelper } from '@/utils/SwalHelper';
 
 import TemplateCard, { Template } from './components/TemplateCard';
 import EmailPreviewModal from './components/EmailPreviewModal';
@@ -92,37 +93,47 @@ export default function Index({ templates = [], recipients = [] }: Props) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingTemplate) {
+            SwalHelper.toastLoading('Actualizando plantilla...');
             form.put(route('admin.plantillas_correo.update', editingTemplate.id), {
                 onSuccess: () => {
                     setIsCreateModalOpen(false);
-                    Swal.fire('¡Plantilla Actualizada!', 'Los cambios se guardaron correctamente.', 'success');
+                    SwalHelper.toast('Plantilla actualizada correctamente.', 'success');
                 },
+                onError: () => {
+                    SwalHelper.toast('Error al actualizar la plantilla.', 'error');
+                }
             });
         } else {
+            SwalHelper.toastLoading('Guardando plantilla...');
             form.post(route('admin.plantillas_correo.store'), {
                 onSuccess: () => {
                     setIsCreateModalOpen(false);
-                    Swal.fire('¡Plantilla Creada!', 'La plantilla de correo está lista para usar.', 'success');
+                    SwalHelper.toast('Plantilla de correo creada correctamente.', 'success');
                 },
+                onError: () => {
+                    SwalHelper.toast('Error al crear la plantilla.', 'error');
+                }
             });
         }
     };
 
     const handleDelete = (tpl: Template) => {
-        Swal.fire({
-            title: '¿Eliminar plantilla?',
-            text: `Confirmar eliminación de "${tpl.nombre}".`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-        }).then((result) => {
+        SwalHelper.confirm(
+            '¿Eliminar plantilla?',
+            `Confirmar eliminación de "${tpl.nombre}".`,
+            'Sí, eliminar',
+            'Cancelar',
+            'warning'
+        ).then((result) => {
             if (result.isConfirmed) {
+                SwalHelper.toastLoading('Eliminando plantilla...');
                 form.delete(route('admin.plantillas_correo.destroy', tpl.id), {
                     onSuccess: () => {
-                        Swal.fire('Eliminado', 'La plantilla ha sido removida.', 'success');
+                        SwalHelper.toast('Plantilla eliminada correctamente.', 'success');
                     },
+                    onError: () => {
+                        SwalHelper.toast('No se pudo eliminar la plantilla.', 'error');
+                    }
                 });
             }
         });
@@ -162,7 +173,7 @@ export default function Index({ templates = [], recipients = [] }: Props) {
     const handleSendSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedEmails.length === 0) {
-            Swal.fire('Atención', 'Selecciona al menos un destinatario.', 'warning');
+            SwalHelper.toast('Selecciona al menos un destinatario.', 'warning');
             return;
         }
 
@@ -171,14 +182,15 @@ export default function Index({ templates = [], recipients = [] }: Props) {
             recipients: selectedEmails,
         }));
 
+        SwalHelper.toastLoading(`Enviando correo a ${selectedEmails.length} destinatario(s)...`);
         sendForm.post(route('admin.plantillas_correo.send'), {
             onSuccess: () => {
                 setSendingTemplate(null);
-                Swal.fire('¡Correos Enviados!', `Se enviaron los mensajes exitosamente a ${selectedEmails.length} destinatario(s).`, 'success');
+                SwalHelper.toast(`Correos enviados exitosamente a ${selectedEmails.length} destinatario(s).`, 'success');
             },
             onError: () => {
-                Swal.fire('Error', 'Hubo un problema al procesar el envío de correos.', 'error');
-            }
+                SwalHelper.toast('Error al enviar los correos.', 'error');
+            },
         });
     };
 

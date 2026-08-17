@@ -1,5 +1,6 @@
 import React from 'react';
-import { Edit, Trash2, Key, FileText, Plus, UserMinus, UserPlus, TrendingUp } from 'lucide-react';
+import { Edit, Trash2, Key, FileText, Plus, UserMinus, UserPlus, GraduationCap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ActionButtonProps {
     onClick: (e: React.MouseEvent) => void;
@@ -26,7 +27,7 @@ export function TableActionButton({ onClick, title, icon, variant = 'default' }:
             case 'plus':
                 return <Plus size={16} />;
             case 'promote':
-                return <TrendingUp size={16} />;
+                return <GraduationCap size={16} />;
             default:
                 return null;
         }

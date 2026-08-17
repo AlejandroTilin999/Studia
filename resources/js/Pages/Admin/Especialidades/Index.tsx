@@ -84,16 +84,16 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        SwalHelper.loading('Registrando especialidad...', 'Guardando datos en el servidor');
+        SwalHelper.toastLoading('Registrando especialidad...');
 
         post('/admin/especialidades', {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 reset();
-                SwalHelper.success('¡Hecho!', 'La especialidad ha sido registrada correctamente.');
+                SwalHelper.toast('Especialidad registrada correctamente.', 'success');
             },
             onError: () => {
-                SwalHelper.error('Error de validación', 'Por favor revisa los campos.');
+                SwalHelper.toast('Error de validación. Revisa los campos.', 'error');
             },
         });
     };
@@ -101,15 +101,15 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedSpecialty) {
-            SwalHelper.loading('Actualizando especialidad...', 'Procesando cambios');
+            SwalHelper.toastLoading('Actualizando especialidad...');
 
             put(`/admin/especialidades/${selectedSpecialty.id}`, {
                 onSuccess: () => {
                     setIsEditModalOpen(false);
-                    SwalHelper.success('¡Actualizado!', 'Los datos han sido guardados.');
+                    SwalHelper.toast('Especialidad actualizada correctamente.', 'success');
                 },
                 onError: () => {
-                    SwalHelper.error('Error', 'No se pudieron guardar los cambios.');
+                    SwalHelper.toast('No se pudieron guardar los cambios.', 'error');
                 },
             });
         }
@@ -124,13 +124,13 @@ export default function SpecialtiesIndex({ especialidades, specialtyDistribution
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando registro del servidor');
+                SwalHelper.toastLoading('Eliminando especialidad...');
                 specialtyService.destroy(id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Eliminado!', 'La especialidad ha sido removida.');
+                        SwalHelper.toast('Especialidad eliminada correctamente.', 'success');
                     },
                     onError: (err: any) => {
-                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar la especialidad.');
+                        SwalHelper.toast(err.delete || 'No se pudo eliminar la especialidad.', 'error');
                     }
                 });
             }

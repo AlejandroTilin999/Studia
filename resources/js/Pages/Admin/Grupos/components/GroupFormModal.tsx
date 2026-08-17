@@ -86,8 +86,21 @@ export default function GroupFormModal({
         }
     }, [selectedSemester, isOpen, mode, currentYear]);
 
+    const generationOptions = React.useMemo(() => {
+        const options: string[] = [];
+        const baseYear = currentYear - 3;
+        for (let i = 0; i <= 6; i++) {
+            const start = baseYear + i;
+            const end = start + 3;
+            options.push(`${start}-${end}`);
+        }
+        if (data.generacion && !options.includes(data.generacion)) {
+            options.unshift(data.generacion);
+        }
+        return options;
+    }, [currentYear, data.generacion]);
+
     const getSpecialtySuffix = (major: string) => {
-        if (!major) return '';
         const majorLower = major.toLowerCase();
         const match = specialties.find(
             s => s && ((s.nombre?.toLowerCase() === majorLower) ||
@@ -205,13 +218,16 @@ export default function GroupFormModal({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel required>Generación</FormLabel>
-                                <FormInput
-                                    placeholder="Ej: 2024-2027"
+                                <FormSelect
                                     value={data.generacion}
                                     onChange={e => setData('generacion', e.target.value)}
                                     className="h-9 text-xs font-normal"
-                                    icon={<Calendar size={13} />}
-                                />
+                                >
+                                    <option value="">Generación...</option>
+                                    {generationOptions.map(gen => (
+                                        <option key={gen} value={gen}>Gen. {gen}</option>
+                                    ))}
+                                </FormSelect>
                                 {errors.generacion && <span className="text-red-500 text-[10px] mt-1 block">{errors.generacion}</span>}
                             </div>
                             <div className="space-y-1.5">

@@ -93,32 +93,45 @@ export default function DocentesIndex({ teachers, especialidades = [], available
 
     // Auto-generar matrícula y correo
     useEffect(() => {
-        if (modalMode !== 'create') return;
         if (!data.nombre.trim() && !data.apellido_paterno.trim()) {
-            if (data.matricula !== '' || data.email !== '') {
+            if (modalMode === 'create' && (data.matricula !== '' || data.email !== '')) {
                 setData(d => ({ ...d, matricula: '', email: '' }));
             }
             return;
         }
-        const firstInit   = data.nombre.trim().charAt(0).toUpperCase();
-        const paternoInit = data.apellido_paterno.trim().charAt(0).toUpperCase();
-        const maternoInit = (data.apellido_materno?.trim().charAt(0).toUpperCase()) || 'X';
-        const year = new Date().getFullYear();
-        const generatedMatricula = `DOC-${firstInit}${paternoInit}${maternoInit}${year}`;
 
         let primerNombre  = data.nombre.trim().split(/\s+/)[0]?.toLowerCase() || '';
         let primerPaterno = data.apellido_paterno.trim().split(/\s+/)[0]?.toLowerCase() || '';
-        primerNombre  = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        primerPaterno = primerPaterno.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        primerNombre  = primerNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+        primerPaterno = primerPaterno.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
 
-        // Formato: nombre.apellido.iniciales+numero@prepahidalgo.edu.mx
-        const initials = `${firstInit.toLowerCase()}${paternoInit.toLowerCase()}`;
-        const generatedEmail = primerNombre && primerPaterno
-            ? `${primerNombre}.${primerPaterno}.${initials}${randomSuffix}@prepahidalgo.edu.mx`
-            : '';
+        if (modalMode === 'create') {
+            const firstInit   = data.nombre.trim().charAt(0).toUpperCase();
+            const paternoInit = data.apellido_paterno.trim().charAt(0).toUpperCase();
+            const maternoInit = (data.apellido_materno?.trim().charAt(0).toUpperCase()) || 'X';
+            const year = new Date().getFullYear();
+            const generatedMatricula = `DOC-${firstInit}${paternoInit}${maternoInit}${year}`;
 
-        if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
-            setData(d => ({ ...d, matricula: generatedMatricula, email: generatedEmail }));
+            const initials = `${firstInit.toLowerCase()}${paternoInit.toLowerCase()}`;
+            const generatedEmail = primerNombre && primerPaterno
+                ? `${primerNombre}.${primerPaterno}.${initials}${randomSuffix}@prepahidalgo.edu.mx`
+                : '';
+
+            if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
+                setData(d => ({ ...d, matricula: generatedMatricula, email: generatedEmail }));
+            }
+        } else if (modalMode === 'edit') {
+            if (primerNombre && primerPaterno) {
+                const existingPrefix = (data.email || '').split('@')[0] || '';
+                const domain = (data.email || '').split('@')[1] || 'prepahidalgo.edu.mx';
+                const numMatch = existingPrefix.match(/\d+$/);
+                const numSuffix = numMatch ? numMatch[0] : '';
+                const generatedEmail = `${primerNombre}.${primerPaterno}${numSuffix ? '.' + numSuffix : ''}@${domain}`;
+
+                if (data.email !== generatedEmail && generatedEmail.length > 5) {
+                    setData(d => ({ ...d, email: generatedEmail }));
+                }
+            }
         }
     }, [data.nombre, data.apellido_paterno, data.apellido_materno, modalMode, randomSuffix]);
 
@@ -189,25 +202,19 @@ export default function DocentesIndex({ teachers, especialidades = [], available
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        SwalHelper.loading(
-            modalMode === 'create' ? 'Registrando docente...' : 'Actualizando datos...',
-            'Estamos procesando la información del profesor.'
-        );
+        SwalHelper.toastLoading(modalMode === 'create' ? 'Registrando docente...' : 'Actualizando datos...');
 
         const serviceCallback = {
             onSuccess: () => {
                 setIsFormModalOpen(false);
                 reset();
-                SwalHelper.success(
-                    '¡Operación Exitosa!',
-                    modalMode === 'create' ? 'El docente ha sido registrado correctamente.' : 'Los datos del docente han sido actualizados.'
+                SwalHelper.toast(
+                    modalMode === 'create' ? 'Docente registrado correctamente.' : 'Datos del docente actualizados.',
+                    'success'
                 );
             },
             onError: () => {
-                SwalHelper.error(
-                    'Error de validación',
-                    'Por favor, revisa que todos los campos sean correctos.'
-                );
+                SwalHelper.toast('Error al guardar. Revisa los campos.', 'error');
             }
         };
 
@@ -227,13 +234,13 @@ export default function DocentesIndex({ teachers, especialidades = [], available
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando expediente del servidor.');
+                SwalHelper.toastLoading('Eliminando docente...');
                 teacherService.destroy(teacher.id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Eliminado!', 'El docente ha sido removido del sistema.');
+                        SwalHelper.toast('Docente eliminado correctamente.', 'success');
                     },
                     onError: (err: any) => {
-                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar al docente.');
+                        SwalHelper.toast(err.delete || 'No se pudo eliminar al docente.', 'error');
                     }
                 });
             }

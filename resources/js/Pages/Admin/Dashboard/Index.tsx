@@ -127,19 +127,19 @@ export default function AdminDashboardIndex() {
         e.preventDefault();
 
         const actionText = modalMode === 'create' ? 'Abriendo ciclo escolar...' : 'Actualizando ciclo escolar...';
-        SwalHelper.loading(actionText, 'Configurando periodos y fechas');
+        SwalHelper.toastLoading(actionText);
 
         const options = {
             onSuccess: () => {
                 setIsPeriodModalOpen(false);
                 reset();
-                SwalHelper.success('¡Operación Exitosa!', `El ciclo ha sido ${modalMode === 'create' ? 'configurado' : 'actualizado'} correctamente.`);
+                SwalHelper.toast(`Ciclo escolar ${modalMode === 'create' ? 'configurado' : 'actualizado'} correctamente.`, 'success');
                 if (selectedCycleId) {
                     broadcastCycleUpdate(selectedCycleId);
                 }
             },
             onError: () => {
-                SwalHelper.error('Error', `Hubo un problema al ${modalMode === 'create' ? 'crear' : 'actualizar'} el ciclo escolar.`);
+                SwalHelper.toast(`Hubo un problema al ${modalMode === 'create' ? 'crear' : 'actualizar'} el ciclo escolar.`, 'error');
             }
         };
 
@@ -161,14 +161,14 @@ export default function AdminDashboardIndex() {
             'warning'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Concluyendo ciclo...', 'Archivando expedientes históricos');
+                SwalHelper.toastLoading('Concluyendo ciclo escolar...');
                 cycleService.close(activeCycle.id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Ciclo Concluido!', 'El periodo ha sido archivado correctamente.');
+                        SwalHelper.toast('Ciclo escolar archivado correctamente.', 'success');
                         broadcastCycleUpdate(activeCycle.id);
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo cerrar el ciclo escolar.');
+                        SwalHelper.toast('No se pudo cerrar el ciclo escolar.', 'error');
                     }
                 });
             }
@@ -183,15 +183,15 @@ export default function AdminDashboardIndex() {
             'No, Mantener actual'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Cambiando ciclo...', 'Actualizando vigencia escolar');
+                SwalHelper.toastLoading('Cambiando ciclo activo...');
                 cycleService.activate(id, {
                     onSuccess: () => {
                         setIsHistoryModalOpen(false);
-                        SwalHelper.success('¡Ciclo Cambiado!', 'El sistema ahora opera bajo el nuevo periodo.');
+                        SwalHelper.toast('Ciclo activo cambiado correctamente.', 'success');
                         broadcastCycleUpdate(id);
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo cambiar el ciclo escolar.');
+                        SwalHelper.toast('No se pudo cambiar el ciclo escolar.', 'error');
                     }
                 });
             }

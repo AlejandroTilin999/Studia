@@ -159,23 +159,20 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        SwalHelper.loading(
-            modalMode === 'create' ? 'Registrando materia...' : 'Actualizando datos...',
-            'Procesando en el servidor'
-        );
+        SwalHelper.toastLoading(modalMode === 'create' ? 'Registrando materia...' : 'Actualizando datos...');
 
         const submitOptions = {
             onSuccess: () => {
                 setIsModalOpen(false);
                 reset();
-                SwalHelper.success(
-                    '¡Hecho!',
-                    modalMode === 'create' ? 'La materia ha sido creada correctamente.' : 'La materia ha sido actualizada.'
+                SwalHelper.toast(
+                    modalMode === 'create' ? 'La materia ha sido registrada correctamente.' : 'La materia ha sido actualizada.',
+                    'success'
                 );
             },
             onError: (errors: any) => {
                 const firstError = Object.values(errors)[0] as string;
-                SwalHelper.error('Error de validación', firstError || 'No se pudieron guardar los cambios.');
+                SwalHelper.toast(firstError || 'No se pudieron guardar los cambios.', 'error');
             }
         };
 
@@ -195,13 +192,13 @@ export default function MateriasIndex({ materias, profesores = [], grupos = [], 
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando materia del catálogo.');
+                SwalHelper.toastLoading('Eliminando materia...');
                 subjectService.destroy(id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Eliminada!', 'La materia ha sido removida del sistema.');
+                        SwalHelper.toast('Materia eliminada correctamente.', 'success');
                     },
                     onError: (err: any) => {
-                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar la materia.');
+                        SwalHelper.toast(err.delete || 'No se pudo eliminar la materia.', 'error');
                     }
                 });
             }

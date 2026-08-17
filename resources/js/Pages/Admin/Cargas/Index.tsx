@@ -198,15 +198,15 @@ export default function CargasIndex({
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        SwalHelper.loading('Creando asignación...', 'Procesando en el servidor');
+        SwalHelper.toastLoading('Creando asignación académica...');
         loadService.store(data, {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 reset();
-                SwalHelper.success('¡Hecho!', 'La materia ha sido asignada correctamente.');
+                SwalHelper.toast('Asignación académica registrada correctamente.', 'success');
             },
             onError: (errs: any) => {
-                SwalHelper.error('Error', Object.values(errs)[0] as string || 'No se pudo crear la asignación.');
+                SwalHelper.toast(Object.values(errs)[0] as string || 'No se pudo crear la asignación.', 'error');
             }
         });
     };
@@ -214,30 +214,30 @@ export default function CargasIndex({
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedLoad) return;
-        SwalHelper.loading('Guardando cambios...', 'Actualizando información');
+        SwalHelper.toastLoading('Actualizando asignación...');
         loadService.update(selectedLoad.id, data, {
             onSuccess: () => {
                 setIsEditModalOpen(false);
-                SwalHelper.success('¡Actualizado!', 'Los cambios han sido guardados.');
+                SwalHelper.toast('Asignación académica actualizada.', 'success');
             },
             onError: (errs: any) => {
-                SwalHelper.error('Error', Object.values(errs)[0] as string || 'No se pudo actualizar la asignación.');
+                SwalHelper.toast(Object.values(errs)[0] as string || 'No se pudo actualizar la asignación.', 'error');
             }
         });
     };
 
     const handleImportSubmit = async (importData: any) => {
         setIsImportProcessing(true);
-        SwalHelper.loading("Importando Carga", "Clonando materias y docentes del ciclo anterior...");
+        SwalHelper.toastLoading('Clonando materias y docentes del ciclo anterior...');
 
         try {
             await axios.post(route('admin.loads.import'), importData);
-            SwalHelper.success("¡Importación Exitosa!", "La carga académica ha sido clonada correctamente.");
+            SwalHelper.toast('¡Carga académica importada correctamente!', 'success');
             setIsImportModalOpen(false);
             router.reload();
         } catch (error: any) {
             console.error(error);
-            SwalHelper.error("Error", error.response?.data?.error || "No se pudo importar la carga académica.");
+            SwalHelper.toast(error.response?.data?.error || 'No se pudo importar la carga académica.', 'error');
         } finally {
             setIsImportProcessing(false);
         }
@@ -252,13 +252,13 @@ export default function CargasIndex({
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando asignación del sistema');
+                SwalHelper.toastLoading('Eliminando asignación...');
                 loadService.destroy(load.id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Eliminada!', 'La asignación ha sido removida.');
+                        SwalHelper.toast('Asignación eliminada correctamente.', 'success');
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo eliminar la asignación.');
+                        SwalHelper.toast('No se pudo eliminar la asignación.', 'error');
                     }
                 });
             }

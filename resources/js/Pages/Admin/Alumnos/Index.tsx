@@ -94,51 +94,67 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
 
     // Efecto de generación de matrícula/email
     useEffect(() => {
+        const nombre = data.nombre.trim();
+        const paterno = data.apellido_paterno.trim();
+        const materno = data.apellido_materno.trim();
+
+        if (nombre === '' && paterno === '') {
+            if (modalMode === 'create' && (data.matricula !== '' || data.email !== '')) {
+                setData(currentData => ({
+                    ...currentData,
+                    matricula: '',
+                    email: '',
+                }));
+            }
+            return;
+        }
+
+        const firstInit = nombre.charAt(0) || '';
+        const paternalInit = paterno.charAt(0) || '';
+        const maternalInit = materno.charAt(0) || '';
+
+        let firstNamePart = nombre.split(/\s+/)[0]?.toLowerCase() || '';
+        let paternalPart = paterno.split(/\s+/)[0]?.toLowerCase() || '';
+        firstNamePart = firstNamePart.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        paternalPart = paternalPart.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+        const emailInitials = `${firstInit.toLowerCase()}${paternalInit.toLowerCase()}`;
+
         if (modalMode === 'create') {
-            const nombre = data.nombre.trim();
-            const paterno = data.apellido_paterno.trim();
-            const materno = data.apellido_materno.trim();
+            const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
+            const groupSelected = groups.find((g: any) => g.id === Number(data.grupo_id));
+            const groupCode = groupSelected ? groupSelected.id : '00';
+            const currentYear = new Date().getFullYear();
+            const generatedMatricula = `${initials}${groupCode}${currentYear}`;
 
-            if (nombre === '' && paterno === '') {
-                if (data.matricula !== '' || data.email !== '') {
+            const generatedEmail = firstNamePart && paternalPart
+                ? `${firstNamePart}.${paternalPart}.${emailInitials}${randomSuffix}@prepahidalgo.edu.mx`
+                : '';
+
+            if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
+                setData(currentData => ({
+                    ...currentData,
+                    matricula: generatedMatricula,
+                    email: generatedEmail,
+                }));
+            }
+        } else if (modalMode === 'edit') {
+            if (firstNamePart && paternalPart) {
+                const existingPrefix = (data.email || '').split('@')[0] || '';
+                const domain = (data.email || '').split('@')[1] || 'prepahidalgo.edu.mx';
+                const numMatch = existingPrefix.match(/\d+$/);
+                const numSuffix = numMatch ? numMatch[0] : '';
+                const generatedEmail = `${firstNamePart}.${paternalPart}${numSuffix ? '.' + numSuffix : ''}@${domain}`;
+
+                if (data.email !== generatedEmail && generatedEmail.length > 5) {
                     setData(currentData => ({
                         ...currentData,
-                        matricula: '',
-                        email: '',
-                    }));
-                }
-            } else {
-                const firstInit = nombre.charAt(0) || '';
-                const paternalInit = paterno.charAt(0) || '';
-                const maternalInit = materno.charAt(0) || '';
-                const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
-
-                const groupSelected = groups.find((g: any) => g.id === Number(data.grupo_id));
-                const groupCode = groupSelected ? groupSelected.id : '00';
-                const currentYear = new Date().getFullYear();
-                const generatedMatricula = `${initials}${groupCode}${currentYear}`;
-
-                let firstNamePart = nombre.split(/\s+/)[0]?.toLowerCase() || '';
-                let paternalPart = paterno.split(/\s+/)[0]?.toLowerCase() || '';
-                firstNamePart = firstNamePart.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                paternalPart = paternalPart.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-                // Formato: nombre.apellido.iniciales+numero@prepahidalgo.edu.mx
-                const emailInitials = `${firstInit.toLowerCase()}${paternalInit.toLowerCase()}`;
-                const generatedEmail = firstNamePart && paternalPart
-                    ? `${firstNamePart}.${paternalPart}.${emailInitials}${randomSuffix}@prepahidalgo.edu.mx`
-                    : '';
-
-                if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
-                    setData(currentData => ({
-                        ...currentData,
-                        matricula: generatedMatricula,
                         email: generatedEmail,
                     }));
                 }
             }
         }
-    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, modalMode, groups, randomSuffix]);
+    }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, modalMode, randomSuffix]);
 
     const handleExportExcel = () => {
         const rows = formattedStudents.map(s => [
@@ -229,25 +245,19 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        SwalHelper.loading(
-            modalMode === 'create' ? 'Inscribiendo alumno...' : 'Actualizando datos...',
-            'Estamos procesando la información en el servidor.'
-        );
+        SwalHelper.toastLoading(modalMode === 'create' ? 'Inscribiendo alumno...' : 'Actualizando datos...');
 
         const serviceCallback = {
             onSuccess: () => {
                 setIsFormModalOpen(false);
                 reset();
-                SwalHelper.success(
-                    '¡Operación Exitosa!',
-                    modalMode === 'create' ? 'El alumno ha sido registrado y matriculado correctamente.' : 'Los datos del alumno han sido actualizados.'
+                SwalHelper.toast(
+                    modalMode === 'create' ? 'Alumno registrado correctamente.' : 'Datos del alumno actualizados.',
+                    'success'
                 );
             },
             onError: (errors: any) => {
-                SwalHelper.error(
-                    'Error de validación',
-                    'Por favor, revisa los campos marcados en rojo.'
-                );
+                SwalHelper.toast('Error al guardar. Revisa los campos marcados.', 'error');
             }
         };
 
@@ -269,17 +279,16 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
             isActivating ? 'info' : 'warning'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Procesando...', 'Cambiando el estado de la matrícula.');
-
+                SwalHelper.toastLoading('Cambiando estatus del alumno...');
                 studentService.toggle(student.id, {
                     onSuccess: () => {
-                        SwalHelper.success(
-                            isActivating ? '¡Alumno Reactivado!' : '¡Alumno Suspendido!',
-                            `El alumno ha sido ${isActivating ? 'reactivado' : 'dado de baja'} correctamente.`
+                        SwalHelper.toast(
+                            isActivating ? 'Alumno reactivado correctamente.' : 'Alumno dado de baja correctamente.',
+                            'success'
                         );
                     },
                     onError: () => {
-                        SwalHelper.error('Error', 'No se pudo cambiar el estado del alumno.');
+                        SwalHelper.toast('No se pudo cambiar el estado del alumno.', 'error');
                     }
                 });
             }
@@ -295,13 +304,13 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
             'error'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.loading('Eliminando...', 'Borrando expediente y cuenta de usuario');
+                SwalHelper.toastLoading('Eliminando expediente...');
                 studentService.destroy(id, {
                     onSuccess: () => {
-                        SwalHelper.success('¡Eliminado!', 'El alumno ha sido removido del sistema.');
+                        SwalHelper.toast('Alumno eliminado correctamente.', 'success');
                     },
                     onError: (err: any) => {
-                        SwalHelper.error('Error', err.delete || 'No se pudo eliminar el alumno (podría tener historial académico).');
+                        SwalHelper.toast(err.delete || 'No se pudo eliminar el alumno.', 'error');
                     }
                 });
             }
