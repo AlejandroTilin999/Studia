@@ -63,8 +63,8 @@ export default function AlumnoDashboard({
         // Si el usuario vuelve antes de que termine una visita anterior, esa
         // respuesta ya no puede volver a montar una materia sobre Inicio.
         router.cancelAll({ sync: true, async: true, prefetch: false });
-        if (router.page) {
-            router.page.url = url;
+        if ((router as any).page) {
+            (router as any).page.url = url;
         }
         const state = window.history.state ? { ...window.history.state, url } : { url };
         window.history[replace ? 'replaceState' : 'pushState'](state, '', url);

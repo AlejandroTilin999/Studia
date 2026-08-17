@@ -53,7 +53,7 @@ export default function AssignmentHeader({
                         <span style={{ color: strokeColor }} className="hidden">
                             {isMaterialType ? 'Aviso y material informativo' : 'Actividad académica'}
                         </span>
-                        <h1 style={{ color: textColor }} className="text-3xl md:text-4xl font-normal tracking-tight leading-tight break-words">
+                        <h1 style={{ color: textColor }} className="text-2xl sm:text-3xl md:text-4xl font-normal tracking-tight leading-tight break-words">
                             {title}
                         </h1>
                     </div>
