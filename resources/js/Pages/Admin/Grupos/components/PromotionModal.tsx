@@ -237,11 +237,11 @@ export default function PromotionModal({
                     </div>
 
                     <div className="mt-8 flex justify-end items-center gap-3 border-t border-slate-100 pt-5">
-                        <button type="button" onClick={onClose} className="px-5 py-2 text-slate-500 font-bold text-xs uppercase tracking-widest hover:text-slate-700">Cancelar</button>
+                        <button type="button" onClick={onClose} className="px-5 py-2 text-slate-500 font-bold text-xs uppercase tracking-widest hover:text-slate-700 active:scale-95 active:translate-y-[1px] transition-all transform duration-75 focus:outline-none cursor-pointer">Cancelar</button>
                         <button
                             type="submit"
                             disabled={processing || loadingStudents}
-                            className="px-8 py-2.5 bg-[#0266E0] text-white rounded-lg font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
+                            className="px-8 py-2.5 bg-[#0266E0] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 active:scale-95 active:bg-blue-800 active:translate-y-[1px] transition-all transform duration-75 focus:outline-none cursor-pointer flex items-center gap-2"
                         >
                             {isLastSemester ? 'Confirmar Egreso' : 'Promover Alumnos'}
                         </button>

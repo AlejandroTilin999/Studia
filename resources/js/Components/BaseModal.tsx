@@ -142,7 +142,7 @@ export default function BaseModal({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 active:scale-95 active:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition-all transform duration-75 focus:outline-none cursor-pointer"
                 >
                     {cancelLabel}
                 </button>
@@ -151,12 +151,12 @@ export default function BaseModal({
                         type="submit"
                         disabled={isConfirmDisabled}
                         className={cn(
-                            "px-5 py-2 rounded-lg text-xs font-semibold text-white transition-all focus:outline-none",
+                            "px-5 py-2 rounded-xl text-xs font-semibold text-white transition-all transform duration-75 active:scale-95 focus:outline-none cursor-pointer",
                             isConfirmDisabled
                                 ? "bg-slate-200 text-slate-455 cursor-not-allowed border border-slate-100"
                                 : type === 'error' || type === 'warning'
-                                    ? "bg-rose-600 hover:bg-rose-700"
-                                    : "bg-[#1e88e5] hover:bg-blue-700"
+                                    ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800"
+                                    : "bg-[#1e88e5] hover:bg-blue-700 active:bg-blue-800"
                         )}
                     >
                         {confirmLabel || 'Aceptar'}

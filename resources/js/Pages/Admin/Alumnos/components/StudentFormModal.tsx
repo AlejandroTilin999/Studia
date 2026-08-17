@@ -320,14 +320,14 @@ export default function StudentFormModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                            className="px-4 py-2 bg-white border border-slate-350 hover:bg-slate-50 active:scale-95 active:bg-slate-100 active:translate-y-[1px] text-slate-700 rounded-xl text-xs font-semibold transition-all transform duration-75 focus:outline-none cursor-pointer"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all focus:outline-none"
+                            className="px-5 py-2 bg-[#1e88e5] hover:bg-blue-700 active:scale-95 active:bg-blue-800 active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold transition-all transform duration-75 focus:outline-none cursor-pointer"
                         >
                             {processing ? 'Guardando...' : mode === 'create' ? 'Registrar Matrícula' : 'Guardar Cambios'}
                         </button>
