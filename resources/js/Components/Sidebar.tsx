@@ -16,7 +16,8 @@ import {
   ChevronRight,
   PanelLeft,
   Bell,
-  Mail
+  Mail,
+  Loader2
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/Components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,23 @@ interface SidebarProps {
 export default function Sidebar({ role: propRole }: SidebarProps) {
   const { url: inertiaUrl } = usePage();
   const [currentLocationUrl, setCurrentLocationUrl] = useState(() => window.location.pathname + window.location.search);
+  const [navigatingPath, setNavigatingPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unbindStart = router.on('start', (event) => {
+      const targetUrl = event.detail.visit.url.pathname;
+      setNavigatingPath(targetUrl);
+    });
+
+    const unbindFinish = router.on('finish', () => {
+      setNavigatingPath(null);
+    });
+
+    return () => {
+      unbindStart();
+      unbindFinish();
+    };
+  }, []);
 
   useEffect(() => {
     const syncCurrentLocation = (event?: Event) => {
@@ -40,8 +58,6 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
     };
     syncCurrentLocation();
     window.addEventListener('popstate', syncCurrentLocation);
-    // Las transiciones locales del aula no generan un evento nativo de
-    // navegación. Este evento mantiene el estado activo del menú sincronizado.
     window.addEventListener('studia:navigation', syncCurrentLocation);
     return () => {
       window.removeEventListener('popstate', syncCurrentLocation);
@@ -360,11 +376,19 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
               );
             }
 
+            const isNavigatingToThis = navigatingPath ? (
+              item.name === 'Inicio'
+                ? (navigatingPath === itemPathname)
+                : (navigatingPath === itemPathname || (itemPathname !== '/' && navigatingPath.startsWith(itemPathname + '/')))
+            ) : false;
+
+            const isHighlighted = navigatingPath ? isNavigatingToThis : isActive;
+
             return (
               <SidebarMenuItem key={item.name} className="mb-1">
                 <Link
                   href={item.path}
-                  prefetch={item.name === 'Inicio' ? ['mount', 'hover'] : 'hover'}
+                  prefetch={['mount', 'hover']}
                   onClick={(event) => {
                     if (role === 'ALUMNO' && item.name === 'Inicio') {
                       event.preventDefault();
@@ -382,11 +406,11 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   className={cn(
                     "flex items-center transition-all relative group overflow-hidden whitespace-nowrap h-12 w-full",
                     isMenuExpanded ? "mx-4 px-5 rounded-full w-[calc(100%-32px)] gap-3.5" : "justify-center px-0 rounded-none w-full",
-                    isActive ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-[#526985] hover:bg-slate-50 hover:text-slate-800 font-bold"
+                    isHighlighted ? "bg-[#f0f7ff] text-[#0266E0] font-bold" : "bg-transparent text-[#526985] hover:bg-slate-50 hover:text-slate-800 font-bold"
                   )}
                 >
                   <div className="relative">
-                    <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isActive ? "text-[#0266E0]" : "text-[#6b7f99] group-hover:text-slate-700")} />
+                    <item.icon className={cn("w-[18px] h-[18px] shrink-0 transition-colors", isHighlighted ? "text-[#0266E0]" : "text-[#6b7f99] group-hover:text-slate-700")} />
                     {item.name === 'Notificaciones' && unreadCount > 0 && (
                       <span className={cn(
                         "absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white border-2 border-white",
@@ -398,10 +422,14 @@ export default function Sidebar({ role: propRole }: SidebarProps) {
                   </div>
                   {isMenuExpanded && (
                     <>
-                      <span className={cn("text-[14px] ml-1 transition-all duration-300", isActive ? "text-[#0266E0] font-bold" : "text-[#526985] font-bold group-hover:text-slate-800")}>{item.name}</span>
-                      {isActive && (
-                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#0266E0] ml-auto shrink-0">
-                          <ChevronRight size={14} strokeWidth={4} />
+                      <span className={cn("text-[14px] ml-1 transition-all duration-300", isHighlighted ? "text-[#0266E0] font-bold" : "text-[#526985] font-bold group-hover:text-slate-800")}>{item.name}</span>
+                      {isHighlighted && (
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#0266E0] ml-auto shrink-0 shadow-sm">
+                          {isNavigatingToThis ? (
+                            <Loader2 size={13} className="animate-spin text-[#0266E0]" />
+                          ) : (
+                            <ChevronRight size={14} strokeWidth={4} />
+                          )}
                         </div>
                       )}
                     </>

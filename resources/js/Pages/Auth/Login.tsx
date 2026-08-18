@@ -32,21 +32,25 @@ export default function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!data.email.trim() && !data.password.trim()) {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanPassword = data.password.trim();
+
+    if (!cleanEmail && !cleanPassword) {
       SwalHelper.alert('Campos Incompletos', 'Por favor ingresa tu correo electrónico y contraseña.', 'warning');
       return;
     }
 
-    if (!data.email.trim()) {
+    if (!cleanEmail) {
       SwalHelper.alert('Correo Requerido', 'Por favor ingresa tu correo electrónico.', 'warning');
       return;
     }
 
-    if (!data.password.trim()) {
+    if (!cleanPassword) {
       SwalHelper.alert('Contraseña Requerida', 'Por favor ingresa tu contraseña.', 'warning');
       return;
     }
 
+    setData("email", cleanEmail);
     post('/login');
   };
 
@@ -66,10 +70,28 @@ export default function LoginPage() {
         }
       `}</style>
 
-      {/* COLUMNA IZQUIERDA (Formulario y Selección de Perfil) */}
-      <div className="w-full lg:w-[55%] bg-white relative flex flex-col justify-center items-center px-6 md:px-12 xl:px-24 py-6 md:py-8 lg:py-8 xl:py-12 lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
+      {/* Cabecera Azul Rectangular Móvil Alta (Idéntica a la imagen de referencia) */}
+      <div className="w-full bg-[#0266E0] pt-14 pb-20 sm:pt-18 sm:pb-24 px-6 flex flex-col items-center justify-center text-center rounded-none shadow-none lg:hidden order-1 relative overflow-hidden">
+        <img
+          src="/assets/logo-ph-blanco.webp"
+          alt="Logo PREPAHID"
+          className="h-16 w-auto object-contain brightness-200 mb-1 mt-2 relative z-10"
+        />
+        <span className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-100 relative z-10 mb-6">
+          Portal PREPAHID
+        </span>
 
-        <div className="w-full max-w-[500px] relative">
+        <div className="absolute bottom-[-1px] left-0 w-full h-16 sm:h-20 z-10 pointer-events-none">
+          <svg className="w-full h-full fill-white" viewBox="0 0 1000 200" preserveAspectRatio="none">
+            <path d="M 0 200 L 0 110 C 140 50, 320 150, 500 130 C 780 130, 900 60, 1000 0 L 1000 200 Z" stroke="none" />
+          </svg>
+        </div>
+      </div>
+
+      {/* COLUMNA IZQUIERDA (Formulario y Selección de Perfil) */}
+      <div className="w-full lg:w-[55%] bg-white auth-pattern-bg relative flex flex-col justify-center items-center px-4 sm:px-6 md:px-12 xl:px-24 py-4 md:py-8 lg:py-8 xl:py-12 lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
+
+        <div className="w-full max-w-[500px] relative bg-white lg:bg-transparent rounded-xl lg:rounded-none shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] lg:shadow-none p-6 sm:p-8 lg:p-0 border border-slate-200/80 lg:border-none -mt-20 sm:-mt-24 lg:mt-0 z-30 mb-8 lg:mb-0">
           {/* Botón superior de regresar (Alineado con el contenido) */}
           <div className="mb-4 lg:mb-6">
             <BackButton 
@@ -80,8 +102,8 @@ export default function LoginPage() {
 
           {/* Formulario */}
           <div className="w-full animate-in fade-in slide-in-from-left-4 duration-500">
-            {/* Logotipo Azul/Color */}
-            <div className="mb-4 lg:mb-6 justify-start flex w-full">
+            {/* Logotipo Azul/Color (Solo Desktop) */}
+            <div className="mb-4 lg:mb-6 justify-start hidden lg:flex w-full">
               <img
                 src="/assets/phid_logo.webp"
                 alt="Logo PREPAHID"
@@ -107,7 +129,7 @@ export default function LoginPage() {
                       id="email-input"
                       type="text"
                       value={data.email}
-                      onChange={e => setData("email", e.target.value)}
+                      onChange={e => setData("email", e.target.value.toLowerCase())}
                       placeholder=" "
                       autoComplete="off"
                       className="peer w-full h-16 px-5 bg-white border border-slate-200 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
@@ -164,7 +186,7 @@ export default function LoginPage() {
                   <ButtonLogin
                     type="submit"
                     disabled={processing}
-                    className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] text-white px-14 h-14 rounded-full font-black text-base transition-all active:scale-[0.98] shadow-none"
+                    className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] active:scale-[0.97] transition-all transform duration-75 text-white px-14 h-14 rounded-full font-black text-base shadow-none cursor-pointer"
                   >
                     {processing ? "Ingresando..." : "Acceso"}
                   </ButtonLogin>
@@ -186,8 +208,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="w-full lg:w-[45%] relative h-20 sm:h-24 lg:h-screen shrink-0 bg-[#0266E0] order-1 lg:order-2 lg:overflow-hidden">
-
+      {/* COLUMNA VISUAL (Solo en Desktop) */}
+      <div className="hidden lg:block lg:w-[45%] relative lg:h-screen shrink-0 bg-[#0266E0] order-1 lg:order-2 lg:overflow-hidden">
         {/* Capa de la imagen de la chica */}
         <div className="absolute inset-0 z-0 overflow-hidden hidden lg:block">
           <img
@@ -202,29 +224,15 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-b lg:bg-gradient-to-l from-transparent via-transparent to-[#0266E0]/40"></div>
         </div>
 
-        {/* Onda Divisoria Responsive (Vertical en móvil, Horizontal en desktop) */}
-        <div className="absolute bottom-[-4px] left-0 w-full h-12 lg:top-0 lg:left-[-4px] lg:bottom-auto lg:h-full lg:w-24 z-10">
-          {/* Onda para Escritorio */}
+        {/* Onda Divisoria Responsive (Solo en Desktop) */}
+        <div className="absolute top-0 left-[-4px] h-full w-24 z-10 hidden lg:block">
           <svg
-            className="hidden lg:block h-full w-full fill-white"
+            className="h-full w-full fill-white"
             viewBox="0 0 100 1000"
             preserveAspectRatio="none"
           >
             <path
-              d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z"
-              stroke="white"
-              strokeWidth="3"
-            />
-          </svg>
-
-          {/* Onda para Móvil */}
-          <svg
-            className="block lg:hidden w-full h-full fill-white"
-            viewBox="0 0 1000 100"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z"
+              d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 0 Z"
               stroke="white"
               strokeWidth="3"
             />

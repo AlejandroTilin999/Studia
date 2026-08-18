@@ -152,10 +152,10 @@ export default function UpdatePasswordForm({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 border-t border-slate-50 pt-4">
+                <div className="flex items-center justify-start sm:justify-end gap-4 border-t border-slate-100 pt-6 mt-6 w-full">
                     <ButtonLogin
                         disabled={processing}
-                        className="bg-[#0266E0] hover:bg-[#0152b5] text-white px-10 h-12 rounded-lg font-black text-xs uppercase tracking-widest transition-all border-none shadow-none"
+                        className="w-full sm:w-auto bg-[#0266E0] hover:bg-[#0152b5] text-white px-10 h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] border-none shadow-none cursor-pointer"
                     >
                         Actualizar clave
                     </ButtonLogin>

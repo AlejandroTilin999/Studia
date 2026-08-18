@@ -6,7 +6,7 @@ export default function Welcome() {
         <div className="relative min-h-screen lg:h-screen flex flex-col justify-between overflow-x-hidden lg:overflow-hidden bg-white select-none">
             <Head title="Inicio" />
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-0 right-0 w-full lg:w-[45%] h-[340px] sm:h-80 lg:h-screen bg-[#0266E0] z-0">
+                <div className="absolute top-0 right-0 w-full lg:w-[45%] h-[410px] sm:h-[450px] lg:h-screen bg-[#0266E0] z-0">
                     <div className="absolute inset-0 z-0 overflow-hidden">
                         <img
                             src="/assets/hero-img.webp"
@@ -14,23 +14,22 @@ export default function Welcome() {
                             loading="eager"
                             // @ts-ignore
                             fetchpriority="high"
-                            className="absolute bottom-0 left-0 w-full h-[95%] lg:h-full object-contain lg:object-cover object-bottom lg:scale-95 origin-bottom opacity-100 brightness-105 transition-all duration-500 lg:translate-x-[10px]"
+                            className="absolute bottom-0 left-1/2 -translate-x-1/2 lg:left-0 lg:translate-x-0 h-[100%] sm:h-[105%] lg:h-full scale-125 sm:scale-130 lg:scale-95 origin-bottom object-contain lg:object-cover object-bottom opacity-100 brightness-105 transition-all duration-500 lg:translate-x-[10px] translate-y-20 sm:translate-y-24 lg:translate-y-0"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0266E0]/40 lg:hidden" />
                     </div>
 
-                    <div className="absolute bottom-[-4px] lg:bottom-0 left-0 w-full h-16 lg:top-0 lg:left-0 lg:h-full lg:w-24 z-10">
+                    <div className="absolute bottom-[-2px] lg:bottom-0 left-0 w-full h-32 sm:h-36 lg:top-0 lg:left-0 lg:h-full lg:w-24 z-10 pointer-events-none">
                         <svg className="hidden lg:block h-full w-full fill-white" viewBox="0 0 100 1000" preserveAspectRatio="none">
                             <path d="M0 0 C 40 150, 80 250, 40 400 C 0 550, 80 750, 40 850 C 20 950, 0 1000, 0 1000 L 0 1000 L 0 0 Z" stroke="white" strokeWidth="3" />
                         </svg>
 
-                        <svg className="block lg:hidden w-full h-full fill-white" viewBox="0 0 1000 100" preserveAspectRatio="none">
-                            <path d="M0 100 C 150 60, 250 20, 400 60 C 550 100, 750 20, 850 60 C 950 80, 1000 100, 1000 100 L 1000 100 L 0 100 Z" stroke="white" strokeWidth="3" />
+                        <svg className="block lg:hidden w-full h-full fill-white" viewBox="0 0 1000 200" preserveAspectRatio="none">
+                            <path d="M 0 200 L 0 110 C 120 70, 300 130, 500 120 C 780 120, 900 80, 1000 10 L 1000 200 Z" stroke="none" />
                         </svg>
                     </div>
 
-                    <div className="absolute top-4 left-6 lg:bottom-6 lg:right-12 lg:top-auto lg:left-auto z-20 opacity-80 lg:opacity-40">
-                        <img src="/assets/logo-ph-blanco.webp" alt="Logo PH" className="h-6 lg:h-12 w-auto brightness-200" />
+                    <div className="absolute top-12 sm:top-14 left-6 lg:bottom-6 lg:right-12 lg:top-auto lg:left-auto z-20 opacity-90 lg:opacity-40">
+                        <img src="/assets/logo-ph-blanco.webp" alt="Logo PH" className="h-7 lg:h-12 w-auto brightness-200" />
                     </div>
                 </div>
             </div>
@@ -43,7 +42,7 @@ export default function Welcome() {
                 </div>
             </header>
 
-            <main className="flex-1 flex items-stretch relative z-10 overflow-hidden pt-[320px] sm:pt-[340px] lg:pt-6">
+            <main className="flex-1 flex items-stretch relative z-10 overflow-hidden pt-[365px] sm:pt-[405px] lg:pt-6">
                 <Hero />
             </main>
 

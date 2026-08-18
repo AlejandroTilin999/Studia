@@ -14,24 +14,24 @@ export default function Hero() {
         <div className="w-full max-w-7xl mx-auto px-6 md:px-12 flex flex-col lg:flex-row justify-between gap-12 select-none h-full items-stretch">
             {/* Lado izquierdo - Texto original y botones de acceso */}
             <div className="w-full lg:w-[55%] text-center lg:text-left space-y-4 lg:space-y-5 xl:space-y-6 self-center py-4 lg:py-6 xl:py-12 relative z-30">
-                <p className="text-slate-500 font-black text-[10px] sm:text-sm lg:text-base uppercase tracking-[0.3em]">
+                <p className="text-slate-500 font-black text-[11px] sm:text-sm lg:text-base uppercase tracking-[0.3em]">
                     Control Escolar PREPAHID
                 </p>
-                <h1 className="text-3xl sm:text-5xl lg:text-[2.8rem] xl:text-[3.5rem] 2xl:text-[4.5rem] font-black text-slate-900 leading-[1.1] lg:leading-[1.15] xl:leading-[1.1] tracking-tighter lg:w-full xl:w-[110%] relative z-20">
-                    Todo lo que necesitas para gestionar tu <span className="whitespace-nowrap" style={{ color: COLORS.primary }}>vida académica</span>
+                <h1 className="text-[1.95rem] sm:text-5xl lg:text-[2.8rem] xl:text-[3.5rem] 2xl:text-[4.5rem] font-black text-slate-900 leading-[1.15] tracking-tight lg:w-full xl:w-[110%] relative z-20 max-w-[320px] sm:max-w-none mx-auto lg:mx-0">
+                    Todo lo que necesitas para gestionar tu <span className="block sm:inline" style={{ color: COLORS.primary }}>vida académica</span>
                 </h1>
-                <p className="text-slate-500 text-xs sm:text-base md:text-lg lg:text-base xl:text-lg 2xl:text-xl max-w-lg leading-relaxed mx-auto lg:mx-0 font-medium">
+                <p className="text-slate-500 text-sm sm:text-base md:text-lg lg:text-base xl:text-lg 2xl:text-xl max-w-[340px] sm:max-w-lg leading-relaxed mx-auto lg:mx-0 font-medium">
                     La plataforma educativa diseñada para que tus materias, calificaciones y tareas sean tan únicas como tú. Controla tu avance escolar al instante.
                 </p>
 
-                <div className="pt-4 lg:pt-5 xl:pt-6 flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
+                <div className="pt-4 lg:pt-5 xl:pt-6 flex flex-col sm:flex-row justify-center lg:justify-start gap-3 sm:gap-4">
                     {!isLogged ? (
                         <>
                             <Link
                                 href="/login?acceso=alumno"
                                 className="w-full sm:w-auto block"
                             >
-                                <span className="inline-flex items-center justify-center text-white px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:opacity-90 hover:scale-105 bg-[#0066CC] w-full sm:w-auto border-2 border-transparent shadow-none">
+                                <span className="inline-flex items-center justify-center text-white px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:bg-[#0152b5] active:scale-95 bg-[#0266E0] w-full sm:w-auto border-2 border-transparent shadow-none">
                                     Acceso Alumnos
                                 </span>
                             </Link>
@@ -40,7 +40,7 @@ export default function Hero() {
                                 href="/login?acceso=institucional"
                                 className="w-full sm:w-auto block"
                             >
-                                <span className="inline-flex items-center justify-center text-slate-800 px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 hover:scale-105 bg-white border-2 border-slate-100 w-full sm:w-auto shadow-none">
+                                <span className="inline-flex items-center justify-center text-slate-700 px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95 bg-white border-2 border-slate-100 w-full sm:w-auto shadow-none">
                                     Acceso Institucional
                                 </span>
                             </Link>
