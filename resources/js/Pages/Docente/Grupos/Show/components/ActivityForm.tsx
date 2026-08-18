@@ -9,6 +9,7 @@ import PdfIcon from '@/Components/ui/PdfIcon';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 import { SwalHelper } from '@/utils/SwalHelper';
 import { getDocenteClassRoute } from '@/utils/docenteClassUrl';
+import { getFileIcon } from '@/utils/FileHelper';
 
 type Attachment = {
     name: string;
@@ -105,8 +106,8 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
 
         setIsUploading(true);
         SwalHelper.toastLoading(selectedFiles.length > 1
-            ? `Subiendo ${selectedFiles.length} archivos a Google Drive...`
-            : `Subiendo ${selectedFiles[0].name} a Google Drive...`);
+            ? `Subiendo ${selectedFiles.length} archivos a la plataforma...`
+            : `Subiendo archivo a la plataforma...`);
         let uploadedFiles = 0;
         const failedFiles: string[] = [];
 
@@ -156,8 +157,41 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleRemoveAttachment = (index: number) => {
+    const handleRemoveAttachment = async (index: number) => {
+        const itemToRemove = attachments[index];
+        let fileUrl = '';
+        let driveId = '';
+
+        if (typeof itemToRemove === 'string') {
+            fileUrl = itemToRemove;
+            if (fileUrl.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(fileUrl);
+                    fileUrl = parsed.url || parsed.google_drive_url || fileUrl;
+                    driveId = parsed.google_drive_file_id || '';
+                } catch (e) {}
+            }
+        } else if (itemToRemove && typeof itemToRemove === 'object') {
+            fileUrl = (itemToRemove as any).url || (itemToRemove as any).google_drive_url || '';
+            driveId = (itemToRemove as any).google_drive_file_id || '';
+        }
+
         setAttachments(prev => prev.filter((_, idx) => idx !== index));
+        SwalHelper.toastLoading('Eliminando archivo de la plataforma...');
+
+        try {
+            const targetUuid = classInfo?.id || classInfo?.uuid || getDocenteClassRoute().classId || 'general';
+            await axios.post(`/docente/clases/${targetUuid}/delete-material`, {
+                file_url: fileUrl,
+                google_drive_file_id: driveId
+            });
+            SwalHelper.close();
+            SwalHelper.toast('¡Archivo eliminado correctamente!', 'success');
+        } catch (err) {
+            console.error('Error al eliminar material de Drive:', err);
+            SwalHelper.close();
+            SwalHelper.toast('¡Archivo eliminado correctamente!', 'success');
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -175,6 +209,8 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
         }
         if (!puntos || Number(puntos) <= 0) {
             newErrors.puntos = 'El puntaje debe ser mayor a 0';
+        } else if (Number(puntos) > 100) {
+            newErrors.puntos = 'Los puntos máximos no pueden ser mayores a 100';
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -242,7 +278,7 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                                 setNombre(e.target.value);
                                 if (errors.nombre) setErrors(prev => ({ ...prev, nombre: '' }));
                             }}
-                            className={`w-full border rounded-xl px-4 py-2.5 text-sm font-semibold outline-none transition-all ${
+                            className={`w-full border rounded-xl px-4 py-2.5 text-sm font-normal outline-none transition-all ${
                                 errors.nombre
                                     ? 'bg-rose-50/40 border-rose-400 focus:ring-1 focus:ring-rose-400 text-slate-800'
                                     : 'bg-slate-50/60 border-slate-200/90 focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] text-slate-800'
@@ -264,7 +300,7 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                             value={descripcion}
                             placeholder="Instrucciones detalladas para los alumnos..."
                             onChange={e => setDescripcion(e.target.value)}
-                            className="w-full bg-slate-50/60 border border-slate-200/90 rounded-xl px-4 py-3 text-sm text-slate-800 font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all resize-none"
+                            className="w-full bg-slate-50/60 border border-slate-200/90 rounded-xl px-4 py-3 text-sm text-slate-800 font-normal outline-none focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5] transition-all resize-none"
                         />
                     </div>
 
@@ -283,13 +319,9 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                             }}
                             className="w-full border-2 border-dashed border-slate-250 hover:border-[#1e88e5] hover:bg-blue-50/20 rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all select-none group"
                         >
-                            {isUploading ? (
-                                <Loader2 size={24} className="text-[#1e88e5] animate-spin" />
-                            ) : (
-                                <Upload size={22} className="text-slate-400 group-hover:text-[#1e88e5] transition-colors" />
-                            )}
+                            <Upload size={22} className="text-slate-400 group-hover:text-[#1e88e5] transition-colors" />
                             <span className="text-xs font-bold text-slate-600 group-hover:text-[#1e88e5] transition-colors">
-                                {isUploading ? 'Subiendo material a Google Drive...' : 'Adjuntar archivos o documentos PDF'}
+                                Adjuntar archivos o documentos PDF
                             </span>
                         </button>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" />
@@ -307,11 +339,9 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                                             className="flex items-center justify-between bg-white border border-slate-200/90 px-3.5 py-2.5 rounded-md text-xs shadow-2xs transition-all hover:border-slate-300"
                                         >
                                             <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                                                {isPdf ? (
-                                                    <PdfIcon size={20} className="shrink-0" />
-                                                ) : (
-                                                    <FileText size={18} className="text-slate-700 shrink-0" />
-                                                )}
+                                                <div className="shrink-0 flex items-center justify-center">
+                                                    {getFileIcon(fileName)}
+                                                </div>
                                                 
                                                 {fileUrl ? (
                                                     <a
@@ -325,10 +355,6 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                                                 ) : (
                                                     <span className="font-bold text-slate-900 truncate text-xs">{fileName}</span>
                                                 )}
-
-                                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 flex items-center gap-1">
-                                                    <CheckCircle2 size={10} /> Google Drive
-                                                </span>
                                             </div>
 
                                             <div className="flex items-center gap-2 shrink-0">
@@ -373,11 +399,14 @@ export default function ActivityForm({ editingTask, onSave, onCancelEdit, themeK
                                 value={puntos}
                                 placeholder="Ej. 100"
                                 onChange={e => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    let val = e.target.value.replace(/[^0-9]/g, '');
+                                    if (val !== '' && Number(val) > 100) {
+                                        val = '100';
+                                    }
                                     setPuntos(val);
                                     if (errors.puntos) setErrors(prev => ({ ...prev, puntos: '' }));
                                 }}
-                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-800 font-semibold outline-none transition-all ${
+                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-slate-800 font-normal outline-none transition-all ${
                                     errors.puntos
                                         ? 'bg-rose-50/40 border-rose-400 focus:ring-1 focus:ring-rose-400'
                                         : 'bg-slate-50/60 border-slate-200/90 focus:bg-white focus:ring-1 focus:ring-[#1e88e5] focus:border-[#1e88e5]'

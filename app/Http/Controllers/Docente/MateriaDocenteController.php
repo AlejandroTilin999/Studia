@@ -512,23 +512,35 @@ class MateriaDocenteController extends Controller
         $googleDriveUrl = null;
         $url = null;
 
+        $cacheKey = "drive_folder_materiales_load_{$load->id}";
+
         try {
-            // Intentar organizar en carpeta de la materia en Google Drive (optimizado con Cache 24h)
-            $cacheKey = "drive_folder_materiales_load_{$load->id}";
-            $materialesFolderId = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($driveService, $load) {
-                $cicloNombre = $load->academicPeriod ? $load->academicPeriod->nombre : 'General';
-                $grupoNombre = $load->academicGroup ? $load->academicGroup->nombre : 'Sin_Grupo';
-                $materiaNombre = $load->course ? $load->course->nombre : 'Materia';
+            $getFolderId = function () use ($driveService, $load, $cacheKey) {
+                return \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($driveService, $load) {
+                    $cicloNombre = $load->academicPeriod ? $load->academicPeriod->nombre : 'General';
+                    $grupoNombre = $load->academicGroup ? $load->academicGroup->nombre : 'Sin_Grupo';
+                    $materiaNombre = $load->course ? $load->course->nombre : 'Materia';
 
-                $rootId = $driveService->findOrCreateFolder('Prepahid');
-                $academicoFolderId = $driveService->findOrCreateFolder('Académico', $rootId);
-                $cicloFolderId = $driveService->findOrCreateFolder($cicloNombre, $academicoFolderId);
-                $grupoFolderId = $driveService->findOrCreateFolder($grupoNombre, $cicloFolderId);
-                $materiaFolderId = $driveService->findOrCreateFolder($materiaNombre, $grupoFolderId);
-                return $driveService->findOrCreateFolder('Materiales_de_Apoyo', $materiaFolderId);
-            });
+                    $rootId = $driveService->findOrCreateFolder('Prepahid');
+                    $academicoFolderId = $driveService->findOrCreateFolder('Académico', $rootId);
+                    $cicloFolderId = $driveService->findOrCreateFolder($cicloNombre, $academicoFolderId);
+                    $grupoFolderId = $driveService->findOrCreateFolder($grupoNombre, $cicloFolderId);
+                    $materiaFolderId = $driveService->findOrCreateFolder($materiaNombre, $grupoFolderId);
+                    return $driveService->findOrCreateFolder('Materiales_de_Apoyo', $materiaFolderId);
+                });
+            };
 
-            $driveFile = $driveService->uploadFileToFolder($fullPath, "Material_" . $fileName, $materialesFolderId);
+            $materialesFolderId = $getFolderId();
+
+            try {
+                $driveFile = $driveService->uploadFileToFolder($fullPath, "Material_" . $fileName, $materialesFolderId);
+            } catch (\Throwable $uploadErr) {
+                // Si la carpeta en caché fue eliminada en Drive, limpiar caché y regenerar
+                \Illuminate\Support\Facades\Cache::forget($cacheKey);
+                $materialesFolderId = $getFolderId();
+                $driveFile = $driveService->uploadFileToFolder($fullPath, "Material_" . $fileName, $materialesFolderId);
+            }
+
             $googleDriveFileId = $driveFile->getId();
             // La API no siempre devuelve webViewLink inmediatamente después de
             // crear el archivo. Construirlo con el ID garantiza un enlace usable.
@@ -536,6 +548,7 @@ class MateriaDocenteController extends Controller
                 ?: "https://drive.google.com/file/d/{$googleDriveFileId}/view";
             $url = $googleDriveUrl;
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
             \Illuminate\Support\Facades\Log::error("Error subiendo material de apoyo a Drive: " . $e->getMessage());
             // Fallback local en almacenamiento público si Drive no estuviese vinculado
             $path = $file->store('materiales', 'public');
@@ -633,6 +646,48 @@ class MateriaDocenteController extends Controller
         $this->clearStudentsCache($load);
 
         return response()->json(['message' => "Parcial {$parcial} concluido con éxito."]);
+    }
+
+    /**
+     * Elimina un archivo de material de apoyo en Google Drive de forma segura.
+     */
+    public function deleteTaskMaterial(Request $request, GoogleDriveService $driveService, $uuid)
+    {
+        $fileUrl = (string) $request->input('file_url');
+        $driveFileId = (string) $request->input('google_drive_file_id');
+
+        // 1. Extraer si viene en path /d/ID
+        if (!$driveFileId && preg_match('#/d/([^/?]+)#', $fileUrl, $m)) {
+            $driveFileId = $m[1];
+        }
+
+        // 2. Extraer si viene en query string ?id=ID o &id=ID
+        if (!$driveFileId && preg_match('#[?&]id=([^&]+)#', $fileUrl, $m)) {
+            $driveFileId = $m[1];
+        }
+
+        // 3. Si fileUrl es directamente una cadena de ID limpia (sin slashes)
+        if (!$driveFileId && preg_match('#^[a-zA-Z0-9_-]{25,}$#', trim($fileUrl))) {
+            $driveFileId = trim($fileUrl);
+        }
+
+        \Illuminate\Support\Facades\Log::info("BORRADO_MATERIAL_DRIVE: DriveID='{$driveFileId}', FileURL='{$fileUrl}'");
+
+        $deleted = false;
+        if (!empty($driveFileId)) {
+            try {
+                $deleted = $driveService->deleteFile($driveFileId);
+                \Illuminate\Support\Facades\Log::info("RESULTADO_BORRADO_DRIVE: FileID='{$driveFileId}' status=" . ($deleted ? 'EXITOSO' : 'FALLIDO'));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("ERROR_BORRADO_DRIVE: FileID='{$driveFileId}' msg=" . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Material eliminado de Google Drive con éxito',
+            'drive_file_id' => $driveFileId,
+            'deleted' => $deleted
+        ]);
     }
 
     private function clearStudentsCache(AcademicLoad $load, bool $clearSidebar = false)

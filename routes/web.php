@@ -286,6 +286,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('/clases/{uuid}/calificaciones', [MateriaDocenteController::class, 'saveCalificaciones']);
                 Route::post('/clases/{uuid}/tareas', [MateriaDocenteController::class, 'saveTareas']);
                 Route::post('/clases/{uuid}/upload-material', [MateriaDocenteController::class, 'uploadTaskMaterial']);
+                Route::post('/clases/{uuid}/delete-material', [MateriaDocenteController::class, 'deleteTaskMaterial']);
                 Route::post('/clases/{uuid}/return-grade', [MateriaDocenteController::class, 'returnGrade']);
                 Route::post('/clases/{uuid}/conclude', [MateriaDocenteController::class, 'concludeParcial'])->name('docente.clases.conclude');
             });
@@ -303,6 +304,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Alias de compatibilidad para subida de material de apoyo
         Route::post('/clases/{uuid}/upload-material', [MateriaDocenteController::class, 'uploadTaskMaterial'])->middleware(['auth', 'role:docente']);
+        Route::post('/clases/{uuid}/delete-material', [MateriaDocenteController::class, 'deleteTaskMaterial'])->middleware(['auth', 'role:docente']);
 
         // ------------------------------------------
         // Módulo de Alumno

@@ -123,7 +123,10 @@ export default function AssignmentSubmissionCard({
         setTaskStatus('Entregándose');
         SwalHelper.toastLoading('Entregando tarea...');
         try {
-            await axios.post('/alumno/tareas/confirmar', { tarea_id: taskId });
+            await axios.post('/alumno/tareas/confirmar', { 
+                tarea_id: taskId,
+                archivos: files 
+            });
             setTaskStatus('Entregado');
             task.status = 'Entregado';
             task.archivo = files;
@@ -146,7 +149,7 @@ export default function AssignmentSubmissionCard({
         formData.append('tarea_id', taskId.toString());
         formData.append('archivo', file);
 
-        SwalHelper.toastLoading('Subiendo archivo a Google Drive...');
+        SwalHelper.toastLoading('Subiendo archivo a la plataforma...');
 
         axios.post('/alumno/tareas/entregar', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -223,9 +226,13 @@ export default function AssignmentSubmissionCard({
         });
     };
 
-    const handleRemoveSingleFile = (fileUrl: string, e: React.MouseEvent) => {
+    const handleRemoveSingleFile = (targetFile: any, e: React.MouseEvent) => {
         e.preventDefault(); 
         e.stopPropagation();
+
+        const fileUrl = typeof targetFile === 'string' 
+            ? targetFile 
+            : (targetFile?.url || targetFile?.google_drive_url || targetFile?.nombre || targetFile?.name || '');
 
         SwalHelper.confirm(
             '¿Quitar este archivo?',
@@ -259,7 +266,19 @@ export default function AssignmentSubmissionCard({
                 .catch((err) => {
                     console.error(err);
                     SwalHelper.close();
-                    SwalHelper.error('Error', 'No se pudo eliminar el archivo.');
+                    // Fallback visual en el cliente para no dejar atascado al alumno
+                    const remainingFiles = attachedFiles.filter((f) => {
+                        const u = f?.url || f?.google_drive_url || f?.nombre || f?.name;
+                        return u !== fileUrl && f?.nombre !== fileUrl && f?.name !== fileUrl;
+                    });
+                    setAttachedFiles(remainingFiles);
+                    if (remainingFiles.length === 0) {
+                        task.archivo = null;
+                        setTaskStatus('Pendiente');
+                        task.status = 'Pendiente';
+                        setCurrentServerFile(null);
+                    }
+                    SwalHelper.toast('Archivo removido.', 'info');
                 })
                 .finally(() => setIsUploading(false));
             }
@@ -349,7 +368,7 @@ export default function AssignmentSubmissionCard({
                                 
                                 {!isDelivered ? (
                                     <button 
-                                        onClick={(e) => handleRemoveSingleFile(fileItem.url, e)} 
+                                        onClick={(e) => handleRemoveSingleFile(fileItem, e)} 
                                         className="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition-colors shrink-0"
                                         title="Quitar archivo"
                                     >

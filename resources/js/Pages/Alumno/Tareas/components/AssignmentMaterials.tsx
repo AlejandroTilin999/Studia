@@ -1,6 +1,6 @@
 import React from 'react';
-import { ExternalLink, FileText, Paperclip } from 'lucide-react';
-import PdfIcon from '@/Components/ui/PdfIcon';
+import { ExternalLink, Paperclip } from 'lucide-react';
+import { getFileIcon } from '@/utils/FileHelper';
 
 interface AssignmentMaterialsProps {
     desc: string;
@@ -73,20 +73,13 @@ export default function AssignmentMaterials({
                                     className="border border-slate-200/90 bg-white hover:bg-slate-50/80 hover:border-slate-300 px-3.5 py-2.5 flex items-center justify-between gap-3 transition-all group cursor-pointer"
                                 >
                                     <div className="flex items-center gap-2.5 min-w-0 mr-1">
-                                        {isPdf ? (
-                                            <PdfIcon size={20} className="shrink-0" />
-                                        ) : (
-                                            <FileText size={18} className="text-slate-700 shrink-0" />
-                                        )}
+                                        <div className="shrink-0 flex items-center justify-center">
+                                            {getFileIcon(fileName)}
+                                        </div>
                                         <div className="min-w-0">
                                             <span className="text-xs font-bold text-slate-900 group-hover:underline block truncate">
                                                 {fileName}
                                             </span>
-                                            {typeof file === 'object' && file?.size && (
-                                                <span className="text-[9px] text-slate-400 font-semibold block">
-                                                    {file.size}
-                                                </span>
-                                            )}
                                         </div>
                                     </div>
                                     <ExternalLink size={16} className="text-slate-400 group-hover:text-slate-700 shrink-0 transition-colors" />
@@ -101,7 +94,9 @@ export default function AssignmentMaterials({
                                 className="border border-slate-200/90 bg-white hover:bg-slate-50/80 hover:border-slate-300 px-3.5 py-2.5 flex items-center justify-between gap-3 transition-all group cursor-pointer"
                             >
                                 <div className="flex items-center gap-2.5 min-w-0 mr-1">
-                                    <PdfIcon size={20} className="shrink-0" />
+                                    <div className="shrink-0 flex items-center justify-center">
+                                        {getFileIcon(materialUrl)}
+                                    </div>
                                     <span className="text-xs font-bold text-slate-900 group-hover:underline truncate">
                                         Material de estudio adjunto
                                     </span>

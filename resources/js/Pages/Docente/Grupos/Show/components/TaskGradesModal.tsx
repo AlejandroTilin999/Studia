@@ -388,11 +388,9 @@ export default function TaskGradesModal({
                                                     className="flex items-center justify-between bg-white border border-slate-200/90 hover:bg-slate-50/80 hover:border-slate-300 px-3.5 py-2.5 rounded-md transition-all shadow-2xs group cursor-pointer select-none"
                                                 >
                                                     <div className="flex items-center gap-2.5 min-w-0 mr-2">
-                                                        {isPdf ? (
-                                                            <PdfIcon size={20} className="shrink-0" />
-                                                        ) : (
-                                                            <FileText size={18} className="text-slate-700 shrink-0" />
-                                                        )}
+                                                        <div className="shrink-0 flex items-center justify-center">
+                                                            {getFileIcon(fileName)}
+                                                        </div>
                                                         <span className="text-xs font-bold text-slate-900 group-hover:underline truncate">
                                                             {fileName}
                                                         </span>

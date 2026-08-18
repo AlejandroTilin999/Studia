@@ -65,28 +65,43 @@ class EntregaTareaAlumnoController extends Controller
 
         if (is_array($files)) {
             foreach ($files as $file) {
-                if (is_array($file) && !empty($file['google_drive_file_id'])) {
-                    $ids[] = (string) $file['google_drive_file_id'];
+                if (is_array($file)) {
+                    if (!empty($file['google_drive_file_id'])) {
+                        $ids[] = (string) $file['google_drive_file_id'];
+                    } else if (!empty($file['url']) && preg_match('#/d/([^/?]+)#', $file['url'], $m)) {
+                        $ids[] = $m[1];
+                    }
+                } else if (is_string($file) && preg_match('#/d/([^/?]+)#', $file, $m)) {
+                    $ids[] = $m[1];
                 }
             }
+        } else if (is_string($entrega->archivo_url) && preg_match('#/d/([^/?]+)#', $entrega->archivo_url, $m)) {
+            $ids[] = $m[1];
         }
 
         if (!empty($entrega->google_drive_file_id)) {
             $ids[] = (string) $entrega->google_drive_file_id;
         }
 
-        return array_values(array_unique($ids));
+        return array_values(array_unique(array_filter($ids)));
     }
 
     private function eliminarArchivosDrive(array $fileIds, GoogleDriveService $driveService): bool
     {
+        $allSuccess = true;
         foreach ($fileIds as $fileId) {
-            if (!$driveService->deleteFile($fileId)) {
-                return false;
+            try {
+                if (!$driveService->deleteFile($fileId)) {
+                    Log::warning("No se pudo eliminar archivo de Drive con ID {$fileId}");
+                    $allSuccess = false;
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Error al intentar eliminar archivo de Drive {$fileId}: " . $e->getMessage());
+                $allSuccess = false;
             }
         }
 
-        return true;
+        return $allSuccess;
     }
 
     /**
@@ -235,7 +250,10 @@ class EntregaTareaAlumnoController extends Controller
     /** Confirma una entrega después de que el alumno terminó de adjuntar archivos. */
     public function confirmSubmission(Request $request)
     {
-        $request->validate(['tarea_id' => 'required|exists:tareas,id']);
+        $request->validate([
+            'tarea_id' => 'required|exists:tareas,id',
+            'archivos' => 'nullable|array'
+        ]);
 
         $userId = auth()->id();
         $tarea = $this->getAuthorizedTask((int) $request->tarea_id);
@@ -245,6 +263,26 @@ class EntregaTareaAlumnoController extends Controller
         $entrega = EntregaTarea::where('tarea_id', $tarea->id)
             ->where('usuario_id', $userId)
             ->first();
+
+        $archivosRequest = $request->input('archivos');
+
+        // Si la entrega fue anulada previamente (se borró la fila de la BD), pero el alumno vuelve a hacer clic en Entregar conservando sus archivos adjuntos
+        if (!$entrega && !empty($archivosRequest) && is_array($archivosRequest)) {
+            $ultimoNombre = $archivosRequest[count($archivosRequest) - 1]['nombre'] ?? ($archivosRequest[count($archivosRequest) - 1]['name'] ?? 'Documento');
+            $googleDriveFileId = $archivosRequest[count($archivosRequest) - 1]['google_drive_file_id'] ?? null;
+            $googleDriveUrl = $archivosRequest[count($archivosRequest) - 1]['google_drive_url'] ?? ($archivosRequest[count($archivosRequest) - 1]['url'] ?? null);
+
+            $entrega = EntregaTarea::create([
+                'tarea_id'             => $tarea->id,
+                'usuario_id'           => $userId,
+                'archivo_url'          => json_encode($archivosRequest),
+                'archivo_nombre'       => $ultimoNombre,
+                'google_drive_file_id' => $googleDriveFileId,
+                'google_drive_url'     => $googleDriveUrl,
+                'estatus'              => 'submitted',
+                'updated_at'           => now(),
+            ]);
+        }
 
         if (!$entrega || empty($entrega->archivo_url)) {
             return response()->json(['error' => 'Adjunta al menos un archivo o enlace antes de entregar.'], 422);
@@ -280,11 +318,7 @@ class EntregaTareaAlumnoController extends Controller
 
         if ($entrega && $entrega->estatus !== 'graded') {
             $fileIds = $this->obtenerIdsDriveDeEntrega($entrega);
-            if (!$this->eliminarArchivosDrive($fileIds, $driveService)) {
-                return response()->json([
-                    'error' => 'No se pudo eliminar uno de los archivos en Google Drive. La entrega se conservó para que puedas reintentar sin perder información.'
-                ], 502);
-            }
+            $this->eliminarArchivosDrive($fileIds, $driveService);
 
             $entrega->delete();
 
@@ -322,7 +356,14 @@ class EntregaTareaAlumnoController extends Controller
             ->where('usuario_id', $userId)
             ->first();
 
-        if (!$entrega || $entrega->estatus === 'graded') {
+        if (!$entrega) {
+            return response()->json([
+                'message' => 'Archivo eliminado con éxito',
+                'archivos' => []
+            ]);
+        }
+
+        if ($entrega->estatus === 'graded') {
             return response()->json(['error' => 'No se puede modificar una entrega ya calificada.'], 403);
         }
 
@@ -337,54 +378,76 @@ class EntregaTareaAlumnoController extends Controller
             ]];
         }
 
-        // Filtrar quitando el archivo objetivo (soporta URLs codificadas, exactas o por nombre de archivo)
-        $targetBasename = basename(urldecode($fileUrl));
+        // Extraer ID de Drive del objetivo si existe en la URL enviada por el cliente
+        $targetDriveId = null;
+        if (preg_match('#/d/([^/?]+)#', $fileUrl, $m)) {
+            $targetDriveId = $m[1];
+        }
 
-        $archivosFiltrados = array_values(array_filter($archivosActuales, function($item) use ($fileUrl, $targetBasename) {
-            $itemUrl = is_array($item) ? ($item['url'] ?? '') : $item;
+        $cleanUrl = function($u) {
+            return strtok(urldecode($u), '?');
+        };
+
+        $targetCleanUrl = $cleanUrl($fileUrl);
+        $targetBasename = basename($targetCleanUrl);
+        if ($targetBasename === 'view') {
+            $targetBasename = '';
+        }
+
+        $driveFileIdToDelete = null;
+
+        $archivosFiltrados = array_values(array_filter($archivosActuales, function($item) use ($fileUrl, $targetDriveId, $targetCleanUrl, $targetBasename, $cleanUrl, &$driveFileIdToDelete) {
+            $itemUrl = is_array($item) ? ($item['url'] ?? '') : (string)$item;
             $itemName = is_array($item) ? ($item['nombre'] ?? '') : '';
+            $itemDriveId = is_array($item) ? ($item['google_drive_file_id'] ?? null) : null;
 
-            $decodedItemUrl = urldecode($itemUrl);
-            $decodedFileUrl = urldecode($fileUrl);
-            $itemBasename = basename($decodedItemUrl);
+            if (!$itemDriveId && preg_match('#/d/([^/?]+)#', $itemUrl, $m)) {
+                $itemDriveId = $m[1];
+            }
 
-            // Si coincide la URL completa, la URL decodificada, o el nombre de archivo del disco
-            if ($itemUrl === $fileUrl || $decodedItemUrl === $decodedFileUrl) {
+            $itemCleanUrl = $cleanUrl($itemUrl);
+
+            // 1. Coincidencia por ID de Drive
+            if ($targetDriveId && $itemDriveId && $targetDriveId === $itemDriveId) {
+                $driveFileIdToDelete = $itemDriveId;
                 return false;
             }
-            if (!empty($targetBasename) && ($itemBasename === $targetBasename || urldecode($itemBasename) === $targetBasename)) {
+
+            // 2. Coincidencia por URL limpia o exacta
+            if ($itemUrl === $fileUrl || $itemCleanUrl === $targetCleanUrl) {
+                if ($itemDriveId) $driveFileIdToDelete = $itemDriveId;
                 return false;
             }
-            if (!empty($itemName) && ($itemName === $fileUrl || $itemName === $targetBasename || $itemName === urldecode($targetBasename))) {
+
+            // 3. Coincidencia por nombre de archivo si no es genérico 'view'
+            if (!empty($targetBasename) && basename($itemCleanUrl) === $targetBasename) {
+                if ($itemDriveId) $driveFileIdToDelete = $itemDriveId;
+                return false;
+            }
+
+            if (!empty($itemName) && ($itemName === $fileUrl || $itemName === $targetBasename)) {
+                if ($itemDriveId) $driveFileIdToDelete = $itemDriveId;
                 return false;
             }
 
             return true;
         }));
 
-        $driveFileId = null;
-        foreach ($archivosActuales as $item) {
-            $itemUrl = is_array($item) ? ($item['url'] ?? '') : (string) $item;
-            $itemId = is_array($item) ? ($item['google_drive_file_id'] ?? null) : null;
-            $matchesUrl = $itemUrl === $fileUrl || urldecode($itemUrl) === urldecode($fileUrl);
+        if (!$driveFileIdToDelete && $targetDriveId) {
+            $driveFileIdToDelete = $targetDriveId;
+        }
 
-            if ($matchesUrl) {
-                $driveFileId = $itemId;
-                if (!$driveFileId && preg_match('#/d/([^/]+)#', $itemUrl, $matches)) {
-                    $driveFileId = $matches[1];
-                }
-                break;
+        // Intento seguro de eliminación en Google Drive (no bloquea al alumno si falla la API)
+        if ($driveFileIdToDelete) {
+            try {
+                $driveService->deleteFile($driveFileIdToDelete);
+            } catch (\Throwable $e) {
+                Log::warning("No se pudo eliminar archivo $driveFileIdToDelete de Drive: " . $e->getMessage());
             }
         }
 
-        if ($driveFileId && !$driveService->deleteFile($driveFileId)) {
-            return response()->json([
-                'error' => 'No se pudo eliminar el archivo en Google Drive. La entrega se conservó para que puedas reintentar.'
-            ], 502);
-        }
-
         if (count($archivosFiltrados) === 0) {
-            // Si ya no quedan archivos, eliminar el registro de la entrega por completo
+            // Si ya no quedan archivos, eliminar la entrega por completo
             $entrega->delete();
         } else {
             $ultimoNombre = $archivosFiltrados[count($archivosFiltrados) - 1]['nombre'] ?? 'Documento';
@@ -394,16 +457,14 @@ class EntregaTareaAlumnoController extends Controller
             ]);
         }
 
-        // Si es archivo de la carpeta local, opcionalmente eliminarlo del disco
+        // Si es archivo local, eliminar del disco si existe
         if (str_contains($fileUrl, '/storage/entregas/')) {
             $pathInStorage = str_replace(asset('storage/'), '', $fileUrl);
             \Illuminate\Support\Facades\Storage::disk('public')->delete($pathInStorage);
         }
 
-        // Invalidar caché antes de avisar para que el docente reciba datos frescos.
         $this->invalidateStudentAcademicCache($userId, $tarea);
 
-        // Transmitir cambio en tiempo real al docente
         $groupId = $tarea?->academicLoad?->grupo_id;
         if ($groupId) {
             try {
