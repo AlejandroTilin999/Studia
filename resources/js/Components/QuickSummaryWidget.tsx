@@ -17,7 +17,7 @@ interface QuickSummaryWidgetProps {
 export default function QuickSummaryWidget({ title = "Resumen del Sistema", metrics, isLoading }: QuickSummaryWidgetProps) {
   return (
     <div className="space-y-3 text-left font-body">
-      <h4 className="font-semibold text-slate-400 text-[11px] uppercase tracking-wider select-none ml-1">{title}</h4>
+      <h4 className="font-bold text-slate-600 text-[11px] uppercase tracking-wider select-none ml-1">{title}</h4>
       <div className="grid grid-cols-2 gap-2.5">
         {(metrics || []).map((item, index) => {
           const isLastOdd = metrics.length % 2 !== 0 && index === metrics.length - 1;
@@ -36,7 +36,7 @@ export default function QuickSummaryWidget({ title = "Resumen del Sistema", metr
             >
               <p className={cn(
                 "text-[10px] 2xl:text-[11px] font-semibold uppercase leading-none transition-colors truncate tracking-wider",
-                showSkeleton ? "text-slate-300" : "text-slate-400 group-hover:text-[#0266E0]"
+                showSkeleton ? "text-slate-300" : "text-slate-600 group-hover:text-[#0266E0]"
               )}>
                 {item.label}
               </p>

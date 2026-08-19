@@ -17,47 +17,68 @@ class UsuarioController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $revision = Cache::get('admin:users:list:revision', 1);
+        $page = max(1, (int) $request->query('page', 1));
+        $cacheKey = "admin:users:list:{$revision}:{$page}:" . md5((string) $search);
+
+        $cachedUsers = Cache::remember($cacheKey, 600, function () use ($search, $page) {
+            $query = User::query();
+
+            if ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('nombre', 'like', "%{$search}%")
+                      ->orWhere('apellido_paterno', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            $totalCount = (clone $query)->count();
+            $perPage = 50;
+
+            $results = $query->orderBy('created_at', 'desc')
+                ->forPage($page, $perPage)
+                ->get()
+                ->map(function ($u) {
+                    return [
+                        'id' => $u->id,
+                        'nombre' => $u->nombre_completo,
+                        'email' => $u->email,
+                        'rol' => $u->rol ?? 'admin',
+                        'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
+                        'telefono' => $u->telefono ?? '',
+                    ];
+                });
+
+            return new \Illuminate\Pagination\LengthAwarePaginator(
+                $results,
+                $totalCount,
+                $perPage,
+                $page,
+                [
+                    'path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(),
+                    'query' => request()->query(),
+                ]
+            );
+        });
 
         return Inertia::render('Admin/Usuarios/Index', [
-            'dbUsers' => Inertia::defer(function () use ($search) {
-                $query = User::query();
-
-                if ($search) {
-                    $query->where(function($q) use ($search) {
-                        $q->where('nombre', 'like', "%{$search}%")
-                          ->orWhere('apellido_paterno', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%");
-                    });
-                }
-
-                return $query->orderBy('created_at', 'desc')
-                    ->paginate(50)
-                    ->through(function ($u) {
-                        return [
-                            'id' => $u->id,
-                            'nombre' => $u->nombre_completo,
-                            'email' => $u->email,
-                            'rol' => $u->rol ?? 'admin',
-                            'estatus' => ($u->activo !== false) ? 'active' : 'inactive',
-                            'telefono' => $u->telefono ?? '',
-                        ];
-                    })
-                    ->withQueryString();
+            'dbUsers' => $cachedUsers,
+            'resetRequests' => fn() => Cache::remember('admin_pending_password_resets', 60, function() {
+                return \App\Models\PasswordResetRequest::where('status', 'pendiente')
+                    ->with('user:id,nombre,apellido_paterno,apellido_materno')
+                    ->latest()
+                    ->get()
+                    ->map(fn($r) => [
+                        'id' => $r->id,
+                        'nombre' => $r->user?->nombre_completo ?? 'Usuario desconocido',
+                        'email' => $r->email,
+                        'fecha' => $r->created_at ? $r->created_at->diffForHumans() : '',
+                    ])->all();
             }),
-            'resetRequests' => Inertia::defer(fn() => \App\Models\PasswordResetRequest::where('status', 'pendiente')
-                ->with('user:id,nombre,apellido_paterno,apellido_materno')
-                ->latest()
-                ->get()
-                ->map(fn($r) => [
-                    'id' => $r->id,
-                    'nombre' => $r->user->nombre_completo ?? 'Usuario desconocido',
-                    'email' => $r->email,
-                    'fecha' => $r->created_at->diffForHumans(),
-                ])),
             'filters' => [
                 'search' => $search
             ],
-            'userStats' => \Cache::remember('admin_users_stats_cache', 120, function() {
+            'userStats' => Cache::remember('admin_users_stats_cache', 120, function() {
                 $raw = \DB::selectOne("
                     SELECT 
                         COUNT(*) as total,
@@ -236,12 +257,16 @@ class UsuarioController extends Controller
 
     private function invalidateCache(?int $userId = null): void
     {
-        \Cache::forget('admin_users_stats_cache');
-        \Cache::forget('admin_system_metrics');
+        Cache::add('admin:users:list:revision', 1, now()->addDays(30));
+        Cache::increment('admin:users:list:revision');
+        Cache::forget('admin_users_stats_cache');
+        Cache::forget('admin_system_metrics');
+        Cache::forget('admin_pending_password_resets');
         if ($userId) {
-            \Cache::forget("sidebar_alumno_{$userId}");
-            \Cache::forget("sidebar_docente_{$userId}");
-            \Cache::forget("student_enrollment_{$userId}");
+            Cache::forget("user_auth_{$userId}");
+            Cache::forget("sidebar_alumno_{$userId}");
+            Cache::forget("sidebar_docente_{$userId}");
+            Cache::forget("student_enrollment_{$userId}");
         }
     }
 }

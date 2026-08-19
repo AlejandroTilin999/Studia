@@ -398,6 +398,7 @@ export default function GruposIndex({
                 processing={processing}
                 onSubmit={handleCreateSubmit}
                 currentYear={currentYear}
+                activeParity={activeParity}
             />
 
             <GroupFormModal
@@ -415,6 +416,7 @@ export default function GruposIndex({
                 processing={processing}
                 onSubmit={handleEditSubmit}
                 currentYear={currentYear}
+                activeParity={activeParity}
             />
         </AdminPageLayout>
     );

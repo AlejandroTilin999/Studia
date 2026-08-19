@@ -12,13 +12,17 @@ use App\Models\Teacher;
 use App\Services\AcademicPeriodService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class CargaAcademicaController extends Controller
 {
     private function invalidateTeacherListCache(): void
     {
-        \Cache::increment('admin:docentes:list:revision');
+        Cache::add('admin:cargas:list:revision', 1, now()->addDays(30));
+        Cache::increment('admin:cargas:list:revision');
+        Cache::add('admin:docentes:list:revision', 1, now()->addDays(30));
+        Cache::increment('admin:docentes:list:revision');
     }
 
     public function index(Request $request)
@@ -26,95 +30,129 @@ class CargaAcademicaController extends Controller
         $search = $request->query('search');
         $workingCycle = AcademicPeriodService::workingPeriod();
 
-        return Inertia::render('Admin/Cargas/Index', [
-            'loads' => Inertia::defer(function () use ($search, $workingCycle) {
-                $query = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user']);
+        $revision = Cache::get('admin:cargas:list:revision', 1);
+        $cycleFilter = $request->query('cycle', 'all');
+        $page = max(1, (int) $request->query('page', 1));
+        $cacheKey = "admin:cargas:list:{$revision}:{$cycleFilter}:{$page}:" . md5((string) $search);
 
-                // [FILTRO DE CARGAS] Si viene ciclo explícito, filtrar por él; de lo contrario mostrar cargas del ciclo de trabajo o todas
-                $cycleFilter = request('cycle');
-                if ($cycleFilter && $cycleFilter !== 'all') {
-                    $query->where('ciclo_id', $cycleFilter);
-                } elseif (!$search && $workingCycle) {
-                    $query->where('ciclo_id', $workingCycle->id);
-                }
+        $cachedLoads = Cache::remember($cacheKey, 600, function () use ($search, $cycleFilter, $workingCycle, $page) {
+            $query = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user']);
 
-                if ($search) {
-                    $query->where(function ($q) use ($search) {
-                        $q->whereHas('course', function ($sq) use ($search) {
-                            $sq->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('codigo', 'like', "%{$search}%");
-                        })->orWhereHas('academicGroup', function ($sq) use ($search) {
-                            $sq->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('codigo', 'like', "%{$search}%");
-                        })->orWhereHas('teacher.user', function ($sq) use ($search) {
-                            $sq->where('nombre', 'like', "%{$search}%")
-                                ->orWhere('apellido_paterno', 'like', "%{$search}%");
-                        });
+            if ($cycleFilter && $cycleFilter !== 'all') {
+                $query->where('ciclo_id', $cycleFilter);
+            } elseif (!$search && $workingCycle) {
+                $query->where('ciclo_id', $workingCycle->id);
+            }
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('course', function ($sq) use ($search) {
+                        $sq->where('nombre', 'like', "%{$search}%")
+                            ->orWhere('codigo', 'like', "%{$search}%");
+                    })->orWhereHas('academicGroup', function ($sq) use ($search) {
+                        $sq->where('nombre', 'like', "%{$search}%")
+                            ->orWhere('codigo', 'like', "%{$search}%");
+                    })->orWhereHas('teacher.user', function ($sq) use ($search) {
+                        $sq->where('nombre', 'like', "%{$search}%")
+                            ->orWhere('apellido_paterno', 'like', "%{$search}%");
                     });
+                });
+            }
+
+            $totalCount = (clone $query)->count();
+            $perPage = 50;
+
+            $results = $query->orderBy('id', 'desc')
+                ->forPage($page, $perPage)
+                ->get()
+                ->map(function ($l) {
+                    return [
+                        'id' => $l->id,
+                        'ciclo_id' => $l->ciclo_id,
+                        'nombre_ciclo' => $l->academicPeriod->nombre ?? 'N/A',
+                        'grupo_id' => $l->grupo_id,
+                        'nombre_grupo' => $l->academicGroup->nombre ?? 'N/A',
+                        'codigo_grupo' => $l->academicGroup->codigo ?? 'N/A',
+                        'materia_id' => $l->materia_id,
+                        'nombre_materia' => $l->course->nombre ?? 'N/A',
+                        'codigo_materia' => $l->course->codigo ?? 'N/A',
+                        'docente_id' => $l->docente_id,
+                        'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
+                        'area_docente' => $l->teacher->area ?? '',
+                        'area_materia' => $l->course->area ?? '',
+                    ];
+                });
+
+            return new \Illuminate\Pagination\LengthAwarePaginator(
+                $results,
+                $totalCount,
+                $perPage,
+                $page,
+                [
+                    'path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(),
+                    'query' => request()->query(),
+                ]
+            );
+        });
+
+        return Inertia::render('Admin/Cargas/Index', [
+            'loads' => $cachedLoads,
+            'periods' => fn() => \Cache::remember('admin_academic_periods_catalog', 3600, function() {
+                return AcademicPeriod::orderByDesc('fecha_inicio')->get()->map(fn($p) => [
+                    'id' => $p->id,
+                    'nombre' => $p->nombre,
+                    'activo' => (bool)$p->activo,
+                    'status' => $p->status,
+                    'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
+                ])->all();
+            }),
+            'groups' => fn() => \Cache::remember('catalog_grupos_select', 300, function() {
+                $operatingCycle = AcademicPeriodService::workingPeriod();
+                $query = AcademicGroup::query();
+
+                if ($operatingCycle) {
+                    $cycleName = strtoupper($operatingCycle->nombre);
+                    if (str_contains($cycleName, 'PERIODO B') || str_contains($cycleName, 'CICLO B') || preg_match('/\bB\b/i', $cycleName)) {
+                        $query->whereRaw('semestre % 2 = 0');
+                    } else if (str_contains($cycleName, 'PERIODO A') || str_contains($cycleName, 'CICLO A') || preg_match('/\bA\b/i', $cycleName)) {
+                        $query->whereRaw('semestre % 2 != 0');
+                    }
                 }
 
-                return $query->orderBy('id', 'desc')
-                    ->paginate(50)
-                    ->through(function ($l) {
-                        return [
-                            'id' => $l->id,
-                            'ciclo_id' => $l->ciclo_id,
-                            'nombre_ciclo' => $l->academicPeriod->nombre ?? 'N/A',
-                            'grupo_id' => $l->grupo_id,
-                            'nombre_grupo' => $l->academicGroup->nombre ?? 'N/A',
-                            'codigo_grupo' => $l->academicGroup->codigo ?? 'N/A',
-                            'materia_id' => $l->materia_id,
-                            'nombre_materia' => $l->course->nombre ?? 'N/A',
-                            'codigo_materia' => $l->course->codigo ?? 'N/A',
-                            'docente_id' => $l->docente_id,
-                            'nombre_docente' => ($l->teacher && $l->teacher->user) ? $l->teacher->user->nombre_completo : 'Sin docente',
-                            'area_docente' => $l->teacher->area ?? '',
-                            'area_materia' => $l->course->area ?? '',
-                        ];
-                    })
-                    ->withQueryString();
+                return $query->orderBy('semestre')->orderBy('nombre')->get()->map(fn($g) => [
+                    'id' => $g->id,
+                    'nombre' => $g->nombre,
+                    'codigo' => $g->codigo,
+                    'semestre' => $g->semestre,
+                    'especialidad' => $g->especialidad,
+                ])->all();
             }),
-            'periods' => Inertia::defer(fn() => AcademicPeriod::all()->map(fn($p) => [
-                'id' => $p->id,
-                'nombre' => $p->nombre,
-                'activo' => (bool)$p->activo,
-                'status' => $p->status,
-                'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
-            ])),
-            'groups' => Inertia::defer(fn() => AcademicGroup::all()->map(fn($g) => [
-                'id' => $g->id,
-                'nombre' => $g->nombre,
-                'codigo' => $g->codigo,
-                'semestre' => $g->semestre,
-                'especialidad' => $g->especialidad,
-            ])),
-            'courses' => Inertia::defer(fn() => Course::with('specialties')->get()->map(fn($c) => [
-                'id' => $c->id,
-                'nombre' => $c->nombre,
-                'codigo' => $c->codigo,
-                'tipo' => $c->tipo,
-                'area' => $c->area ?? '',
-                'semestre' => $c->semestre,
-                'especialidades' => $c->specialties->pluck('nombre')->toArray(),
-            ])),
-            'teachers' => Inertia::defer(fn() => Teacher::with('user')
-                ->get()
-                ->map(fn($t) => [
-                    'id' => $t->id,
-                    'nombre_completo' => $t->user->nombre_completo ?? 'Docente sin nombre',
-                    'especialidad' => $t->especialidad,
-                    'areas' => $t->areas ?? [],
-                ])
-                ->values()
-            ),
+            'courses' => fn() => \Cache::remember('catalog_courses_select', 300, function() {
+                return Course::with('specialties')->get()->map(fn($c) => [
+                    'id' => $c->id,
+                    'nombre' => $c->nombre,
+                    'codigo' => $c->codigo,
+                    'tipo' => $c->tipo,
+                    'area' => $c->area ?? '',
+                    'semestre' => $c->semestre,
+                    'especialidades' => $c->specialties->pluck('nombre')->toArray(),
+                ])->all();
+            }),
+            'teachers' => fn() => \Cache::remember('catalog_profesores_select', 300, function() {
+                return Teacher::with('user:id,nombre,apellido_paterno,apellido_materno')
+                    ->get()
+                    ->map(fn($t) => [
+                        'id' => $t->id,
+                        'nombre_completo' => $t->user?->nombre_completo ?? 'Docente sin nombre',
+                        'especialidad' => $t->especialidad,
+                        'areas' => $t->areas ?? [],
+                    ])->all();
+            }),
             'filters' => [
                 'search' => $search
             ],
-            'isCycleActive' => AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->exists(),
-            'canRegister' => AcademicPeriod::whereIn('status', [
-                AcademicPeriod::STATUS_ACTIVE,
-                AcademicPeriod::STATUS_PLANNING
-            ])->exists()
+            'isCycleActive' => AcademicPeriodService::activePeriod() !== null,
+            'canRegister' => AcademicPeriodService::workingPeriod() !== null,
         ]);
     }
 
@@ -156,6 +194,9 @@ class CargaAcademicaController extends Controller
             });
 
             $this->invalidateTeacherListCache();
+            \App\Services\GradeService::invalidateStudentCache();
+            event(new \App\Events\GroupDataUpdated($request->grupo_id, 'courses'));
+
             return redirect()->back()->with('message', 'Asignaciones procesadas con éxito.');
         }
 
@@ -186,6 +227,9 @@ class CargaAcademicaController extends Controller
         ]);
 
         $this->invalidateTeacherListCache();
+        \App\Services\GradeService::invalidateStudentCache();
+        event(new \App\Events\GroupDataUpdated($request->grupo_id, 'courses'));
+
         return redirect()->back()->with('message', 'Asignación creada con éxito.');
     }
 

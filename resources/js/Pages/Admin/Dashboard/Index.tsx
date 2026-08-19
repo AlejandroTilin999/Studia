@@ -29,20 +29,6 @@ export default function AdminDashboardIndex() {
     } = usePage().props as any;
     const adminName = auth?.user?.nombre || 'Administrador';
 
-    // Layout effect
-    useEffect(() => {
-        const mainEl = document.querySelector('main');
-        if (!mainEl) return;
-        mainEl.style.padding = '0';
-        const handleResize = () => {
-            if (window.innerWidth >= 1024) mainEl.style.overflow = 'hidden';
-            else mainEl.style.overflow = 'auto';
-        };
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
     // Modals state
     const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -131,6 +117,7 @@ export default function AdminDashboardIndex() {
 
         const options = {
             onSuccess: () => {
+                SwalHelper.close();
                 setIsPeriodModalOpen(false);
                 reset();
                 SwalHelper.toast(`Ciclo escolar ${modalMode === 'create' ? 'configurado' : 'actualizado'} correctamente.`, 'success');
@@ -139,6 +126,7 @@ export default function AdminDashboardIndex() {
                 }
             },
             onError: () => {
+                SwalHelper.close();
                 SwalHelper.toast(`Hubo un problema al ${modalMode === 'create' ? 'crear' : 'actualizar'} el ciclo escolar.`, 'error');
             }
         };
@@ -161,14 +149,17 @@ export default function AdminDashboardIndex() {
             'warning'
         ).then((result) => {
             if (result.isConfirmed) {
-                SwalHelper.toastLoading('Concluyendo ciclo escolar...');
+                SwalHelper.toastLoading('Verificando alumnos e inscripciones...');
                 cycleService.close(activeCycle.id, {
                     onSuccess: () => {
+                        SwalHelper.close();
                         SwalHelper.toast('Ciclo escolar archivado correctamente.', 'success');
                         broadcastCycleUpdate(activeCycle.id);
                     },
-                    onError: () => {
-                        SwalHelper.toast('No se pudo cerrar el ciclo escolar.', 'error');
+                    onError: (errors: any) => {
+                        SwalHelper.close();
+                        const message = errors?.ciclo || errors?.message || 'No se pudo concluir el ciclo escolar. Verifica las promociones pendientes.';
+                        SwalHelper.alert('No es posible concluir el ciclo', message, 'warning');
                     }
                 });
             }
@@ -186,12 +177,15 @@ export default function AdminDashboardIndex() {
                 SwalHelper.toastLoading('Cambiando ciclo activo...');
                 cycleService.activate(id, {
                     onSuccess: () => {
+                        SwalHelper.close();
                         setIsHistoryModalOpen(false);
                         SwalHelper.toast('Ciclo activo cambiado correctamente.', 'success');
                         broadcastCycleUpdate(id);
                     },
-                    onError: () => {
-                        SwalHelper.toast('No se pudo cambiar el ciclo escolar.', 'error');
+                    onError: (errors: any) => {
+                        SwalHelper.close();
+                        const message = errors?.ciclo || errors?.message || 'No se pudo cambiar el ciclo escolar.';
+                        SwalHelper.alert('Error', message, 'error');
                     }
                 });
             }

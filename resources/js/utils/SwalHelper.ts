@@ -17,6 +17,21 @@ export const SwalHelper = {
     },
 
     /**
+     * Input prompt
+     */
+    prompt: (title: string, text: string, inputType: 'text' = 'text', inputValue: string = '') => {
+        return Swal.fire({
+            title,
+            text,
+            input: inputType,
+            inputValue,
+            showCancelButton: true,
+            confirmButtonText: 'Crear',
+            cancelButtonText: 'Cancelar',
+        });
+    },
+
+    /**
      * Success notification
      */
     success: (title: string = '¡Éxito!', text: string = 'Operación realizada correctamente.') => {

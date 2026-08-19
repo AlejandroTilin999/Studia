@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Layers, Hash, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Layers, Hash, Calendar, AlertTriangle, Info } from 'lucide-react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormSelect } from '@/Components/forms/FormSelect';
@@ -30,6 +30,7 @@ interface GroupFormModalProps {
     profesores?: any[];
     specialties?: any[];
     currentYear?: number;
+    activeParity?: 'odd' | 'even';
 }
 
 export default function GroupFormModal({
@@ -44,9 +45,17 @@ export default function GroupFormModal({
     specialties = [],
     profesores = [],
     currentYear = new Date().getFullYear(),
+    activeParity = 'odd',
 }: GroupFormModalProps) {
     const [selectedSemester, setSelectedSemester] = useState<string>('');
     const [selectedSection, setSelectedSection] = useState<string>('');
+
+    const availableSemesters = useMemo(() => {
+        if (activeParity === 'even') {
+            return [2, 4, 6];
+        }
+        return [1, 3, 5];
+    }, [activeParity]);
 
     // Sincronizar y parsear datos al abrir el modal
     useEffect(() => {
@@ -62,14 +71,18 @@ export default function GroupFormModal({
                     }
                 }
             } else {
-                setSelectedSemester('');
-                setSelectedSection('');
+                // En modo creación, selecciona el semestre por defecto según el ciclo activo (1° en Periodo A, 2° en Periodo B)
+                const defaultSem = activeParity === 'even' ? '2' : '1';
+                setSelectedSemester(defaultSem);
+                setSelectedSection('A');
+                setData('seccion', 'A');
                 setData('turno', 'Matutino');
-                setData('semestre', '');
+                setData('semestre', Number(defaultSem));
                 setData('generacion', '');
+                setData('crear_escalera', true);
             }
         }
-    }, [isOpen, mode]);
+    }, [isOpen, mode, activeParity]);
 
     // [LÓGICA v6.5] Autogenerar generación basada en semestre e inteligencia temporal
     useEffect(() => {
@@ -140,7 +153,7 @@ export default function GroupFormModal({
         }
     }, [selectedSemester, selectedSection, data.especialidad, isOpen]);
 
-    const isFormValid = data.codigo.trim() !== '' && data.nombre.trim() !== '' && data.generacion.trim() !== '';
+    const isFormValid = data.generacion.trim() !== '' && data.especialidad.trim() !== '';
 
     return (
         <BaseModal
@@ -185,31 +198,50 @@ export default function GroupFormModal({
 
                 {/* Right Panel */}
                 <div className="col-span-1 md:col-span-3 p-5 md:p-6 flex flex-col justify-between min-h-0 md:min-h-[400px] relative bg-white rounded-b-[10px] md:rounded-r-[10px] md:rounded-bl-none">
-                    <div className="space-y-5 flex-1 flex flex-col justify-center">
-                        <div className="grid grid-cols-2 gap-4 text-left">
+                    <div className="space-y-4 flex-1 flex flex-col justify-center">
+
+                        {/* Leyenda Explicativa de Registro Automático */}
+                        {mode === 'create' && (
+                            <div className="p-3 bg-blue-50 border border-blue-200/80 rounded-xl flex items-start gap-2.5 text-left text-blue-900">
+                                <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                                <div className="text-xs leading-relaxed">
+                                    <span className="font-bold block text-blue-900 mb-0.5">Generación en Escalera y Asignación Automática</span>
+                                    Selecciona la especialidad. El sistema asignará automáticamente la letra de grupo correspondiente (ej. <strong>A</strong>, <strong>B</strong>, <strong>C</strong>...) y generará su ruta en escalera.
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel required>Semestre</FormLabel>
-                                <FormSelect
-                                    value={selectedSemester}
-                                    onChange={e => setSelectedSemester(e.target.value)}
-                                    className="h-9 text-xs font-normal"
-                                >
-                                    <option value="">Grado...</option>
-                                    {[1, 2, 3, 4, 5, 6].map(s => (
-                                        <option key={s} value={s}>{s}° Semestre</option>
-                                    ))}
-                                </FormSelect>
+                                {mode === 'create' ? (
+                                    <FormInput
+                                        readOnly
+                                        value={selectedSemester ? `${selectedSemester}° Semestre (Inauguración)` : 'No disponible en Ciclo B'}
+                                        className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-700 font-semibold cursor-not-allowed select-none"
+                                    />
+                                ) : (
+                                    <FormSelect
+                                        value={selectedSemester}
+                                        onChange={e => setSelectedSemester(e.target.value)}
+                                        className="h-9 text-xs font-normal"
+                                    >
+                                        {[1, 2, 3, 4, 5, 6].map(s => (
+                                            <option key={s} value={s}>{s}° Semestre</option>
+                                        ))}
+                                    </FormSelect>
+                                )}
                             </div>
                             <div className="space-y-1.5">
-                                <FormLabel required>Sección / Letra</FormLabel>
+                                <FormLabel required>Bachillerato / Especialidad</FormLabel>
                                 <FormSelect
-                                    value={selectedSection}
-                                    onChange={e => setSelectedSection(e.target.value)}
-                                    className="h-9 text-xs font-normal"
+                                    value={data.especialidad}
+                                    onChange={e => setData('especialidad', e.target.value)}
+                                    className="h-9 text-xs"
                                 >
-                                    <option value="">Sección...</option>
-                                    {['A', 'B', 'C', 'D', 'E'].map(l => (
-                                        <option key={l} value={l}>Grupo {l}</option>
+                                    <option value="">Selecciona especialidad</option>
+                                    {specialties.map((s) => (
+                                        <option key={s.id} value={s.nombre}>{s.nombre}</option>
                                     ))}
                                 </FormSelect>
                             </div>
@@ -238,20 +270,6 @@ export default function GroupFormModal({
                                     className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed select-none"
                                 />
                             </div>
-                        </div>
-
-                        <div className="space-y-1.5 text-left">
-                            <FormLabel required>Bachillerato / Especialidad</FormLabel>
-                            <FormSelect
-                                value={data.especialidad}
-                                onChange={e => setData('especialidad', e.target.value)}
-                                className="h-9 text-xs"
-                            >
-                                <option value="">Selecciona especialidad</option>
-                                {specialties.map((s) => (
-                                    <option key={s.id} value={s.nombre}>{s.nombre}</option>
-                                ))}
-                            </FormSelect>
                         </div>
 
                         <div className="space-y-1.5 text-left">

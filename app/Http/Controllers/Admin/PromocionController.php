@@ -115,8 +115,8 @@ class PromocionController extends Controller
         ?AcademicPeriod $targetPeriod,
         bool $graduate,
     ): void {
-        if ($sourcePeriod->status !== AcademicPeriod::STATUS_ACTIVE) {
-            throw ValidationException::withMessages(['ciclo_origen_id' => 'Solo puedes resolver inscripciones del ciclo vigente.']);
+        if (!in_array($sourcePeriod->status, [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_CLOSED], true)) {
+            throw ValidationException::withMessages(['ciclo_origen_id' => 'Las promociones se resuelven sobre el ciclo vigente o recién concluido.']);
         }
 
         if ($graduate) {

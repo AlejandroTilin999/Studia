@@ -191,18 +191,6 @@ export default function ReportParams({
                     <FaFilePdf size={16} className={cn("transition-colors", isFormValid ? "text-rose-500" : "text-slate-300")} />
                     Generar reporte PDF
                 </button>
-
-                {selectedReport === 'asistencia' && onExportExcel && (
-                    <button
-                        type="button"
-                        onClick={onExportExcel}
-                        disabled={!isFormValid}
-                        className="h-11 px-5 bg-emerald-600 border border-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[12px] rounded-lg flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-[0.95]"
-                    >
-                        <FileSpreadsheet size={16} />
-                        Exportar para Excel
-                    </button>
-                )}
             </div>
         </div>
     );

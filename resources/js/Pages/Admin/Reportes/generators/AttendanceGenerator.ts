@@ -15,6 +15,7 @@ interface AttendanceData {
 
 export const generateAttendanceHTML = (data: AttendanceData): string => {
     const { group, period, enrollments } = data;
+    const logoUrl = "/assets/phid_logo.webp";
 
     return `
         <html>
@@ -25,9 +26,15 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
                 * { box-sizing: border-box; }
                 body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; font-size: 15px; }
 
+                .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+                .logo { height: 55px; }
+                .institution-info { text-align: right; }
+                .institution-name { font-weight: 900; font-size: 16px; color: #0266E0; margin: 0; text-transform: uppercase; white-space: nowrap; }
+                .report-date { font-size: 11px; color: #64748b; margin-top: 4px; }
+
                 .title-section { margin-bottom: 20px; }
-                .main-title { font-size: 28px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: -0.02em; }
-                .sub-title { font-size: 14px; color: #64748b; font-weight: 600; margin-top: 5px; }
+                .main-title { font-size: 24px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: -0.02em; }
+                .sub-title { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 4px; }
 
                 .meta-info {
                     width: 100%;
@@ -43,14 +50,14 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
                 }
                 .meta-item { display: flex; flex-direction: column; min-width: 0; }
                 .meta-label { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .meta-value { font-size: 16px; font-weight: 400; color: #1e293b; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .meta-value { font-size: 15px; font-weight: 600; color: #1e293b; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-                th { background-color: #f8fafc; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; text-align: left; padding: 15px 10px; border-bottom: 1px solid #e2e8f0; }
-                td { padding: 12px 10px; font-size: 15px; border-bottom: 1px solid #e2e8f0; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+                th { background-color: #f8fafc; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; text-align: left; padding: 12px 10px; border-bottom: 1px solid #e2e8f0; }
+                td { padding: 10px 10px; font-size: 14px; border-bottom: 1px solid #e2e8f0; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
                 tr:nth-child(even) { background-color: #fafafa; }
 
-                .col-num { text-align: center; color: #94a3b8; font-weight: 400; width: 50px; }
+                .col-num { text-align: center; color: #94a3b8; font-weight: 400; width: 45px; }
                 .col-mat { text-align: center; color: #334155; font-weight: 400; width: 100px; }
                 .col-name { font-weight: 400; color: #0f172a; }
                 .col-day { border-left: 1px solid #e2e8f0; width: 22px; }
@@ -72,6 +79,14 @@ export const generateAttendanceHTML = (data: AttendanceData): string => {
             </style>
         </head>
         <body>
+            <div class="header">
+                <img src="${logoUrl}" class="logo" alt="Logo Preparatoria Hidalgo" />
+                <div class="institution-info">
+                    <h2 class="institution-name">Preparatoria Particular Hidalgo</h2>
+                    <div class="report-date">${data.generated_at || ''}</div>
+                </div>
+            </div>
+
             <div class="title-section">
                 <h1 class="main-title">Lista de Control de Asistencia</h1>
                 <p class="sub-title">SISTEMA DE CONTROL ESCOLAR PREPAHID | Documento Oficial Académico</p>

@@ -17,18 +17,21 @@ Broadcast::channel('AcademicGroup.{id}', function ($user, $id) {
     }
 
     if ($rol === 'alumno') {
-        return Enrollment::where('usuario_id', $user->id)
-            ->where('grupo_id', $id)
-            ->where('estatus', 'active')
-            ->exists();
+        return \Illuminate\Support\Facades\Cache::remember("channel_auth_alumno_{$user->id}_{$id}", 300, function () use ($user, $id) {
+            return Enrollment::where('usuario_id', $user->id)
+                ->where('grupo_id', $id)
+                ->where('estatus', 'active')
+                ->exists();
+        });
     }
 
     if ($rol === 'docente') {
-        $docenteId = Teacher::where('usuario_id', $user->id)->value('id');
-
-        return $docenteId && AcademicLoad::where('docente_id', $docenteId)
-            ->where('grupo_id', $id)
-            ->exists();
+        return \Illuminate\Support\Facades\Cache::remember("channel_auth_docente_{$user->id}_{$id}", 300, function () use ($user, $id) {
+            $docenteId = Teacher::where('usuario_id', $user->id)->value('id');
+            return $docenteId && AcademicLoad::where('docente_id', $docenteId)
+                ->where('grupo_id', $id)
+                ->exists();
+        });
     }
 
     return false;

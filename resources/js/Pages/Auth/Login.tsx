@@ -89,7 +89,7 @@ export default function LoginPage() {
       </div>
 
       {/* COLUMNA IZQUIERDA (Formulario y Selección de Perfil) */}
-      <div className="w-full lg:w-[55%] bg-white auth-pattern-bg relative flex flex-col justify-center items-center px-4 sm:px-6 md:px-12 xl:px-24 py-4 md:py-8 lg:py-8 xl:py-12 lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
+      <div className="w-full lg:w-[55%] bg-white relative flex flex-col justify-center items-center px-4 sm:px-6 md:px-12 xl:px-24 py-4 md:py-8 lg:py-8 xl:py-12 lg:h-full lg:overflow-y-auto z-20 order-2 lg:order-1">
 
         <div className="w-full max-w-[500px] relative bg-white lg:bg-transparent rounded-xl lg:rounded-none shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] lg:shadow-none p-6 sm:p-8 lg:p-0 border border-slate-200/80 lg:border-none -mt-20 sm:-mt-24 lg:mt-0 z-30 mb-8 lg:mb-0">
           {/* Botón superior de regresar (Alineado con el contenido) */}
@@ -132,7 +132,7 @@ export default function LoginPage() {
                       onChange={e => setData("email", e.target.value.toLowerCase())}
                       placeholder=" "
                       autoComplete="off"
-                      className="peer w-full h-16 px-5 bg-white border border-slate-200 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
+                      className="peer w-full h-16 px-5 bg-white border border-slate-300 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
                     />
                     <label
                       htmlFor="email-input"
@@ -154,7 +154,7 @@ export default function LoginPage() {
                       onChange={e => setData("password", e.target.value)}
                       placeholder=" "
                       autoComplete="new-password"
-                      className="peer w-full h-16 pl-5 pr-14 bg-white border border-slate-200 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
+                      className="peer w-full h-16 pl-5 pr-14 bg-white border border-slate-300 rounded-xl text-lg text-slate-700 focus:outline-none focus:border-[#0266E0] transition-all font-medium"
                     />
                     <label
                       htmlFor="password-input"

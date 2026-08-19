@@ -119,14 +119,14 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
         paternalPart = paternalPart.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 
         const emailInitials = `${firstInit.toLowerCase()}${paternalInit.toLowerCase()}`;
+        const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
+        const groupSelected = groups.find((g: any) => g.id === Number(data.grupo_id));
+        const groupCode = groupSelected ? groupSelected.id : '00';
+        const yearMatch = (data.matricula || '').match(/\d{4}$/);
+        const yearPart = yearMatch ? yearMatch[0] : new Date().getFullYear();
+        const generatedMatricula = `${initials}${groupCode}${yearPart}`;
 
         if (modalMode === 'create') {
-            const initials = `${firstInit}${paternalInit}${maternalInit}`.toUpperCase().padEnd(3, 'X').substring(0, 3);
-            const groupSelected = groups.find((g: any) => g.id === Number(data.grupo_id));
-            const groupCode = groupSelected ? groupSelected.id : '00';
-            const currentYear = new Date().getFullYear();
-            const generatedMatricula = `${initials}${groupCode}${currentYear}`;
-
             const generatedEmail = firstNamePart && paternalPart
                 ? `${firstNamePart}.${paternalPart}.${emailInitials}${randomSuffix}@prepahidalgo.edu.mx`
                 : '';
@@ -139,19 +139,21 @@ export default function AlumnosIndex({ alumnos, groups = [], availableCycles = [
                 }));
             }
         } else if (modalMode === 'edit') {
+            let generatedEmail = data.email;
             if (firstNamePart && paternalPart) {
                 const existingPrefix = (data.email || '').split('@')[0] || '';
                 const domain = (data.email || '').split('@')[1] || 'prepahidalgo.edu.mx';
                 const numMatch = existingPrefix.match(/\d+$/);
                 const numSuffix = numMatch ? numMatch[0] : '';
-                const generatedEmail = `${firstNamePart}.${paternalPart}${numSuffix ? '.' + numSuffix : ''}@${domain}`;
+                generatedEmail = `${firstNamePart}.${paternalPart}${numSuffix ? '.' + numSuffix : ''}@${domain}`;
+            }
 
-                if (data.email !== generatedEmail && generatedEmail.length > 5) {
-                    setData(currentData => ({
-                        ...currentData,
-                        email: generatedEmail,
-                    }));
-                }
+            if (data.matricula !== generatedMatricula || data.email !== generatedEmail) {
+                setData(currentData => ({
+                    ...currentData,
+                    matricula: generatedMatricula,
+                    email: generatedEmail,
+                }));
             }
         }
     }, [data.nombre, data.apellido_paterno, data.apellido_materno, data.grupo_id, modalMode, randomSuffix]);

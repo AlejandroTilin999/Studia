@@ -31,7 +31,7 @@ class AlumnoController extends Controller
         // Determinar el ciclo de trabajo (Prioridad: Seleccionado > Activo > Planificación)
         $workingCycle = null;
         if ($selectedCycleId) {
-            $workingCycle = AcademicPeriod::find($selectedCycleId);
+            $workingCycle = AcademicPeriodService::findCached((int) $selectedCycleId);
         }
 
         if (!$workingCycle) {
@@ -100,9 +100,15 @@ class AlumnoController extends Controller
                     "COUNT(*) as total, SUM(CASE WHEN inscripciones.estatus = 'active' THEN 1 ELSE 0 END) as active, SUM(CASE WHEN inscripciones.estatus = 'suspended' THEN 1 ELSE 0 END) as suspended"
                 ))->first();
 
-                $items = $query->orderBy('users.apellido_paterno')->orderBy('users.nombre')
-                    ->paginate(50)
-                    ->through(function ($item) {
+                $totalCount = (int) ($summary->total ?? 0);
+                $perPage = 50;
+                $currentPage = max(1, (int) request('page', 1));
+
+                $paginatedResults = $query->orderBy('users.apellido_paterno')
+                    ->orderBy('users.nombre')
+                    ->forPage($currentPage, $perPage)
+                    ->get()
+                    ->map(function ($item) {
                         return [
                             'id' => $item->id,
                             'usuario_id' => $item->usuario_id,
@@ -120,27 +126,52 @@ class AlumnoController extends Controller
                             ] : null,
                             'estatus' => $item->inscripcion_estatus ?? 'active',
                         ];
-                    })
-                    ->withQueryString();
+                    });
+
+                $items = new \Illuminate\Pagination\LengthAwarePaginator(
+                    $paginatedResults,
+                    $totalCount,
+                    $perPage,
+                    $currentPage,
+                    [
+                        'path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(),
+                        'query' => request()->query(),
+                    ]
+                );
 
                 return [
                     'items' => $items,
                     'summary' => [
-                        'total' => (int) ($summary->total ?? 0),
+                        'total' => $totalCount,
                         'active' => (int) ($summary->active ?? 0),
                         'suspended' => (int) ($summary->suspended ?? 0),
                     ],
                 ];
                 });
             }),
-            'groups' => \Cache::remember('admin_alumnos_groups_catalog', 300, function() {
-                return AcademicGroup::select('id', 'nombre', 'codigo', 'especialidad')->get()->map(fn($g) => [
-                    'id' => $g->id,
-                    'nombre' => $g->nombre,
-                    'codigo' => $g->codigo,
-                    'especialidad' => $g->especialidad,
-                ])->toArray();
-            }),
+            'groups' => function() use ($workingCycle) {
+                $cacheKey = 'admin_alumnos_groups_catalog_' . ($workingCycle ? $workingCycle->id : 'all');
+                return \Cache::remember($cacheKey, 300, function() use ($workingCycle) {
+                    $query = AcademicGroup::select('id', 'nombre', 'codigo', 'especialidad', 'semestre');
+
+                    if ($workingCycle) {
+                        $cycleName = strtoupper($workingCycle->nombre);
+                        if (str_contains($cycleName, 'PERIODO B') || str_contains($cycleName, 'CICLO B') || preg_match('/\bB\b/i', $cycleName)) {
+                            $query->whereRaw('semestre % 2 = 0');
+                        } else if (str_contains($cycleName, 'PERIODO A') || str_contains($cycleName, 'CICLO A') || preg_match('/\bA\b/i', $cycleName)) {
+                            $query->whereRaw('semestre % 2 != 0');
+                        }
+                    }
+
+                    return $query->orderBy('semestre')->orderBy('nombre')->get()->map(fn($g) => [
+                        'id' => $g->id,
+                        'nombre' => $g->nombre,
+                        'codigo' => $g->codigo,
+                        'especialidad' => $g->especialidad,
+                        'semestre' => $g->semestre,
+                    ])->toArray();
+                });
+            },
             'filters' => [
                 'search' => $search,
                 'group' => $group,
@@ -165,10 +196,7 @@ class AlumnoController extends Controller
     public function store(Request $request)
     {
         // [SAFETY LOCK v3.6] Permitir inscripciones en ciclos Activos o en Planeación
-        $targetCycle = \App\Models\AcademicPeriod::whereIn('status', [
-            \App\Models\AcademicPeriod::STATUS_ACTIVE,
-            \App\Models\AcademicPeriod::STATUS_PLANNING
-        ])->first();
+        $targetCycle = AcademicPeriodService::workingPeriod();
 
         if (!$targetCycle) {
             return redirect()->back()->withErrors([
@@ -187,22 +215,17 @@ class AlumnoController extends Controller
             'grupo_id'          => 'required|exists:grupos,id',
         ]);
 
-        // Validar cupo del grupo (límite: 22 estudiantes por grupo)
+        // Validar cupo del grupo
         $group = \App\Models\AcademicGroup::findOrFail($request->grupo_id);
-        if ((int) $group->semestre !== 1) {
-            return redirect()->back()->withErrors([
-                'grupo_id' => 'Las altas ordinarias solo se permiten en grupos de primer semestre. Para otros semestres usa promoción, repetición o traslado.',
-            ]);
-        }
 
         $activeEnrollmentsCount = Enrollment::where('grupo_id', $request->grupo_id)
             ->where('ciclo_id', $targetCycle->id)
             ->where('estatus', 'active')
             ->count();
 
-        if ($activeEnrollmentsCount >= 22) {
+        if ($activeEnrollmentsCount >= 45) {
             return redirect()->back()->withErrors([
-                'grupo_id' => 'El grupo seleccionado ya está lleno (máximo 22 alumnos por salón).'
+                'grupo_id' => 'El grupo seleccionado ha alcanzado el límite máximo de estudiantes (45 alumnos).'
             ]);
         }
 
@@ -296,9 +319,9 @@ class AlumnoController extends Controller
                 ->where('estatus', 'active')
                 ->count();
 
-            if ($activeEnrollmentsCount >= 22) {
+            if ($activeEnrollmentsCount >= 45) {
                 return redirect()->back()->withErrors([
-                    'grupo_id' => 'El grupo seleccionado ya está lleno (máximo 22 alumnos por salón).'
+                    'grupo_id' => 'El grupo seleccionado ha alcanzado el límite máximo de estudiantes (45 alumnos).'
                 ]);
             }
         }
@@ -321,10 +344,7 @@ class AlumnoController extends Controller
             ]);
 
             // 3. Actualizar inscripción (traslado con historial o asignación inicial)
-            $targetCycle = \App\Models\AcademicPeriod::whereIn('status', [
-                \App\Models\AcademicPeriod::STATUS_ACTIVE,
-                \App\Models\AcademicPeriod::STATUS_PLANNING
-            ])->first();
+            $targetCycle = AcademicPeriodService::workingPeriod();
 
             $periodId = $targetCycle ? $targetCycle->id : null;
 
@@ -421,6 +441,7 @@ class AlumnoController extends Controller
         Cache::forget('admin_system_metrics');
         Cache::forget('admin_users_stats_cache');
         if ($studentUserId) {
+            Cache::forget("user_auth_{$studentUserId}");
             Cache::forget("student_enrollment_{$studentUserId}");
             Cache::forget("sidebar_alumno_{$studentUserId}");
             Cache::add("student_cache_version_{$studentUserId}", 1, now()->addDays(30));

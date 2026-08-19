@@ -82,4 +82,12 @@ class AcademicLoad extends Model
     {
         return $this->hasMany(Tarea::class, 'carga_id');
     }
+
+    /**
+     * Relación con las Calificaciones (Grade)
+     */
+    public function grades()
+    {
+        return $this->hasMany(Grade::class, 'carga_id');
+    }
 }

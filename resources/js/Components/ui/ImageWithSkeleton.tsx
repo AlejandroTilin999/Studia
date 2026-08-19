@@ -51,9 +51,9 @@ export default function ImageWithSkeleton({
                 loading="eager"
                 decoding="sync"
                 onLoad={markAsLoaded}
+                onError={markAsLoaded}
                 className={cn(
-                    'block transition-opacity duration-150',
-                    loaded ? 'opacity-100' : 'opacity-0',
+                    'block transition-opacity duration-150 opacity-100',
                     className,
                 )}
             />

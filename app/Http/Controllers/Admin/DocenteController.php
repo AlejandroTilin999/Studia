@@ -28,7 +28,7 @@ class DocenteController extends Controller
         // Determinar el ciclo de trabajo (Prioridad: Seleccionado > Activo > Planificación)
         $workingCycle = null;
         if ($selectedCycleId) {
-            $workingCycle = AcademicPeriod::find($selectedCycleId);
+            $workingCycle = AcademicPeriodService::findCached((int) $selectedCycleId);
         }
 
         if (!$workingCycle) {
@@ -113,10 +113,7 @@ class DocenteController extends Controller
                 ])->toArray();
             }),
             'isCycleActive' => (bool)$activeCycle,
-            'canRegister' => \App\Models\AcademicPeriod::whereIn('status', [
-                \App\Models\AcademicPeriod::STATUS_PLANNING,
-                \App\Models\AcademicPeriod::STATUS_ACTIVE
-            ])->exists(),
+            'canRegister' => (bool) $operatingCycle,
             'activeCycleTeachersCount' => \Cache::remember('active_teachers_count', 120, function() use ($activeCycle) {
                 if (!$activeCycle) return 0;
                 return \DB::table('cargas_academicas')->where('ciclo_id', $activeCycle->id)->distinct('docente_id')->count();
@@ -127,10 +124,7 @@ class DocenteController extends Controller
     public function store(Request $request)
     {
         // [SAFETY LOCK v3.6] Permitir registros si hay ciclo activo o en planeación
-        if (!\App\Models\AcademicPeriod::whereIn('status', [
-            \App\Models\AcademicPeriod::STATUS_PLANNING,
-            \App\Models\AcademicPeriod::STATUS_ACTIVE
-        ])->exists()) {
+        if (!AcademicPeriodService::workingPeriod()) {
             return redirect()->back()->withErrors([
                 'nombre' => 'Operación bloqueada. Debes tener un Ciclo Escolar vigente o en modo Planeación para registrar docentes.'
             ]);

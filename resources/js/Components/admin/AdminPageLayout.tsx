@@ -55,35 +55,8 @@ export default function AdminPageLayout({
     children,
     isLoading = false,
 }: AdminPageLayoutProps) {
-    useEffect(() => {
-        const mainEl = document.querySelector('main');
-        if (!mainEl) return;
-
-        const originalOverflow = mainEl.style.overflow;
-        const originalPadding = mainEl.style.padding;
-
-        mainEl.style.padding = '0';
-
-        const handleResize = () => {
-            if (window.innerWidth >= 1024) {
-                mainEl.style.overflow = 'hidden';
-            } else {
-                mainEl.style.overflow = originalOverflow || 'auto';
-            }
-        };
-
-        handleResize();
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-            mainEl.style.overflow = originalOverflow;
-            mainEl.style.padding = originalPadding;
-            window.removeEventListener('resize', handleResize);
-        };
-    }, []);
-
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout noPadding>
             <Head title={headTitle} />
 
             {/* Notification Toast */}

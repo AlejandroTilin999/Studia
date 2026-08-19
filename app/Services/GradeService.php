@@ -8,6 +8,7 @@ use App\Models\CriterioEvaluacion;
 use App\Models\Grade;
 use App\Models\Tarea;
 use App\Models\EntregaTarea;
+use App\Services\AcademicPeriodService;
 
 class GradeService
 {
@@ -42,7 +43,7 @@ class GradeService
         $version = self::studentCacheVersion($userId);
         return \Cache::remember("student_kardex_{$userId}_v{$version}", 600, function() use ($userId) {
             // [INTELIGENCIA v4.2] Priorizar la inscripción del ciclo VIGENTE primero
-            $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+            $activeCycle = AcademicPeriodService::activePeriod();
 
             $enrollment = null;
             if ($activeCycle) {
@@ -210,7 +211,7 @@ class GradeService
 
         return \Cache::remember("student_subject_kardex_v2_{$userId}_{$loadId}_v{$version}", 600, function () use ($userId, $loadId) {
             $emptyGrade = "\u{2014}";
-            $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+            $activeCycle = AcademicPeriodService::activePeriod();
             $enrollmentQuery = Enrollment::where('usuario_id', $userId)->where('estatus', 'active');
             $enrollment = $activeCycle
                 ? (clone $enrollmentQuery)->where('ciclo_id', $activeCycle->id)->with('academicPeriod')->first()
@@ -328,7 +329,7 @@ class GradeService
         $scope = $loadUuid ?: 'all';
         return \Cache::remember("student_tasks_{$userId}_{$scope}_v{$version}", 300, function() use ($userId, $loadUuid) {
             // [INTELIGENCIA v4.2] Priorizar la inscripción del ciclo VIGENTE primero
-            $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
+            $activeCycle = AcademicPeriodService::activePeriod();
 
             $enrollment = null;
             if ($activeCycle) {
@@ -490,5 +491,133 @@ class GradeService
         $personal = \Cache::get("student_cache_version_{$userId}", 1);
 
         return "{$global}_{$personal}";
+    }
+
+    /**
+     * Obtiene el Histórico Académico Completo del Alumno (Todos los ciclos / semestres cursados).
+     */
+    public static function getFullStudentKardex($userId)
+    {
+        $version = self::studentCacheVersion($userId);
+        return \Cache::remember("student_full_kardex_{$userId}_v{$version}", 600, function() use ($userId) {
+            $enrollments = Enrollment::query()
+                ->where('usuario_id', $userId)
+                ->with(['academicGroup', 'academicPeriod'])
+                ->orderBy('ciclo_id', 'desc')
+                ->get();
+
+            if ($enrollments->isEmpty()) {
+                return [
+                    'summary' => [
+                        'gpa' => '0.0',
+                        'totalSubjects' => 0,
+                        'approvedSubjects' => 0,
+                        'totalCredits' => 0,
+                        'semestersCount' => 0,
+                    ],
+                    'periods' => []
+                ];
+            }
+
+            $allGroupLoads = AcademicLoad::query()
+                ->whereIn('grupo_id', $enrollments->pluck('grupo_id'))
+                ->whereIn('ciclo_id', $enrollments->pluck('ciclo_id'))
+                ->with(['course', 'teacher.user'])
+                ->get();
+
+            $loadIds = $allGroupLoads->pluck('id');
+            $allGrades = Grade::where('usuario_id', $userId)
+                ->whereIn('carga_id', $loadIds)
+                ->get()
+                ->groupBy('carga_id');
+
+            $periodsData = [];
+            $totalGradeSum = 0;
+            $gradedSubjectsCount = 0;
+            $approvedCount = 0;
+            $totalSubjectsCount = 0;
+            $totalCreditsCount = 0;
+
+            foreach ($enrollments as $enrollment) {
+                $loads = $allGroupLoads
+                    ->where('grupo_id', $enrollment->grupo_id)
+                    ->where('ciclo_id', $enrollment->ciclo_id);
+
+                $subjects = [];
+                foreach ($loads as $load) {
+                    $loadGrades = $allGrades->get($load->id) ?: collect();
+                    $consolidado = $loadGrades->where('criterio_id', null)->first();
+
+                    $p1 = self::formatGrade($consolidado?->p1);
+                    $p2 = self::formatGrade($consolidado?->p2);
+                    $p3 = self::formatGrade($consolidado?->p3);
+                    $finalGradeRaw = $consolidado?->final ?? $consolidado?->calificacion;
+                    
+                    $validParcials = array_filter([$consolidado?->p1, $consolidado?->p2, $consolidado?->p3], fn($v) => $v !== null && $v !== '' && $v !== '—');
+
+                    if (($finalGradeRaw === null || $finalGradeRaw === '' || $finalGradeRaw === '—') && count($validParcials) === 3) {
+                        $finalGradeRaw = array_sum($validParcials) / 3;
+                    }
+
+                    $finalGrade = self::formatGrade($finalGradeRaw);
+                    $isCompleted = $finalGrade !== '' && $finalGrade !== '—';
+                    $numericGrade = $isCompleted ? floatval($finalGrade) : (count($validParcials) > 0 ? (array_sum($validParcials) / count($validParcials)) : null);
+
+                    if ($numericGrade !== null) {
+                        $totalGradeSum += $numericGrade;
+                        $gradedSubjectsCount++;
+                        if ($numericGrade >= 6.0) {
+                            $approvedCount++;
+                        }
+                    }
+
+                    $credits = $load->course?->creditos ?? 8;
+                    $totalCreditsCount += $credits;
+                    $totalSubjectsCount++;
+
+                    $status = 'En Cursamiento';
+                    if ($consolidado?->estatus && $consolidado->estatus !== '' && $consolidado->estatus !== 'En Cursamiento') {
+                        $status = $consolidado->estatus;
+                    } else if ($isCompleted || count($validParcials) === 3) {
+                        $status = ($numericGrade !== null && $numericGrade >= 6.0) ? 'Aprobada' : 'Reprobada';
+                    }
+
+                    $subjects[] = [
+                        'id' => $load->id,
+                        'code' => $load->course?->clave ?? ('MAT-' . $load->id),
+                        'name' => $load->course?->nombre ?? 'Asignatura',
+                        'teacher' => $load->teacher?->user?->nombre_completo ?? 'Sin Docente',
+                        'p1' => $p1 ?: '—',
+                        'p2' => $p2 ?: '—',
+                        'p3' => $p3 ?: '—',
+                        'finalGrade' => $finalGrade ?: '—',
+                        'credits' => $credits,
+                        'status' => $status,
+                    ];
+                }
+
+                $periodsData[] = [
+                    'cycleId' => $enrollment->ciclo_id,
+                    'cycleName' => $enrollment->academicPeriod?->nombre ?? 'Ciclo Académico',
+                    'semester' => $enrollment->academicGroup?->semestre ?? 1,
+                    'groupName' => ($enrollment->academicGroup?->codigo ?? '') . ' ' . ($enrollment->academicGroup?->nombre ?? 'Grupo'),
+                    'status' => $enrollment->estatus === 'active' ? 'Vigente' : ($enrollment->estatus === 'promoted' ? 'Promovido' : 'Concluido'),
+                    'subjects' => $subjects,
+                ];
+            }
+
+            $gpa = $gradedSubjectsCount > 0 ? number_format($totalGradeSum / $gradedSubjectsCount, 1) : '—';
+
+            return [
+                'summary' => [
+                    'gpa' => $gpa,
+                    'totalSubjects' => $totalSubjectsCount,
+                    'approvedSubjects' => $approvedCount,
+                    'totalCredits' => $totalCreditsCount,
+                    'semestersCount' => count($periodsData),
+                ],
+                'periods' => $periodsData,
+            ];
+        });
     }
 }

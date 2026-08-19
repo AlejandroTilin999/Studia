@@ -8,6 +8,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Specialty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class EspecialidadController extends Controller
@@ -27,9 +28,11 @@ class EspecialidadController extends Controller
                         'courses_count' => $s->courses_count,
                     ]);
             }),
-            'specialtyDistribution' => Inertia::defer(function () {
-                $activeCycleId = AcademicPeriod::where('activo', true)->value('id');
-                if (!$activeCycleId) return [];
+            'specialtyDistribution' => fn () => \Cache::remember('admin_specialty_distribution', 600, function () {
+                $activePeriod = \App\Services\AcademicPeriodService::activePeriod();
+                if (!$activePeriod) return [];
+
+                $activeCycleId = $activePeriod->id;
 
                 $colors = ['#0266E0', '#4db6ac', '#ab47bc', '#ffa726', '#ef5350'];
 

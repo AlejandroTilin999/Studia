@@ -12,7 +12,7 @@ class DatosAlumnoService
     public function obtenerInscripcionVigente(int $usuarioId): ?Enrollment
     {
         return Cache::remember("inscripcion_alumno_{$usuarioId}", 600, function () use ($usuarioId) {
-            $cicloActivo = AcademicPeriod::where('activo', true)->first();
+            $cicloActivo = AcademicPeriodService::activePeriod();
 
             $consulta = Enrollment::where('usuario_id', $usuarioId)
                 ->where('estatus', 'active')
@@ -60,6 +60,6 @@ class DatosAlumnoService
 
     public function existeCicloActivo(): bool
     {
-        return AcademicPeriod::where('activo', true)->exists();
+        return AcademicPeriodService::activePeriod() !== null;
     }
 }

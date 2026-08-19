@@ -19,7 +19,13 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\GoogleAuthController; 
+use App\Models\AcademicPeriod;
+use App\Models\AdminAuditLog;
+use App\Models\Enrollment;
+use App\Services\AcademicPeriodService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 Route::get('/google/auth', [GoogleAuthController::class, 'redirect']);
 
@@ -63,81 +69,134 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ------------------------------------------
         Route::prefix('admin')->middleware('role:admin')->group(function () {
             Route::get('/', function () {
-                $cycles = \App\Models\AcademicPeriod::orderBy('fecha_inicio', 'desc')->get()->map(function ($p) {
-                    $formatDate = fn($d) => $d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d;
+    $cycles = Cache::remember(
+        'admin_academic_periods_catalog',
+        3600,
+        static function (): array {
+            $formatDate = static fn ($date) =>
+                $date instanceof \DateTimeInterface
+                    ? $date->format('Y-m-d')
+                    : $date;
+
+            return AcademicPeriod::query()
+                ->orderByDesc('fecha_inicio')
+                ->get([
+                    'id',
+                    'nombre',
+                    'fecha_inicio',
+                    'fecha_fin',
+                    'activo',
+                    'status',
+                    'p1_inicio',
+                    'p1_fin',
+                    'p1_activo',
+                    'p2_inicio',
+                    'p2_fin',
+                    'p2_activo',
+                    'p3_inicio',
+                    'p3_fin',
+                    'p3_activo',
+                ])
+                ->map(static fn (AcademicPeriod $period): array => [
+                    'id' => $period->id,
+                    'nombre' => $period->nombre,
+                    'fecha_inicio' => $formatDate($period->fecha_inicio),
+                    'fecha_fin' => $formatDate($period->fecha_fin),
+                    'activo' => (bool) $period->activo,
+                    'status' => $period->status,
+                    'p1_inicio' => $formatDate($period->p1_inicio),
+                    'p1_fin' => $formatDate($period->p1_fin),
+                    'p1_activo' => (bool) $period->p1_activo,
+                    'p2_inicio' => $formatDate($period->p2_inicio),
+                    'p2_fin' => $formatDate($period->p2_fin),
+                    'p2_activo' => (bool) $period->p2_activo,
+                    'p3_inicio' => $formatDate($period->p3_inicio),
+                    'p3_fin' => $formatDate($period->p3_fin),
+                    'p3_activo' => (bool) $period->p3_activo,
+                ])
+                ->values()
+                ->all();
+        }
+    );
+
+    $metricsData = Cache::remember(
+        'admin_system_metrics',
+        600,
+        static function (): array {
+            $raw = DB::selectOne("
+                SELECT
+                    (SELECT COUNT(*) FROM users WHERE rol = 'alumno') AS students_count,
+                    (SELECT COUNT(*) FROM users WHERE rol = 'docente') AS teachers_count,
+                    (SELECT COUNT(*) FROM grupos WHERE activo = true) AS groups_count,
+                    (SELECT COUNT(*) FROM materias) AS courses_count,
+                    (SELECT COUNT(*) FROM especialidades) AS specialties_count,
+                    (SELECT COUNT(*) FROM users) AS users_count
+            ");
+
+            return [
+                'studentsCount' => (int) ($raw->students_count ?? 0),
+                'teachersCount' => (int) ($raw->teachers_count ?? 0),
+                'groupsCount' => (int) ($raw->groups_count ?? 0),
+                'coursesCount' => (int) ($raw->courses_count ?? 0),
+                'specialtiesCount' => (int) ($raw->specialties_count ?? 0),
+                'usersCount' => (int) ($raw->users_count ?? 0),
+            ];
+        }
+    );
+
+    $recentActivities = Inertia::defer(
+        static fn () =>
+            AdminAuditLog::query()
+                ->with('user:id,nombre,apellido_paterno')
+                ->latest('created_at')
+                ->limit(15)
+                ->get()
+                ->map(static function ($log): array {
+                    $actionLabel = match ($log->accion) {
+                        'TOGGLE_PARCIAL' => isset($log->metadata['nuevo_estado'])
+                            ? (
+                                ($log->metadata['nuevo_estado'] === 'abierto'
+                                    ? 'Abrió '
+                                    : 'Cerró ')
+                                . 'Parcial '
+                                . ($log->metadata['parcial'] ?? '')
+                            )
+                            : 'Cambió Parcial',
+
+                        'APERTURA_CICLO' => 'Apertura de Ciclo',
+                        'ACTIVAR_CICLO' => 'Activó Ciclo',
+                        'CONCLUIR_CICLO' => 'Concluyó Ciclo',
+                        'ELIMINAR_REPORTE' => 'Eliminó Reporte',
+                        'LIMPIAR_HISTORIAL_REPORTES' => 'Limpió Historial',
+
+                        default => str_replace('_', ' ', $log->accion),
+                    };
 
                     return [
-                        'id' => $p->id,
-                        'nombre' => $p->nombre,
-                        'fecha_inicio' => $formatDate($p->fecha_inicio),
-                        'fecha_fin' => $formatDate($p->fecha_fin),
-                        'activo' => (bool)$p->activo,
-                        'status' => $p->status,
-                        // [FIX v2.9.3] Formatear fechas de parciales para evitar "Invalid Date"
-                        'p1_inicio' => $formatDate($p->p1_inicio), 'p1_fin' => $formatDate($p->p1_fin), 'p1_activo' => (bool)$p->p1_activo,
-                        'p2_inicio' => $formatDate($p->p2_inicio), 'p2_fin' => $formatDate($p->p2_fin), 'p2_activo' => (bool)$p->p2_activo,
-                        'p3_inicio' => $formatDate($p->p3_inicio), 'p3_fin' => $formatDate($p->p3_fin), 'p3_activo' => (bool)$p->p3_activo,
+                        'id' => $log->id,
+                        'action' => $actionLabel,
+                        'description' => $log->descripcion,
+                        'user' => $log->user
+                            ? $log->user->nombre_completo
+                            : 'Sistema',
+                        'time' => $log->created_at
+                            ? $log->created_at->format('d/m/Y - h:i A')
+                            : '',
                     ];
-                });
+                })
+                ->values()
+                ->all()
+    );
 
-                $activeCycle = \App\Models\AcademicPeriod::where('activo', true)->first();
-                $activeCycleId = $activeCycle ? $activeCycle->id : null;
-                $isNones = $activeCycle ? (\Carbon\Carbon::parse($activeCycle->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activeCycle->fecha_inicio)->month === 1) : null;
-
-                // [OPTIMIZACIÓN ZERO-LATENCY v5.0] Obtener todas las métricas en 1 sola consulta SQL con Caché
-                $metricsData = \Cache::remember('admin_system_metrics', 120, function() {
-                    $raw = \DB::selectOne("
-                        SELECT 
-                            (SELECT COUNT(*) FROM users WHERE rol = 'alumno') as students_count,
-                            (SELECT COUNT(*) FROM users WHERE rol = 'docente') as teachers_count,
-                            (SELECT COUNT(*) FROM grupos WHERE activo = true) as groups_count,
-                            (SELECT COUNT(*) FROM materias) as courses_count,
-                            (SELECT COUNT(*) FROM especialidades) as specialties_count,
-                            (SELECT COUNT(*) FROM users) as users_count
-                    ");
-
-                    return [
-                        'studentsCount' => (int)($raw->students_count ?? 0),
-                        'teachersCount' => (int)($raw->teachers_count ?? 0),
-                        'groupsCount' => (int)($raw->groups_count ?? 0),
-                        'coursesCount' => (int)($raw->courses_count ?? 0),
-                        'specialtiesCount' => (int)($raw->specialties_count ?? 0),
-                        'usersCount' => (int)($raw->users_count ?? 0),
-                    ];
-                });
-
-                // Actividades Recientes (Auditoría)
-                $recentActivities = Inertia::defer(fn() => \App\Models\AdminAuditLog::with('user:id,nombre,apellido_paterno')
-                    ->orderBy('created_at', 'desc')
-                    ->limit(15)
-                    ->get()
-                    ->map(function($log) {
-                        $actionLabel = match($log->accion) {
-                            'TOGGLE_PARCIAL' => isset($log->metadata['nuevo_estado'])
-                                ? (($log->metadata['nuevo_estado'] === 'abierto' ? 'Abrió ' : 'Cerró ') . 'Parcial ' . ($log->metadata['parcial'] ?? ''))
-                                : 'Cambió Parcial',
-                            'APERTURA_CICLO'   => 'Apertura de Ciclo',
-                            'ACTIVAR_CICLO'    => 'Activó Ciclo',
-                            'CONCLUIR_CICLO'   => 'Concluyó Ciclo',
-                            'ELIMINAR_REPORTE' => 'Eliminó Reporte',
-                            'LIMPIAR_HISTORIAL_REPORTES' => 'Limpió Historial',
-                            default => str_replace('_', ' ', $log->accion)
-                        };
-
-                        return [
-                            'id' => $log->id,
-                            'action' => $actionLabel,
-                            'description' => $log->descripcion,
-                            'user' => $log->user ? $log->user->nombre_completo : 'Sistema',
-                            'time' => $log->created_at ? $log->created_at->format('d/m/Y - h:i A') : '',
-                        ];
-                    }));
-
-                return Inertia::render('Admin/Dashboard/Index', array_merge([
-                    'cycles' => $cycles,
-                    'recentActivities' => $recentActivities,
-                ], $metricsData));
-            })->name('admin.dashboard');
+    return Inertia::render(
+        'Admin/Dashboard/Index',
+        [
+            'cycles' => $cycles,
+            'recentActivities' => $recentActivities,
+            ...$metricsData,
+        ]
+    );
+})->name('admin.dashboard');
 
             Route::post('/cycles', [AcademicPeriodController::class, 'store'])->name('admin.cycles.store');
             Route::put('/cycles/{id}', [AcademicPeriodController::class, 'update'])->name('admin.cycles.update');
@@ -430,6 +489,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/tareas/confirmar', [EntregaTareaAlumnoController::class, 'confirmSubmission'])->name('alumno.tareas.confirmar');
             Route::post('/tareas/quitar-archivo', [EntregaTareaAlumnoController::class, 'removeSingleFile'])->name('alumno.tareas.quitar_archivo');
             Route::post('/tareas/anular', [EntregaTareaAlumnoController::class, 'cancelSubmission'])->name('alumno.tareas.anular');
+
+            Route::get('/historial', function () {
+                $studentId = auth()->id();
+                $user = auth()->user();
+                $enrollment = \App\Models\Enrollment::where('usuario_id', $studentId)
+                    ->where('estatus', 'active')
+                    ->with(['academicGroup.tutor.user', 'academicPeriod'])
+                    ->orderBy('ciclo_id', 'desc')
+                    ->first();
+
+                $studentInfo = [
+                    'name' => $user->nombre_completo,
+                    'matricula' => $enrollment?->codigo_alumno ?? 'ALU-' . $studentId,
+                    'groupName' => $enrollment?->academicGroup ? ($enrollment->academicGroup->codigo . ' ' . $enrollment->academicGroup->nombre) : 'Sin grupo',
+                    'specialty' => $enrollment?->academicGroup?->especialidad ?? 'Técnico en Informática',
+                    'ciclo' => $enrollment?->academicPeriod?->nombre ? ("Ciclo Escolar " . $enrollment->academicPeriod->nombre) : 'Ciclo 2026',
+                ];
+
+                return Inertia::render('Alumno/Historial', [
+                    'studentInfo' => $studentInfo,
+                    'fullKardex' => \App\Services\GradeService::getFullStudentKardex($studentId),
+                ]);
+            })->name('alumno.historial.index');
         });
 
         Route::get('/perfil', [ProfileController::class, 'edit'])->name('perfil.edit');

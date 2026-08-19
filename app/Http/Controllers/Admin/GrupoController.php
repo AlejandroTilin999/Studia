@@ -11,6 +11,7 @@ use App\Models\Specialty;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class GrupoController extends Controller
@@ -18,34 +19,62 @@ class GrupoController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $revision = Cache::get('admin:grupos:list:revision', 1);
+        $page = max(1, (int) $request->query('page', 1));
+        $cacheKey = "admin:grupos:list:{$revision}:{$page}:" . md5((string) $search);
+
+        $cachedGrupos = Cache::remember($cacheKey, 600, function () use ($search, $page) {
+            $query = AcademicGroup::query()
+                ->when($search, fn ($sub) => $sub->where(function ($q) use ($search) {
+                    $q->where('nombre', 'like', "%{$search}%")
+                        ->orWhere('codigo', 'like', "%{$search}%")
+                        ->orWhere('especialidad', 'like', "%{$search}%");
+                }));
+
+            $totalCount = (clone $query)->count();
+            $perPage = 50;
+
+            $results = $query->with('tutor.user')
+                ->orderBy('generacion')
+                ->orderBy('semestre')
+                ->orderBy('seccion')
+                ->forPage($page, $perPage)
+                ->get()
+                ->map(fn (AcademicGroup $group) => $this->serialize($group));
+
+            return new \Illuminate\Pagination\LengthAwarePaginator(
+                $results,
+                $totalCount,
+                $perPage,
+                $page,
+                [
+                    'path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(),
+                    'query' => request()->query(),
+                ]
+            );
+        });
 
         return Inertia::render('Admin/Grupos/Index', [
-            'grupos' => Inertia::defer(function () use ($search) {
-                return AcademicGroup::query()
-                    ->when($search, fn ($query) => $query->where(function ($subQuery) use ($search) {
-                        $subQuery->where('nombre', 'ilike', "%{$search}%")
-                            ->orWhere('codigo', 'ilike', "%{$search}%")
-                            ->orWhere('especialidad', 'ilike', "%{$search}%");
-                    }))
-                    ->with('tutor.user')
-                    ->orderBy('generacion')->orderBy('semestre')->orderBy('seccion')
-                    ->paginate(50)
-                    ->through(fn (AcademicGroup $group) => $this->serialize($group))
-                    ->withQueryString();
+            'grupos' => $cachedGrupos,
+            'profesores' => fn () => Cache::remember('catalog_profesores_select', 300, function() {
+                return Teacher::with('user:id,nombre,apellido_paterno,apellido_materno')->get()->map(fn (Teacher $teacher) => [
+                    'id' => $teacher->id,
+                    'nombre_completo' => trim("{$teacher->user?->nombre} {$teacher->user?->apellido_paterno} " . ($teacher->user?->apellido_materno ?? '')),
+                ])->all();
             }),
-            'profesores' => Inertia::defer(fn () => Teacher::with('user')->get()->map(fn (Teacher $teacher) => [
-                'id' => $teacher->id,
-                'nombre_completo' => trim("{$teacher->user->nombre} {$teacher->user->apellido_paterno} " . ($teacher->user->apellido_materno ?? '')),
-            ])),
-            'especialidades' => Inertia::defer(fn () => Specialty::orderBy('nombre')->get(['id', 'nombre', 'codigo'])),
-            'cycles' => Inertia::defer(fn () => AcademicPeriod::orderByDesc('fecha_inicio')->get()->map(fn (AcademicPeriod $cycle) => [
-                'id' => $cycle->id, 'nombre' => $cycle->nombre, 'activo' => (bool) $cycle->activo, 'status' => $cycle->status,
-            ])),
-            'currentYear' => (int) optional(AcademicPeriod::query()->whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])->orderByDesc('fecha_inicio')->first())->fecha_inicio?->format('Y') ?: (int) date('Y'),
+            'especialidades' => fn () => Cache::remember('catalog_especialidades_select', 300, function() {
+                return Specialty::orderBy('nombre')->get(['id', 'nombre', 'codigo']);
+            }),
+            'cycles' => fn () => Cache::remember('admin_academic_periods_catalog', 3600, function() {
+                return AcademicPeriod::orderByDesc('fecha_inicio')->get()->map(fn (AcademicPeriod $cycle) => [
+                    'id' => $cycle->id, 'nombre' => $cycle->nombre, 'activo' => (bool) $cycle->activo, 'status' => $cycle->status,
+                ])->all();
+            }),
+            'currentYear' => (int) (optional(AcademicPeriodService::workingPeriod())->fecha_inicio?->format('Y') ?: date('Y')),
             'filters' => ['search' => $search],
-            'isCycleActive' => AcademicPeriod::where('status', AcademicPeriod::STATUS_ACTIVE)->exists(),
+            'isCycleActive' => AcademicPeriodService::activePeriod() !== null,
             'activeParity' => $this->activeParity(),
-            'canRegister' => AcademicPeriod::whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])->exists(),
+            'canRegister' => AcademicPeriodService::workingPeriod() !== null,
         ]);
     }
 
@@ -54,9 +83,40 @@ class GrupoController extends Controller
         $this->assertOperatingCycle();
         $validated = $request->validate($this->rules());
 
+        $parity = $this->activeParity();
+        $semestreInt = (int) $validated['semestre'];
+
+        if ($parity === 'even' && $semestreInt % 2 !== 0) {
+            return redirect()->back()->withErrors([
+                'semestre' => 'No puedes registrar grupos de semestres impares (1°, 3°, 5°) en un Ciclo B. En este periodo únicamente se registran/operan semestres pares (2°, 4°, 6°).'
+            ]);
+        }
+
+        if ($parity === 'odd' && $semestreInt % 2 === 0) {
+            return redirect()->back()->withErrors([
+                'semestre' => 'No puedes registrar grupos de semestres pares (2°, 4°, 6°) en un Ciclo A. En este periodo únicamente se registran/operan semestres impares (1°, 3°, 5°).'
+            ]);
+        }
+
         $specialty = Specialty::where('nombre', $validated['especialidad'])->firstOrFail();
         $generationStart = $this->generationStart($validated['generacion']);
-        $section = strtoupper($validated['seccion']);
+        $section = strtoupper($validated['seccion'] ?? '');
+
+        if (empty($section)) {
+            $existingSections = AcademicGroup::where('especialidad', $specialty->nombre)
+                ->where('generacion', $validated['generacion'])
+                ->pluck('seccion')
+                ->map(fn($s) => strtoupper($s))
+                ->toArray();
+
+            foreach (range('A', 'Z') as $let) {
+                if (!in_array($let, $existingSections)) {
+                    $section = $let;
+                    break;
+                }
+            }
+            if (empty($section)) $section = 'A';
+        }
 
         DB::transaction(function () use ($validated, $specialty, $generationStart, $section) {
             // A new cohort is always created as a complete six-semester route.
@@ -83,6 +143,8 @@ class GrupoController extends Controller
             }
         });
 
+        $this->invalidateGrupoCache();
+
         return redirect()->back()->with('message', 'Ruta académica registrada correctamente.');
     }
 
@@ -106,6 +168,8 @@ class GrupoController extends Controller
             'activo' => $validated['activo'] ?? true,
         ]);
 
+        $this->invalidateGrupoCache();
+
         return redirect()->back()->with('message', 'Grupo actualizado correctamente.');
     }
 
@@ -118,6 +182,7 @@ class GrupoController extends Controller
         }
 
         $group->delete();
+        $this->invalidateGrupoCache();
         return redirect()->back()->with('message', 'Grupo eliminado correctamente.');
     }
 
@@ -127,7 +192,7 @@ class GrupoController extends Controller
             'codigo' => 'nullable|string|max:30',
             'nombre' => 'nullable|string|max:100',
             'semestre' => 'required|integer|between:1,6',
-            'seccion' => 'required|string|size:1|alpha',
+            'seccion' => 'nullable|string|max:2',
             'generacion' => ['required', 'regex:/^\d{4}-\d{4}$/'],
             'turno' => 'nullable|string|max:30',
             'especialidad' => 'required|exists:especialidades,nombre',
@@ -168,12 +233,12 @@ class GrupoController extends Controller
 
     private function assertOperatingCycle(): void
     {
-        abort_unless(AcademicPeriod::whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])->exists(), 422, 'Debes crear un ciclo escolar antes de crear grupos.');
+        abort_unless(AcademicPeriodService::workingPeriod() !== null, 422, 'Debes crear un ciclo escolar antes de crear grupos.');
     }
 
     private function activeParity(): string
     {
-        $period = AcademicPeriod::query()->whereIn('status', [AcademicPeriod::STATUS_ACTIVE, AcademicPeriod::STATUS_PLANNING])->orderByDesc('fecha_inicio')->first();
+        $period = AcademicPeriodService::workingPeriod();
         $month = (int) optional($period?->fecha_inicio)->format('m');
         return ($month >= 8 || $month === 1) ? 'odd' : 'even';
     }
@@ -193,5 +258,13 @@ class GrupoController extends Controller
             'profesor' => $group->tutor ? trim("{$group->tutor->user->nombre} {$group->tutor->user->apellido_paterno}") : 'Sin tutor asignado',
             'activo' => (bool) $group->activo,
         ];
+    }
+
+    private function invalidateGrupoCache(): void
+    {
+        Cache::add('admin:grupos:list:revision', 1, now()->addDays(30));
+        Cache::increment('admin:grupos:list:revision');
+        Cache::forget('admin_system_metrics');
+        Cache::forget('catalog_grupos_select');
     }
 }

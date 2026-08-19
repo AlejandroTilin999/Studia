@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, GraduationCap, Users, CheckCircle2, Check, AlertCircle, HelpCircle } from 'lucide-react';
+import { X, GraduationCap, Users, CheckCircle2, Check, AlertCircle, HelpCircle, Plus } from 'lucide-react';
+import { router } from '@inertiajs/react';
 import BaseModal from '@/Components/BaseModal';
 import { FormLabel } from '@/Components/forms/FormLabel';
 import { FormSelect } from '@/Components/forms/FormSelect';
@@ -60,7 +61,7 @@ export default function PromotionModal({
 
             // El ciclo origen no puede ser también destino. Se sugiere solo
             // un ciclo abierto distinto, nunca uno cerrado.
-            const sourceCycle = cycles.find(c => c.status === 'activo') ?? cycles.find(c => c.status === 'planificacion');
+            const sourceCycle = cycles.find(c => c.status === 'activo') ?? cycles.find(c => c.status === 'cerrado') ?? cycles[0];
             const destinationCycle = cycles.find(c => c.id !== sourceCycle?.id && c.status !== 'cerrado');
             setTargetCycleId(destinationCycle?.id?.toString() ?? '');
         }
@@ -94,24 +95,70 @@ export default function PromotionModal({
         );
     };
 
+    const handleQuickCreateCycle = async () => {
+        const nextYear = new Date().getFullYear();
+        const { value: name } = await SwalHelper.prompt(
+            'Abrir Nuevo Ciclo en Planeación',
+            'Ingresa el nombre para el nuevo ciclo escolar (ej. Ciclo ' + nextYear + '-B):',
+            'text',
+            `Ciclo ${nextYear}-B`
+        );
+
+        if (name) {
+            SwalHelper.toastLoading('Creando ciclo en planeación...');
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const endDate = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                await axios.post(route('admin.cycles.store'), {
+                    nombre: name,
+                    fecha_inicio: today,
+                    fecha_fin: endDate,
+                    activo: false
+                });
+                SwalHelper.toast('Nuevo ciclo en planeación listo.', 'success');
+                router.reload({ only: ['cycles'] });
+            } catch (err: any) {
+                SwalHelper.alert('Error', 'No se pudo crear el ciclo. Verifica que el nombre no esté duplicado.', 'error');
+            }
+        }
+    };
+
     const isLastSemester = sourceGroup?.semestre === 6;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedStudents.length === 0) return SwalHelper.alert("Selección requerida", "Debes seleccionar al menos un alumno para promover.", "warning");
 
-        const sourceCycle = cycles.find(c => c.status === 'activo') ?? cycles.find(c => c.status === 'planificacion');
+        const sourceCycle = cycles.find(c => c.status === 'activo') ?? cycles.find(c => c.status === 'cerrado') ?? cycles[0];
         if (!sourceCycle) {
-            return SwalHelper.alert("Ciclo requerido", "No hay un ciclo escolar vigente para identificar las inscripciones de origen.", "warning");
+            return SwalHelper.alert("Ciclo requerido", "No hay un ciclo escolar de origen válido para identificar las inscripciones.", "warning");
         }
 
-        onConfirm({
-            grupo_origen_id: sourceGroup.id,
-            grupo_destino_id: targetGroupId,
-            ciclo_origen_id: sourceCycle.id,
-            ciclo_destino_id: targetCycleId,
-            alumnos_ids: selectedStudents,
-            marcar_egresados: isLastSemester
+        if (!isLastSemester && !targetGroupId) {
+            return SwalHelper.alert("Grupo destino requerido", "Selecciona el grupo de destino para realizar la promoción.", "warning");
+        }
+
+        const actionText = isLastSemester ? 'Egresar' : 'Promover';
+        const targetGroupObj = groups.find(g => g.id.toString() === targetGroupId);
+        const targetName = isLastSemester ? 'Generación Egresada' : (targetGroupObj?.name || 'Nuevo Grupo');
+
+        SwalHelper.confirm(
+            `¿${actionText} ${selectedStudents.length} alumno(s)?`,
+            `Se ${isLastSemester ? 'marcarán como egresados' : 'inscribirán en ' + targetName}. Su historial académico del ciclo actual quedará resguardado e intacto en el sistema.`,
+            `Sí, ${actionText}`,
+            'Cancelar',
+            'question'
+        ).then((res) => {
+            if (res.isConfirmed) {
+                onConfirm({
+                    grupo_origen_id: sourceGroup.id,
+                    grupo_destino_id: targetGroupId,
+                    ciclo_origen_id: sourceCycle.id,
+                    ciclo_destino_id: targetCycleId,
+                    alumnos_ids: selectedStudents,
+                    marcar_egresados: isLastSemester
+                });
+            }
         });
     };
 
@@ -157,10 +204,24 @@ export default function PromotionModal({
                     <div className="flex-1 overflow-hidden flex flex-col space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <FormLabel required>Ciclo Destino</FormLabel>
+                                <div className="flex items-center justify-between">
+                                    <FormLabel required className="mb-0">Ciclo Destino</FormLabel>
+                                    <button
+                                        type="button"
+                                        onClick={handleQuickCreateCycle}
+                                        className="text-[10px] font-bold text-[#0266E0] hover:underline inline-flex items-center gap-0.5"
+                                        title="Crear un nuevo ciclo en planeación"
+                                    >
+                                        <Plus size={11} /> Nuevo Ciclo
+                                    </button>
+                                </div>
                                 <FormSelect value={targetCycleId} onChange={e => setTargetCycleId(e.target.value)} required>
                                     <option value="">Seleccionar ciclo...</option>
-                                    {cycles.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.activo && '(Vigente)'}</option>)}
+                                    {cycles.filter(c => c.status !== 'cerrado' || c.id.toString() === targetCycleId).map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.nombre} {c.activo ? '(Vigente)' : '(En Planeación)'}
+                                        </option>
+                                    ))}
                                 </FormSelect>
                             </div>
                             <div className="space-y-1.5">
@@ -220,12 +281,17 @@ export default function PromotionModal({
                                                         isSelected ? "bg-white border-blue-200 shadow-sm" : "bg-transparent border-transparent grayscale opacity-60"
                                                     )}
                                                 >
-                                                    <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-colors", isSelected ? "bg-[#0266E0] border-[#0266E0]" : "bg-white border-slate-300")}>
+                                                    <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0", isSelected ? "bg-[#0266E0] border-[#0266E0]" : "bg-white border-slate-300")}>
                                                         {isSelected && <Check size={11} className="text-white stroke-[3]" />}
                                                     </div>
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 flex-1">
                                                         <p className="text-[11px] font-bold text-slate-700 truncate leading-none mb-1 uppercase">{s.nombre}</p>
-                                                        <p className="text-[9px] font-medium text-slate-400 font-mono tracking-tighter">{s.matricula}</p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="text-[9px] font-medium text-slate-400 font-mono tracking-tighter">{s.matricula}</p>
+                                                            <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                                                {isLastSemester ? 'Egresable' : 'Apto para Promoción'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );

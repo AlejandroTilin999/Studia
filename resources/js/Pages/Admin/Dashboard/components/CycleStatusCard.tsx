@@ -30,17 +30,17 @@ export default function CycleStatusCard({
     onOpenHistory
 }: CycleStatusCardProps) {
     const getStatusLabel = () => {
-        if (!activeCycle) return { text: 'Sin Ciclo', color: 'text-slate-400', bg: 'bg-slate-50' };
+        if (!activeCycle) return { text: 'Sin Ciclo', color: 'text-white', bg: 'bg-slate-500 border-slate-500' };
 
         switch (activeCycle.status) {
             case 'planificacion':
-                return { text: 'En Planeación', color: 'text-blue-600', bg: 'bg-blue-50' };
+                return { text: 'En Planeación', color: 'text-white', bg: 'bg-blue-600 border-blue-600' };
             case 'activo':
-                return { text: 'Vigente', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+                return { text: 'Vigente', color: 'text-white', bg: 'bg-emerald-600 border-emerald-600' };
             case 'cerrado':
-                return { text: 'Concluido', color: 'text-slate-500', bg: 'bg-slate-100' };
+                return { text: 'Concluido', color: 'text-white', bg: 'bg-slate-600 border-slate-600' };
             default:
-                return { text: 'Inactivo', color: 'text-rose-600', bg: 'bg-rose-50' };
+                return { text: 'Inactivo', color: 'text-white', bg: 'bg-rose-600 border-rose-600' };
         }
     };
 
@@ -50,7 +50,7 @@ export default function CycleStatusCard({
         <div className="bg-white rounded-lg p-5 md:p-6 border border-slate-100 shadow-none flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 text-left font-body">
             <div className="space-y-1.5 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${status.bg} ${status.color}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full border shadow-2xs ${status.bg} ${status.color}`}>
                         {status.text}
                     </span>
                     <span className="text-slate-200 font-normal">|</span>

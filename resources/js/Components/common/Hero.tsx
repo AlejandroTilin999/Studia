@@ -17,10 +17,13 @@ export default function Hero() {
                 <p className="text-slate-500 font-black text-[10px] sm:text-sm lg:text-base uppercase tracking-[0.3em]">
                     Control Escolar PREPAHID
                 </p>
-                <h1 className="text-3xl sm:text-5xl lg:text-[2.8rem] xl:text-[3.5rem] 2xl:text-[4.5rem] font-black text-slate-900 leading-[1.1] lg:leading-[1.15] xl:leading-[1.1] tracking-tighter lg:w-full xl:w-[110%] relative z-20">
-                    Todo lo que necesitas para gestionar tu <span className="whitespace-nowrap" style={{ color: COLORS.primary }}>vida académica</span>
+                <h1 
+                    className="text-3xl sm:text-4xl lg:text-[2.6rem] xl:text-[3.1rem] 2xl:text-[3.6rem] font-black text-slate-900 tracking-tight relative z-20"
+                    style={{ lineHeight: 1.22 }}
+                >
+                    Todo lo que necesitas para gestionar tu <span className="inline" style={{ color: COLORS.primary }}>vida académica</span>
                 </h1>
-                <p className="text-slate-500 text-xs sm:text-base md:text-lg lg:text-base xl:text-lg 2xl:text-xl max-w-lg leading-relaxed mx-auto lg:mx-0 font-medium">
+                <p className="text-slate-500 text-sm sm:text-base lg:text-lg xl:text-xl max-w-xl leading-relaxed mx-auto lg:mx-0 font-medium">
                     La plataforma educativa diseñada para que tus materias, calificaciones y tareas sean tan únicas como tú. Controla tu avance escolar al instante.
                 </p>
 
@@ -31,7 +34,7 @@ export default function Hero() {
                                 href="/login?acceso=alumno"
                                 className="w-full sm:w-auto block"
                             >
-                                <span className="inline-flex items-center justify-center text-white px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:opacity-90 hover:scale-105 bg-[#0066CC] w-full sm:w-auto border-2 border-transparent shadow-lg shadow-blue-200">
+                                <span className="inline-flex items-center justify-center text-white px-6 sm:px-8 xl:px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] whitespace-nowrap transition-all hover:bg-blue-700 active:scale-95 bg-[#0066CC] w-full sm:w-auto border-2 border-transparent shadow-none">
                                     Acceso Alumnos
                                 </span>
                             </Link>
@@ -40,7 +43,7 @@ export default function Hero() {
                                 href="/login?acceso=institucional"
                                 className="w-full sm:w-auto block"
                             >
-                                <span className="inline-flex items-center justify-center text-slate-800 px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 hover:scale-105 bg-white border-2 border-slate-100 w-full sm:w-auto shadow-sm">
+                                <span className="inline-flex items-center justify-center text-slate-800 px-6 sm:px-8 xl:px-10 py-4 rounded-t-full rounded-bl-full rounded-br-none font-black text-[11px] uppercase tracking-[0.2em] whitespace-nowrap transition-all hover:bg-slate-50 hover:border-slate-400 active:scale-95 bg-white border-2 border-slate-300 w-full sm:w-auto shadow-none">
                                     Acceso Institucional
                                 </span>
                             </Link>

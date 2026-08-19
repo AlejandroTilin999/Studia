@@ -2,22 +2,27 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AcademicLoad;
+use App\Models\Enrollment;
+use App\Models\Notificacion;
+use App\Models\Teacher;
+use App\Services\AcademicPeriodService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
-
-use Inertia\Inertia;
 
 class HandleInertiaRequests extends Middleware
 {
     /**
-     * The root template that is loaded on the first page visit.
+     * Vista raíz de Inertia.
      *
      * @var string
      */
     protected $rootView = 'app';
 
     /**
-     * Determine the current asset version.
+     * Determina la versión actual de assets.
      */
     public function version(Request $request): ?string
     {
@@ -25,89 +30,429 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Define the props that are shared by default.
+     * Props globales compartidas por Inertia.
      *
      * @return array<string, mixed>
      */
     public function share(Request $request): array
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Usuario autenticado
+        |--------------------------------------------------------------------------
+        |
+        | Laravel ya resolvió este usuario mediante auth.
+        | No hacemos User::find() adicional.
+        */
         $user = $request->user();
 
-        // Caché para el ciclo activo (Casi estático)
-        $activePeriod = \Cache::remember('active_academic_period', 1800, function() {
-            return \App\Models\AcademicPeriod::where('activo', true)->first();
-        });
-
-        // Caché para notificaciones no leídas por usuario (60 segundos)
-        $isAdmin = strtolower($user?->rol ?? '') === 'admin';
-        $unreadCount = $isAdmin ? \Cache::remember("unread_notifs_{$user->id}", 60, function() use ($user) {
-            return \App\Models\Notificacion::where('usuario_id', $user->id)->where('leido', false)->count();
-        }) : 0;
+        $role = strtolower(
+            $user?->rol ?? ''
+        );
 
         return [
             ...parent::share($request),
-            'activePeriod' => $activePeriod ? [
-                'id' => $activePeriod->id,
-                'nombre' => $activePeriod->nombre,
-                'es_nones' => $activePeriod->fecha_inicio ? (\Carbon\Carbon::parse($activePeriod->fecha_inicio)->month >= 8 || \Carbon\Carbon::parse($activePeriod->fecha_inicio)->month == 1) : true,
-            ] : null,
+
+            /*
+            |--------------------------------------------------------------------------
+            | AUTH
+            |--------------------------------------------------------------------------
+            */
             'auth' => [
-                'user' => $user ? [
-                    'id' => $user->id,
-                    'nombre' => $user->nombre,
-                    'apellido_paterno' => $user->apellido_paterno,
-                    'apellido_materno' => $user->apellido_materno,
-                    'nombre_completo' => $user->nombre_completo,
-                    'email' => $user->email,
-                    'rol' => strtoupper($user->rol ?? ''),
-                ] : null,
+                'user' => $user
+                    ? [
+                        'id' => $user->id,
+                        'nombre' => $user->nombre,
+                        'apellido_paterno' => $user->apellido_paterno,
+                        'apellido_materno' => $user->apellido_materno,
+                        'nombre_completo' => $user->nombre_completo,
+                        'email' => $user->email,
+                        'rol' => strtoupper($user->rol ?? ''),
+                    ]
+                    : null,
             ],
-            'unreadNotificationsCount' => $unreadCount,
-            'docenteGroups' => $this->getDocenteGroups($user),
-            'alumnoGroups' => $this->getAlumnoGroups($user),
+
+            /*
+            |--------------------------------------------------------------------------
+            | CICLO ACTIVO
+            |--------------------------------------------------------------------------
+            |
+            | Una sola fuente de verdad:
+            | AcademicPeriodService.
+            */
+            'activePeriod' => fn () =>
+                $this->getActivePeriod(),
+
+            /*
+            |--------------------------------------------------------------------------
+            | NOTIFICACIONES
+            |--------------------------------------------------------------------------
+            |
+            | Solo ADMIN necesita contador global.
+            */
+            'unreadNotificationsCount' => fn () =>
+                $role === 'admin' && $user
+                    ? $this->getUnreadNotificationsCount(
+                        $user->id
+                    )
+                    : 0,
+
+            /*
+            |--------------------------------------------------------------------------
+            | SIDEBAR DOCENTE
+            |--------------------------------------------------------------------------
+            */
+            'docenteGroups' => fn () =>
+                $role === 'docente' && $user
+                    ? $this->getDocenteGroups(
+                        $user->id
+                    )
+                    : [],
+
+            /*
+            |--------------------------------------------------------------------------
+            | SIDEBAR ALUMNO
+            |--------------------------------------------------------------------------
+            */
+            'alumnoGroups' => fn () =>
+                $role === 'alumno' && $user
+                    ? $this->getAlumnoGroups(
+                        $user->id
+                    )
+                    : [],
         ];
     }
 
-    private function getDocenteGroups($user) {
-        if (!$user || strtolower($user->rol ?? '') !== 'docente') return [];
+    /**
+     * Devuelve información mínima del ciclo activo.
+     */
+    private function getActivePeriod(): ?array
+    {
+        $period = AcademicPeriodService::activePeriod();
 
-        return \Cache::remember("sidebar_docente_{$user->id}", 600, function() use ($user) {
-            $teacher = \App\Models\Teacher::where('usuario_id', $user->id)->first();
-            if (!$teacher) return [];
+        if (!$period) {
+            return null;
+        }
 
-            return \App\Models\AcademicLoad::where('docente_id', $teacher->id)
-                ->with(['academicGroup', 'course'])
-                ->get()
-                ->map(fn($load) => [
-                    'id' => $load->uuid,
-                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'Grup. s/n',
-                    'materia' => $load->course?->nombre ?? 'Mat. s/n',
-                    'codigo' => $load->course?->codigo ?? 'S/C'
-                ])->toArray();
-        });
+        /*
+         * Si AcademicPeriod tiene cast de fecha, esto será Carbon.
+         */
+        $month = null;
+
+        if ($period->fecha_inicio) {
+            if ($period->fecha_inicio instanceof \DateTimeInterface) {
+                $month = (int) $period->fecha_inicio->format('n');
+            } else {
+                $month = (int) date(
+                    'n',
+                    strtotime((string) $period->fecha_inicio)
+                );
+            }
+        }
+
+        return [
+            'id' => $period->id,
+
+            'nombre' => $period->nombre,
+
+            'es_nones' =>
+                $month !== null
+                    ? (
+                        $month >= 8 ||
+                        $month === 1
+                    )
+                    : true,
+        ];
     }
 
-    private function getAlumnoGroups($user) {
-        if (!$user || strtolower($user->rol ?? '') !== 'alumno') return [];
-        // Las tareas no alteran las materias del menú. Mantener esta caché
-        // independiente evita reconstruir el menú en cada publicación.
-        return \Cache::remember("sidebar_alumno_{$user->id}", 600, function() use ($user) {
-            $enrollment = \App\Models\Enrollment::where('usuario_id', $user->id)->where('estatus', 'active')->first();
-            if (!$enrollment) return [];
+    /**
+     * Obtiene notificaciones no leídas del administrador.
+     */
+    private function getUnreadNotificationsCount(
+        int $userId
+    ): int {
+        return (int) Cache::remember(
+            "unread_notifs_{$userId}",
+            120,
+            static fn (): int =>
+                Notificacion::query()
+                    ->where(
+                        'usuario_id',
+                        $userId
+                    )
+                    ->where(
+                        'leido',
+                        false
+                    )
+                    ->count()
+        );
+    }
 
-            return \App\Models\AcademicLoad::where('grupo_id', $enrollment->grupo_id)
-                ->where('ciclo_id', $enrollment->ciclo_id)
-                ->with(['course', 'teacher.user', 'academicGroup'])
-                ->get()
-                ->map(fn($load) => [
-                    'id' => $load->uuid,
-                    'nombre' => $load->course?->nombre ?? 'N/A',
-                    'docente' => ($load->teacher && $load->teacher->user) ? $load->teacher->user->nombre_completo : 'Sin docente',
-                    'description' => $load->course?->descripcion ?? 'Sin descripción',
-                    'descripcion' => $load->course?->descripcion ?? 'Sin descripción',
-                    'nombre_grupo' => $load->academicGroup?->nombre ?? 'N/A',
-                    'color_tema' => $load->color_tema ?? 'blue'
-                ])->toArray();
-        });
+    /**
+     * Obtiene grupos del docente para el sidebar.
+     *
+     * Cache MISS:
+     * - 1 query para teacher
+     * - 1 query con joins para cargas/grupo/materia
+     *
+     * Cache HIT:
+     * - 0 queries
+     */
+    private function getDocenteGroups(
+        int $userId
+    ): array {
+        return Cache::remember(
+            "sidebar_docente_{$userId}",
+            1800,
+            static function () use (
+                $userId
+            ): array {
+                /*
+                |--------------------------------------------------------------------------
+                | Teacher ID
+                |--------------------------------------------------------------------------
+                |
+                | Solo necesitamos el ID.
+                */
+                $teacherId = Teacher::query()
+                    ->where(
+                        'usuario_id',
+                        $userId
+                    )
+                    ->value('id');
+
+                if (!$teacherId) {
+                    return [];
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Cargas académicas
+                |--------------------------------------------------------------------------
+                |
+                | Usamos joins para evitar eager loading múltiple.
+                |
+                | IMPORTANTE:
+                | Verifica que estas tablas se llamen exactamente:
+                |
+                | cargas_academicas
+                | grupos
+                | materias
+                |
+                */
+                return DB::table(
+                    'cargas_academicas as ca'
+                )
+                    ->leftJoin(
+                        'grupos as g',
+                        'g.id',
+                        '=',
+                        'ca.grupo_id'
+                    )
+                    ->leftJoin(
+                        'materias as m',
+                        'm.id',
+                        '=',
+                        'ca.materia_id'
+                    )
+                    ->where(
+                        'ca.docente_id',
+                        $teacherId
+                    )
+                    ->select([
+                        'ca.uuid as id',
+                        'g.nombre as nombre_grupo',
+                        'm.nombre as materia',
+                        'm.codigo as codigo',
+                    ])
+                    ->get()
+                    ->map(
+                        static fn ($row): array => [
+                            'id' => $row->id,
+
+                            'nombre_grupo' =>
+                                $row->nombre_grupo
+                                    ?: 'Grup. s/n',
+
+                            'materia' =>
+                                $row->materia
+                                    ?: 'Mat. s/n',
+
+                            'codigo' =>
+                                $row->codigo
+                                    ?: 'S/C',
+                        ]
+                    )
+                    ->all();
+            }
+        );
+    }
+
+    /**
+     * Obtiene materias del alumno para el sidebar.
+     *
+     * Cache MISS:
+     * - 1 query Enrollment
+     * - 1 query con joins
+     *
+     * Cache HIT:
+     * - 0 queries
+     */
+    private function getAlumnoGroups(
+        int $userId
+    ): array {
+        return Cache::remember(
+            "sidebar_alumno_{$userId}",
+            1800,
+            static function () use (
+                $userId
+            ): array {
+                /*
+                |--------------------------------------------------------------------------
+                | Inscripción actual
+                |--------------------------------------------------------------------------
+                |
+                | Solo necesitamos grupo_id y ciclo_id.
+                */
+                $enrollment = Enrollment::query()
+                    ->where(
+                        'usuario_id',
+                        $userId
+                    )
+                    ->where(
+                        'estatus',
+                        'active'
+                    )
+                    ->orderByDesc(
+                        'ciclo_id'
+                    )
+                    ->first([
+                        'grupo_id',
+                        'ciclo_id',
+                    ]);
+
+                if (!$enrollment) {
+                    return [];
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Materias del sidebar
+                |--------------------------------------------------------------------------
+                |
+                | Una sola query con joins.
+                |
+                | IMPORTANTE:
+                | Verifica nombres reales de tablas:
+                |
+                | cargas_academicas
+                | materias
+                | docentes
+                | users
+                | grupos
+                |
+                */
+                return DB::table(
+                    'cargas_academicas as ca'
+                )
+                    ->leftJoin(
+                        'materias as m',
+                        'm.id',
+                        '=',
+                        'ca.materia_id'
+                    )
+                    ->leftJoin(
+                        'docentes as d',
+                        'd.id',
+                        '=',
+                        'ca.docente_id'
+                    )
+                    ->leftJoin(
+                        'users as u',
+                        'u.id',
+                        '=',
+                        'd.usuario_id'
+                    )
+                    ->leftJoin(
+                        'grupos as g',
+                        'g.id',
+                        '=',
+                        'ca.grupo_id'
+                    )
+                    ->where(
+                        'ca.grupo_id',
+                        $enrollment->grupo_id
+                    )
+                    ->where(
+                        'ca.ciclo_id',
+                        $enrollment->ciclo_id
+                    )
+                    ->select([
+                        'ca.uuid as id',
+                        'ca.color_tema',
+
+                        'm.nombre',
+                        'm.descripcion',
+
+                        'g.nombre as nombre_grupo',
+
+                        'u.nombre as docente_nombre',
+                        'u.apellido_paterno as docente_apellido_paterno',
+                        'u.apellido_materno as docente_apellido_materno',
+                    ])
+                    ->get()
+                    ->map(
+                        static function (
+                            $row
+                        ): array {
+                            $teacherName = trim(
+                                implode(
+                                    ' ',
+                                    array_filter([
+                                        $row->docente_nombre,
+                                        $row->docente_apellido_paterno,
+                                        $row->docente_apellido_materno,
+                                    ])
+                                )
+                            );
+
+                            $description =
+                                $row->descripcion
+                                    ?: 'Sin descripción';
+
+                            return [
+                                'id' => $row->id,
+
+                                'nombre' =>
+                                    $row->nombre
+                                        ?: 'N/A',
+
+                                'docente' =>
+                                    $teacherName
+                                        ?: 'Sin docente',
+
+                                /*
+                                 * Conservamos ambas claves
+                                 * por compatibilidad con frontend.
+                                 */
+                                'description' =>
+                                    $description,
+
+                                'descripcion' =>
+                                    $description,
+
+                                'nombre_grupo' =>
+                                    $row->nombre_grupo
+                                        ?: 'N/A',
+
+                                'color_tema' =>
+                                    $row->color_tema
+                                        ?: 'blue',
+                            ];
+                        }
+                    )
+                    ->all();
+            }
+        );
     }
 }

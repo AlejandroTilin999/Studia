@@ -40,21 +40,6 @@ export default function DashboardWelcomeBanner({
         : role === 'DOCENTE'
             ? '/assets/docente-dashboard.webp'
             : '/assets/alumno-dashboard.webp';
-    const imageRef = React.useRef<HTMLImageElement>(null);
-    const [imageLoaded, setImageLoaded] = React.useState(() => dashboardImagesLoaded.has(imageSrc));
-
-    React.useLayoutEffect(() => {
-        const image = imageRef.current;
-        const isReady = dashboardImagesLoaded.has(imageSrc)
-            || Boolean(image?.complete && image.naturalWidth > 0);
-
-        if (isReady) {
-            dashboardImagesLoaded.add(imageSrc);
-        }
-
-        setImageLoaded(isReady);
-    }, [imageSrc]);
-
     const currentDate = new Date().toLocaleDateString('es-ES', {
         weekday: 'long',
         year: 'numeric',
@@ -105,10 +90,10 @@ export default function DashboardWelcomeBanner({
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e88e505_1px,transparent_1px),linear-gradient(to_bottom,#1e88e505_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0"></div>
 
                 {/* --- CONTENT GRID --- */}
-                <div className="relative z-10 flex flex-col items-center min-[1352px]:flex-row min-[1352px]:items-center min-[1352px]:justify-between gap-8 h-full">
+                <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6 md:gap-8 h-full">
 
                     {/* Left Side: Text & Button */}
-                    <div className="flex flex-col items-center min-[1352px]:items-start text-center min-[1352px]:text-left space-y-4 relative z-10 flex-1 w-full">
+                    <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-4 relative z-10 flex-1 w-full">
                         <div className="relative z-20 inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-lg text-blue-700 select-none">
                             <Calendar size={13} className="text-blue-600" />
                             <span className="text-[10px] md:text-xs font-semibold tracking-wide uppercase">
@@ -128,7 +113,7 @@ export default function DashboardWelcomeBanner({
                                     {subtitle}
                                 </p>
                             )}
-                            <p className="text-xs sm:text-sm font-normal text-slate-500 max-w-md sm:max-w-lg lg:max-w-xl xl:max-w-2xl leading-relaxed pt-1 mx-auto min-[1352px]:lg:mx-0">
+                            <p className="text-xs sm:text-sm font-medium text-slate-700 max-w-md sm:max-w-lg lg:max-w-xl xl:max-w-2xl leading-relaxed pt-1 mx-auto lg:mx-0">
                                 {getRoleDescription()}
                             </p>
                         </div>
@@ -144,33 +129,15 @@ export default function DashboardWelcomeBanner({
                     </div>
 
                     {/* Right Side: Image */}
-                    <div className="relative w-full min-[1352px]:w-auto flex justify-center min-[1352px]:justify-end items-center shrink-0">
-                        {!imageLoaded && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div
-                                    aria-label="Cargando ilustración"
-                                    className="h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 lg:h-48 lg:w-48 animate-pulse bg-slate-200/65 shadow-[inset_12px_-10px_0_rgba(255,255,255,0.2)]"
-                                    style={{ borderRadius: '42% 58% 61% 39% / 45% 42% 58% 55%' }}
-                                />
-                            </div>
-                        )}
+                    <div className="relative w-full lg:w-auto flex justify-center lg:justify-end items-center shrink-0">
                         <img
-                            ref={imageRef}
                             src={imageSrc}
                             alt="Personaje Dashboard"
                             loading="eager"
                             // @ts-ignore
                             fetchpriority="high"
                             decoding="sync"
-                            onLoad={() => {
-                                dashboardImagesLoaded.add(imageSrc);
-                                setImageLoaded(true);
-                            }}
-                            onError={() => setImageLoaded(true)}
-                            className={cn(
-                                "relative w-full h-40 sm:h-48 md:h-56 lg:h-64 xl:h-72 min-[1352px]:w-64 object-contain object-center min-[1352px]:object-right pointer-events-none select-none transition-opacity duration-150 drop-shadow-sm",
-                                imageLoaded ? "opacity-100" : "opacity-0"
-                            )}
+                            className="relative w-44 sm:w-52 md:w-60 lg:w-64 xl:w-72 h-auto max-h-56 lg:max-h-72 object-contain object-center lg:object-right pointer-events-none select-none drop-shadow-sm opacity-100"
                         />
                     </div>
 

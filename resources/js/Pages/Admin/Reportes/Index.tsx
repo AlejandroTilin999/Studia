@@ -505,18 +505,6 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
         }
     };
 
-    const handleExportAttendanceExcel = () => {
-        if (!groupFilter || !periodFilter) {
-            SwalHelper.alert('Filtros requeridos', 'Selecciona un grupo y el ciclo escolar vigente para exportar la lista.', 'warning');
-            return;
-        }
-
-        window.location.assign(route('admin.reportes.asistencia_excel', {
-            grupo_id: groupFilter,
-            ciclo_id: periodFilter,
-        }));
-    };
-
     const handleReset = () => {
         setGroupFilter('');
         setSelectedStudentMatricula('');
@@ -628,7 +616,6 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
                                 groups={groups}
                                 periods={periods}
                                 onDownload={handleDownloadReport}
-                                onExportExcel={handleExportAttendanceExcel}
                                 onReset={handleReset}
                             />
                         </div>
