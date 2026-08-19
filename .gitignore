@@ -26,3 +26,5 @@ Homestead.yaml
 Thumbs.db
 /.artifacts/
 /storage/framework/cache/data/
+/storage/debugbar/
+/storage/clockwork/
