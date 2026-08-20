@@ -51,14 +51,14 @@ export default function SendEmailModal({
     // Filtrar automáticamente la lista según la plantilla o filtro manual
     const filteredRecipients = recipients.filter((r) => {
         const userRole = (r.rol || '').toUpperCase();
-        if (roleFilter !== 'ALL') {
-            return userRole === roleFilter;
-        }
         if (isAlumnoTemplate) {
             return userRole === 'ALUMNO';
         }
         if (isDocenteTemplate) {
             return userRole === 'DOCENTE';
+        }
+        if (roleFilter !== 'ALL') {
+            return userRole === roleFilter;
         }
         return true;
     });
@@ -73,7 +73,7 @@ export default function SendEmailModal({
             showFooter={false}
             fullBleed={true}
         >
-            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 md:min-h-[480px] max-h-[90vh] md:max-h-none overflow-y-auto md:overflow-visible h-full text-left relative font-body">
+            <div className="grid grid-cols-1 md:grid-cols-5 min-h-0 text-left relative font-body">
                 {/* Botón de cerrar de Windows */}
                 <button
                     type="button"
@@ -84,7 +84,7 @@ export default function SendEmailModal({
                 </button>
 
                 {/* Panel Izquierdo Azul Institucional #0266E0 (col-span-2) */}
-                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none shrink-0">
+                <div className="col-span-1 md:col-span-2 bg-[#0266E0] p-6 text-white flex flex-col justify-between select-none relative rounded-t-[10px] md:rounded-l-[10px] md:rounded-tr-none shrink-0 min-h-[380px] md:min-h-[440px]">
                     <div className="space-y-6">
                         <div>
                             <img src="/assets/logo-ph-blanco.webp" alt="Prepa Hidalgo" className="h-8 md:h-10 w-auto object-contain mb-4 md:mb-6" />
@@ -112,7 +112,7 @@ export default function SendEmailModal({
                 </div>
 
                 {/* Panel Derecho del Formulario (col-span-3) */}
-                <div className="col-span-1 md:col-span-3 p-5 md:p-6 flex flex-col justify-between min-h-0 md:min-h-[460px] relative bg-white rounded-b-[10px] md:rounded-r-[10px] md:rounded-bl-none">
+                <div className="col-span-1 md:col-span-3 p-5 md:p-6 flex flex-col justify-between relative bg-white rounded-b-[10px] md:rounded-r-[10px] md:rounded-bl-none">
                     <form onSubmit={onSubmit} className="space-y-4 flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
 
@@ -155,37 +155,49 @@ export default function SendEmailModal({
                             )}
 
                             {/* Selector de Filtro de Rol */}
-                            <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 pr-10">
                                 <div className="flex items-center gap-1.5">
-                                    {['ALL', 'ALUMNO', 'DOCENTE'].map((r) => (
-                                        <button
-                                            key={r}
-                                            type="button"
-                                            onClick={() => onRoleFilterChange(r)}
-                                            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                                                (roleFilter === r) || (roleFilter === 'ALL' && isAlumnoTemplate && r === 'ALUMNO') || (roleFilter === 'ALL' && isDocenteTemplate && r === 'DOCENTE')
-                                                    ? 'bg-[#0266E0] text-white shadow-xs'
-                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                            }`}
-                                        >
-                                            {r === 'ALL' ? 'Todos' : r}
-                                        </button>
-                                    ))}
+                                    {isAlumnoTemplate ? (
+                                        <span className="px-3 py-1 rounded-xl text-[11px] font-extrabold bg-[#0266E0] text-white tracking-wide">
+                                            Destinatarios: ALUMNOS
+                                        </span>
+                                    ) : isDocenteTemplate ? (
+                                        <span className="px-3 py-1 rounded-xl text-[11px] font-extrabold bg-[#0266E0] text-white tracking-wide">
+                                            Destinatarios: DOCENTES
+                                        </span>
+                                    ) : (
+                                        ['ALL', 'ALUMNO', 'DOCENTE'].map((r) => (
+                                            <button
+                                                key={r}
+                                                type="button"
+                                                onClick={() => onRoleFilterChange(r)}
+                                                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
+                                                    roleFilter === r
+                                                        ? 'bg-[#0266E0] text-white shadow-xs'
+                                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                }`}
+                                            >
+                                                {r === 'ALL' ? 'Todos' : r}
+                                            </button>
+                                        ))
+                                    )}
                                 </div>
                                 <button
                                     type="button"
                                     onClick={onSelectAllFiltered}
-                                    className="text-[11px] font-bold text-[#0266E0] hover:underline"
+                                    className="text-[11px] font-bold text-[#0266E0] hover:underline shrink-0"
                                 >
-                                    {selectedEmails.length === filteredRecipients.length ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
+                                    {selectedEmails.length > 0 && selectedEmails.length === filteredRecipients.length
+                                        ? 'Deseleccionar Todos'
+                                        : 'Seleccionar Todos'}
                                 </button>
                             </div>
 
                             {/* Lista de Destinatarios */}
-                            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            <div className="space-y-2 max-h-[280px] min-h-[180px] overflow-y-auto pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/40">
                                 {filteredRecipients.length === 0 ? (
-                                    <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                                        No se encontraron destinatarios de este rol.
+                                    <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl bg-white">
+                                        No se encontraron destinatarios para este rol.
                                     </div>
                                 ) : (
                                     filteredRecipients.map((r) => {
@@ -196,8 +208,8 @@ export default function SendEmailModal({
                                                 onClick={() => onToggleEmail(r.email)}
                                                 className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all select-none ${
                                                     isSelected
-                                                        ? 'bg-blue-50/80 border-blue-200 text-blue-900 shadow-xs'
-                                                        : 'bg-white border-slate-200 hover:border-blue-200 text-slate-700'
+                                                        ? 'bg-blue-50/90 border-blue-200 text-blue-900 shadow-xs'
+                                                        : 'bg-white border-slate-200/80 hover:border-blue-200 text-slate-700'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">

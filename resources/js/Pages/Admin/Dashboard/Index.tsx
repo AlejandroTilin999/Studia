@@ -35,11 +35,21 @@ export default function AdminDashboardIndex() {
     const [selectedCycleId, setSelectedCycleId] = useState<number | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
+    const [localParcialStates, setLocalParcialStates] = useState<Record<number, boolean>>({});
+
     const activeCycle = cycles.find((c: any) => c.status === 'activo');
     const planningCycle = cycles.find((c: any) => c.status === 'planificacion');
+    const workingCycleRaw = activeCycle || planningCycle;
 
-    // El ciclo que se muestra en la tarjeta principal (prioridad al activo)
-    const workingCycle = activeCycle || planningCycle;
+    const workingCycle = React.useMemo(() => {
+        if (!workingCycleRaw) return undefined;
+        return {
+            ...workingCycleRaw,
+            p1_activo: localParcialStates[1] ?? !!workingCycleRaw.p1_activo,
+            p2_activo: localParcialStates[2] ?? !!workingCycleRaw.p2_activo,
+            p3_activo: localParcialStates[3] ?? !!workingCycleRaw.p3_activo,
+        };
+    }, [workingCycleRaw, localParcialStates]);
 
     // Form for new cycle
     const { data, setData, reset, processing, errors, put, post } = useForm({
@@ -83,7 +93,7 @@ export default function AdminDashboardIndex() {
         setIsPeriodModalOpen(true);
     };
 
-    const broadcastCycleUpdate = (cycleId: any) => {
+    const broadcastCycleUpdate = (cycleId: any, parcial?: number, nextState?: boolean) => {
         if (!cycleId) return;
         const id = Number(cycleId);
 
@@ -91,6 +101,8 @@ export default function AdminDashboardIndex() {
             const payload = {
                 type: 'cycle-update',
                 id: id,
+                parcial: parcial,
+                activo: nextState,
                 t: Date.now(),
                 msg: 'FORCE_REFRESH_THUNDER'
             };
@@ -192,8 +204,6 @@ export default function AdminDashboardIndex() {
         });
     };
 
-    const [localParcialStates, setLocalParcialStates] = useState<Record<number, boolean>>({});
-
     const handleToggleParcial = (parcial: number, currentStatus: boolean) => {
         if (!workingCycle) return;
 
@@ -213,19 +223,17 @@ export default function AdminDashboardIndex() {
 
                 // 1. Respuesta instantánea en UI (0 ms) sin esperar al servidor ni recargar
                 setLocalParcialStates(prev => ({ ...prev, [parcial]: nextState }));
-                (workingCycle as any)[key] = nextState;
                 
-                broadcastCycleUpdate(workingCycle.id);
+                broadcastCycleUpdate(workingCycle.id, parcial, nextState);
                 SwalHelper.toast(`Parcial ${parcial} ${nextState ? 'abierto' : 'cerrado'}.`, 'success');
 
-                // 2. Persistir en base de datos via Axios síncrono ultra liviano (no bloqueante)
+                // 2. Persistir en base de datos via Axios síncrono ultra liviano (no bloqueante, SIN router.reload)
                 window.axios.post(route('admin.cycles.toggle_parcial', { id: workingCycle.id }), {
                     parcial,
                     activo: nextState
                 }).catch(() => {
                     // Revertir en caso de error de red
                     setLocalParcialStates(prev => ({ ...prev, [parcial]: currentActive }));
-                    (workingCycle as any)[key] = currentActive;
                     SwalHelper.error('Error', 'No se pudo cambiar el estado del parcial.');
                 });
             }

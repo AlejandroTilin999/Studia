@@ -120,30 +120,30 @@ class ReporteController extends Controller
     private function getGroupsForPeriod(int $periodId): array
     {
         return Cache::remember(
-            "reports:period:{$periodId}:groups",
+            "reports:period:{$periodId}:groups_v5",
             self::CACHE_TTL,
-            static fn (): array =>
-                DB::table('grupos as g')
-                    ->join(
-                        'inscripciones as i',
-                        'i.grupo_id',
-                        '=',
-                        'g.id'
-                    )
-                    ->where(
-                        'i.ciclo_id',
-                        $periodId
-                    )
-                    ->where(
-                        'i.estatus',
-                        'active'
-                    )
-                    ->select([
-                        'g.id',
-                        'g.nombre',
-                    ])
-                    ->distinct()
-                    ->orderBy('g.nombre')
+            static function () use ($periodId): array {
+                $loadGroupIds = DB::table('cargas_academicas')
+                    ->where('ciclo_id', $periodId)
+                    ->pluck('grupo_id');
+
+                $enrollGroupIds = DB::table('inscripciones')
+                    ->where('ciclo_id', $periodId)
+                    ->where('estatus', 'active')
+                    ->groupBy('grupo_id')
+                    ->havingRaw('COUNT(*) >= 2')
+                    ->pluck('grupo_id');
+
+                $validGroupIds = $loadGroupIds->concat($enrollGroupIds)->filter()->unique();
+
+                if ($validGroupIds->isEmpty()) {
+                    return [];
+                }
+
+                return DB::table('grupos')
+                    ->whereIn('id', $validGroupIds)
+                    ->select(['id', 'nombre'])
+                    ->orderBy('nombre')
                     ->get()
                     ->map(
                         static fn ($row): array => [
@@ -151,7 +151,8 @@ class ReporteController extends Controller
                             'nombre' => $row->nombre,
                         ]
                     )
-                    ->all()
+                    ->all();
+            }
         );
     }
 
@@ -1122,7 +1123,8 @@ class ReporteController extends Controller
          */
         $kardex =
             GradeService::getStudentKardex(
-                $userId
+                $userId,
+                $periodId
             );
 
         $totalScore = 0;
@@ -1212,264 +1214,118 @@ class ReporteController extends Controller
     public function getFullKardexData(
         $matricula
     ) {
-        /*
-         * Cacheamos exclusivamente datos académicos.
-         *
-         * issued_at se agrega después para que siempre
-         * corresponda al momento real de generación.
-         */
-        $data = Cache::remember(
-            "report:kardex-full:{$matricula}",
-            self::CACHE_TTL,
-            static function () use (
+        $student = DB::table(
+            'alumnos as a'
+        )
+            ->join(
+                'users as u',
+                'u.id',
+                '=',
+                'a.usuario_id'
+            )
+            ->where(
+                'a.matricula',
                 $matricula
-            ): array {
-                /*
-                |--------------------------------------------------------------------------
-                | Alumno + Usuario
-                |--------------------------------------------------------------------------
-                |
-                | 1 query en lugar de Student + eager User.
-                */
-                $student = DB::table(
-                    'alumnos as a'
-                )
-                    ->join(
-                        'users as u',
-                        'u.id',
-                        '=',
-                        'a.usuario_id'
-                    )
-                    ->where(
-                        'a.matricula',
-                        $matricula
-                    )
-                    ->select([
-                        'a.matricula',
-                        'a.usuario_id',
+            )
+            ->select([
+                'a.matricula',
+                'a.usuario_id',
 
-                        'u.nombre',
-                        'u.apellido_paterno',
-                        'u.apellido_materno',
-                    ])
-                    ->first();
+                'u.nombre',
+                'u.apellido_paterno',
+                'u.apellido_materno',
+            ])
+            ->first();
 
-                abort_if(
-                    !$student,
-                    404,
-                    'Alumno no encontrado.'
-                );
-
-                /*
-                 * Conservamos las relaciones académicas actuales
-                 * porque GradeService / relación grades puede tener
-                 * reglas internas específicas.
-                 *
-                 * El resultado completo queda cacheado después.
-                 */
-                $enrollments =
-                    Enrollment::query()
-                        ->where(
-                            'usuario_id',
-                            $student->usuario_id
-                        )
-                        ->with([
-                            'academicGroup:id,nombre,especialidad',
-
-                            'academicPeriod:id,nombre',
-
-                            'academicGroup.academicLoads' =>
-                                function ($query): void {
-                                    $query->select(
-                                        'id',
-                                        'grupo_id',
-                                        'ciclo_id',
-                                        'materia_id'
-                                    );
-                                },
-
-                            'academicGroup.academicLoads.course:id,nombre,codigo,semestre',
-
-                            'academicGroup.academicLoads.grades' =>
-                                function ($query) use ($student): void {
-                                    $query
-                                        ->where(
-                                            'usuario_id',
-                                            $student->usuario_id
-                                        )
-                                        ->whereNull(
-                                            'criterio_id'
-                                        );
-                                },
-                        ])
-                        ->get();
-
-                $history = [];
-
-                $totalSum = 0;
-
-                $totalSubjects = 0;
-
-                foreach (
-                    $enrollments
-                    as $enrollment
-                ) {
-                    $periodName =
-                        $enrollment
-                            ->academicPeriod
-                            ?->nombre
-                        ?? 'N/A';
-
-                    $loads =
-                        $enrollment
-                            ->academicGroup
-                            ?->academicLoads
-                        ?? collect();
-
-                    foreach (
-                        $loads
-                        as $load
-                    ) {
-                        /*
-                         * El grupo puede poseer cargas de otros ciclos.
-                         */
-                        if (
-                            (int) $load->ciclo_id
-                            !==
-                            (int) $enrollment->ciclo_id
-                        ) {
-                            continue;
-                        }
-
-                        $gradeRecord =
-                            $load
-                                ->grades
-                                ->first();
-
-                        $finalGrade =
-                            $gradeRecord
-                                ? GradeService::formatGrade(
-                                    $gradeRecord->final
-                                )
-                                : '—';
-
-                        if (
-                            $finalGrade !== '—'
-                        ) {
-                            $totalSum +=
-                                (int) $finalGrade;
-
-                            $totalSubjects++;
-                        }
-
-                        $history[] = [
-                            'period' =>
-                                mb_strtoupper(
-                                    $periodName
-                                ),
-
-                            'semestre' =>
-                                $load
-                                    ->course
-                                    ?->semestre
-                                ?? '—',
-
-                            'codigo' =>
-                                mb_strtoupper(
-                                    $load
-                                        ->course
-                                        ?->codigo
-                                    ?? 'S/C'
-                                ),
-
-                            'materia' =>
-                                mb_strtoupper(
-                                    $load
-                                        ->course
-                                        ?->nombre
-                                    ?? 'S/N'
-                                ),
-
-                            'calificacion' =>
-                                $finalGrade,
-                        ];
-                    }
-                }
-
-                $globalGpa =
-                    $totalSubjects > 0
-                        ? number_format(
-                            $totalSum
-                            / $totalSubjects,
-                            0
-                        )
-                        : '—';
-
-                $specialty =
-                    $enrollments
-                        ->isNotEmpty()
-                        ? (
-                            $enrollments
-                                ->last()
-                                ->academicGroup
-                                ?->especialidad
-                            ?? 'GENERAL'
-                        )
-                        : 'GENERAL';
-
-                $fullName = trim(
-                    implode(
-                        ' ',
-                        array_filter([
-                            $student->nombre,
-
-                            $student->apellido_paterno,
-
-                            $student->apellido_materno,
-                        ])
-                    )
-                );
-
-                return [
-                    'student' => [
-                        'nombre' =>
-                            mb_strtoupper(
-                                $fullName
-                            ),
-
-                        'matricula' =>
-                            $student->matricula,
-
-                        'especialidad' =>
-                            mb_strtoupper(
-                                $specialty
-                            ),
-                    ],
-
-                    'history' =>
-                        $history,
-
-                    'globalGpa' =>
-                        $globalGpa,
-                ];
-            }
+        abort_if(
+            !$student,
+            404,
+            'Alumno no encontrado.'
         );
 
-        /*
-         * Nunca cacheamos la fecha de impresión.
-         */
-        $data['issued_at'] = [
-            'full' =>
-                Carbon::now()
+        // Usamos el motor completo de Kardex Histórico de GradeService (el mismo que ve el Alumno)
+        $fullKardex = GradeService::getFullStudentKardex($student->usuario_id);
+
+        $history = [];
+        $totalSum = 0;
+        $totalSubjects = 0;
+
+        if (!empty($fullKardex['periods'])) {
+            foreach ($fullKardex['periods'] as $periodData) {
+                $periodName = $periodData['cycleName'] ?? 'N/A';
+                $semestreNum = $periodData['semester'] ?? '—';
+
+                foreach (($periodData['subjects'] ?? []) as $sub) {
+                    $finalGrade = $sub['finalGrade'] ?? '—';
+                    if ($finalGrade !== '—' && is_numeric($finalGrade)) {
+                        $totalSum += (float) $finalGrade;
+                        $totalSubjects++;
+                    }
+
+                    $history[] = [
+                        'period' => mb_strtoupper($periodName),
+                        'semestre' => $semestreNum,
+                        'codigo' => mb_strtoupper($sub['code'] ?? 'S/C'),
+                        'materia' => mb_strtoupper($sub['name'] ?? 'S/N'),
+                        'calificacion' => $finalGrade,
+                    ];
+                }
+            }
+        }
+
+        // Ordenar el historial por semestre ascendente (1, 2, 3...)
+        usort($history, function($a, $b) {
+            $semA = is_numeric($a['semestre']) ? (int)$a['semestre'] : 99;
+            $semB = is_numeric($b['semestre']) ? (int)$b['semestre'] : 99;
+            if ($semA === $semB) {
+                return strcmp($a['codigo'], $b['codigo']);
+            }
+            return $semA <=> $semB;
+        });
+
+        $globalGpa = ($fullKardex['summary']['gpa'] ?? null) && $fullKardex['summary']['gpa'] !== '0.0'
+            ? $fullKardex['summary']['gpa']
+            : ($totalSubjects > 0 ? number_format($totalSum / $totalSubjects, 1) : '—');
+
+        $enrollments = Enrollment::where('usuario_id', $student->usuario_id)->with('academicGroup')->get();
+        $specialty = $enrollments->isNotEmpty()
+            ? ($enrollments->last()->academicGroup?->especialidad ?? 'GENERAL')
+            : 'GENERAL';
+
+        $fullName = trim(
+            implode(
+                ' ',
+                array_filter([
+                    $student->nombre,
+
+                    $student->apellido_paterno,
+
+                    $student->apellido_materno,
+                ])
+            )
+        );
+
+        $data = [
+            'student' => [
+                'nombre' => mb_strtoupper($fullName),
+
+                'matricula' => $student->matricula,
+
+                'especialidad' => mb_strtoupper($specialty),
+            ],
+
+            'history' => $history,
+
+            'globalGpa' => $globalGpa,
+
+            'issued_at' => [
+                'full' => Carbon::now()
                     ->locale('es')
-                    ->isoFormat(
-                        'dddd, D [de] MMMM [de] YYYY'
-                    ),
+                    ->isoFormat('dddd, D [de] MMMM [de] YYYY'),
+            ],
         ];
 
-        return response()->json(
-            $data
-        );
+        return response()->json($data);
     }
 
     /*

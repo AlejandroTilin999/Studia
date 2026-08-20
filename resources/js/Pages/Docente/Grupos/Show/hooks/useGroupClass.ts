@@ -357,6 +357,21 @@ export function useGroupClass(classInfoProp?: any) {
             .then(res => {
                 SwalHelper.success('¡Configurado!', 'Los criterios han sido guardados correctamente.');
                 
+                const newCriteriaList = res.data?.criterios || draftCriteria.map(c => ({
+                    id: c.id,
+                    nombre: c.nombre,
+                    porcentaje: c.porcentaje,
+                    sincronizar_tareas: !!c.sincronizar_tareas
+                }));
+
+                setConfigs(prev => ({
+                    ...prev,
+                    [activeParcial]: {
+                        configured: newCriteriaList.length > 0,
+                        criteria: newCriteriaList
+                    }
+                }));
+
                 // Emite evento en tiempo real a alumnos y otras pestañas
                 try {
                     const bc = new BroadcastChannel('school-cycle-channel');
@@ -534,7 +549,7 @@ export function useGroupClass(classInfoProp?: any) {
         }
 
         setActiveParcial(parcialNum);
-        setActiveTab('grades');
+        setActiveTab('activities');
         setSelectedTaskId(null);
 
         // Persistir estado en la URL sin recargar la página
@@ -612,7 +627,18 @@ export function useGroupClass(classInfoProp?: any) {
         .then(res => {
             SwalHelper.close();
             SwalHelper.toast('Calificación devuelta al alumno.', 'success');
-            refreshClassData();
+            setTasks(prev => prev.map(t => {
+                if (t.id === taskId) {
+                    return {
+                        ...t,
+                        calificaciones: {
+                            ...(t.calificaciones || {}),
+                            [studentId]: score
+                        }
+                    };
+                }
+                return t;
+            }));
             return res.data;
         })
         .catch(err => {

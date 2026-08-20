@@ -78,14 +78,39 @@ export default function AlumnoDashboard({
 
     const { useGroupSubscription } = useRealtime({ onAcademicPeriodChanged: handleAcademicPeriodChanged });
 
+    // Escuchar actualizaciones de parciales/ciclos en tiempo real en memoria React sin NINGÚN reload
+    useEffect(() => {
+        const handleSignal = (data: any) => {
+            if (data?.parcial !== undefined && data?.activo !== undefined) {
+                setPartialAvailability(prev => ({
+                    ...(prev || {}),
+                    [data.parcial]: !!data.activo
+                }));
+            }
+        };
+
+        const bc = new BroadcastChannel('school-cycle-channel');
+        bc.onmessage = (e) => handleSignal(e.data);
+
+        const onStorage = (e: StorageEvent) => {
+            const keys = ['studia_v4_signal', 'studia_rt_signal', 'studia_rt_update'];
+            if (keys.includes(e.key!) && e.newValue) {
+                try { handleSignal(JSON.parse(e.newValue)); } catch(err) {}
+            }
+        };
+        window.addEventListener('storage', onStorage);
+
+        return () => {
+            bc.close();
+            window.removeEventListener('storage', onStorage);
+        };
+    }, []);
+
     useEffect(() => {
         if (isInitialMountRef.current) {
             if (subjectKardex || Array.isArray(kardex)) {
-                const timer = setTimeout(() => {
-                    setIsPageLoading(false);
-                    isInitialMountRef.current = false;
-                }, 250);
-                return () => clearTimeout(timer);
+                setIsPageLoading(false);
+                isInitialMountRef.current = false;
             } else {
                 setIsPageLoading(true);
             }
@@ -500,8 +525,17 @@ export default function AlumnoDashboard({
                                                                     const avg = pData?.average;
                                                                     const criteria = pData?.criteria || [];
 
-                                                                    const isGraded = hasNumericGrade(avg);
-                                                                    const displayAverage = isGraded ? avg : EMPTY_GRADE;
+                                                                    const gradedCount = criteria.filter((c: any) => {
+                                                                        if (!c || c.score === null || c.score === undefined || c.score === "" || c.score === "—") return false;
+                                                                        const numVal = parseFloat(c.score);
+                                                                        return !isNaN(numVal);
+                                                                    }).length;
+                                                                    const totalCriteria = criteria.length;
+                                                                    const isFullyGraded = totalCriteria > 0 && gradedCount === totalCriteria;
+                                                                    const isPartiallyGraded = gradedCount > 0 && gradedCount < totalCriteria;
+                                                                    const isGraded = isFullyGraded;
+                                                                    const hasAnyGrade = isFullyGraded || isPartiallyGraded || hasNumericGrade(avg);
+                                                                    const displayAverage = hasAnyGrade ? avg : EMPTY_GRADE;
 
                                                                     // [LÓGICA SIMPLIFICADA] Bloqueado ÚNICAMENTE si el Admin lo tiene bloqueado en el servidor
                                                                     const isLocked = !isLoadingKardex && pData?.lock_info?.allowed === false;
@@ -550,19 +584,19 @@ export default function AlumnoDashboard({
                                                                                         <span aria-hidden="true" />
                                                                                     ) : (
                                                                                         <span
-                                                                                            style={done ? {
-                                                                                                backgroundColor: activeTheme.badgeHex,
-                                                                                                color: activeTheme.textHex
-                                                                                            } : undefined}
                                                                                             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                                                                                            isGraded
+                                                                                            isFullyGraded
                                                                                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                                                                : done
-                                                                                                    ? 'border border-transparent'
-                                                                                                    : 'bg-slate-50 text-slate-400 border border-slate-100'
+                                                                                                : isPartiallyGraded
+                                                                                                    ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                                                                                                    : done
+                                                                                                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                                                                        : 'bg-slate-50 text-slate-400 border border-slate-100'
                                                                                         }`}>
-                                                                                            {isGraded ? (
+                                                                                            {isFullyGraded ? (
                                                                                                 <><CheckCircle2 size={12} /> Calificado</>
+                                                                                            ) : isPartiallyGraded ? (
+                                                                                                <><Clock size={12} /> En proceso</>
                                                                                             ) : done ? (
                                                                                                 <><Clock size={12} /> En curso</>
                                                                                             ) : (
@@ -601,14 +635,15 @@ export default function AlumnoDashboard({
                                                                                         <div className="space-y-3">
                                                                                             {criteria.map((c: any, idx: number) => {
                                                                                                 const numScore = parseFloat(c.score);
-                                                                                                const pctValue = !isNaN(numScore) ? Math.min(100, Math.max(0, numScore * 10)) : 0;
+                                                                                                const hasCriterionScore = c.score !== null && c.score !== undefined && c.score !== "" && c.score !== "—" && !isNaN(numScore);
+                                                                                                const pctValue = hasCriterionScore ? Math.min(100, Math.max(0, numScore * 10)) : 0;
                                                                                                 return (
                                                                                                     <div key={idx} className="space-y-1">
                                                                                                         <div className="flex justify-between items-center text-xs">
                                                                                                             <span className="text-slate-600 font-semibold truncate max-w-[130px]">{c.name}</span>
                                                                                                             <div className="flex items-center gap-2">
                                                                                                                 <span className="text-[10px] text-slate-400 font-bold">{c.percentage}%</span>
-                                                                                                                <span className={`font-extrabold ${isGraded ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                                                                                <span className={`font-extrabold ${hasCriterionScore ? 'text-slate-900' : 'text-slate-400'}`}>
                                                                                                                     {c.score ?? '—'}
                                                                                                                 </span>
                                                                                                             </div>

@@ -1,26 +1,41 @@
 import React from 'react';
-import { FileText, Pencil, Trash2, ExternalLink, ChevronRight } from 'lucide-react';
+import { FileText, Pencil, Trash2, ExternalLink, ChevronRight, ClipboardList } from 'lucide-react';
 import { Task } from '../services/constants';
 import { cn } from '@/lib/utils';
 import PdfIcon from '@/Components/ui/PdfIcon';
 import { COLOR_THEMES } from '@/constants/ColorThemes';
 
-const formatHumanDate = (dateStr?: string) => {
+const formatHumanDate = (dateStr?: string, timeStr?: string, deadlineStr?: string) => {
+    if (deadlineStr && deadlineStr !== 'Sin fecha') {
+        return deadlineStr;
+    }
+
     if (!dateStr) return 'Sin fecha';
 
-    const hasTime = dateStr.includes(' ') || dateStr.includes('T');
-    const normalizedStr = dateStr.includes(' ') ? dateStr.replace(' ', 'T') : (!dateStr.includes('T') ? dateStr + 'T00:00:00' : dateStr);
+    let combinedStr = dateStr.trim();
+    if (timeStr && timeStr.trim() !== '' && !combinedStr.includes(' ') && !combinedStr.includes('T')) {
+        combinedStr = `${combinedStr} ${timeStr.trim()}`;
+    }
+
+    const normalizedStr = combinedStr.includes(' ') 
+        ? combinedStr.replace(' ', 'T') 
+        : (!combinedStr.includes('T') ? combinedStr + 'T00:00:00' : combinedStr);
+    
     const date = new Date(normalizedStr);
 
-    if (isNaN(date.getTime())) return dateStr;
+    if (isNaN(date.getTime())) {
+        return dateStr;
+    }
 
-    // Formato largo (ej: 09 de Agosto, 12:00 AM)
-    const day = date.toLocaleDateString('es-ES', { day: '2-digit' });
-    const month = date.toLocaleDateString('es-ES', { month: 'long' });
-    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
     const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    return hasTime ? `${day} de ${capitalizedMonth}, ${formattedTime}` : `${day} de ${capitalizedMonth}`;
+    const hasTime = combinedStr.includes(' ') || combinedStr.includes('T') || (timeStr && timeStr.trim() !== '');
+
+    return hasTime ? `${day}/${month}/${year} ${formattedTime}` : `${day}/${month}/${year}`;
 };
 
 export interface ActivityCardProps {
@@ -51,8 +66,8 @@ export default function ActivityCard({
     const archivosEntries = Object.entries(task.archivos || {});
     const calificacionesEntries = Object.entries(task.calificaciones || {});
 
-    // Una tarea se considera entregada si el estatus es 'submitted', 'graded' o 'entregado' (y no 'pending')
-    const entregadasCount = archivosEntries.filter(([_, val]) => {
+    // Una tarea se considera entregada si el estatus es 'submitted', 'graded', 'entregado' o 'entregada'
+    const totalEntregasRealizadas = archivosEntries.filter(([_, val]) => {
         if (!val) return false;
         const estatus = (val.estatus || '').toLowerCase();
         if (estatus === 'pending') return false;
@@ -67,7 +82,12 @@ export default function ActivityCard({
     
     // Si totalStudents está disponible, usarlo como total del grupo; de lo contrario usar asignadas a la tarea o 1
     const totalGrupo = totalStudents > 0 ? totalStudents : (calificacionesEntries.length > 0 ? calificacionesEntries.length : 1);
-    const pendientesCount = Math.max(0, totalGrupo - entregadasCount);
+    
+    // Entregadas por calificar (entregadas que aún no han sido evaluadas por el docente)
+    const entregadasCount = Math.max(0, totalEntregasRealizadas - calificadasCount);
+    
+    // Pendientes sin entregar
+    const pendientesCount = Math.max(0, totalGrupo - totalEntregasRealizadas);
 
     return (
         <div className="py-5 border-b border-slate-200/90 last:border-b-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -76,10 +96,10 @@ export default function ActivityCard({
                 {/* Header Título e Icono */}
                 <div className="flex items-start gap-4 min-w-0">
                     <div
-                        style={{ backgroundColor: `${activeTheme.strokeColor}18`, color: activeTheme.strokeColor }}
-                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-0.5 font-bold"
+                        style={{ backgroundColor: activeTheme.strokeColor }}
+                        className="w-10 h-10 rounded-full text-white flex items-center justify-center shrink-0 mt-0.5 font-bold shadow-2xs"
                     >
-                        <FileText size={20} />
+                        <ClipboardList size={20} />
                     </div>
                     <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -93,7 +113,7 @@ export default function ActivityCard({
                             )}
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-normal">
-                            <span>{task.fecha_entrega ? `Fecha límite: ${formatHumanDate(task.fecha_entrega)}` : 'Sin fecha límite'}</span>
+                            <span>{task.fecha_entrega || (task as any).deadline ? `Fecha límite: ${formatHumanDate(task.fecha_entrega, task.hora_entrega, (task as any).deadline)}` : 'Sin fecha límite'}</span>
                             <span>•</span>
                             <span className="font-semibold text-slate-700">{task.puntos || 10} puntos</span>
                         </div>

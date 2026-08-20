@@ -6,23 +6,31 @@ import ParcialHeader from '@/Components/common/ParcialHeader';
 
 import { Loader2, Cloud, CalendarDays } from 'lucide-react';
 
-const formatHumanDate = (dateStr?: string) => {
+const formatHumanDate = (dateStr?: string, timeStr?: string, deadlineStr?: string) => {
+    if (deadlineStr && deadlineStr !== 'Sin fecha') return deadlineStr;
     if (!dateStr) return 'Sin fecha';
-    const date = new Date(dateStr + 'T00:00:00');
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
 
-    const diffTime = date.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Hoy';
-    if (diffDays === 1) return 'Mañana';
-    if (diffDays === -1) return 'Ayer';
-    if (diffDays > 1 && diffDays < 7) {
-        return date.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^\w/, (c) => c.toUpperCase());
+    let combinedStr = dateStr.trim();
+    if (timeStr && timeStr.trim() !== '' && !combinedStr.includes(' ') && !combinedStr.includes('T')) {
+        combinedStr = `${combinedStr} ${timeStr.trim()}`;
     }
 
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    const normalizedStr = combinedStr.includes(' ') 
+        ? combinedStr.replace(' ', 'T') 
+        : (!combinedStr.includes('T') ? combinedStr + 'T00:00:00' : combinedStr);
+    
+    const date = new Date(normalizedStr);
+
+    if (isNaN(date.getTime())) return dateStr;
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const hasTime = combinedStr.includes(' ') || combinedStr.includes('T') || (timeStr && timeStr.trim() !== '');
+
+    return hasTime ? `${day}/${month}/${year} ${formattedTime}` : `${day}/${month}/${year}`;
 };
 
 interface TasksTabProps {
@@ -97,25 +105,33 @@ export default function TasksTab({
                 <div className="flex flex-col items-center gap-0.5 min-w-[140px] max-w-[200px] text-center">
                     <span className="text-xs font-normal text-slate-800 truncate w-full" title={t.nombre}>{t.nombre}</span>
                     <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-medium uppercase tracking-tight">
-                        <span className="flex items-center gap-0.5"><CalendarDays size={10} /> {formatHumanDate(t.fecha_entrega)}</span>
+                        <span className="flex items-center gap-0.5"><CalendarDays size={10} /> {formatHumanDate(t.fecha_entrega, t.hora_entrega, (t as any).deadline)}</span>
                         <span>•</span>
                         <span>{t.puntos || 10} pts</span>
                     </div>
                 </div>
             ),
             align: 'center' as const,
-            accessor: (r: StudentGrade) => (
-                <div className="flex justify-center items-center gap-0">
-                    <GradeSelector
-                        initialValue={t.calificaciones[r.id] ?? ''}
-                        max={t.puntos || 10}
-                        disabled={isReadOnly}
-                        onInstantChange={(val) => handleInstantTaskGrade(t.id, r.id, val)}
-                        onChange={(val) => handleTaskGradeChange(t.id, r.id, val)}
-                    />
-                    <span className="text-sm text-slate-400 font-normal">/{t.puntos || 10}</span>
-                </div>
-            )
+            accessor: (r: StudentGrade) => {
+                const studentFile = t.archivos?.[r.id];
+                const hasDelivery = Boolean(studentFile && (studentFile.url || studentFile.raw_url || studentFile.estatus === 'submitted' || studentFile.estatus === 'entregado' || studentFile.estatus === 'graded'));
+                const studentGradeVal = t.calificaciones?.[r.id];
+                const hasGrade = studentGradeVal !== "" && studentGradeVal !== undefined && studentGradeVal !== null;
+                const canGrade = hasDelivery || hasGrade;
+
+                return (
+                    <div className="flex justify-center items-center gap-0" title={!canGrade ? "No se puede calificar porque el alumno no ha entregado la tarea" : undefined}>
+                        <GradeSelector
+                            initialValue={t.calificaciones[r.id] ?? ''}
+                            max={t.puntos || 10}
+                            disabled={isReadOnly || !canGrade}
+                            onInstantChange={(val) => handleInstantTaskGrade(t.id, r.id, val)}
+                            onChange={(val) => handleTaskGradeChange(t.id, r.id, val)}
+                        />
+                        <span className="text-sm text-slate-400 font-normal">/{t.puntos || 10}</span>
+                    </div>
+                );
+            }
         })),
         {
             header: (

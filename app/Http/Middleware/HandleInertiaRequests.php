@@ -201,19 +201,20 @@ class HandleInertiaRequests extends Middleware
     private function getDocenteGroups(
         int $userId
     ): array {
+        $activePeriod = AcademicPeriodService::activePeriod();
+        if (!$activePeriod) {
+            return [];
+        }
+
+        $revision = Cache::get('admin:cargas:list:revision', 1);
+
         return Cache::remember(
-            "sidebar_docente_{$userId}",
+            "sidebar_docente_{$userId}_c{$activePeriod->id}_v{$revision}",
             1800,
             static function () use (
-                $userId
+                $userId,
+                $activePeriod
             ): array {
-                /*
-                |--------------------------------------------------------------------------
-                | Teacher ID
-                |--------------------------------------------------------------------------
-                |
-                | Solo necesitamos el ID.
-                */
                 $teacherId = Teacher::query()
                     ->where(
                         'usuario_id',
@@ -225,21 +226,6 @@ class HandleInertiaRequests extends Middleware
                     return [];
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Cargas académicas
-                |--------------------------------------------------------------------------
-                |
-                | Usamos joins para evitar eager loading múltiple.
-                |
-                | IMPORTANTE:
-                | Verifica que estas tablas se llamen exactamente:
-                |
-                | cargas_academicas
-                | grupos
-                | materias
-                |
-                */
                 return DB::table(
                     'cargas_academicas as ca'
                 )
@@ -258,6 +244,10 @@ class HandleInertiaRequests extends Middleware
                     ->where(
                         'ca.docente_id',
                         $teacherId
+                    )
+                    ->where(
+                        'ca.ciclo_id',
+                        $activePeriod->id
                     )
                     ->select([
                         'ca.uuid as id',
@@ -422,6 +412,7 @@ class HandleInertiaRequests extends Middleware
 
                             return [
                                 'id' => $row->id,
+                                'uuid' => $row->id,
 
                                 'nombre' =>
                                     $row->nombre

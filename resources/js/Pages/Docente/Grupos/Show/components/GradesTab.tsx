@@ -120,6 +120,15 @@ export default function GradesTab({
         },
     ], [activeCriteria, isReadOnly, isSaving, getStudentTasksAverage]);
 
+    const uniqueStudentGrades = React.useMemo(() => {
+        const seen = new Set();
+        return (studentGrades || []).filter(s => {
+            if (!s || seen.has(s.id)) return false;
+            seen.add(s.id);
+            return true;
+        });
+    }, [studentGrades]);
+
     return (
         <div className="space-y-6">
             <ParcialHeader
@@ -128,7 +137,7 @@ export default function GradesTab({
             />
 
             <AppTable
-                data={studentGrades}
+                data={uniqueStudentGrades}
                 keyExtractor={r => r.id}
                 columns={columns}
             />

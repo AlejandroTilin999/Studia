@@ -383,15 +383,23 @@ export default function AssignmentSubmissionCard({
                 </div>
             )}
 
-            {!isDelivered && !isOverdue && attachedFiles.length > 0 && (
+            {!isDelivered && !isOverdue && (
                 <button
                     type="button"
                     onClick={() => confirmSubmission(attachedFiles)}
                     disabled={isUploading}
-                    style={{ backgroundColor: strokeColor }}
-                    className="w-full py-2.5 text-white text-xs font-extrabold transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                    style={attachedFiles.length > 0 ? { backgroundColor: strokeColor } : undefined}
+                    className={`w-full py-2.5 rounded-xl text-xs font-extrabold transition-all shadow-xs flex items-center justify-center gap-2 ${
+                        attachedFiles.length > 0
+                            ? 'text-white hover:opacity-90'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                    } disabled:cursor-wait disabled:opacity-60`}
                 >
-                    {isUploading ? 'Subiendo archivo…' : 'Entregar tarea'}
+                    {isUploading 
+                        ? 'Procesando entrega…' 
+                        : attachedFiles.length > 0 
+                            ? 'Entregar tarea' 
+                            : 'Entregar sin archivo adjunto'}
                 </button>
             )}
 

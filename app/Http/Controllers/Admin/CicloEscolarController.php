@@ -35,6 +35,8 @@ class CicloEscolarController extends Controller
         Cache::forget('admin_academic_periods_catalog');
         Cache::forget('admin_alumnos_cycles_catalog');
         Cache::forget('admin_docentes_cycles_catalog');
+        Cache::add('admin:cargas:list:revision', 1, now()->addDays(30));
+        Cache::increment('admin:cargas:list:revision');
     }
 
     /**

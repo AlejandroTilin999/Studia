@@ -39,10 +39,11 @@ export function useRealtime(options: { onAcademicPeriodChanged?: (event: any) =>
                 preserveScroll: true,
                 preserveState: true,
                 replace: true,
+                showProgress: false,
                 ...options
             });
             reloadTimeoutRef.current = null;
-        }, 75);
+        }, 150);
     };
 
     useEffect(() => {

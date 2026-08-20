@@ -16,7 +16,7 @@ class EspecialidadController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Especialidades/Index', [
-            'especialidades' => Inertia::defer(function () {
+            'especialidades' => fn () => \Cache::remember('admin_especialidades_list', 600, function () {
                 return Specialty::select('id', 'nombre', 'codigo', 'sub_areas')
                     ->withCount('courses')
                     ->get()
@@ -68,6 +68,8 @@ class EspecialidadController extends Controller
         ]);
 
         Specialty::create($validated);
+        \Cache::forget('admin_especialidades_list');
+        \Cache::forget('admin_specialty_distribution');
 
         return redirect()->back()->with('message', 'Especialidad registrada con éxito.');
     }
@@ -86,6 +88,8 @@ class EspecialidadController extends Controller
         ]);
 
         $specialty->update($validated);
+        \Cache::forget('admin_especialidades_list');
+        \Cache::forget('admin_specialty_distribution');
 
         return redirect()->back()->with('message', 'Especialidad actualizada con éxito.');
     }
@@ -103,6 +107,8 @@ class EspecialidadController extends Controller
         }
 
         $specialty->delete();
+        \Cache::forget('admin_especialidades_list');
+        \Cache::forget('admin_specialty_distribution');
         return redirect()->back();
     }
 }

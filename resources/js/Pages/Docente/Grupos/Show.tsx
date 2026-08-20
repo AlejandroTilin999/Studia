@@ -86,7 +86,7 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                     }}
                 />
 
-                <div className="p-6 md:p-8 flex-1 flex flex-col space-y-4">
+                <div className="px-4 pb-6 pt-2 md:px-8 md:pb-8 md:pt-2 flex-1 flex flex-col space-y-3">
                     {isReadOnly && activeParcial && (
                         <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
                             <div className="bg-white p-2 rounded-xl text-amber-600 shadow-sm border border-amber-100">
@@ -242,7 +242,7 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                                                         }}
                                                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 text-xs font-bold shadow-none"
                                                     >
-                                                        <span>Calificaciones</span>
+                                                        <span>Actividades</span>
                                                         <ChevronRight size={14} className="stroke-[3]" />
                                                     </button>
                                                 ) : (
@@ -284,7 +284,7 @@ function DocenteGruposContent({ classInfo }: { classInfo: any }) {
                     )}
 
                     {screen === 'grades' && (
-                        <div className="flex flex-col flex-grow space-y-4 px-2">
+                        <div className="flex flex-col flex-grow space-y-3 px-2 pt-0">
                             <div className="flex justify-between items-center">
                                 <BackButton onClick={() => {
                                     returnToParciales();

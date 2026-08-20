@@ -121,22 +121,48 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     $metricsData = Cache::remember(
         'admin_system_metrics',
-        600,
+        60,
         static function (): array {
+            $workingPeriod = AcademicPeriodService::workingPeriod();
+            $periodId = $workingPeriod?->id;
+
+            $activeStudents = $periodId
+                ? DB::table('inscripciones')
+                    ->where('ciclo_id', $periodId)
+                    ->where('estatus', 'active')
+                    ->distinct('usuario_id')
+                    ->count('usuario_id')
+                : DB::table('users')->where('rol', 'alumno')->count();
+
+            $activeGroups = $periodId
+                ? DB::table('cargas_academicas')
+                    ->where('ciclo_id', $periodId)
+                    ->pluck('grupo_id')
+                    ->concat(
+                        DB::table('inscripciones')
+                            ->where('ciclo_id', $periodId)
+                            ->where('estatus', 'active')
+                            ->groupBy('grupo_id')
+                            ->havingRaw('COUNT(*) >= 2')
+                            ->pluck('grupo_id')
+                    )
+                    ->filter()
+                    ->unique()
+                    ->count()
+                : DB::table('grupos')->count();
+
             $raw = DB::selectOne("
                 SELECT
-                    (SELECT COUNT(*) FROM users WHERE rol = 'alumno') AS students_count,
                     (SELECT COUNT(*) FROM users WHERE rol = 'docente') AS teachers_count,
-                    (SELECT COUNT(*) FROM grupos WHERE activo = true) AS groups_count,
                     (SELECT COUNT(*) FROM materias) AS courses_count,
                     (SELECT COUNT(*) FROM especialidades) AS specialties_count,
                     (SELECT COUNT(*) FROM users) AS users_count
             ");
 
             return [
-                'studentsCount' => (int) ($raw->students_count ?? 0),
+                'studentsCount' => (int) $activeStudents,
                 'teachersCount' => (int) ($raw->teachers_count ?? 0),
-                'groupsCount' => (int) ($raw->groups_count ?? 0),
+                'groupsCount' => (int) ($activeGroups > 0 ? $activeGroups : 0),
                 'coursesCount' => (int) ($raw->courses_count ?? 0),
                 'specialtiesCount' => (int) ($raw->specialties_count ?? 0),
                 'usersCount' => (int) ($raw->users_count ?? 0),
@@ -294,7 +320,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $assignedLoad = [];
                 if ($teacher && $activeCycle) {
-                    $assignedLoad = \Cache::remember("docente_dashboard_loads_{$teacher->id}_c{$activeCycle->id}", 300, function() use ($teacher, $activeCycle) {
+                    $revision = \Cache::get('admin:cargas:list:revision', 1);
+                    $assignedLoad = \Cache::remember("docente_dashboard_loads_{$teacher->id}_c{$activeCycle->id}_v{$revision}", 300, function() use ($teacher, $activeCycle) {
                         $loads = \App\Models\AcademicLoad::where('docente_id', $teacher->id)
                             ->where('ciclo_id', $activeCycle->id)
                             ->with(['academicGroup', 'course'])

@@ -53,39 +53,26 @@ export default function ReportParams({
     onSendEmail,
     onReset,
 }: ReportParamsProps) {
-    const [studentSearch, setStudentSearch] = useState('');
     if (!selectedReport) return null;
 
     const showStudent = selectedReport === 'constancia' || selectedReport === 'boleta' || selectedReport === 'kardex';
-    const showPeriod = selectedReport === 'asistencia' || selectedReport === 'boleta';
+    const showPeriod = false;
 
     // Validación de formulario completo según el tipo de reporte
     const isFormValid = useMemo(() => {
         if (selectedReport === 'asistencia') {
-            return !!groupFilter && !!periodFilter;
+            return !!groupFilter;
         }
-        if (selectedReport === 'constancia' || selectedReport === 'kardex') {
+        if (selectedReport === 'constancia' || selectedReport === 'kardex' || selectedReport === 'boleta') {
             return !!selectedStudentMatricula;
         }
-        if (selectedReport === 'boleta') {
-            return !!selectedStudentMatricula && !!periodFilter;
-        }
         return false;
-    }, [selectedReport, groupFilter, selectedStudentMatricula, periodFilter]);
+    }, [selectedReport, groupFilter, selectedStudentMatricula]);
 
     // Verificar si hay algún filtro seleccionado para habilitar el reset
     const isAnyFilterSelected = useMemo(() => {
         return !!groupFilter || !!selectedStudentMatricula || !!periodFilter;
     }, [groupFilter, selectedStudentMatricula, periodFilter]);
-
-    const visibleStudents = useMemo(() => {
-        const term = studentSearch.trim().toLocaleLowerCase('es-MX');
-        if (!term) return filteredStudents;
-        return filteredStudents.filter((student) =>
-            student.nombre.toLocaleLowerCase('es-MX').includes(term) ||
-            student.matricula.toLocaleLowerCase('es-MX').includes(term),
-        );
-    }, [filteredStudents, studentSearch]);
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
@@ -125,22 +112,13 @@ export default function ReportParams({
                                 Estudiante seleccionado <span className="text-red-500 font-bold ml-0.5">*</span>
                             </label>
                         </div>
-                        <div className="relative mb-2">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                value={studentSearch}
-                                onChange={(event) => setStudentSearch(event.target.value)}
-                                placeholder="Buscar por nombre o matrícula..."
-                                className="h-9 w-full rounded-lg border border-slate-100 bg-slate-50 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-[#0266E0]"
-                            />
-                        </div>
                         <FormSelect
                             value={selectedStudentMatricula}
                             onChange={e => setSelectedStudentMatricula(e.target.value)}
                             className="h-11 bg-slate-50 border-slate-100 rounded-xl text-[13.5px] text-slate-700"
                         >
                             <option value="">Seleccionar alumno...</option>
-                            {visibleStudents.map((s) => (
+                            {filteredStudents.map((s) => (
                                 <option key={s.matricula} value={s.matricula}>{s.nombre}</option>
                             ))}
                         </FormSelect>

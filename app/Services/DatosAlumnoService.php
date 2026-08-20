@@ -34,28 +34,30 @@ class DatosAlumnoService
 
     public function obtenerInformacionPortal(User $usuario, ?Enrollment $inscripcion): array
     {
-        $nombreCiclo = $inscripcion?->academicPeriod?->nombre ?? 'Ciclo no activo';
-        $ciclo = str_starts_with($nombreCiclo, 'Ciclo')
-            ? $nombreCiclo
-            : "Ciclo Escolar {$nombreCiclo}";
+        return Cache::remember("student_portal_info_{$usuario->id}", 600, function() use ($usuario, $inscripcion) {
+            $nombreCiclo = $inscripcion?->academicPeriod?->nombre ?? 'Ciclo no activo';
+            $ciclo = str_starts_with($nombreCiclo, 'Ciclo')
+                ? $nombreCiclo
+                : "Ciclo Escolar {$nombreCiclo}";
 
-        return [
-            'groupId' => $inscripcion?->grupo_id,
-            'name' => $usuario->nombre_completo,
-            'firstName' => $usuario->nombre,
-            'lastNamePaternal' => $usuario->apellido_paterno,
-            'lastNameMaternal' => $usuario->apellido_materno,
-            'email' => $usuario->email,
-            'matricula' => $inscripcion?->codigo_alumno ?? 'ALU-' . $usuario->id,
-            'groupName' => $inscripcion?->academicGroup
-                ? ($inscripcion->academicGroup->codigo . ' ' . $inscripcion->academicGroup->nombre)
-                : 'Sin grupo',
-            'specialty' => $inscripcion?->academicGroup?->especialidad ?? 'Técnico en Informática',
-            'registeredAt' => $inscripcion?->created_at?->format('M Y'),
-            'gpa' => '—',
-            'tutor' => $inscripcion?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
-            'ciclo' => $ciclo,
-        ];
+            return [
+                'groupId' => $inscripcion?->grupo_id,
+                'name' => $usuario->nombre_completo,
+                'firstName' => $usuario->nombre,
+                'lastNamePaternal' => $usuario->apellido_paterno,
+                'lastNameMaternal' => $usuario->apellido_materno,
+                'email' => $usuario->email,
+                'matricula' => $inscripcion?->codigo_alumno ?? 'ALU-' . $usuario->id,
+                'groupName' => $inscripcion?->academicGroup
+                    ? ($inscripcion->academicGroup->codigo . ' ' . $inscripcion->academicGroup->nombre)
+                    : 'Sin grupo',
+                'specialty' => $inscripcion?->academicGroup?->especialidad ?? 'Técnico en Informática',
+                'registeredAt' => $inscripcion?->created_at?->format('M Y'),
+                'gpa' => '—',
+                'tutor' => $inscripcion?->academicGroup?->tutor?->user?->nombre_completo ?? 'Sin tutor',
+                'ciclo' => $ciclo,
+            ];
+        });
     }
 
     public function existeCicloActivo(): bool

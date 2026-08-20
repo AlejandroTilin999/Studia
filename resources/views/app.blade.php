@@ -29,8 +29,9 @@
 
         <!-- Recurso común a todas las sesiones. Los banners por rol se cargan
              desde su componente para no descargar imágenes que no se usan. -->
-        <link rel="preload" href="/assets/phid_logo.webp" as="image">
-        @if (request()->is('alumno'))
+        <link rel="preload" href="/assets/phid_logo.webp" as="image" type="image/webp" fetchpriority="high">
+        <link rel="preload" href="/assets/logo-ph-blanco.webp" as="image" type="image/webp">
+        @if (request()->is('alumno*'))
             {{-- Se usa en la primera pantalla del alumno: descargarla antes de
                  hidratar React evita que aparezca tarde tras el loader. --}}
             <link rel="preload" href="/assets/alumno-dashboard.webp" as="image" type="image/webp" fetchpriority="high">

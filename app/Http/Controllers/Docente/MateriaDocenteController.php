@@ -69,7 +69,9 @@ class MateriaDocenteController extends Controller
     {
         $this->obtenerCargaAutorizada($uuid);
         $version = \Cache::get("docente_class_version_{$uuid}", 1);
-        return \Cache::remember("full_class_data_{$uuid}_v{$version}", 300, function() use ($uuid) {
+        $periodRevision = \Cache::get('academic_period_revision', 1);
+        $globalRevision = \Cache::get('docente_class_revision_global', 1);
+        return \Cache::remember("full_class_data_{$uuid}_v{$version}_r{$periodRevision}_g{$globalRevision}", 300, function() use ($uuid) {
             $load = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'criterios', 'tareas.entregas'])
                 ->where('uuid', $uuid)
                 ->first();
@@ -81,7 +83,9 @@ class MateriaDocenteController extends Controller
             ->where('estatus', 'active')
             ->select('id', 'grupo_id', 'usuario_id', 'codigo_alumno', 'estatus')
             ->with('user:id,nombre,apellido_paterno,apellido_materno')
-            ->get();
+            ->get()
+            ->unique('usuario_id')
+            ->values();
 
         $studentIds = $enrollments->pluck('usuario_id');
         $allGrades = Grade::whereIn('usuario_id', $studentIds)
@@ -113,6 +117,8 @@ class MateriaDocenteController extends Controller
                 $consolidadoLookup[$g->usuario_id] = $g;
             }
         }
+
+        $freshPeriod = AcademicPeriodService::findCached($load->ciclo_id) ?: $load->academicPeriod;
 
         foreach ($parciales as $p) {
             $criteria = $load->criterios->where('parcial', $p)->values();
@@ -150,9 +156,9 @@ class MateriaDocenteController extends Controller
             $lockConfig = ['allowed' => false, 'reason' => 'Ciclo no definido'];
             $lockOperacion = ['allowed' => false, 'reason' => 'Ciclo no definido'];
 
-            if ($load->academicPeriod) {
-                $lockConfig = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'config', $load);
-                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($load->academicPeriod, $p, 'operacion', $load);
+            if ($freshPeriod) {
+                $lockConfig = AcademicPeriodService::isCapturaHabilitada($freshPeriod, $p, 'config', $load);
+                $lockOperacion = AcademicPeriodService::isCapturaHabilitada($freshPeriod, $p, 'operacion', $load);
             }
 
             $fullData['parciales'][$p] = [
@@ -392,7 +398,14 @@ class MateriaDocenteController extends Controller
                         
                         $entregaPrevia = EntregaTarea::where('tarea_id', $tarea->id)->where('usuario_id', $userId)->first();
                         $estatusActual = $entregaPrevia?->estatus ?? 'pending';
-                        $nuevoEstatus = ($finalScore !== '') ? 'graded' : (($estatusActual === 'submitted' || $estatusActual === 'entregado') ? $estatusActual : 'pending');
+                        $hasSubmitted = in_array($estatusActual, ['submitted', 'graded', 'entregado', 'entregada']);
+                        
+                        // [REGLA ACADÉMICA] No permitir asentar calificación si el alumno no ha entregado la tarea
+                        if (!$hasSubmitted && $finalScore !== '') {
+                            continue;
+                        }
+
+                        $nuevoEstatus = ($finalScore !== '') ? 'graded' : (($hasSubmitted) ? $estatusActual : 'pending');
 
                         EntregaTarea::updateOrCreate(
                             ['tarea_id' => $tarea->id, 'usuario_id' => $userId],
@@ -694,7 +707,10 @@ class MateriaDocenteController extends Controller
     {
         $version = \Cache::get('student_cache_version', 1);
         \App\Services\GradeService::invalidateStudentCache();
+        \Cache::add("docente_class_version_{$load->uuid}", 1, now()->addDays(30));
         \Cache::increment("docente_class_version_{$load->uuid}");
+        \Cache::add('docente_class_revision_global', 1, now()->addDays(30));
+        \Cache::increment('docente_class_revision_global');
         // Las claves de tareas y kardex incluyen versión. Incrementarla las
         // invalida sin recorrer cada alumno ni borrar archivos uno por uno.
         if (!$clearSidebar) return;

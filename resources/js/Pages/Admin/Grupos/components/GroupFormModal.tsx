@@ -57,51 +57,64 @@ export default function GroupFormModal({
         return [1, 3, 5];
     }, [activeParity]);
 
+    const getDefaultGeneration = useMemo(() => {
+        return (semNum: number) => {
+            let targetStartYear = currentYear;
+            if (activeParity === 'even') {
+                if (semNum === 2) targetStartYear = currentYear - 1;
+                else if (semNum === 4) targetStartYear = currentYear - 2;
+                else if (semNum === 6) targetStartYear = currentYear - 3;
+            } else {
+                if (semNum === 1) targetStartYear = currentYear;
+                else if (semNum === 3) targetStartYear = currentYear - 1;
+                else if (semNum === 5) targetStartYear = currentYear - 2;
+            }
+            return `${targetStartYear}-${targetStartYear + 3}`;
+        };
+    }, [currentYear, activeParity]);
+
     // Sincronizar y parsear datos al abrir el modal
     useEffect(() => {
         if (isOpen) {
-            if (mode === 'edit' && data.codigo) {
-                const cleanCode = data.codigo.trim();
-                const parts = cleanCode.split('-');
-                if (parts.length >= 1) {
-                    const firstPart = parts[0];
-                    if (firstPart.length >= 2) {
+            if (mode === 'edit') {
+                if (data.semestre) {
+                    setSelectedSemester(data.semestre.toString());
+                } else if (data.codigo) {
+                    const firstPart = data.codigo.trim().split('-')[0] || '';
+                    if (firstPart.length >= 1) {
                         setSelectedSemester(firstPart.charAt(0));
-                        setSelectedSection(data.seccion || firstPart.charAt(1).toUpperCase());
                     }
                 }
+                setSelectedSection(data.seccion || 'A');
             } else {
-                // En modo creación, selecciona el semestre por defecto según el ciclo activo (1° en Periodo A, 2° en Periodo B)
-                const defaultSem = activeParity === 'even' ? '2' : '1';
-                setSelectedSemester(defaultSem);
+                // En modo creación, selecciona el semestre por defecto según el ciclo activo (2° en Periodo B)
+                const defaultSemStr = activeParity === 'even' ? '2' : '1';
+                const defaultSemNum = Number(defaultSemStr);
+                const defaultGen = getDefaultGeneration(defaultSemNum);
+
+                setSelectedSemester(defaultSemStr);
                 setSelectedSection('A');
                 setData('seccion', 'A');
                 setData('turno', 'Matutino');
-                setData('semestre', Number(defaultSem));
-                setData('generacion', '');
+                setData('semestre', defaultSemNum);
+                setData('generacion', defaultGen);
                 setData('crear_escalera', true);
             }
         }
-    }, [isOpen, mode, activeParity]);
+    }, [isOpen, mode, activeParity, currentYear, getDefaultGeneration]);
 
-    // [LÓGICA v6.5] Autogenerar generación basada en semestre e inteligencia temporal
+    // Autogenerar generación al cambiar semestre en modo creación
     useEffect(() => {
         if (isOpen && mode === 'create' && selectedSemester) {
-            const sem = Number(selectedSemester);
-            let targetStartYear = currentYear;
-
-            // Restar años según el nivel académico
-            if (sem === 3 || sem === 4) targetStartYear -= 1;
-            else if (sem === 5 || sem === 6) targetStartYear -= 2;
-
-            const gen = `${targetStartYear}-${targetStartYear + 3}`;
+            const semNum = Number(selectedSemester);
+            const gen = getDefaultGeneration(semNum);
             setData('generacion', gen);
         }
-    }, [selectedSemester, isOpen, mode, currentYear]);
+    }, [selectedSemester, isOpen, mode, getDefaultGeneration]);
 
     const generationOptions = React.useMemo(() => {
         const options: string[] = [];
-        const baseYear = currentYear - 3;
+        const baseYear = currentYear - 4;
         for (let i = 0; i <= 6; i++) {
             const start = baseYear + i;
             const end = start + 3;
@@ -114,30 +127,36 @@ export default function GroupFormModal({
     }, [currentYear, data.generacion]);
 
     const getSpecialtySuffix = (major: string) => {
-        const majorLower = major.toLowerCase();
+        if (!major || !major.trim()) return '';
+        const majorLower = major.trim().toLowerCase();
         const match = specialties.find(
             s => s && ((s.nombre?.toLowerCase() === majorLower) ||
             (majorLower === 'ti' && s.nombre?.toLowerCase() === 'informática'))
         );
-        return match ? (match.codigo?.toUpperCase() || 'INF') : 'INF';
+        return match ? (match.codigo?.toUpperCase() || 'INF') : '';
     };
 
-    // Autogenerar código y nombre al cambiar semestre, sección o especialidad
+    // Autogenerar código y nombre al cambiar semestre, sección o especialidad solo en modo creación
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && mode === 'create') {
             const suffix = getSpecialtySuffix(data.especialidad);
-            if (selectedSemester && selectedSection && suffix) {
-                setData('codigo', `${selectedSemester}${selectedSection}-${suffix}-${data.generacion.split('-')[0] || currentYear}`);
+            if (selectedSemester && selectedSection && suffix && data.especialidad) {
+                const genYear = data.generacion ? data.generacion.split('-')[0] : currentYear;
+                setData('codigo', `${selectedSemester}${selectedSection}-${suffix}-${genYear}`);
                 setData('semestre', Number(selectedSemester));
                 setData('seccion', selectedSection);
             } else {
                 setData('codigo', '');
             }
         }
-    }, [selectedSemester, selectedSection, data.especialidad, data.generacion, isOpen, currentYear]);
+    }, [selectedSemester, selectedSection, data.especialidad, data.generacion, isOpen, currentYear, mode]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && mode === 'create') {
+            if (!data.especialidad) {
+                setData('nombre', '');
+                return;
+            }
             const majorLower = data.especialidad?.toLowerCase() || '';
             const match = specialties.find(
                 s => s && ((s.nombre?.toLowerCase() === majorLower) ||
@@ -151,9 +170,9 @@ export default function GroupFormModal({
                 setData('nombre', '');
             }
         }
-    }, [selectedSemester, selectedSection, data.especialidad, isOpen]);
+    }, [selectedSemester, selectedSection, data.especialidad, isOpen, mode]);
 
-    const isFormValid = data.generacion.trim() !== '' && data.especialidad.trim() !== '';
+    const isFormValid = mode === 'edit' || (data.generacion.trim() !== '' && data.especialidad.trim() !== '' && selectedSemester !== '');
 
     return (
         <BaseModal
@@ -215,58 +234,74 @@ export default function GroupFormModal({
                             <div className="space-y-1.5">
                                 <FormLabel required>Semestre</FormLabel>
                                 {mode === 'create' ? (
-                                    <FormInput
-                                        readOnly
-                                        value={selectedSemester ? `${selectedSemester}° Semestre (Inauguración)` : 'No disponible en Ciclo B'}
-                                        className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-700 font-semibold cursor-not-allowed select-none"
-                                    />
-                                ) : (
                                     <FormSelect
                                         value={selectedSemester}
                                         onChange={e => setSelectedSemester(e.target.value)}
                                         className="h-9 text-xs font-normal"
                                     >
-                                        {[1, 2, 3, 4, 5, 6].map(s => (
+                                        {availableSemesters.map(s => (
                                             <option key={s} value={s}>{s}° Semestre</option>
                                         ))}
                                     </FormSelect>
+                                ) : (
+                                    <FormInput
+                                        readOnly
+                                        value={selectedSemester ? `${selectedSemester}° Semestre` : '---'}
+                                        className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-700 font-semibold cursor-not-allowed select-none"
+                                    />
                                 )}
                             </div>
                             <div className="space-y-1.5">
                                 <FormLabel required>Bachillerato / Especialidad</FormLabel>
-                                <FormSelect
-                                    value={data.especialidad}
-                                    onChange={e => setData('especialidad', e.target.value)}
-                                    className="h-9 text-xs"
-                                >
-                                    <option value="">Selecciona especialidad</option>
-                                    {specialties.map((s) => (
-                                        <option key={s.id} value={s.nombre}>{s.nombre}</option>
-                                    ))}
-                                </FormSelect>
+                                {mode === 'create' ? (
+                                    <FormSelect
+                                        value={data.especialidad}
+                                        onChange={e => setData('especialidad', e.target.value)}
+                                        className="h-9 text-xs"
+                                    >
+                                        <option value="">Selecciona especialidad</option>
+                                        {specialties.map((s) => (
+                                            <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                                        ))}
+                                    </FormSelect>
+                                ) : (
+                                    <FormInput
+                                        readOnly
+                                        value={data.especialidad || '---'}
+                                        className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-700 font-semibold cursor-not-allowed select-none"
+                                    />
+                                )}
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                             <div className="space-y-1.5">
                                 <FormLabel required>Generación</FormLabel>
-                                <FormSelect
-                                    value={data.generacion}
-                                    onChange={e => setData('generacion', e.target.value)}
-                                    className="h-9 text-xs font-normal"
-                                >
-                                    <option value="">Generación...</option>
-                                    {generationOptions.map(gen => (
-                                        <option key={gen} value={gen}>Gen. {gen}</option>
-                                    ))}
-                                </FormSelect>
+                                {mode === 'create' ? (
+                                    <FormSelect
+                                        value={data.generacion}
+                                        onChange={e => setData('generacion', e.target.value)}
+                                        className="h-9 text-xs font-normal"
+                                    >
+                                        <option value="">Seleccionar generación...</option>
+                                        {generationOptions.map(gen => (
+                                            <option key={gen} value={gen}>Gen. {gen}</option>
+                                        ))}
+                                    </FormSelect>
+                                ) : (
+                                    <FormInput
+                                        readOnly
+                                        value={data.generacion ? `Gen. ${data.generacion}` : '---'}
+                                        className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-700 font-semibold cursor-not-allowed select-none"
+                                    />
+                                )}
                                 {errors.generacion && <span className="text-red-500 text-[10px] mt-1 block">{errors.generacion}</span>}
                             </div>
                             <div className="space-y-1.5">
                                 <FormLabel required>Turno</FormLabel>
                                 <FormInput
                                     readOnly
-                                    value={data.turno}
+                                    value={data.turno || 'Matutino'}
                                     className="h-9 text-xs bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed select-none"
                                 />
                             </div>

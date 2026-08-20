@@ -42,8 +42,8 @@ export default function GroupHeaderBanner({
     const descText = descripcion || 'Gestiona los parciales, configura criterios de evaluación y captura calificaciones de tus alumnos.';
 
     return (
-        <div className="w-full select-none space-y-4">
-            <div className="-mt-6 -mx-4 sm:-mx-6 md:-mx-8 mb-6 border-b border-slate-200 bg-white overflow-hidden">
+        <div className="w-full select-none">
+            <div className="-mt-6 -mx-4 sm:-mx-6 md:-mx-8 mb-1 border-b border-slate-200 bg-white overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-3 items-stretch min-h-[290px]">
                     {/* Banner Principal (Full Bleed pegado a bordes) */}
                     <div 
@@ -93,9 +93,6 @@ export default function GroupHeaderBanner({
                                 className="absolute left-8 top-28 w-12 h-12 rounded-full opacity-25" 
                             />
                         </div>
-
-                        {/* Grid overlay sutil */}
-                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e88e505_1px,transparent_1px),linear-gradient(to_bottom,#1e88e505_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none z-0" />
 
                         <div className="relative z-10 space-y-3 text-left pl-2 sm:pl-4 pr-2 sm:pr-4">
                             {/* Pill superior */}

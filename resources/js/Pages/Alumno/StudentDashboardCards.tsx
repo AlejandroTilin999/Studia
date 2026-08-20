@@ -170,8 +170,6 @@ export default function StudentDashboardCards({
                                     href={`/alumno/materias/${subjectTargetId}`}
                                     preserveScroll
                                     preserveState={false}
-                                    prefetch="hover"
-                                    cacheFor={120000}
                                     style={{
                                         backgroundColor: colors.bgHex || '#e8f0fe',
                                         borderColor: `${colors.strokeColor}40`

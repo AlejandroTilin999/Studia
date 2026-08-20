@@ -16,13 +16,18 @@ class GradeService
     private static $cachedTasks = [];
 
     /** Invalida de forma segura los snapshots académicos de todos los alumnos. */
-    public static function invalidateStudentCache(): void
+    public static function invalidateStudentCache(?int $userId = null): void
     {
         // Cache::increment no crea la clave de forma consistente en todos los
         // drivers. Inicializarla primero evita que una tarea nueva conserve un
         // listado anterior después de limpiar caché o en una sesión nueva.
         \Cache::add('student_cache_version', 1, now()->addDays(30));
         \Cache::increment('student_cache_version');
+        if ($userId) {
+            \Cache::forget("sidebar_alumno_{$userId}");
+            \Cache::forget("student_portal_info_{$userId}");
+            \Cache::forget("student_cache_version_{$userId}");
+        }
     }
 
     /**
@@ -38,25 +43,23 @@ class GradeService
     /**
      * Calcula las calificaciones detalladas y promedios de un alumno (Optimizado con Cache).
      */
-    public static function getStudentKardex($userId)
+    public static function getStudentKardex($userId, $periodId = null)
     {
         $version = self::studentCacheVersion($userId);
-        return \Cache::remember("student_kardex_{$userId}_v{$version}", 600, function() use ($userId) {
-            // [INTELIGENCIA v4.2] Priorizar la inscripción del ciclo VIGENTE primero
-            $activeCycle = AcademicPeriodService::activePeriod();
+        $cacheKey = $periodId ? "student_kardex_{$userId}_p{$periodId}_v{$version}" : "student_kardex_{$userId}_v{$version}";
+        return \Cache::remember($cacheKey, 600, function() use ($userId, $periodId) {
+            $targetCycleId = $periodId ?: (AcademicPeriodService::activePeriod()?->id);
 
             $enrollment = null;
-            if ($activeCycle) {
+            if ($targetCycleId) {
                 $enrollment = Enrollment::where('usuario_id', $userId)
-                    ->where('ciclo_id', $activeCycle->id)
-                    ->where('estatus', 'active')
+                    ->where('ciclo_id', $targetCycleId)
                     ->with(['academicGroup', 'academicPeriod'])
                     ->first();
             }
 
             if (!$enrollment) {
                 $enrollment = Enrollment::where('usuario_id', $userId)
-                    ->where('estatus', 'active')
                     ->with(['academicGroup', 'academicPeriod'])
                     ->orderBy('ciclo_id', 'desc')
                     ->first();
@@ -205,27 +208,30 @@ class GradeService
      * Obtiene sólo el resumen de una materia. Esta ruta se usa al abrir una
      * materia para renderizar sus parciales sin esperar el kardex completo.
      */
-    public static function getStudentSubjectKardex($userId, int $loadId): ?array
+    public static function getStudentSubjectKardex(int $userId, int|\App\Models\AcademicLoad $loadOrId): ?array
     {
+        $loadId = $loadOrId instanceof AcademicLoad ? $loadOrId->id : (int) $loadOrId;
         $version = self::studentCacheVersion($userId);
 
-        return \Cache::remember("student_subject_kardex_v2_{$userId}_{$loadId}_v{$version}", 600, function () use ($userId, $loadId) {
+        return \Cache::remember("student_subject_kardex_v4_{$userId}_{$loadId}_v{$version}", 600, function () use ($userId, $loadOrId, $loadId) {
             $emptyGrade = "\u{2014}";
+
+            $load = $loadOrId instanceof AcademicLoad
+                ? $loadOrId
+                : AcademicLoad::whereKey($loadId)->with(['course', 'teacher.user', 'criterios', 'academicPeriod'])->first();
+
+            if (!$load) return null;
+
+            if (!$load->relationLoaded('course') || !$load->relationLoaded('criterios')) {
+                $load->loadMissing(['course', 'teacher.user', 'criterios', 'academicPeriod']);
+            }
+
             $activeCycle = AcademicPeriodService::activePeriod();
             $enrollmentQuery = Enrollment::where('usuario_id', $userId)->where('estatus', 'active');
             $enrollment = $activeCycle
                 ? (clone $enrollmentQuery)->where('ciclo_id', $activeCycle->id)->with('academicPeriod')->first()
                 : null;
             $enrollment ??= $enrollmentQuery->with('academicPeriod')->orderByDesc('ciclo_id')->first();
-
-            if (!$enrollment) return null;
-
-            $load = AcademicLoad::whereKey($loadId)
-                ->where('grupo_id', $enrollment->grupo_id)
-                ->where('ciclo_id', $enrollment->ciclo_id)
-                ->with(['course', 'teacher.user', 'criterios'])
-                ->first();
-            if (!$load) return null;
 
             $grades = Grade::where('usuario_id', $userId)
                 ->where('carga_id', $load->id)
@@ -236,9 +242,10 @@ class GradeService
                 ->get();
 
             $locks = [];
+            $periodToUse = AcademicPeriodService::findCached($load->ciclo_id) ?: ($load->academicPeriod ?: $enrollment?->academicPeriod);
             foreach ([1, 2, 3] as $partial) {
-                $locks[$partial] = $enrollment->academicPeriod
-                    ? AcademicPeriodService::isCapturaHabilitada($enrollment->academicPeriod, $partial, 'operacion')
+                $locks[$partial] = $periodToUse
+                    ? AcademicPeriodService::isCapturaHabilitada($periodToUse, $partial, 'operacion')
                     : ['allowed' => true, 'reason' => ''];
             }
 
@@ -329,34 +336,34 @@ class GradeService
         $scope = $loadUuid ?: 'all';
         return \Cache::remember("student_tasks_{$userId}_{$scope}_v{$version}", 300, function() use ($userId, $loadUuid) {
             // [INTELIGENCIA v4.2] Priorizar la inscripción del ciclo VIGENTE primero
-            $activeCycle = AcademicPeriodService::activePeriod();
-
-            $enrollment = null;
-            if ($activeCycle) {
-                $enrollment = Enrollment::where('usuario_id', $userId)
-                    ->where('ciclo_id', $activeCycle->id)
-                    ->where('estatus', 'active')
-                    ->first();
-            }
-
-            if (!$enrollment) {
-                $enrollment = Enrollment::where('usuario_id', $userId)
-                    ->where('estatus', 'active')
-                    ->orderBy('ciclo_id', 'desc')
-                    ->first();
-            }
-
-            if (!$enrollment) return [];
-
-            $loadsQuery = AcademicLoad::where('grupo_id', $enrollment->grupo_id)
-                ->where('ciclo_id', $enrollment->ciclo_id)
-                ->with(['course', 'tareas.entregas' => fn($q) => $q->where('usuario_id', $userId)]);
-
             if ($loadUuid) {
-                $loadsQuery->where('uuid', $loadUuid);
-            }
+                $loads = AcademicLoad::where('uuid', $loadUuid)
+                    ->with(['course', 'tareas.entregas' => fn($q) => $q->where('usuario_id', $userId)])
+                    ->get();
+            } else {
+                $activeCycle = AcademicPeriodService::activePeriod();
+                $enrollment = null;
+                if ($activeCycle) {
+                    $enrollment = Enrollment::where('usuario_id', $userId)
+                        ->where('ciclo_id', $activeCycle->id)
+                        ->where('estatus', 'active')
+                        ->first();
+                }
 
-            $loads = $loadsQuery->get();
+                if (!$enrollment) {
+                    $enrollment = Enrollment::where('usuario_id', $userId)
+                        ->where('estatus', 'active')
+                        ->orderBy('ciclo_id', 'desc')
+                        ->first();
+                }
+
+                if (!$enrollment) return [];
+
+                $loads = AcademicLoad::where('grupo_id', $enrollment->grupo_id)
+                    ->where('ciclo_id', $enrollment->ciclo_id)
+                    ->with(['course', 'tareas.entregas' => fn($q) => $q->where('usuario_id', $userId)])
+                    ->get();
+            }
 
             $tasksList = [];
             $months = ['January'=>'Enero','February'=>'Febrero','March'=>'Marzo','April'=>'Abril','May'=>'Mayo','June'=>'Junio','July'=>'Julio','August'=>'Agosto','September'=>'Septiembre','October'=>'Octubre','November'=>'Noviembre','December'=>'Diciembre'];
@@ -519,10 +526,22 @@ class GradeService
                 ];
             }
 
+            $activeCycle = AcademicPeriodService::activePeriod();
+
+            $allCycleIds = $enrollments->pluck('ciclo_id')->unique();
+            $allGenerations = $enrollments->map(fn($e) => $e->academicGroup?->generacion)->filter()->unique();
+            $allSpecialties = $enrollments->map(fn($e) => $e->academicGroup?->especialidad)->filter()->unique();
+
+            $cohortGroupIds = \App\Models\AcademicGroup::whereIn('generacion', $allGenerations)
+                ->whereIn('especialidad', $allSpecialties)
+                ->pluck('id')
+                ->merge($enrollments->pluck('grupo_id'))
+                ->unique();
+
             $allGroupLoads = AcademicLoad::query()
-                ->whereIn('grupo_id', $enrollments->pluck('grupo_id'))
-                ->whereIn('ciclo_id', $enrollments->pluck('ciclo_id'))
-                ->with(['course', 'teacher.user'])
+                ->whereIn('grupo_id', $cohortGroupIds)
+                ->whereIn('ciclo_id', $allCycleIds)
+                ->with(['course', 'teacher.user', 'academicGroup'])
                 ->get();
 
             $loadIds = $allGroupLoads->pluck('id');
@@ -539,9 +558,25 @@ class GradeService
             $totalCreditsCount = 0;
 
             foreach ($enrollments as $enrollment) {
+                $ag = $enrollment->academicGroup;
                 $loads = $allGroupLoads
                     ->where('grupo_id', $enrollment->grupo_id)
                     ->where('ciclo_id', $enrollment->ciclo_id);
+
+                $effectiveGroup = $ag;
+
+                if ($loads->isEmpty() && $ag) {
+                    $loads = $allGroupLoads
+                        ->filter(function($l) use ($ag, $enrollment) {
+                            return $l->ciclo_id == $enrollment->ciclo_id &&
+                                   $l->academicGroup?->generacion === $ag->generacion &&
+                                   $l->academicGroup?->especialidad === $ag->especialidad;
+                        });
+
+                    if ($loads->isNotEmpty()) {
+                        $effectiveGroup = $loads->first()->academicGroup ?: $ag;
+                    }
+                }
 
                 $subjects = [];
                 foreach ($loads as $load) {
@@ -584,7 +619,7 @@ class GradeService
 
                     $subjects[] = [
                         'id' => $load->id,
-                        'code' => $load->course?->clave ?? ('MAT-' . $load->id),
+                        'code' => $load->course?->codigo ?? ('MAT-' . $load->id),
                         'name' => $load->course?->nombre ?? 'Asignatura',
                         'teacher' => $load->teacher?->user?->nombre_completo ?? 'Sin Docente',
                         'p1' => $p1 ?: '—',
@@ -596,12 +631,15 @@ class GradeService
                     ];
                 }
 
+                $isCurrentActive = ($activeCycle && $enrollment->ciclo_id == $activeCycle->id) || ($enrollment->academicPeriod?->status === 'activo');
+                $periodStatus = $isCurrentActive ? 'Vigente' : ($enrollment->estatus === 'promoted' ? 'Promovido' : 'Concluido');
+
                 $periodsData[] = [
                     'cycleId' => $enrollment->ciclo_id,
                     'cycleName' => $enrollment->academicPeriod?->nombre ?? 'Ciclo Académico',
-                    'semester' => $enrollment->academicGroup?->semestre ?? 1,
-                    'groupName' => ($enrollment->academicGroup?->codigo ?? '') . ' ' . ($enrollment->academicGroup?->nombre ?? 'Grupo'),
-                    'status' => $enrollment->estatus === 'active' ? 'Vigente' : ($enrollment->estatus === 'promoted' ? 'Promovido' : 'Concluido'),
+                    'semester' => $effectiveGroup?->semestre ?? 1,
+                    'groupName' => ($effectiveGroup?->codigo ?? '') . ' ' . ($effectiveGroup?->nombre ?? 'Grupo'),
+                    'status' => $periodStatus,
                     'subjects' => $subjects,
                 ];
             }

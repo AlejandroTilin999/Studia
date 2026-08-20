@@ -266,16 +266,18 @@ class EntregaTareaAlumnoController extends Controller
 
         $archivosRequest = $request->input('archivos');
 
-        // Si la entrega fue anulada previamente (se borró la fila de la BD), pero el alumno vuelve a hacer clic en Entregar conservando sus archivos adjuntos
-        if (!$entrega && !empty($archivosRequest) && is_array($archivosRequest)) {
-            $ultimoNombre = $archivosRequest[count($archivosRequest) - 1]['nombre'] ?? ($archivosRequest[count($archivosRequest) - 1]['name'] ?? 'Documento');
-            $googleDriveFileId = $archivosRequest[count($archivosRequest) - 1]['google_drive_file_id'] ?? null;
-            $googleDriveUrl = $archivosRequest[count($archivosRequest) - 1]['google_drive_url'] ?? ($archivosRequest[count($archivosRequest) - 1]['url'] ?? null);
+        // Si la entrega no existe en BD, crear la entrega (con o sin archivos adjuntos)
+        if (!$entrega) {
+            $archivosList = is_array($archivosRequest) ? $archivosRequest : [];
+            $hasFiles = !empty($archivosList);
+            $ultimoNombre = $hasFiles ? ($archivosList[count($archivosList) - 1]['nombre'] ?? ($archivosList[count($archivosList) - 1]['name'] ?? 'Documento')) : 'Entrega sin archivos';
+            $googleDriveFileId = $hasFiles ? ($archivosList[count($archivosList) - 1]['google_drive_file_id'] ?? null) : null;
+            $googleDriveUrl = $hasFiles ? ($archivosList[count($archivosList) - 1]['google_drive_url'] ?? ($archivosList[count($archivosList) - 1]['url'] ?? null)) : null;
 
             $entrega = EntregaTarea::create([
                 'tarea_id'             => $tarea->id,
                 'usuario_id'           => $userId,
-                'archivo_url'          => json_encode($archivosRequest),
+                'archivo_url'          => json_encode($archivosList),
                 'archivo_nombre'       => $ultimoNombre,
                 'google_drive_file_id' => $googleDriveFileId,
                 'google_drive_url'     => $googleDriveUrl,
@@ -284,8 +286,8 @@ class EntregaTareaAlumnoController extends Controller
             ]);
         }
 
-        if (!$entrega || empty($entrega->archivo_url)) {
-            return response()->json(['error' => 'Adjunta al menos un archivo o enlace antes de entregar.'], 422);
+        if (!$entrega) {
+            return response()->json(['error' => 'No se pudo registrar la entrega.'], 422);
         }
 
         if ($entrega->estatus === 'graded') {

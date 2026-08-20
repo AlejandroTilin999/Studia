@@ -19,10 +19,10 @@ class PlantillaCorreoController extends Controller
      */
     public function index()
     {
-        $templates = EmailTemplate::orderBy('created_at', 'desc')->get();
-        $recipients = User::select('id', 'nombre', 'apellido_paterno', 'email', 'rol')
+        $templates = \Cache::remember('email_templates_list', 600, fn() => EmailTemplate::orderBy('created_at', 'desc')->get());
+        $recipients = \Cache::remember('email_recipients_list', 600, fn() => User::select('id', 'nombre', 'apellido_paterno', 'email', 'rol')
             ->where('activo', true)
-            ->get();
+            ->get());
 
         return Inertia::render('Admin/PlantillasCorreo/Index', [
             'templates' => $templates,
@@ -44,6 +44,7 @@ class PlantillaCorreoController extends Controller
         ]);
 
         EmailTemplate::create($validated);
+        \Cache::forget('email_templates_list');
 
         return redirect()->back()->with('success', 'Plantilla de correo creada exitosamente.');
     }
@@ -65,6 +66,7 @@ class PlantillaCorreoController extends Controller
         ]);
 
         $template->update($validated);
+        \Cache::forget('email_templates_list');
 
         return redirect()->back()->with('success', 'Plantilla actualizada correctamente.');
     }
@@ -76,6 +78,7 @@ class PlantillaCorreoController extends Controller
     {
         $template = EmailTemplate::findOrFail($id);
         $template->delete();
+        \Cache::forget('email_templates_list');
 
         return redirect()->back()->with('success', 'Plantilla eliminada correctamente.');
     }
@@ -95,8 +98,14 @@ class PlantillaCorreoController extends Controller
         $template = EmailTemplate::findOrFail($request->template_id);
         $shouldAttachPdf = $request->input('attach_pdf', false);
 
+        // Pre-cargar todos los destinatarios en 1 sola consulta SQL batch para evitar N+1 queries
+        $usersByEmail = User::whereIn('email', $request->recipients)
+            ->with(['student', 'teacher'])
+            ->get()
+            ->keyBy('email');
+
         foreach ($request->recipients as $recipientEmail) {
-            $user = User::where('email', $recipientEmail)->with(['student', 'teacher'])->first();
+            $user = $usersByEmail->get($recipientEmail);
 
             // Reemplazar variables dinámicas como {{nombre}}, {{matricula}}, {{email}}, {{password}}
             $html = $template->contenido_html;

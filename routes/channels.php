@@ -10,6 +10,10 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('AcademicGroup.{id}', function ($user, $id) {
+    if (!is_numeric($id)) {
+        return false;
+    }
+    $id = (int) $id;
     $rol = strtolower($user->rol ?? '');
 
     if ($rol === 'admin') {

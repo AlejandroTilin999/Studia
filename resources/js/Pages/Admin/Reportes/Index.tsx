@@ -308,10 +308,12 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             return;
         }
 
+        const effectivePeriodId = periodFilter || defaultPeriodId?.toString() || '';
+
         // VALIDACIÓN ESPECÍFICA POR REPORTE
         if (selectedReport === 'asistencia') {
-            if (!groupFilter || !periodFilter) {
-                SwalHelper.alert('Filtros requeridos', 'Debes seleccionar un Grupo y un Ciclo Escolar para generar la lista de asistencia.', 'warning');
+            if (!groupFilter) {
+                SwalHelper.alert('Filtro requerido', 'Debes seleccionar un Grupo para generar la lista de asistencia.', 'warning');
                 return;
             }
         } else if (selectedReport === 'constancia' || selectedReport === 'kardex') {
@@ -320,14 +322,14 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
                 return;
             }
         } else if (selectedReport === 'boleta') {
-            if (!selectedStudentMatricula || !periodFilter) {
+            if (!selectedStudentMatricula || !effectivePeriodId) {
                 SwalHelper.alert('Filtros requeridos', 'Debes seleccionar un alumno y un periodo para generar este documento.', 'warning');
                 return;
             }
         }
 
         const groupName = groups.find(g => g.id.toString() === groupFilter)?.nombre || 'Desconocido';
-        const periodName = periods.find(p => p.id.toString() === periodFilter)?.nombre || 'Desconocido';
+        const periodName = periods.find(p => p.id.toString() === effectivePeriodId)?.nombre || 'Desconocido';
 
         if (selectedReport === 'asistencia') {
             SwalHelper.loading("Generando Reporte", "Preparando lista de asistencia oficial...");
@@ -335,7 +337,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             try {
                 const response = await axios.get(route('admin.reportes.asistencia_data', {
                     grupo_id: groupFilter,
-                    ciclo_id: periodFilter
+                    ciclo_id: effectivePeriodId
                 }));
 
                 const { group, period, enrollments, generated_at } = response.data;
@@ -416,8 +418,8 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             const student = students.find(s => s.matricula === selectedStudentMatricula);
             if (!student) return SwalHelper.error('Error', 'Debe seleccionar un alumno válido.');
 
-            if (!periodFilter) {
-                SwalHelper.alert('Periodo requerido', 'Por favor, selecciona un ciclo escolar para generar la boleta.', 'warning');
+            if (!effectivePeriodId) {
+                SwalHelper.alert('Periodo requerido', 'No se ha detectado un ciclo escolar activo.', 'warning');
                 return;
             }
 
@@ -426,7 +428,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
             try {
                 const response = await axios.get(route('admin.reportes.boleta_data', {
                     matricula: selectedStudentMatricula,
-                    periodId: periodFilter
+                    periodId: effectivePeriodId
                 }));
 
                 const data = response.data;
@@ -449,7 +451,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
 
                     setTimeout(() => {
                         SwalHelper.success("¡Documento Generado!", "La boleta de calificaciones se ha generado correctamente.");
-                        logDownload('boleta', data.student.nombre, { matricula: selectedStudentMatricula, ciclo_id: periodFilter });
+                        logDownload('boleta', data.student.nombre, { matricula: selectedStudentMatricula, ciclo_id: effectivePeriodId });
                         setTimeout(() => {
                             iframe.contentWindow?.focus();
                             iframe.contentWindow?.print();
@@ -505,10 +507,17 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
         }
     };
 
+    const handleReportChange = (report: 'asistencia' | 'constancia' | 'boleta' | 'kardex' | null) => {
+        setSelectedReport(report);
+        setGroupFilter('');
+        setSelectedStudentMatricula('');
+        setPeriodFilter(defaultPeriodId?.toString() ?? '');
+    };
+
     const handleReset = () => {
         setGroupFilter('');
         setSelectedStudentMatricula('');
-        setPeriodFilter('');
+        setPeriodFilter(defaultPeriodId?.toString() ?? '');
         SwalHelper.toast('Filtros restablecidos.', 'info');
     };
 
@@ -601,7 +610,7 @@ export default function AdminReportesIndex({ groups = [], students = [], periods
 
                             <ReportSelector
                                 selectedReport={selectedReport}
-                                setSelectedReport={setSelectedReport}
+                                setSelectedReport={handleReportChange}
                             />
 
                             <ReportParams

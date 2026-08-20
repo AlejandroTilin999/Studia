@@ -27,23 +27,31 @@ const getFileIcon = (filename: string = '') => {
     return <Globe size={16} className="text-[#0266E0] shrink-0" />;
 };
 
-const formatHumanDate = (dateStr?: string) => {
+const formatHumanDate = (dateStr?: string, timeStr?: string, deadlineStr?: string) => {
+    if (deadlineStr && deadlineStr !== 'Sin fecha') return deadlineStr;
     if (!dateStr) return 'Sin fecha';
-    const date = new Date(dateStr + 'T00:00:00');
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
 
-    const diffTime = date.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Hoy';
-    if (diffDays === 1) return 'Mañana';
-    if (diffDays === -1) return 'Ayer';
-    if (diffDays > 1 && diffDays < 7) {
-        return date.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^\w/, (c) => c.toUpperCase());
+    let combinedStr = dateStr.trim();
+    if (timeStr && timeStr.trim() !== '' && !combinedStr.includes(' ') && !combinedStr.includes('T')) {
+        combinedStr = `${combinedStr} ${timeStr.trim()}`;
     }
 
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    const normalizedStr = combinedStr.includes(' ') 
+        ? combinedStr.replace(' ', 'T') 
+        : (!combinedStr.includes('T') ? combinedStr + 'T00:00:00' : combinedStr);
+    
+    const date = new Date(normalizedStr);
+
+    if (isNaN(date.getTime())) return dateStr;
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const hasTime = combinedStr.includes(' ') || combinedStr.includes('T') || (timeStr && timeStr.trim() !== '');
+
+    return hasTime ? `${day}/${month}/${year} ${formattedTime}` : `${day}/${month}/${year}`;
 };
 
 interface TaskGradesModalProps {
@@ -116,11 +124,24 @@ export default function TaskGradesModal({
         return { label: 'Sin entregar', order: 2, grade: null };
     };
 
-    const orderedStudents = [...studentGrades].sort((a, b) => {
-        if (studentSort === 'name') return a.nombre.localeCompare(b.nombre, 'es');
-        const byStatus = getStudentStatus(a.id).order - getStudentStatus(b.id).order;
-        return byStatus || a.nombre.localeCompare(b.nombre, 'es');
-    });
+    const uniqueStudentGrades = React.useMemo(() => {
+        const seen = new Set();
+        return studentGrades.filter(s => {
+            if (!s || seen.has(s.id)) return false;
+            seen.add(s.id);
+            return true;
+        });
+    }, [studentGrades]);
+
+    const orderedStudents = React.useMemo(() => {
+        return [...uniqueStudentGrades].sort((a, b) => {
+            if (studentSort === 'name') return a.nombre.localeCompare(b.nombre, 'es');
+            const statusA = getStudentStatus(a.id);
+            const statusB = getStudentStatus(b.id);
+            const byStatus = statusA.order - statusB.order;
+            return byStatus || a.nombre.localeCompare(b.nombre, 'es');
+        });
+    }, [uniqueStudentGrades, studentSort, selectedTask]);
 
     const studentFileRaw = activeStudent ? selectedTask.archivos?.[activeStudent.id] : null;
     
@@ -132,22 +153,31 @@ export default function TaskGradesModal({
             ? studentFileRaw.raw_url
             : (typeof studentFileRaw === 'object' && studentFileRaw.url ? studentFileRaw.url : studentFileRaw);
 
-        if (typeof targetStr === 'string') {
+        let parsedFiles: Array<{ url: string; nombre?: string }> = [];
+
+        if (typeof targetStr === 'string' && targetStr.trim().length > 0) {
             try {
                 const parsed = JSON.parse(targetStr);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed)) {
+                    parsedFiles = parsed;
+                }
             } catch (e) {}
         }
 
-        if (typeof studentFileRaw === 'object' && studentFileRaw.url) {
-            return [studentFileRaw];
+        if (parsedFiles.length === 0 && typeof studentFileRaw === 'object' && studentFileRaw.url) {
+            parsedFiles = [studentFileRaw];
         }
 
-        if (typeof targetStr === 'string' && targetStr.trim().length > 0) {
-            return [{ url: targetStr, nombre: targetStr.split('/').pop() }];
+        if (parsedFiles.length === 0 && typeof targetStr === 'string' && targetStr.trim().length > 0) {
+            parsedFiles = [{ url: targetStr, nombre: studentFileRaw?.nombre || targetStr.split('/').pop() }];
         }
 
-        return [];
+        return parsedFiles.filter(item => {
+            if (!item || !item.url) return false;
+            const u = String(item.url).trim();
+            if (u === '#' || u === '[]' || u === 'Entrega sin archivos' || u.startsWith('[')) return false;
+            return true;
+        });
     }, [studentFileRaw]);
 
     const studentFile = studentFilesList[0] || null;
@@ -246,17 +276,20 @@ export default function TaskGradesModal({
                         {/* Menú Flotante de Alumnos */}
                         {isStudentDropdownOpen && (
                             <div className="absolute right-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden text-xs">
-                                <div className="flex items-center justify-end px-3 py-2 bg-slate-50 border-b border-slate-200">
-                                    <label className="sr-only" htmlFor="student-status-sort">Ordenar alumnos</label>
-                                    <select
-                                        id="student-status-sort"
-                                        value={studentSort}
-                                        onChange={(event) => setStudentSort(event.target.value as 'status' | 'name')}
-                                        className="bg-transparent text-[11px] font-semibold text-slate-600 outline-none cursor-pointer"
-                                    >
-                                        <option value="status">Ordenar por estado</option>
-                                        <option value="name">Ordenar por nombre</option>
-                                    </select>
+                                <div className="flex items-center justify-end px-3 py-2 bg-slate-50/60 border-b border-slate-100">
+                                    <div className="relative inline-flex items-center">
+                                        <label className="sr-only" htmlFor="student-status-sort">Ordenar alumnos</label>
+                                        <select
+                                            id="student-status-sort"
+                                            value={studentSort}
+                                            onChange={(event) => setStudentSort(event.target.value as 'status' | 'name')}
+                                            className="appearance-none bg-slate-50 border border-slate-200/80 hover:bg-slate-100 text-slate-700 text-xs font-semibold py-1.5 pl-3.5 pr-8 rounded-xl outline-none cursor-pointer transition-colors shadow-2xs"
+                                        >
+                                            <option value="status">Ordenar por estatus...</option>
+                                            <option value="name">Ordenar por nombre</option>
+                                        </select>
+                                        <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                                    </div>
                                 </div>
                                 <div className="overflow-y-auto max-h-[min(20rem,calc(100vh-13rem))] py-1">
                                 {orderedStudents.map((s, idx) => {
@@ -308,7 +341,7 @@ export default function TaskGradesModal({
                             <h4 className="text-xl font-black text-slate-800 tracking-tight">{selectedTask.nombre}</h4>
                         </div>
                         <div className="flex flex-wrap gap-3.5 text-xs text-slate-455 font-normal uppercase tracking-wide">
-                            <span className="flex items-center gap-1"><Calendar size={13} className="text-slate-400" /> Límite: {formatHumanDate(selectedTask.fecha_entrega)}</span>
+                            <span className="flex items-center gap-1"><Calendar size={13} className="text-slate-400" /> Límite: {formatHumanDate(selectedTask.fecha_entrega, selectedTask.hora_entrega, (selectedTask as any).deadline)}</span>
                             <span className="text-slate-200">|</span>
                             <span className="flex items-center gap-1"><FileText size={13} className="text-slate-400" /> Valor: {selectedTask.puntos || 10} pts</span>
                         </div>
@@ -413,7 +446,8 @@ export default function TaskGradesModal({
                             const studentGradeVal = activeStudent ? selectedTask.calificaciones[activeStudent.id] : undefined;
                             const hasGrade = studentGradeVal !== "" && studentGradeVal !== undefined && studentGradeVal !== null;
                             const studentFile = activeStudent ? selectedTask.archivos?.[activeStudent.id] : null;
-                            const hasDelivery = Boolean(studentFile && (studentFile.url || studentFile.raw_url));
+                            const hasDelivery = Boolean(studentFile && (studentFile.url || studentFile.raw_url || studentFile.estatus === 'submitted' || studentFile.estatus === 'entregado' || studentFile.estatus === 'graded'));
+                            const canGrade = hasDelivery || hasGrade;
 
                             let statusText = 'Sin entregar';
                             let statusClasses = 'text-amber-600 bg-amber-50';
@@ -427,28 +461,36 @@ export default function TaskGradesModal({
                             }
 
                             return (
-                                <div className="flex items-center justify-between pb-3 border-b border-slate-50">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
-                                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${statusClasses}`}>
-                                        {statusText}
-                                    </span>
-                                </div>
+                                <>
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-50">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
+                                        <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${statusClasses}`}>
+                                            {statusText}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Detalle de Calificación</span>
+                                        {!canGrade && (
+                                            <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100 text-left leading-relaxed">
+                                                ⚠️ El alumno aún no ha realizado la entrega de esta tarea. No es posible calificar hasta que realice la entrega.
+                                            </p>
+                                        )}
+                                        <div className="flex items-center justify-between gap-4 pt-2">
+                                            <span className="text-xs font-black text-slate-655 uppercase">Calificación Obtenida</span>
+                                            <div className="flex items-center gap-0">
+                                                <GradeSelector
+                                                    initialValue={activeStudent ? (selectedTask.calificaciones[activeStudent.id] ?? '') : ''}
+                                                    max={selectedTask.puntos || 10}
+                                                    disabled={isReadOnly || isReturning || !canGrade}
+                                                    onChange={(val) => activeStudent && handleTaskGradeChange(selectedTask.id, activeStudent.id, val)}
+                                                />
+                                                <span className="text-sm font-normal text-slate-400">/{selectedTask.puntos || 10}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
                             );
                         })()}
-                        <div className="space-y-4">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block text-left">Detalle de Calificación</span>
-                            <div className="flex items-center justify-between gap-4 pt-2">
-                                <span className="text-xs font-black text-slate-655 uppercase">Calificación Obtenida</span>
-                                <div className="flex items-center gap-0">
-                                    <GradeSelector
-                                        initialValue={activeStudent ? (selectedTask.calificaciones[activeStudent.id] ?? '') : ''}
-                                        max={selectedTask.puntos || 10}
-                                        disabled={isReadOnly || isReturning}
-                                        onChange={(val) => activeStudent && handleTaskGradeChange(selectedTask.id, activeStudent.id, val)}
-                                    />
-                                    <span className="text-sm font-normal text-slate-400">/{selectedTask.puntos || 10}</span>
-                                </div>
-                            </div>
 
                             {/* Botón Devolver Calificación */}
                             {!isReadOnly && activeStudent && (
@@ -505,14 +547,17 @@ export default function TaskGradesModal({
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin entrega disponible</span>
+                                    <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center bg-slate-50/50">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                                            {activeStudent && selectedTask.archivos?.[activeStudent.id]
+                                                ? 'Entrega realizada sin archivos adjuntos'
+                                                : 'Sin entrega disponible'}
+                                        </span>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
-                </div>
 
             </div>
         </div>

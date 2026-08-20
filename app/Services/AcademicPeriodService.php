@@ -170,6 +170,9 @@ class AcademicPeriodService
         self::clearWorkingPeriodCache();
 
         self::clearActivePeriodCache();
+
+        Cache::add('academic_period_revision', 1, now()->addDays(30));
+        Cache::increment('academic_period_revision');
     }
 
     /**
@@ -183,6 +186,9 @@ class AcademicPeriodService
         self::clearWorkingPeriodCache();
 
         self::clearActivePeriodCache();
+
+        Cache::add('academic_period_revision', 1, now()->addDays(30));
+        Cache::increment('academic_period_revision');
     }
 
     /**
