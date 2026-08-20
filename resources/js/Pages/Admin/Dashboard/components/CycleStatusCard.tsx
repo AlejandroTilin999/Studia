@@ -53,6 +53,8 @@ export default function CycleStatusCard({
             : date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
+    const status = getStatusLabel();
+
     return (
         <div className="bg-white rounded-lg p-5 md:p-6 border border-slate-100 shadow-none flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 text-left font-body">
             <div className="space-y-1.5 flex-1">
