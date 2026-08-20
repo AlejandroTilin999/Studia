@@ -32,11 +32,20 @@ class PasswordChangeController extends Controller
             ],
         ]);
 
-        $user->update([
+        // 1. Guardado forzado sin restricciones de $fillable
+        $user->forceFill([
             'password' => Hash::make($request->password),
             'password_changed' => true,
-        ]);
+        ])->save();
 
-        return redirect()->route('dashboard')->with('success', 'Contraseña actualizada con éxito.');
+        // 2. Refrescamos la sesión de Laravel
+        auth()->login($user->fresh());
+
+        // 3. Redirección limpia compatible con Inertia
+        if ($user->rol === 'docente') {
+            return redirect()->route('docente.dashboard');
+        }
+
+        return redirect()->route('dashboard');
     }
 }

@@ -28,7 +28,7 @@ export default function CargasIndex({
     canRegister
 }: any) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
-    const { toastMessage, triggerToast } = useToast();
+    const { toastMessage } = useToast();
     const { exportToExcel } = useExportExcel();
     const { exportToPDF } = useExportPDF();
 
@@ -47,7 +47,7 @@ export default function CargasIndex({
         }
     }, [workingPeriod]);
 
-    // [OPTIMIZACIÓN] Soportar paginación y búsqueda en servidor
+    // Soportar paginación y búsqueda
     const loadData = useMemo(() => {
         if (Array.isArray(loads)) return loads;
         return loads?.data || [];
@@ -83,6 +83,11 @@ export default function CargasIndex({
         assignments: [] as { materia_id: number | string, docente_id: number | string }[],
     });
 
+    // Helper flexible para asignar variables con setData de Inertia
+    const handleSetData = (key: string, value: any) => {
+        setData(key as any, value);
+    };
+
     const handleExportPDF = () => {
         const headers = ["Grupo", "Clave Materia", "Materia", "Docente"];
         const rows = filteredLoads.map((l: any) => [
@@ -97,15 +102,14 @@ export default function CargasIndex({
 
     const filteredLoads = useMemo(() => {
         return loadData.filter((load: any) => {
-            const matchesPeriod = periodFilter === 'all' || load.ciclo_id.toString() === periodFilter;
-            const matchesGroup = groupFilter === 'all' || load.grupo_id.toString() === groupFilter;
+            const matchesPeriod = periodFilter === 'all' || load.ciclo_id?.toString() === periodFilter;
+            const matchesGroup = groupFilter === 'all' || load.grupo_id?.toString() === groupFilter;
 
-            // Búsqueda local complementaria
             const matchesSearch =
-                load.nombre_materia.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                load.codigo_materia.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                load.nombre_docente.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                load.nombre_grupo.toLowerCase().includes(searchQuery.toLowerCase());
+                (load.nombre_materia || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (load.codigo_materia || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (load.nombre_docente || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (load.nombre_grupo || '').toLowerCase().includes(searchQuery.toLowerCase());
 
             return matchesSearch && matchesPeriod && matchesGroup;
         });
@@ -115,7 +119,6 @@ export default function CargasIndex({
     const coveredGroupsCount = useMemo(() => (loads === null || loads === undefined) ? null : new Set(loadData.map((l: any) => l.grupo_id)).size, [loadData, loads]);
 
     const handleExportExcel = () => {
-
         const headers = ["Grupo", "Materia (Clave)", "Materia (Nombre)", "Docente"];
         const rows = filteredLoads.map((l: any) => [
             l.nombre_grupo,
@@ -148,31 +151,6 @@ export default function CargasIndex({
             return;
         }
 
-        // Validar si quedan grupos disponibles para asignación masiva
-        if (workingPeriod) {
-            const isOddCycle = workingPeriod.mes_inicio ? (workingPeriod.mes_inicio >= 8 || workingPeriod.mes_inicio === 1) : true;
-            const availableGroups = groups.filter((g: any) => {
-                const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
-                const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
-                if (!matchesParity) return false;
-
-                const alreadyAssigned = loadData.some((l: any) =>
-                    l.grupo_id.toString() === g.id.toString() &&
-                    l.ciclo_id.toString() === workingPeriod.id.toString()
-                );
-                return !alreadyAssigned;
-            });
-
-            if (availableGroups.length === 0) {
-                SwalHelper.alert(
-                    'Sin Grupos Disponibles',
-                    'Actualmente todos los grupos correspondientes a este periodo ya cuentan con su plantilla docente asignada.',
-                    'info'
-                );
-                return;
-            }
-        }
-
         reset();
         setData({
             ciclo_id: workingPeriod?.id || '',
@@ -191,22 +169,39 @@ export default function CargasIndex({
             grupo_id: load.grupo_id,
             materia_id: load.materia_id,
             docente_id: load.docente_id,
-            assignments: [], // Mantener estructura para evitar errores de renderizado
+            assignments: [],
         });
         setIsEditModalOpen(true);
     };
 
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        SwalHelper.toastLoading('Creando asignación académica...');
-        loadService.store(data, {
+
+        if (!data.ciclo_id || !data.grupo_id) {
+            SwalHelper.toast('Debes seleccionar un ciclo escolar y un grupo.', 'error');
+            return;
+        }
+
+        if (data.assignments.length === 0) {
+            SwalHelper.toast('Por favor asigna al menos un docente a una materia.', 'error');
+            return;
+        }
+
+        SwalHelper.toastLoading('Creando asignaciones académicas...');
+        
+        router.post(route('admin.cargas.store'), {
+            ciclo_id: data.ciclo_id,
+            grupo_id: data.grupo_id,
+            assignments: data.assignments
+        }, {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 reset();
-                SwalHelper.toast('Asignación académica registrada correctamente.', 'success');
+                SwalHelper.toast('Asignaciones registradas correctamente.', 'success');
             },
             onError: (errs: any) => {
-                SwalHelper.toast(Object.values(errs)[0] as string || 'No se pudo crear la asignación.', 'error');
+                const firstError = Object.values(errs)[0] as string;
+                SwalHelper.toast(firstError || 'No se pudieron registrar las asignaciones.', 'error');
             }
         });
     };
@@ -214,14 +209,22 @@ export default function CargasIndex({
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedLoad) return;
+        
         SwalHelper.toastLoading('Actualizando asignación...');
-        loadService.update(selectedLoad.id, data, {
+        
+        router.put(route('admin.cargas.update', selectedLoad.id), {
+            ciclo_id: data.ciclo_id,
+            grupo_id: data.grupo_id,
+            materia_id: data.materia_id,
+            docente_id: data.docente_id
+        }, {
             onSuccess: () => {
                 setIsEditModalOpen(false);
                 SwalHelper.toast('Asignación académica actualizada.', 'success');
             },
             onError: (errs: any) => {
-                SwalHelper.toast(Object.values(errs)[0] as string || 'No se pudo actualizar la asignación.', 'error');
+                const firstError = Object.values(errs)[0] as string;
+                SwalHelper.toast(firstError || 'No se pudo actualizar la asignación.', 'error');
             }
         });
     };
@@ -253,7 +256,7 @@ export default function CargasIndex({
         ).then((result) => {
             if (result.isConfirmed) {
                 SwalHelper.toastLoading('Eliminando asignación...');
-                loadService.destroy(load.id, {
+                router.delete(route('admin.cargas.destroy', load.id), {
                     onSuccess: () => {
                         SwalHelper.toast('Asignación eliminada correctamente.', 'success');
                     },
@@ -350,13 +353,12 @@ export default function CargasIndex({
                 }}
                 mode={isCreateModalOpen ? 'create' : 'edit'}
                 load={selectedLoad}
-                existingLoads={loadData}
                 periods={periods}
                 groups={groups}
                 courses={courses}
                 teachers={teachers}
                 data={data}
-                setData={setData}
+                setData={handleSetData}
                 errors={errors}
                 processing={processing}
                 onSubmit={isCreateModalOpen ? handleCreateSubmit : handleEditSubmit}

@@ -47,13 +47,12 @@ export default function LoadFormModal({
     const [currentStep, setCurrentStep] = React.useState(1);
 
     useEffect(() => {
-        if (isOpen) setCurrentStep(mode === 'create' ? 1 : 4); // 4 es modo edición
+        if (isOpen) setCurrentStep(mode === 'create' ? 1 : 4);
     }, [isOpen, mode]);
 
     // 1. Identificar paridad y filtrar materias sugeridas
     const selectedCycle = periods.find(p => p.id.toString() === data.ciclo_id.toString());
-    // Periodo A (Agosto - Enero) = Semestres Impares (1°, 3°, 5°)
-    // Periodo B (Febrero - Julio) = Semestres Pares (2°, 4°, 6°)
+    
     const isOddCycle = useMemo(() => {
         if (!selectedCycle) return true;
         const nombreLower = (selectedCycle.nombre || '').toLowerCase();
@@ -69,6 +68,7 @@ export default function LoadFormModal({
 
     const selectedGroup = groups.find(g => g.id.toString() === data.grupo_id.toString());
     const groupMajor = selectedGroup?.especialidad || '';
+    
     const groupSemester = useMemo(() => {
         if (!selectedGroup) return null;
         if (selectedGroup.semestre) return Number(selectedGroup.semestre);
@@ -113,22 +113,19 @@ export default function LoadFormModal({
         setData('assignments', newAssignments);
     };
 
-    // 3. FILTRO MAESTRO: Por Área (General) o Especialidad + Exclusión de ya seleccionados
+    // 3. FILTRO MAESTRO: Área (General) o Especialidad + Exclusión de seleccionados
     const getFilteredTeachersForCourse = (course: CourseCatalogItem) => {
-        // Profesores que ya han sido seleccionados en OTROS selects de este mismo wizard
         const selectedTeacherIds = (data.assignments || [])
             .filter(a => a.materia_id !== course.id && a.docente_id !== '')
             .map(a => a.docente_id.toString());
 
         return (teachers || []).filter(t => {
-            // No mostrar si ya está seleccionado en otra materia de este grupo
             if (selectedTeacherIds.includes(t.id.toString())) return false;
 
             if (course.tipo === 'General') {
                 const isGeneralTeacher = !t.especialidad || t.especialidad.toLowerCase() === 'general';
                 if (!isGeneralTeacher) return false;
 
-                // Si la materia tiene área definida (ej: MATEMÁTICAS, HUMANIDADES)
                 if (course.area) {
                     const cArea = course.area.toLowerCase();
                     const teacherAreas = (t.areas || []).map(a => a.toLowerCase());
@@ -143,23 +140,12 @@ export default function LoadFormModal({
                 }
                 return true;
             } else {
-                // Materia de Especialidad
                 const tEsp = (t.especialidad || '').toLowerCase();
                 const gEsp = groupMajor.toLowerCase();
                 return tEsp === gEsp || tEsp === 'general';
             }
         });
     };
-
-    const isFormValid = useMemo(() => {
-        if (mode === 'edit') return !!data.docente_id;
-
-        // Para creación, validar que todas las asignaturas tengan un docente seleccionado
-        // antes de permitir el guardado final
-        return data.grupo_id &&
-               data.assignments.length > 0 &&
-               data.assignments.every(a => a.docente_id !== '');
-    }, [mode, data]);
 
     const renderSubjectList = (list: CourseCatalogItem[], title: string) => (
         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -215,12 +201,7 @@ export default function LoadFormModal({
             fullBleed={true}
         >
             <form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    if (currentStep === 3 || mode === 'edit') {
-                        onSubmit(e);
-                    }
-                }}
+                onSubmit={onSubmit}
                 className="grid grid-cols-1 md:grid-cols-12 min-h-0 h-full text-left relative"
             >
                 <button type="button" onClick={onClose} className="absolute top-5 right-5 z-20 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-all focus:outline-none">
@@ -243,7 +224,6 @@ export default function LoadFormModal({
                                     { step: 3, label: 'Esp.', sub: 'Especialidad', icon: GraduationCap }
                                 ].map((item) => (
                                     <div key={item.step} className="flex md:gap-4 items-center md:items-start relative group">
-                                        {/* Línea conectora solo en desktop */}
                                         {item.step < 3 && (
                                             <div className={`hidden md:block absolute left-4 top-8 w-0.5 h-6 -ml-[1px] ${currentStep > item.step ? 'bg-white' : 'bg-blue-400/30'}`} />
                                         )}
@@ -277,12 +257,10 @@ export default function LoadFormModal({
                                 <FormSelect value={data.grupo_id} onChange={e => setData('grupo_id', e.target.value)} className="h-11 md:h-14 font-normal border-2 border-slate-100 rounded-xl text-sm">
                                     <option value="">Seleccionar grupo...</option>
                                     {groups.filter(g => {
-                                        // 1. Filtrar por paridad de semestre
                                         const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
                                         const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
                                         if (!matchesParity) return false;
 
-                                        // 2. Ocultar si ya tiene asignaciones en este ciclo (Evitar duplicados)
                                         const alreadyAssigned = existingLoads.some(l =>
                                             l.grupo_id.toString() === g.id.toString() &&
                                             l.ciclo_id.toString() === data.ciclo_id.toString()
@@ -331,7 +309,7 @@ export default function LoadFormModal({
                                 ) : (
                                     <button
                                         type="submit"
-                                        disabled={processing || !isFormValid}
+                                        disabled={processing}
                                         className="bg-[#0266E0] text-white px-6 md:px-8 py-2.5 md:py-3 rounded-lg font-bold uppercase text-[10px] md:text-xs tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50"
                                     >
                                         {processing ? 'Guardando...' : 'Confirmar'}
@@ -343,7 +321,7 @@ export default function LoadFormModal({
 
                     {/* Modo Edición Simple */}
                     {mode === 'edit' && (
-                         <div className="flex-1 flex flex-col justify-center space-y-6">
+                        <div className="flex-1 flex flex-col justify-center space-y-6">
                             <h3 className="text-xl md:text-2xl font-bold text-slate-600">Actualizar Profesor</h3>
                             <div className="bg-slate-50 p-5 md:p-6 rounded-lg space-y-4">
                                 <div><span className="text-[10px] text-slate-400 font-semibold uppercase block">Asignatura</span><span className="text-base md:text-lg font-normal text-slate-700">{load?.nombre_materia}</span></div>
@@ -358,7 +336,7 @@ export default function LoadFormModal({
                                 <button type="button" onClick={onClose} className="px-6 py-3 text-slate-500 font-bold text-xs uppercase order-2 sm:order-1">Cancelar</button>
                                 <button type="submit" disabled={processing || !data.docente_id} className="bg-[#0266E0] text-white px-8 py-3 rounded-lg font-bold uppercase text-xs tracking-widest transition-all order-1 sm:order-2">Guardar</button>
                             </div>
-                         </div>
+                        </div>
                     )}
                 </div>
             </form>

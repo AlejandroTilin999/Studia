@@ -47,13 +47,14 @@ Route::get('/', function () {
 // ==========================================
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    Route::get('/cambiar-contrasena', [PasswordChangeController::class, 'show'])->name('password.change_view');
+Route::get('/cambiar-contrasena', [PasswordChangeController::class, 'show'])->name('password.change_view');
     Route::post('/cambiar-contrasena', [PasswordChangeController::class, 'update'])->name('password.force_update');
 
     Route::middleware(['force.password.change'])->group(function () {
+        
         Route::get('/dashboard', function (Request $request) {
             $user = $request->user();
-            $role = $user->rol ?? 'admin';
+            $role = strtolower($user->rol ?? 'admin'); // <-- Forzar minúsculas
 
             if ($role === 'docente') {
                 return redirect()->route('docente.dashboard');
@@ -259,11 +260,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/grupos', [GroupController::class, 'store'])->name('groups.store');
             Route::put('/grupos/{id}', [GroupController::class, 'update'])->name('groups.update');
             Route::delete('/grupos/{id}', [GroupController::class, 'destroy'])->name('groups.destroy');
-
-            Route::get('/asignaciones', [AcademicLoadController::class, 'index'])->name('admin.loads.index');
-            Route::post('/asignaciones', [AcademicLoadController::class, 'store'])->name('admin.loads.store');
-            Route::put('/asignaciones/{id}', [AcademicLoadController::class, 'update'])->name('admin.loads.update');
-            Route::delete('/asignaciones/{id}', [AcademicLoadController::class, 'destroy'])->name('admin.loads.destroy');
+            
+Route::get('/asignaciones', [AcademicLoadController::class, 'index'])->name('admin.cargas.index');
+Route::post('/asignaciones', [AcademicLoadController::class, 'store'])->name('admin.cargas.store');
+Route::put('/asignaciones/{id}', [AcademicLoadController::class, 'update'])->name('admin.cargas.update');
+Route::delete('/asignaciones/{id}', [AcademicLoadController::class, 'destroy'])->name('admin.cargas.destroy');
 
             Route::get('/materias', [CourseController::class, 'index'])->name('admin.materias.index');
             Route::post('/materias', [CourseController::class, 'store'])->name('materias.store');

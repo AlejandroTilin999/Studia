@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\AcademicLoad;
 use App\Models\Enrollment;
 use App\Models\Notificacion;
 use App\Models\Teacher;
@@ -40,9 +39,6 @@ class HandleInertiaRequests extends Middleware
         |--------------------------------------------------------------------------
         | Usuario autenticado
         |--------------------------------------------------------------------------
-        |
-        | Laravel ya resolvió este usuario mediante auth.
-        | No hacemos User::find() adicional.
         */
         $user = $request->user();
 
@@ -76,9 +72,6 @@ class HandleInertiaRequests extends Middleware
             |--------------------------------------------------------------------------
             | CICLO ACTIVO
             |--------------------------------------------------------------------------
-            |
-            | Una sola fuente de verdad:
-            | AcademicPeriodService.
             */
             'activePeriod' => fn () =>
                 $this->getActivePeriod(),
@@ -87,8 +80,6 @@ class HandleInertiaRequests extends Middleware
             |--------------------------------------------------------------------------
             | NOTIFICACIONES
             |--------------------------------------------------------------------------
-            |
-            | Solo ADMIN necesita contador global.
             */
             'unreadNotificationsCount' => fn () =>
                 $role === 'admin' && $user
@@ -134,9 +125,6 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        /*
-         * Si AcademicPeriod tiene cast de fecha, esto será Carbon.
-         */
         $month = null;
 
         if ($period->fecha_inicio) {
@@ -152,9 +140,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             'id' => $period->id,
-
             'nombre' => $period->nombre,
-
             'es_nones' =>
                 $month !== null
                     ? (
@@ -176,27 +162,14 @@ class HandleInertiaRequests extends Middleware
             120,
             static fn (): int =>
                 Notificacion::query()
-                    ->where(
-                        'usuario_id',
-                        $userId
-                    )
-                    ->where(
-                        'leido',
-                        false
-                    )
+                    ->where('usuario_id', $userId)
+                    ->where('leido', false)
                     ->count()
         );
     }
 
     /**
      * Obtiene grupos del docente para el sidebar.
-     *
-     * Cache MISS:
-     * - 1 query para teacher
-     * - 1 query con joins para cargas/grupo/materia
-     *
-     * Cache HIT:
-     * - 0 queries
      */
     private function getDocenteGroups(
         int $userId
@@ -216,39 +189,18 @@ class HandleInertiaRequests extends Middleware
                 $activePeriod
             ): array {
                 $teacherId = Teacher::query()
-                    ->where(
-                        'usuario_id',
-                        $userId
-                    )
+                    ->where('usuario_id', $userId)
                     ->value('id');
 
                 if (!$teacherId) {
                     return [];
                 }
 
-                return DB::table(
-                    'cargas_academicas as ca'
-                )
-                    ->leftJoin(
-                        'grupos as g',
-                        'g.id',
-                        '=',
-                        'ca.grupo_id'
-                    )
-                    ->leftJoin(
-                        'materias as m',
-                        'm.id',
-                        '=',
-                        'ca.materia_id'
-                    )
-                    ->where(
-                        'ca.docente_id',
-                        $teacherId
-                    )
-                    ->where(
-                        'ca.ciclo_id',
-                        $activePeriod->id
-                    )
+                return DB::table('cargas_academicas as ca')
+                    ->leftJoin('grupos as g', 'g.id', '=', 'ca.grupo_id')
+                    ->leftJoin('materias as m', 'm.id', '=', 'ca.materia_id')
+                    ->where('ca.docente_id', $teacherId)
+                    ->where('ca.ciclo_id', $activePeriod->id)
                     ->select([
                         'ca.uuid as id',
                         'g.nombre as nombre_grupo',
@@ -259,18 +211,9 @@ class HandleInertiaRequests extends Middleware
                     ->map(
                         static fn ($row): array => [
                             'id' => $row->id,
-
-                            'nombre_grupo' =>
-                                $row->nombre_grupo
-                                    ?: 'Grup. s/n',
-
-                            'materia' =>
-                                $row->materia
-                                    ?: 'Mat. s/n',
-
-                            'codigo' =>
-                                $row->codigo
-                                    ?: 'S/C',
+                            'nombre_grupo' => $row->nombre_grupo ?: 'Grup. s/n',
+                            'materia' => $row->materia ?: 'Mat. s/n',
+                            'codigo' => $row->codigo ?: 'S/C',
                         ]
                     )
                     ->all();
@@ -280,48 +223,35 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * Obtiene materias del alumno para el sidebar.
-     *
-     * Cache MISS:
-     * - 1 query Enrollment
-     * - 1 query con joins
-     *
-     * Cache HIT:
-     * - 0 queries
      */
     private function getAlumnoGroups(
         int $userId
     ): array {
+        $activePeriod = AcademicPeriodService::activePeriod();
+        if (!$activePeriod) {
+            return [];
+        }
+
         return Cache::remember(
-            "sidebar_alumno_{$userId}",
+            "sidebar_alumno_{$userId}_c{$activePeriod->id}",
             1800,
             static function () use (
-                $userId
+                $userId,
+                $activePeriod
             ): array {
                 /*
                 |--------------------------------------------------------------------------
-                | Inscripción actual
+                | Inscripciones activas del alumno para el ciclo activo
                 |--------------------------------------------------------------------------
-                |
-                | Solo necesitamos grupo_id y ciclo_id.
                 */
-                $enrollment = Enrollment::query()
-                    ->where(
-                        'usuario_id',
-                        $userId
-                    )
-                    ->where(
-                        'estatus',
-                        'active'
-                    )
-                    ->orderByDesc(
-                        'ciclo_id'
-                    )
-                    ->first([
-                        'grupo_id',
-                        'ciclo_id',
-                    ]);
+                $grupoIds = Enrollment::query()
+                    ->where('usuario_id', $userId)
+                    ->where('estatus', 'active')
+                    ->where('ciclo_id', $activePeriod->id)
+                    ->pluck('grupo_id')
+                    ->toArray();
 
-                if (!$enrollment) {
+                if (empty($grupoIds)) {
                     return [];
                 }
 
@@ -329,72 +259,27 @@ class HandleInertiaRequests extends Middleware
                 |--------------------------------------------------------------------------
                 | Materias del sidebar
                 |--------------------------------------------------------------------------
-                |
-                | Una sola query con joins.
-                |
-                | IMPORTANTE:
-                | Verifica nombres reales de tablas:
-                |
-                | cargas_academicas
-                | materias
-                | docentes
-                | users
-                | grupos
-                |
                 */
-                return DB::table(
-                    'cargas_academicas as ca'
-                )
-                    ->leftJoin(
-                        'materias as m',
-                        'm.id',
-                        '=',
-                        'ca.materia_id'
-                    )
-                    ->leftJoin(
-                        'docentes as d',
-                        'd.id',
-                        '=',
-                        'ca.docente_id'
-                    )
-                    ->leftJoin(
-                        'users as u',
-                        'u.id',
-                        '=',
-                        'd.usuario_id'
-                    )
-                    ->leftJoin(
-                        'grupos as g',
-                        'g.id',
-                        '=',
-                        'ca.grupo_id'
-                    )
-                    ->where(
-                        'ca.grupo_id',
-                        $enrollment->grupo_id
-                    )
-                    ->where(
-                        'ca.ciclo_id',
-                        $enrollment->ciclo_id
-                    )
+                return DB::table('cargas_academicas as ca')
+                    ->leftJoin('materias as m', 'm.id', '=', 'ca.materia_id')
+                    ->leftJoin('docentes as d', 'd.id', '=', 'ca.docente_id')
+                    ->leftJoin('users as u', 'u.id', '=', 'd.usuario_id')
+                    ->leftJoin('grupos as g', 'g.id', '=', 'ca.grupo_id')
+                    ->whereIn('ca.grupo_id', $grupoIds)
+                    ->where('ca.ciclo_id', $activePeriod->id)
                     ->select([
                         'ca.uuid as id',
                         'ca.color_tema',
-
                         'm.nombre',
                         'm.descripcion',
-
                         'g.nombre as nombre_grupo',
-
                         'u.nombre as docente_nombre',
                         'u.apellido_paterno as docente_apellido_paterno',
                         'u.apellido_materno as docente_apellido_materno',
                     ])
                     ->get()
                     ->map(
-                        static function (
-                            $row
-                        ): array {
+                        static function ($row): array {
                             $teacherName = trim(
                                 implode(
                                     ' ',
@@ -406,39 +291,17 @@ class HandleInertiaRequests extends Middleware
                                 )
                             );
 
-                            $description =
-                                $row->descripcion
-                                    ?: 'Sin descripción';
+                            $description = $row->descripcion ?: 'Sin descripción';
 
                             return [
                                 'id' => $row->id,
                                 'uuid' => $row->id,
-
-                                'nombre' =>
-                                    $row->nombre
-                                        ?: 'N/A',
-
-                                'docente' =>
-                                    $teacherName
-                                        ?: 'Sin docente',
-
-                                /*
-                                 * Conservamos ambas claves
-                                 * por compatibilidad con frontend.
-                                 */
-                                'description' =>
-                                    $description,
-
-                                'descripcion' =>
-                                    $description,
-
-                                'nombre_grupo' =>
-                                    $row->nombre_grupo
-                                        ?: 'N/A',
-
-                                'color_tema' =>
-                                    $row->color_tema
-                                        ?: 'blue',
+                                'nombre' => $row->nombre ?: 'N/A',
+                                'docente' => $teacherName ?: 'Sin docente',
+                                'description' => $description,
+                                'descripcion' => $description,
+                                'nombre_grupo' => $row->nombre_grupo ?: 'N/A',
+                                'color_tema' => $row->color_tema ?: 'blue',
                             ];
                         }
                     )

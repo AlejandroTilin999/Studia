@@ -9,11 +9,14 @@ use App\Models\Student;
 use App\Models\AcademicGroup;
 use App\Models\Enrollment;
 use App\Models\AcademicPeriod;
+use Illuminate\Support\Str;
 use App\Services\AcademicPeriodService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class AlumnoController extends Controller
@@ -193,108 +196,111 @@ class AlumnoController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
-        // [SAFETY LOCK v3.6] Permitir inscripciones en ciclos Activos o en Planeación
+        // 1. Obtener ciclo escolar activo
         $targetCycle = AcademicPeriodService::workingPeriod();
 
         if (!$targetCycle) {
-            return redirect()->back()->withErrors([
-                'grupo_id' => 'Operación bloqueada. Debes tener un Ciclo Escolar vigente o en modo Planeación para inscribir alumnos.'
+            throw ValidationException::withMessages([
+                'grupo_id' => 'No hay un ciclo escolar activo o en planificación registrado.'
             ]);
         }
 
+        // 2. Validar campos (Inertia captura esto automáticamente si falla)
         $request->validate([
-            'nombre'            => 'required|string|max:255',
-            'apellido_paterno'  => 'required|string|max:255',
-            'apellido_materno'  => 'nullable|string|max:255',
-            'email'             => 'nullable|string|email|max:255',
-            'matricula'         => 'required|string|max:50',
-            'telefono'          => 'required|string|max:20',
-            'fecha_nacimiento'  => 'required|date',
-            'grupo_id'          => 'required|exists:grupos,id',
+            'nombre'           => 'required|string|max:255',
+            'apellido_paterno' => 'required|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'email'            => 'nullable|string|email|max:255',
+            'matricula'        => 'required|string|max:50',
+            'telefono'         => 'required|string|max:20',
+            'fecha_nacimiento' => 'required|date',
+            'grupo_id'         => 'required|exists:grupos,id',
+            'curp'             => 'nullable|string|max:18',
         ]);
 
-        // Validar cupo del grupo
-        $group = \App\Models\AcademicGroup::findOrFail($request->grupo_id);
-
+        // 3. Validar cupo máximo del grupo (45 alumnos)
         $activeEnrollmentsCount = Enrollment::where('grupo_id', $request->grupo_id)
             ->where('ciclo_id', $targetCycle->id)
             ->where('estatus', 'active')
             ->count();
 
         if ($activeEnrollmentsCount >= 45) {
-            return redirect()->back()->withErrors([
-                'grupo_id' => 'El grupo seleccionado ha alcanzado el límite máximo de estudiantes (45 alumnos).'
+            throw ValidationException::withMessages([
+                'grupo_id' => 'El grupo seleccionado ha alcanzado el límite máximo de 45 estudiantes.'
             ]);
         }
 
-        // [ESTANDARIZACIÓN v4.0] Generación de correo profesional sugerido por el frontend
+        // 4. Sanitización segura de Email
         $generatedEmail = $request->email;
-
-        // Si por alguna razón no viene el correo o ya existe, lo generamos/ajustamos
         if (empty($generatedEmail) || User::where('email', $generatedEmail)->exists()) {
-            $firstNamePart  = strtolower(explode(' ', trim($request->nombre))[0] ?? '');
-            $paternoPartRaw = strtolower(explode(' ', trim($request->apellido_paterno))[0] ?? '');
-            $firstNamePart  = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $firstNamePart));
-            $paternoPart    = preg_replace('/[^a-z0-9]/u', '', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $paternoPartRaw));
-
-            $initials = substr($firstNamePart, 0, 1) . substr($paternoPart, 0, 1);
-            $emailBase = "{$firstNamePart}.{$paternoPart}.{$initials}";
-
-            // Buscar un número único
+            $firstNamePart = Str::slug(explode(' ', trim($request->nombre))[0] ?? 'alumno', '');
+            $paternoPart   = Str::slug(explode(' ', trim($request->apellido_paterno))[0] ?? 'estudiante', '');
+            
+            $emailBase = "{$firstNamePart}.{$paternoPart}";
             $counter = rand(10, 99);
+
             do {
                 $generatedEmail = "{$emailBase}{$counter}@prepahidalgo.edu.mx";
                 $counter++;
             } while (User::where('email', $generatedEmail)->exists());
         }
 
-        // --- GARANTIZAR MATRÍCULA ÚNICA ---
-        $matriculaBase = $request->matricula;
+        // 5. Garantizar Matrícula Única
+        $matriculaBase = trim($request->matricula);
         $finalMatricula = $matriculaBase;
         $counter = 1;
         while (Student::where('matricula', $finalMatricula)->exists()) {
-            $finalMatricula = $matriculaBase . chr(64 + $counter); // Agrega A, B, C...
+            $finalMatricula = $matriculaBase . '-' . $counter;
             $counter++;
         }
 
-        $targetCycleId = $targetCycle->id;
+        // 6. Transacción e Inserción
+        try {
+            DB::transaction(function () use ($request, $generatedEmail, $finalMatricula, $targetCycle) {
+                // Crear Usuario
+                $user = User::create([
+                    'nombre'           => $request->nombre,
+                    'apellido_paterno' => $request->apellido_paterno,
+                    'apellido_materno' => $request->apellido_materno,
+                    'telefono'         => $request->telefono,
+                    'email'            => $generatedEmail,
+                    'curp'             => $request->curp ?? strtoupper(Str::random(18)),
+                    'password'         => Hash::make('Prepahid2026'),
+                    'rol'              => 'alumno',
+                    'estatus'          => 'active',
+                    'password_changed' => true, // <-- Marca como que no requiere cambio de contraseña
+                ]);
 
-        $user = DB::transaction(function () use ($request, $generatedEmail, $finalMatricula, $targetCycleId) {
-            // 1. Crear el usuario correspondiente
-            $u = User::create([
-                'nombre'           => $request->nombre,
-                'apellido_paterno' => $request->apellido_paterno,
-                'apellido_materno' => $request->apellido_materno,
-                'telefono'         => $request->telefono,
-                'email'            => $generatedEmail,
-                'password'         => Hash::make('Prepahid2026'),
-                'rol'              => 'alumno',
+                // Crear Estudiante
+                Student::create([
+                    'usuario_id'       => $user->id,
+                    'matricula'        => $finalMatricula,
+                    'fecha_nacimiento' => $request->fecha_nacimiento,
+                    'estatus'          => 'active',
+                ]);
+
+                // Crear Inscripción
+                Enrollment::create([
+                    'usuario_id'    => $user->id,
+                    'grupo_id'      => $request->grupo_id,
+                    'ciclo_id'      => $targetCycle->id,
+                    'codigo_alumno' => $finalMatricula,
+                    'estatus'       => 'active',
+                ]);
+            });
+
+            // Respuesta nativa compatible con Inertia
+            return back()->with('message', 'Alumno registrado correctamente.');
+
+        } catch (\Throwable $e) {
+            Log::error('Error de BD en AlumnoController@store: ' . $e->getMessage());
+
+            throw ValidationException::withMessages([
+                'nombre' => 'Error en base de datos: ' . $e->getMessage()
             ]);
-
-            // 2. Crear el perfil de estudiante
-            Student::create([
-                'usuario_id'       => $u->id,
-                'matricula'        => $finalMatricula,
-                'fecha_nacimiento' => $request->fecha_nacimiento,
-                'estatus'          => 'active',
-            ]);
-
-            // 3. Registrar su inscripción en el grupo
-            Enrollment::create([
-                'usuario_id'    => $u->id,
-                'grupo_id'      => $request->grupo_id,
-                'ciclo_id'      => $targetCycleId,
-                'codigo_alumno' => $finalMatricula,
-                'estatus'       => 'active',
-            ]);
-
-            return $u;
-        });
-
-        $this->invalidateListCache($user->id);
-        return redirect()->route('admin.alumnos.index');
+        }
     }
 
     public function update(Request $request, $id)
