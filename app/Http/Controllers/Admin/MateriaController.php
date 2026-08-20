@@ -173,7 +173,9 @@ class MateriaController extends Controller
                     );
 
                     // [TIEMPO REAL REVERB] Notificar al grupo que hay nueva materia general
-                    event(new \App\Events\GroupDataUpdated($group->id, 'courses'));
+                    try {
+                        event(new \App\Events\GroupDataUpdated($group->id, 'courses'));
+                    } catch (\Throwable $e) {}
                 }
             }
         });
@@ -189,39 +191,34 @@ class MateriaController extends Controller
     {
         $course = Course::findOrFail($id);
 
-        $validated = $request->validate([
-            'codigo' => "required|string|max:20|unique:materias,codigo,{$id}",
-            'nombre' => 'required|string|max:255',
-            'semestre' => 'required|integer|min:1|max:6',
-            'descripcion' => 'nullable|string',
-            'tipo' => 'required|string|in:General,Especialidad',
-            'area' => 'nullable|string|max:100',
-            'linked_groups' => 'nullable|array',
-            'specialty_ids' => 'nullable|array',
-            'specialty_ids.*' => 'exists:especialidades,id',
+        $request->validate([
+            'nombre'         => 'required|string|max:255',
+            'codigo'         => 'required|string|max:50|unique:materias,codigo,' . $id,
+            'semestre'       => 'required|integer|min:1|max:6',
+            'tipo'           => 'required|in:General,Especialidad',
+            'especialidades' => 'nullable|array',
+            'especialidades.*' => 'exists:especialidades,id',
         ]);
 
-        DB::transaction(function () use ($validated, $request, $course) {
-            $course->update([
-                'codigo' => $validated['codigo'],
-                'nombre' => $validated['nombre'],
-                'semestre' => $validated['semestre'],
-                'descripcion' => $validated['descripcion'],
-                'tipo' => $validated['tipo'],
-                'area' => $validated['area'] ?? null,
-            ]);
+        $course->update([
+            'nombre'   => $request->nombre,
+            'codigo'   => $request->codigo,
+            'semestre' => $request->semestre,
+            'tipo'     => $request->tipo,
+        ]);
 
-            if ($validated['tipo'] === 'Especialidad') {
-                $course->specialties()->sync($request->input('specialty_ids', []));
-            } else {
-                $course->specialties()->detach();
-            }
-        });
+        if ($request->tipo === 'Especialidad' && $request->has('especialidades')) {
+            $course->specialties()->sync($request->especialidades);
+        } else {
+            $course->specialties()->detach();
+        }
 
         // [TIEMPO REAL INSTANTÁNEO] Notificar a todos los grupos que llevan esta materia
         $affectedLoads = \App\Models\AcademicLoad::where('materia_id', $course->id)->get();
         foreach ($affectedLoads as $load) {
-            event(new \App\Events\GroupDataUpdated($load->grupo_id, 'course'));
+            try {
+                event(new \App\Events\GroupDataUpdated($load->grupo_id, 'course'));
+            } catch (\Throwable $e) {}
         }
 
         $this->invalidateCourseCache();

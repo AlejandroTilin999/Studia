@@ -33,7 +33,24 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+        if ($user) {
+            $role = strtolower(trim($user->rol ?? ''));
+            $firstName = $user->nombre ? explode(' ', trim($user->nombre))[0] : '';
+            $welcomeMsg = $firstName 
+                ? "¡Bienvenido/a, {$firstName}! Iniciaste sesión exitosamente." 
+                : "¡Iniciaste sesión exitosamente!";
+
+            $redirect = match ($role) {
+                'docente' => redirect()->route('docente.dashboard'),
+                'alumno' => redirect()->route('alumno.dashboard'),
+                default => redirect()->route('admin.dashboard'),
+            };
+
+            return $redirect->with('flash_toast', $welcomeMsg)->with('status', $welcomeMsg);
+        }
+
+        return redirect()->route('dashboard');
     }
 
     /**
@@ -50,6 +67,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect("/login?acceso={$acceso}");
+        return redirect("/login?acceso={$acceso}")->with('status', 'Has cerrado sesión correctamente.');
     }
 }

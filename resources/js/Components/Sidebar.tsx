@@ -863,11 +863,12 @@ const SidebarInner = React.memo(({
                                                 "Sí, salir",
                                                 "Cancelar",
                                                 "warning"
-                                            ).then(
-                                                (res) =>
-                                                    res.isConfirmed &&
-                                                    router.post("/logout")
-                                            );
+                                            ).then((res) => {
+                                                if (res.isConfirmed) {
+                                                    SwalHelper.toastLoading("Cerrando sesión...");
+                                                    router.post("/logout");
+                                                }
+                                            });
                                         }}
                                         className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[12px] font-bold text-rose-600 transition-all hover:bg-rose-50"
                                     >

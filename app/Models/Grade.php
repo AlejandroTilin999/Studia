@@ -26,7 +26,11 @@ class Grade extends Model
     protected static function booted()
     {
         static::saved(function ($grade) {
-            event(new \App\Events\GradeUpdated($grade));
+            try {
+                event(new \App\Events\GradeUpdated($grade));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la actualización de calificación por WebSocket: " . $e->getMessage());
+            }
         });
     }
 

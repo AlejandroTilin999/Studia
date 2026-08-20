@@ -56,8 +56,11 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        $email = strtolower(trim((string) $this->input('email')));
+        $password = (string) $this->input('password');
+
         // 1. Buscar al usuario directamente en la base de datos de manera previa
-        $user = \App\Models\User::where('email', $this->input('email'))->first();
+        $user = \App\Models\User::where('email', $email)->first();
 
         if ($user) {
             $profileType = $this->input('profile_type');
@@ -89,7 +92,7 @@ class LoginRequest extends FormRequest
         }
 
         // 2. Si pasó los filtros de rol, intentar la autenticación real (Contraseña)
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        if (! Auth::attempt(['email' => $email, 'password' => $password], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

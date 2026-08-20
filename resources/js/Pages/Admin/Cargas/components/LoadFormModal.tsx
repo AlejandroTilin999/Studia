@@ -69,27 +69,45 @@ export default function LoadFormModal({
 
     const selectedGroup = groups.find(g => g.id.toString() === data.grupo_id.toString());
     const groupMajor = selectedGroup?.especialidad || '';
-    const groupSemester = useMemo(() => {
-        if (!selectedGroup) return null;
-        if (selectedGroup.semestre) return Number(selectedGroup.semestre);
-        if (selectedGroup.codigo) {
-            const parsed = parseInt(selectedGroup.codigo.charAt(0));
-            if (!isNaN(parsed) && parsed > 0) return parsed;
-        }
-        if (selectedGroup.nombre) {
-            const match = selectedGroup.nombre.match(/(\d+)/);
+
+    const getGroupSemesterNumber = (g: any): number => {
+        if (g?.semestre) return Number(g.semestre);
+        if (g?.nombre) {
+            const match = g.nombre.match(/(\d+)/);
             if (match) return parseInt(match[1]);
         }
-        return null;
+        if (g?.codigo) {
+            const match = g.codigo.match(/(\d+)/);
+            if (match) return parseInt(match[1]);
+        }
+        return 0;
+    };
+
+    const groupSemester = useMemo(() => {
+        if (!selectedGroup) return null;
+        const sem = getGroupSemesterNumber(selectedGroup);
+        return sem > 0 ? sem : null;
     }, [selectedGroup]);
 
     const suggestedCourses = useMemo(() => {
         if (!data.grupo_id) return [];
-        return courses.filter(course => {
+        const allMatching = courses.filter(course => {
             if (groupSemester && course.semestre !== groupSemester) return false;
             if (course.tipo === 'General') return true;
             return course.especialidades?.some(s => s.toLowerCase() === groupMajor.toLowerCase());
         });
+
+        // Limitar a máximo 4 materias por grupo (2 Generales y 2 de Especialidad)
+        const gen = allMatching.filter(c => c.tipo === 'General').slice(0, 2);
+        const esp = allMatching.filter(c => c.tipo === 'Especialidad').slice(0, 2);
+        const combined = [...gen, ...esp];
+
+        if (combined.length < 4) {
+            const remaining = allMatching.filter(c => !combined.some(item => item.id === c.id));
+            combined.push(...remaining.slice(0, 4 - combined.length));
+        }
+
+        return combined.slice(0, 4);
     }, [courses, data.grupo_id, groupMajor, groupSemester]);
 
     const generalCourses = useMemo(() => suggestedCourses.filter(c => c.tipo === 'General'), [suggestedCourses]);
@@ -117,22 +135,27 @@ export default function LoadFormModal({
     const getFilteredTeachersForCourse = (course: CourseCatalogItem) => {
         // Profesores que ya han sido seleccionados en OTROS selects de este mismo wizard
         const selectedTeacherIds = (data.assignments || [])
-            .filter(a => a.materia_id !== course.id && a.docente_id !== '')
-            .map(a => a.docente_id.toString());
+            .filter(a => String(a.materia_id) !== String(course.id) && a.docente_id !== '')
+            .map(a => String(a.docente_id));
 
         return (teachers || []).filter(t => {
-            // No mostrar si ya está seleccionado en otra materia de este grupo
-            if (selectedTeacherIds.includes(t.id.toString())) return false;
+            // 1. No mostrar si ya está seleccionado en otra materia de este grupo
+            if (selectedTeacherIds.includes(String(t.id))) return false;
 
-            if (course.tipo === 'General') {
-                const isGeneralTeacher = !t.especialidad || t.especialidad.toLowerCase() === 'general';
+            const tEsp = (t.especialidad || 'general').toLowerCase().trim();
+            const gEsp = (groupMajor || '').toLowerCase().trim();
+            const isGeneralCourse = course.tipo === 'General';
+
+            if (isGeneralCourse) {
+                // Materias Generales: SOLO maestros de especialidad 'General'
+                const isGeneralTeacher = tEsp === 'general' || tEsp === '' || tEsp === 'materias generales';
                 if (!isGeneralTeacher) return false;
 
-                // Si la materia tiene área definida (ej: MATEMÁTICAS, HUMANIDADES)
+                // Si la materia general tiene área (ej: Matemáticas, Comunicación) y el maestro tiene área asignada
                 if (course.area) {
-                    const cArea = course.area.toLowerCase();
-                    const teacherAreas = (t.areas || []).map(a => a.toLowerCase());
-                    const singleArea = (t.area || '').toLowerCase();
+                    const cArea = course.area.toLowerCase().trim();
+                    const teacherAreas = (t.areas || []).map(a => a.toLowerCase().trim());
+                    const singleArea = (t.area || '').toLowerCase().trim();
 
                     if (teacherAreas.length > 0) {
                         return teacherAreas.includes(cArea);
@@ -143,10 +166,11 @@ export default function LoadFormModal({
                 }
                 return true;
             } else {
-                // Materia de Especialidad
-                const tEsp = (t.especialidad || '').toLowerCase();
-                const gEsp = groupMajor.toLowerCase();
-                return tEsp === gEsp || tEsp === 'general';
+                // Materias de Especialidad (ej: Programación, Contabilidad, Administración):
+                // SOLO maestros de la especialidad correspondiente al grupo
+                if (tEsp === 'general' || tEsp === '' || tEsp === 'materias generales') return false;
+
+                return tEsp === gEsp;
             }
         });
     };
@@ -193,7 +217,11 @@ export default function LoadFormModal({
                                     onChange={e => handleTeacherChange(course.id, e.target.value)}
                                     className="h-9 md:h-10 w-full text-[11px] md:text-xs font-normal border-slate-200 focus:border-[#0266E0] bg-white rounded-lg"
                                 >
-                                    <option value="">-- Seleccionar Docente --</option>
+                                    <option value="">
+                                        {filteredTeachers.length === 0
+                                            ? `-- Sin docentes de ${course.tipo === 'General' ? 'área General' : (groupMajor || 'esta Especialidad')} --`
+                                            : '-- Seleccionar Docente --'}
+                                    </option>
                                     {filteredTeachers.map(t => (
                                         <option key={t.id} value={t.id}>{t.nombre_completo}</option>
                                     ))}
@@ -278,7 +306,7 @@ export default function LoadFormModal({
                                     <option value="">Seleccionar grupo...</option>
                                     {groups.filter(g => {
                                         // 1. Filtrar por paridad de semestre
-                                        const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
+                                        const s = getGroupSemesterNumber(g);
                                         const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
                                         if (!matchesParity) return false;
 

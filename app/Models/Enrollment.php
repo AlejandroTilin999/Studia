@@ -23,10 +23,18 @@ class Enrollment extends Model
     protected static function booted()
     {
         static::saved(function ($enrollment) {
-            event(new \App\Events\EnrollmentChanged($enrollment));
+            try {
+                event(new \App\Events\EnrollmentChanged($enrollment));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir el evento de inscripción por WebSocket: " . $e->getMessage());
+            }
         });
         static::deleted(function ($enrollment) {
-            event(new \App\Events\EnrollmentChanged($enrollment));
+            try {
+                event(new \App\Events\EnrollmentChanged($enrollment));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir el evento de inscripción por WebSocket: " . $e->getMessage());
+            }
         });
     }
 

@@ -66,15 +66,27 @@ class Tarea extends Model
     {
         static::created(function ($tarea) {
             \App\Services\GradeService::invalidateStudentCache();
-            event(new \App\Events\TaskCreated($tarea));
+            try {
+                event(new \App\Events\TaskCreated($tarea));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la creación de tarea por WebSocket: " . $e->getMessage());
+            }
         });
         static::updated(function ($tarea) {
             \App\Services\GradeService::invalidateStudentCache();
-            event(new \App\Events\TaskUpdated($tarea));
+            try {
+                event(new \App\Events\TaskUpdated($tarea));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la actualización de tarea por WebSocket: " . $e->getMessage());
+            }
         });
         static::deleted(function ($tarea) {
             \App\Services\GradeService::invalidateStudentCache();
-            event(new \App\Events\TaskDeleted($tarea));
+            try {
+                event(new \App\Events\TaskDeleted($tarea));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la eliminación de tarea por WebSocket: " . $e->getMessage());
+            }
         });
     }
 

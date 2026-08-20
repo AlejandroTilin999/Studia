@@ -149,18 +149,6 @@ export default function Historial({ studentInfo, fullKardex }: HistorialProps) {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Botón Imprimir */}
-                        <div className="shrink-0 print:hidden">
-                            <button
-                                type="button"
-                                onClick={handlePrintKardex}
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-[#0a0f1d] hover:bg-slate-900 text-white rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                            >
-                                <Printer size={16} />
-                                Imprimir Kardex
-                            </button>
-                        </div>
                     </div>
                 </div>
 

@@ -13,7 +13,11 @@ class Notificacion extends Model
     {
         static::created(function ($notificacion) {
             cache()->forget("unread_notifs_{$notificacion->usuario_id}");
-            event(new \App\Events\NotificationCreated($notificacion));
+            try {
+                event(new \App\Events\NotificationCreated($notificacion));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la notificación por WebSocket: " . $e->getMessage());
+            }
         });
 
         static::updated(function ($notificacion) {

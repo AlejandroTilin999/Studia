@@ -18,7 +18,11 @@ class AdminAuditLog extends Model
     protected static function booted()
     {
         static::created(function ($log) {
-            event(new \App\Events\AuditLogCreated($log));
+            try {
+                event(new \App\Events\AuditLogCreated($log));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la auditoría por WebSocket: " . $e->getMessage());
+            }
         });
     }
 

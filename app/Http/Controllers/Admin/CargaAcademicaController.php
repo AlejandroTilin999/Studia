@@ -38,10 +38,23 @@ class CargaAcademicaController extends Controller
         $cachedLoads = Cache::remember($cacheKey, 600, function () use ($search, $cycleFilter, $workingCycle, $page) {
             $query = AcademicLoad::with(['academicPeriod', 'academicGroup', 'course', 'teacher.user']);
 
+            $targetCycle = ($cycleFilter && $cycleFilter !== 'all')
+                ? AcademicPeriod::find($cycleFilter)
+                : $workingCycle;
+
             if ($cycleFilter && $cycleFilter !== 'all') {
                 $query->where('ciclo_id', $cycleFilter);
             } elseif (!$search && $workingCycle) {
                 $query->where('ciclo_id', $workingCycle->id);
+            }
+
+            if ($targetCycle) {
+                $cName = strtoupper($targetCycle->nombre);
+                if (str_contains($cName, 'PERIODO B') || str_contains($cName, 'CICLO B') || preg_match('/\bB\b/i', $cName)) {
+                    $query->whereHas('academicGroup', fn($gQ) => $gQ->whereRaw('semestre % 2 = 0'));
+                } else if (str_contains($cName, 'PERIODO A') || str_contains($cName, 'CICLO A') || preg_match('/\bA\b/i', $cName)) {
+                    $query->whereHas('academicGroup', fn($gQ) => $gQ->whereRaw('semestre % 2 != 0'));
+                }
             }
 
             if ($search) {
@@ -106,27 +119,30 @@ class CargaAcademicaController extends Controller
                     'mes_inicio' => $p->fecha_inicio ? \Carbon\Carbon::parse($p->fecha_inicio)->month : null,
                 ])->all();
             }),
-            'groups' => fn() => \Cache::remember('catalog_grupos_select', 300, function() {
+            'groups' => function() {
                 $operatingCycle = AcademicPeriodService::workingPeriod();
-                $query = AcademicGroup::query();
+                $cacheKey = 'catalog_grupos_select_' . ($operatingCycle ? $operatingCycle->id : 'all');
+                return \Cache::remember($cacheKey, 300, function() use ($operatingCycle) {
+                    $query = AcademicGroup::query();
 
-                if ($operatingCycle) {
-                    $cycleName = strtoupper($operatingCycle->nombre);
-                    if (str_contains($cycleName, 'PERIODO B') || str_contains($cycleName, 'CICLO B') || preg_match('/\bB\b/i', $cycleName)) {
-                        $query->whereRaw('semestre % 2 = 0');
-                    } else if (str_contains($cycleName, 'PERIODO A') || str_contains($cycleName, 'CICLO A') || preg_match('/\bA\b/i', $cycleName)) {
-                        $query->whereRaw('semestre % 2 != 0');
+                    if ($operatingCycle) {
+                        $cycleName = strtoupper($operatingCycle->nombre);
+                        if (str_contains($cycleName, 'PERIODO B') || str_contains($cycleName, 'CICLO B') || preg_match('/\bB\b/i', $cycleName)) {
+                            $query->whereRaw('semestre % 2 = 0');
+                        } else if (str_contains($cycleName, 'PERIODO A') || str_contains($cycleName, 'CICLO A') || preg_match('/\bA\b/i', $cycleName)) {
+                            $query->whereRaw('semestre % 2 != 0');
+                        }
                     }
-                }
 
-                return $query->orderBy('semestre')->orderBy('nombre')->get()->map(fn($g) => [
-                    'id' => $g->id,
-                    'nombre' => $g->nombre,
-                    'codigo' => $g->codigo,
-                    'semestre' => $g->semestre,
-                    'especialidad' => $g->especialidad,
-                ])->all();
-            }),
+                    return $query->orderBy('semestre')->orderBy('nombre')->get()->map(fn($g) => [
+                        'id' => $g->id,
+                        'nombre' => $g->nombre,
+                        'codigo' => $g->codigo,
+                        'semestre' => $g->semestre,
+                        'especialidad' => $g->especialidad,
+                    ])->all();
+                });
+            },
             'courses' => fn() => \Cache::remember('catalog_courses_select', 300, function() {
                 return Course::with('specialties')->get()->map(fn($c) => [
                     'id' => $c->id,
@@ -180,8 +196,10 @@ class CargaAcademicaController extends Controller
                 'grupo_id.required' => 'El grupo es obligatorio.',
             ]);
 
-            DB::transaction(function () use ($request) {
-                foreach ($request->assignments as $assign) {
+            $assignments = array_slice($request->assignments, 0, 4);
+
+            DB::transaction(function () use ($request, $assignments) {
+                foreach ($assignments as $assign) {
                     AcademicLoad::updateOrCreate(
                         [
                             'ciclo_id' => $request->ciclo_id,
@@ -195,7 +213,11 @@ class CargaAcademicaController extends Controller
 
             $this->invalidateTeacherListCache();
             \App\Services\GradeService::invalidateStudentCache();
-            event(new \App\Events\GroupDataUpdated($request->grupo_id, 'courses'));
+            try {
+                event(new \App\Events\GroupDataUpdated($request->grupo_id, 'courses'));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir GroupDataUpdated por WebSocket: " . $e->getMessage());
+            }
 
             return redirect()->back()->with('message', 'Asignaciones procesadas con éxito.');
         }
@@ -207,6 +229,16 @@ class CargaAcademicaController extends Controller
             'materia_id' => 'required|exists:materias,id',
             'docente_id' => 'required|exists:docentes,id',
         ]);
+
+        $existingCount = AcademicLoad::where('ciclo_id', $request->ciclo_id)
+            ->where('grupo_id', $request->grupo_id)
+            ->count();
+
+        if ($existingCount >= 4) {
+            return redirect()->back()->withErrors([
+                'grupo_id' => 'Este grupo ya cuenta con el límite máximo de 4 materias asignadas.'
+            ]);
+        }
 
         $exists = AcademicLoad::where('ciclo_id', $request->ciclo_id)
             ->where('grupo_id', $request->grupo_id)
@@ -228,7 +260,11 @@ class CargaAcademicaController extends Controller
 
         $this->invalidateTeacherListCache();
         \App\Services\GradeService::invalidateStudentCache();
-        event(new \App\Events\GroupDataUpdated($request->grupo_id, 'courses'));
+        try {
+            event(new \App\Events\GroupDataUpdated($request->grupo_id, 'courses'));
+        } catch (\Throwable $e) {
+            \Log::warning("No se pudo transmitir GroupDataUpdated por WebSocket: " . $e->getMessage());
+        }
 
         return redirect()->back()->with('message', 'Asignación creada con éxito.');
     }

@@ -45,7 +45,11 @@ class AcademicPeriod extends Model
     protected static function booted()
     {
         static::updated(function ($period) {
-            event(new \App\Events\AcademicPeriodChanged($period));
+            try {
+                event(new \App\Events\AcademicPeriodChanged($period));
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo transmitir la actualización de ciclo por WebSocket: " . $e->getMessage());
+            }
         });
     }
 

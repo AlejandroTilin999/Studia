@@ -26,6 +26,15 @@ export default function CycleHistoryModal({
     onActivate,
     onEdit
 }: CycleHistoryModalProps) {
+    const formatDateShort = (dateStr?: string) => {
+        if (!dateStr) return 'Sin fecha';
+        const cleanDate = String(dateStr).split('T')[0].split(' ')[0];
+        const date = new Date(cleanDate + 'T00:00:00');
+        return isNaN(date.getTime()) 
+            ? 'Sin fecha' 
+            : date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
     return (
         <BaseModal isOpen={isOpen} onClose={onClose} maxWidthClass="max-w-5xl" showFooter={false} fullBleed={true}>
             <div className="grid grid-cols-1 md:grid-cols-10 min-h-0 md:min-h-[450px] max-h-[85vh] md:max-h-none overflow-y-auto md:overflow-visible h-full text-left relative font-body">
@@ -92,13 +101,13 @@ export default function CycleHistoryModal({
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar size={13} className="text-slate-400" />
                                                 <span className="text-[11px] font-normal tracking-wide">
-                                                    {new Date(c.fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    {formatDateShort(c.fecha_inicio)}
                                                 </span>
                                             </div>
                                             <div className="w-1 h-1 rounded-full bg-slate-300" />
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[11px] font-normal tracking-wide">
-                                                    {new Date(c.fecha_fin + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    {formatDateShort(c.fecha_fin)}
                                                 </span>
                                             </div>
                                         </div>

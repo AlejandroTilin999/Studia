@@ -120,6 +120,12 @@ class HandleInertiaRequests extends Middleware
                         $user->id
                     )
                     : [],
+
+            'flash' => [
+                'message' => fn () => $request->session()->get('message'),
+                'status'  => fn () => $request->session()->get('status'),
+                'toast'   => fn () => $request->session()->get('flash_toast'),
+            ],
         ];
     }
 
@@ -291,9 +297,10 @@ class HandleInertiaRequests extends Middleware
     private function getAlumnoGroups(
         int $userId
     ): array {
+        $version = Cache::get('student_cache_version', 1);
         return Cache::remember(
-            "sidebar_alumno_{$userId}",
-            1800,
+            "sidebar_alumno_{$userId}_v{$version}",
+            600,
             static function () use (
                 $userId
             ): array {

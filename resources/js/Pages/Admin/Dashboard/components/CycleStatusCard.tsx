@@ -44,7 +44,14 @@ export default function CycleStatusCard({
         }
     };
 
-    const status = getStatusLabel();
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return 'Sin fecha';
+        const cleanDate = String(dateStr).split('T')[0].split(' ')[0];
+        const date = new Date(cleanDate + 'T00:00:00');
+        return isNaN(date.getTime()) 
+            ? 'Sin fecha' 
+            : date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
 
     return (
         <div className="bg-white rounded-lg p-5 md:p-6 border border-slate-100 shadow-none flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 text-left font-body">
@@ -64,7 +71,7 @@ export default function CycleStatusCard({
                 <p className="text-xs text-slate-500 font-medium">
                     {activeCycle ? (
                         <>
-                            Periodo académico: <strong className="text-slate-700 font-bold">{new Date(activeCycle.fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> al <strong className="text-slate-700 font-bold">{new Date(activeCycle.fecha_fin + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                            Periodo académico: <strong className="text-slate-700 font-bold">{formatDate(activeCycle.fecha_inicio)}</strong> al <strong className="text-slate-700 font-bold">{formatDate(activeCycle.fecha_fin)}</strong>
                         </>
                     ) : (
                         "Abre un nuevo ciclo para comenzar a inscribir alumnos."

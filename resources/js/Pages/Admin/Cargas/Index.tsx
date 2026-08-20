@@ -152,7 +152,7 @@ export default function CargasIndex({
         if (workingPeriod) {
             const isOddCycle = workingPeriod.mes_inicio ? (workingPeriod.mes_inicio >= 8 || workingPeriod.mes_inicio === 1) : true;
             const availableGroups = groups.filter((g: any) => {
-                const s = g.codigo ? parseInt(g.codigo.charAt(0)) : 0;
+                const s = g.semestre ? Number(g.semestre) : (g.nombre?.match(/(\d+)/)?.[1] ? parseInt(g.nombre.match(/(\d+)/)[1]) : (g.codigo?.match(/(\d+)/)?.[1] ? parseInt(g.codigo.match(/(\d+)/)[1]) : 0));
                 const matchesParity = isOddCycle ? s % 2 !== 0 : s % 2 === 0;
                 if (!matchesParity) return false;
 

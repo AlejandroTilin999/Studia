@@ -8,7 +8,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { router } from "@inertiajs/react";
 import { SwalHelper } from "@/utils/SwalHelper";
 
-export default function LoginPage() {
+export default function LoginPage({ status }: { status?: string }) {
   const [profile, setProfile] = useState<"alumno" | "institucional">("alumno");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -21,6 +21,12 @@ export default function LoginPage() {
       setData("profile_type", accesoParam);
     }
   }, []);
+
+  useEffect(() => {
+    if (status) {
+      SwalHelper.toast(status, 'info');
+    }
+  }, [status]);
 
   const { post, processing, setData, data, errors } = useForm({
     email: '',
@@ -51,7 +57,25 @@ export default function LoginPage() {
     }
 
     setData("email", cleanEmail);
-    post('/login');
+
+    SwalHelper.toastLoading('Iniciando sesión...');
+
+    router.post('/login', {
+      ...data,
+      email: cleanEmail,
+      password: cleanPassword,
+    }, {
+      onSuccess: () => {
+        SwalHelper.toast('¡Iniciaste sesión exitosamente!', 'success');
+      },
+      onError: (errs) => {
+        SwalHelper.close();
+        const firstErr = Object.values(errs)[0];
+        if (firstErr) {
+          SwalHelper.alert('Acceso Denegado', firstErr, 'error');
+        }
+      }
+    });
   };
 
   const handleSwitchProfile = (newRole: "alumno" | "institucional") => {
